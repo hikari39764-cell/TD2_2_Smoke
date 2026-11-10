@@ -4,7 +4,9 @@
     "Lighting",
     "Camera",
     "HIKARI.SceneFlow",
-    "Project_TD2_2.Gameplay"
+    "Project_TD2_2.Gameplay",
+    "Physics",
+    "GameplayBasic"
   ],
   "startupSceneGuid": "",
   "version": 5
