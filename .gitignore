@@ -1,4 +1,29 @@
-# Prerequisites
+# ---- Project-specific ----
+/Library/
+/logs/
+/out/
+/.vs/
+/imgui.ini
+*.user
+CMakeUserPresets.json
+
+# ---- Documents: not tracked in git ----
+*.md
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.odt
+*.ods
+*.odp
+*.rtf
+/docs/
+/Docs/
+
+# ---- Prerequisites ----
 *.d
 
 # Compiled Object files
