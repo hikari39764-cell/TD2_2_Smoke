@@ -161,4 +161,12 @@ void BurnFieldRules::SetCharge(HIKARI::WorldView& world, float charge) {
     WithField(world, [&](BurnFieldComponent& field) { field.charge = std::clamp(charge, 0.0f, 1.0f); });
 }
 
+void BurnFieldRules::AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
+                              BurnBlastKind kind) {
+    WithField(world, [&](BurnFieldComponent& field) {
+        if (field.blastCount < field.blasts.size() && radius > 0.0f)
+            field.blasts[field.blastCount++] = {position, radius, kind};
+    });
+}
+
 } // namespace Project_TD2_2

@@ -3099,7 +3099,7 @@
           "socketName": ""
         },
         "basic": {
-          "enabled": true,
+          "enabled": false,
           "id": "module.basic.556da633924ca44739bbc276b1dc0290",
           "lifetime": {
             "maximum": 0.5,
@@ -7991,7 +7991,7 @@
           "socketName": ""
         },
         "basic": {
-          "enabled": true,
+          "enabled": false,
           "id": "module.basic.b3b21955d71f07e3bdccc3045f5e9230",
           "lifetime": {
             "maximum": 0.7,

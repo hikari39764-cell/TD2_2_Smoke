@@ -19,6 +19,7 @@ constexpr uint64_t kFogInstanceBase = 140;
 // 引爆で爆ぜた塊：燃料と、外へ押す衝撃。こちらも毎フレーム番号を替える。
 constexpr uint64_t kBlastFuelBase = 160;
 constexpr uint64_t kBlastPushBase = 180;
+constexpr uint64_t kBlastSmokeBase = 200;
 // 1 フレームに見せる塊の数。火の域が受け取れる注入は 32 個で、筆・吸い込みの力と分け合う。残りは次のフレームへ回す。
 constexpr uint32_t kBlastsPerFrame = 3;
 // 燃料の球（中心から (1 − r/R)² で弱まる）を床の上の半分だけ積分した体積の係数：2π／15 の半分。
@@ -66,8 +67,8 @@ void MarkFueled(BurnFieldComponent& field, Cell at, HIKARI::GameProjectFloat3 ce
         }
 }
 
-// 引爆で爆ぜた塊を、火球（燃料と熱を一度に入れて、外へ押す）と爆発のエフェクトで見せる。
-// 規則の側（BurnFieldRules::Explode）が field.blasts に積み、ここで前から順に取り出す。
+// 塊を、場の火の域の流体で見せる。引爆で爆ぜた火（規則の BurnFieldRules::Explode が積む）は火球と爆発のエフェクト、
+// 当たった所や刀の点火は小さな火球、煙の刃が当たった所や霞隠れの出入りは暗い煙の塊（ボスの演出が AddBlast で積む）。
 void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field) {
     const uint32_t count = std::min<uint32_t>(field.blastCount, kBlastsPerFrame);
     if (count == 0)
@@ -76,30 +77,50 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
     field.blastFlip ^= 1u;
     for (uint32_t index = 0; index < count; ++index) {
         const BurnBlast& blast = field.blasts[index];
-        const float radius = std::max(0.5f, blast.radius * field.blastRadiusScale);
-        const HIKARI::GameProjectFloat3 center{blast.position.x, field.map.FloorY() + radius * 0.4f, blast.position.z};
+        const bool detonation = blast.kind == BurnBlastKind::Detonation;
+        const bool smoke = blast.kind == BurnBlastKind::Smoke;
+        const float radius = std::max(0.3f, blast.radius * (detonation ? field.blastRadiusScale : 1.0f));
+        // 引爆の塊は床の上の位置で来るので、火球の中心を少し浮かせる。ほかは渡された位置のまま。
+        const HIKARI::GameProjectFloat3 center{
+            blast.position.x, detonation ? field.map.FloorY() + radius * 0.4f : blast.position.y, blast.position.z};
         const uint64_t slot = static_cast<uint64_t>(index) * 2u + field.blastFlip;
+        const float fuelStrength = smoke ? field.smokeBlastStrength * field.smokeBlastFuelShare
+                                         : field.blastFuel * (detonation ? 1.0f : field.hitFuelScale);
         HIKARI::GameProjectFluidInteraction fuel{};
         fuel.kind = Kind::Fuel;
         fuel.position = center;
         fuel.extents = {radius, std::max(0.0f, field.blastTemperature), 0.0f};
         fuel.direction = {0.0f, field.blastRise, 0.0f};
-        fuel.strength = std::min(kMaximumStrength, std::max(0.0f, field.blastFuel));
+        fuel.strength = std::clamp(fuelStrength, 0.0f, kMaximumStrength);
         fuel.channels = FluidChannels::kFire;
-        field.fluidAccepted =
-            fluid.Submit(object.GetHandle(), kBlastFuelBase + slot, fuel).Accepted() && field.fluidAccepted;
-        // 向きの無い衝撃：火の域では火球を外へ膨らませ、場の霧では足元の霧を吹き飛ばす。
-        if (field.blastPush > 0.0f) {
+        if (fuel.strength > 0.0f)
+            field.fluidAccepted =
+                fluid.Submit(object.GetHandle(), kBlastFuelBase + slot, fuel).Accepted() && field.fluidAccepted;
+        if (smoke && field.smokeBlastStrength > 0.0f) {
+            // 冷たい煙：火の域の暗い散乱色で、濃い煙の塊になる。
+            HIKARI::GameProjectFluidInteraction puff{};
+            puff.kind = Kind::Emit;
+            puff.position = center;
+            puff.extents = {radius, 0.0f, 0.0f};
+            puff.direction = {0.0f, field.blastRise * 0.5f, 0.0f};
+            puff.strength = std::min(kMaximumStrength, field.smokeBlastStrength);
+            puff.channels = FluidChannels::kFire;
+            field.fluidAccepted =
+                fluid.Submit(object.GetHandle(), kBlastSmokeBase + slot, puff).Accepted() && field.fluidAccepted;
+        }
+        // 向きの無い衝撃：火の域では塊を外へ膨らませ、引爆では場の霧も吹き飛ばす（当たった所の霧はボスの側が押す）。
+        const float pushSpeed = smoke ? field.smokeBlastPush : field.blastPush * (detonation ? 1.0f : 0.6f);
+        if (pushSpeed > 0.0f) {
             HIKARI::GameProjectFluidInteraction push{};
             push.kind = Kind::Impulse;
             push.position = center;
             push.extents = {radius * 1.5f, 0.0f, 0.0f};
-            push.strength = field.blastPush;
-            push.channels = FluidChannels::kFire | FluidChannels::kFog;
+            push.strength = pushSpeed;
+            push.channels = detonation ? (FluidChannels::kFire | FluidChannels::kFog) : FluidChannels::kFire;
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastPushBase + slot, push).Accepted() && field.fluidAccepted;
         }
-        if (!field.blastEffect.IsEmpty()) {
+        if (detonation && !field.blastEffect.IsEmpty()) {
             HIKARI::GameProjectVfxPlayRequest play{};
             play.asset = field.blastEffect;
             play.transform.position = center;

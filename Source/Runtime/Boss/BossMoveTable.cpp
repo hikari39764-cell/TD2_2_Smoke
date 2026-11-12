@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <optional>
 
+#include "BossBurnMarks.h"
 #include "BossCsv.h"
 
 namespace Project_TD2_2 {
@@ -176,39 +177,6 @@ struct RawMove {
     const std::string& operator[](Column column) const { return cells[static_cast<int>(column)]; }
 };
 
-// 「残す火」「火の幅 m」「火の秒数」。列が無い・空欄・「なし」は火を残さない。読めない値は警告して火を残さない。
-void ReadBurn(const RawMove& raw, BossMove& move) {
-    const std::string& shape = raw[Column::BurnShape];
-    if (shape.empty() || shape == "なし")
-        return;
-    BossBurnShape parsed = BossBurnShape::None;
-    if (shape == "線")
-        parsed = BossBurnShape::Line;
-    else if (shape == "輪")
-        parsed = BossBurnShape::Ring;
-    else if (shape == "池")
-        parsed = BossBurnShape::Pool;
-    if (parsed == BossBurnShape::None) {
-        move.warnings.push_back("残す火「" + shape + "」が読めないので火を残しません（なし／線／輪／池）");
-        return;
-    }
-    const auto width = NumberOf(raw[Column::BurnWidth]);
-    const auto seconds = NumberOf(raw[Column::BurnSeconds]);
-    if (!width || *width <= 0.0) {
-        move.warnings.push_back("火の幅「" + raw[Column::BurnWidth] +
-                                "」が読めないので火を残しません（0 より大きい m）");
-        return;
-    }
-    if (!seconds || *seconds <= 0.0) {
-        move.warnings.push_back("火の秒数「" + raw[Column::BurnSeconds] +
-                                "」が読めないので火を残しません（0 より大きい秒）");
-        return;
-    }
-    move.burnShape = parsed;
-    move.burnWidth = static_cast<float>(*width);
-    move.burnSeconds = static_cast<float>(*seconds);
-}
-
 // 「追尾を止める F」「溜めの揺らぎ F」「崩せる被弾数」。列が無い・空欄は今までどおり（最後まで追う・揺らがない・崩れない）。
 void ReadWindup(const RawMove& raw, BossMove& move) {
     const std::string& track = raw[Column::TrackStop];
@@ -291,8 +259,10 @@ const char* BossMoveTable::TypeKey(BossMoveType type) {
 const char* BossMoveTable::BurnKey(BossBurnShape shape) {
     switch (shape) {
     case BossBurnShape::Line: return "line";
-    case BossBurnShape::Ring: return "ring";
+    case BossBurnShape::Trail: return "trail";
+    case BossBurnShape::Cross: return "cross";
     case BossBurnShape::Pool: return "pool";
+    case BossBurnShape::Ring: return "ring";
     default: return "none";
     }
 }
@@ -672,7 +642,6 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.speed = static_cast<float>(NumberOf(raw[Column::Speed]).value_or(T.speed));
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
-        ReadBurn(raw, move);
         ReadWindup(raw, move);
         move.act = 0;
         move.hitCount = 0;
@@ -680,6 +649,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             move.act += segment.length;
             move.hitCount += segment.hit ? 1 : 0;
         }
+        // 残す火は一撃の番号を確かめるので、区間を数え終えてから読む。
+        BossBurnMarks::Read(raw[Column::BurnShape], raw[Column::BurnWidth], raw[Column::BurnSeconds], move);
         move.executable = IsExecutable(move.type);
         return parsed;
     };

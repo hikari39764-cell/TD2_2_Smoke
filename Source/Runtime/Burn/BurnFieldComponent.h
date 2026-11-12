@@ -12,10 +12,20 @@ namespace Project_TD2_2 {
 
 inline constexpr std::string_view kBurnFieldType = "Project_TD2_2.BurnField";
 inline constexpr std::string_view kBurnFieldSystem = "Project_TD2_2.BurnFieldSystem";
-// 引爆で 1 tick に爆ぜたセルを、見た目のためにまとめた 1 塊（床の上の位置と、セルの数から出した半径 m）。
+// 場の火の域に出す、見た目だけの塊の種類。
+enum class BurnBlastKind : uint8_t {
+    // 引爆で爆ぜた火（床の上の位置。火球と爆発のエフェクト）。
+    Detonation,
+    // 炎の刃が当たった所・刀の点火（小さな火球）。
+    Hit,
+    // 煙の刃が当たった所・霞隠れや分身の出入り（暗い煙の塊に、少しだけ炎）。
+    Smoke,
+};
+// 見た目のための 1 塊（位置と半径 m）。引爆では、1 tick に爆ぜたセルをまとめた物。
 struct BurnBlast {
     HIKARI::GameProjectFloat3 position{};
     float radius = 0.0f;
+    BurnBlastKind kind = BurnBlastKind::Detonation;
 };
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 32;
@@ -61,6 +71,10 @@ public:
     float blastTemperature = 10.0f;
     float blastRise = 2.0f;
     float blastPush = 8.0f;
+    float hitFuelScale = 0.45f;
+    float smokeBlastStrength = 40.0f;
+    float smokeBlastFuelShare = 0.12f;
+    float smokeBlastPush = 4.0f;
     float blastBlockSize = 2.0f;
     int traceEveryFrames = 0;
 

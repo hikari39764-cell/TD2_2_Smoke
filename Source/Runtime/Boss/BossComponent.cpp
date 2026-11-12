@@ -108,6 +108,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      kickResidueScale, 0.0f, 10.0f);
         fields.Float("kickResidueRadiusShare", "回し蹴り：残り煙を置く円（最大半径の何倍）", kickResidueRadiusShare,
                      0.0f, 2.0f);
+        fields.Float("burnCrossLength", "残す火「交差」：X の 1 本の長さ (m。狙った所で 2 本が交わる)", burnCrossLength,
+                     0.1f, 40.0f);
+        fields.Float("burnPoolForward", "残す火「池」：上段溜めの池を置く所（ボスの前 m。振り下ろした所）",
+                     burnPoolForward, 0.0f, 20.0f);
         fields.Float("ambushAppearDistance", "霞隠れ：プレイヤーから現れる距離 (m)", ambushAppearDistance, 0.0f, 30.0f);
         fields.Float("ambushAppearSpreadDegrees", "霞隠れ：真後ろから左右へ散らす角度 (度)", ambushAppearSpreadDegrees,
                      0.0f, 180.0f);
@@ -198,6 +202,19 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note(
             "斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
             "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。");
+        fields.Vfx("slashSmokeEffect", "火を残さない斬撃のエフェクト（煙の刃。空なら炎の刃で出す）", slashSmokeEffect);
+        fields.Float("bladeLitEmber", "火を残す技の間の、剣先の熾火の強さ (倍)", bladeLitEmber, 0.0f, 20.0f);
+        fields.Color3("bladeLitColor", "…剣先の霞の色", bladeLitColor);
+        fields.Float("bladeFuel", "…剣に沿って場の火の域へ入れる燃料の強さ（0 は炎を出さない）", bladeFuel, 0.0f,
+                     10000.0f);
+        fields.Float("bladeFuelRadius", "…燃料の球の半径 (m)", bladeFuelRadius, 0.1f, 4.0f);
+        fields.Float("bladeFuelTemperature", "…燃料の温度", bladeFuelTemperature, 0.0f, 64.0f);
+        fields.Float("igniteFlashRadius", "剣に火が付く瞬間の火球の半径 (m。0 は出さない)", igniteFlashRadius, 0.0f,
+                     5.0f);
+        fields.Float("hitBlastRadius", "当たった所の火球・煙の塊の半径 (m)", hitBlastRadius, 0.1f, 10.0f);
+        fields.Note("火を残す技（技の表の「残す火」）は、出す前から剣が燃え、斬撃は炎の刃になります。"
+                    "残さない技は、剣は霞のまま、斬撃は暗い煙の刃です。"
+                    "剣の炎・当たった所の火球・煙の塊は、場の火の域（ArenaFireField）の流体です。");
         fields.Vfx("blastEffect", "当たった所の爆発のエフェクト（光・火花・爆炎）", blastEffect);
         fields.Float("slashHitFadeSeconds", "当たった斬撃の炎を消すまでの時間 (秒。爆発の光に隠してすぐ消す)",
                      slashHitFadeSeconds, 0.0f, 1.0f);

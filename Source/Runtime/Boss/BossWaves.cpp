@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <string_view>
 
-#include "HIKARI/Project/ProjectLog.h"
+#include "BossBurnMarks.h"
 #include "BossMath.h"
 #include "../Burn/BurnFieldRules.h"
 #include "../Player/PlayerRules.h"
@@ -47,17 +47,17 @@ BossWave* FreeWave(BossComponent& boss) {
 void LogWave(const BossComponent& boss, const BossWave& wave, const char* event) {
     const BossMove* move = MoveOf(boss, wave.move);
     char message[512]{};
-    std::snprintf(message, sizeof(message),
-                  "%s tick=%llu move=%s strike=%d id=%llu damage=%d blow=%d width=%.3f speed=%.3f travelled=%.3f "
-                  "position=(%.3f,%.3f,%.3f) direction=(%.3f,%.3f,%.3f) across=(%.3f,%.3f,%.3f)",
-                  event, static_cast<unsigned long long>(boss.tick), move ? move->name.c_str() : "?", wave.strike,
-                  static_cast<unsigned long long>(wave.id), wave.damage, static_cast<int>(wave.blow),
-                  static_cast<double>(wave.width), static_cast<double>(wave.speed), static_cast<double>(wave.travelled),
-                  static_cast<double>(wave.position.x), static_cast<double>(wave.position.y),
-                  static_cast<double>(wave.position.z), static_cast<double>(wave.direction.x),
-                  static_cast<double>(wave.direction.y), static_cast<double>(wave.direction.z),
-                  static_cast<double>(wave.across.x), static_cast<double>(wave.across.y),
-                  static_cast<double>(wave.across.z));
+    std::snprintf(
+        message, sizeof(message),
+        "%s tick=%llu move=%s strike=%d id=%llu damage=%d blow=%d fire=%d width=%.3f speed=%.3f travelled=%.3f "
+        "position=(%.3f,%.3f,%.3f) direction=(%.3f,%.3f,%.3f) across=(%.3f,%.3f,%.3f)",
+        event, static_cast<unsigned long long>(boss.tick), move ? move->name.c_str() : "?", wave.strike,
+        static_cast<unsigned long long>(wave.id), wave.damage, static_cast<int>(wave.blow), static_cast<int>(wave.fire),
+        static_cast<double>(wave.width), static_cast<double>(wave.speed), static_cast<double>(wave.travelled),
+        static_cast<double>(wave.position.x), static_cast<double>(wave.position.y),
+        static_cast<double>(wave.position.z), static_cast<double>(wave.direction.x),
+        static_cast<double>(wave.direction.y), static_cast<double>(wave.direction.z),
+        static_cast<double>(wave.across.x), static_cast<double>(wave.across.y), static_cast<double>(wave.across.z));
     BossLog::Write(message);
 }
 
@@ -106,6 +106,8 @@ void StepRing(BossFrame& frame, BossWave& wave) {
         BossWaves::AddDeposit(boss, {at.x, boss.ground.y + boss.depositHeight, at.z},
                               boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius);
     }
+    if (const BossMove* move = MoveOf(boss, wave.move))
+        BossBurnMarks::RingEnded(frame, *move, wave);
     if (boss.traceEveryFrames > 0)
         LogWave(boss, wave, "RingEnd");
     wave.active = false;
@@ -148,6 +150,7 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
         BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
         blast = {};
         blast.pushPending = blast.effectPending = true;
+        blast.fire = boss.bladeLit;
         blast.scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f;
         blast.position = frame.playerCenter;
     }
@@ -187,16 +190,9 @@ void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
     wave.blow = strike.blow;
     wave.done = launch.noHit;
     wave.absorbSmoke = boss.waveAbsorbSmoke;
-    LogWave(boss, wave, "WaveRelease");
     // 火は放った行そのものの値（連撃が参照した「縦振り」の行の火は持ってこない）。
-    if (move->burnShape == BossBurnShape::Line) {
-        wave.burnWidth = move->burnWidth;
-        wave.burnSeconds = move->burnSeconds;
-        char message[192]{};
-        std::snprintf(message, sizeof(message), "Paint line move=%s width=%.3f seconds=%.3f", move->name.c_str(),
-                      static_cast<double>(wave.burnWidth), static_cast<double>(wave.burnSeconds));
-        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
-    }
+    BossBurnMarks::ArmWave(boss, *move, wave);
+    LogWave(boss, wave, "WaveRelease");
 }
 
 void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim) {
@@ -226,6 +222,7 @@ void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim
         wave.damage = strike.damage;
         wave.blow = strike.blow;
         wave.absorbSmoke = boss.knifeAbsorbSmoke;
+        BossBurnMarks::ArmWave(boss, *move, wave);
         LogWave(boss, wave, "KnifeRelease");
     }
 }
@@ -251,12 +248,14 @@ void BossWaves::SpawnRing(BossFrame& frame, int moveIndex) {
     wave.speed = strike.speed;
     wave.damage = strike.damage;
     wave.blow = strike.blow;
+    BossBurnMarks::ArmWave(boss, *move, wave);
     char message[256]{};
     std::snprintf(message, sizeof(message),
-                  "RingRelease tick=%llu move=%s id=%llu damage=%d blow=%d startRadius=%.3f maxRadius=%.3f speed=%.3f",
+                  "RingRelease tick=%llu move=%s id=%llu damage=%d blow=%d fire=%d startRadius=%.3f maxRadius=%.3f "
+                  "speed=%.3f",
                   static_cast<unsigned long long>(boss.tick), move->name.c_str(),
                   static_cast<unsigned long long>(wave.id), wave.damage, static_cast<int>(wave.blow),
-                  static_cast<double>(wave.radius), static_cast<double>(wave.maxRadius),
+                  static_cast<int>(wave.fire), static_cast<double>(wave.radius), static_cast<double>(wave.maxRadius),
                   static_cast<double>(wave.speed));
     BossLog::Write(message);
 }

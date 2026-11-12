@@ -3,9 +3,12 @@
 #include <algorithm>
 #include <cmath>
 
+#include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/VfxView.h"
 #include "BossMath.h"
 #include "BossPose.h"
+#include "../Burn/BurnFieldRules.h"
+#include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
 
 namespace Project_TD2_2 {
@@ -25,24 +28,29 @@ constexpr const char* kImpactInput = "input.impact";
 constexpr const char* kGlowInput = "input.glow";
 // 炎の輪のシェーダーの層の明るさ（Color。輪が消える時に 0 へ下げる）。
 constexpr const char* kFadeInput = "input.fade";
+// 剣に沿って場の火の域へ入れる燃料の番号（BossSmoke の注入・押しの番号と重ならない所）。
+constexpr uint64_t kBladeFuelBase = 900;
 
-HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember) {
+// lit は剣が燃えている間（霞を炎の色にする）。
+HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember,
+                                                    bool lit = false) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
     VfxParameters::SetFloat(parameters, kEmberInput, ember);
-    VfxParameters::SetColor(parameters, kColorInput, boss.hazeColor);
+    VfxParameters::SetColor(parameters, kColorInput, lit ? boss.bladeLitColor : boss.hazeColor);
     return parameters;
 }
 
 HIKARI::GameProjectVfxPlaybackHandle Play(HIKARI::WorldView& world, BossComponent& boss,
                                           const HIKARI::GameProjectVfxAssetReference& asset,
-                                          const HIKARI::GameProjectTransform& transform, float amount, float ember) {
+                                          const HIKARI::GameProjectTransform& transform, float amount, float ember,
+                                          bool lit = false) {
     if (asset.IsEmpty())
         return {};
     HIKARI::GameProjectVfxPlayRequest play{};
     play.asset = asset;
     play.transform = transform;
-    play.parameters = Parameters(boss, amount, ember);
+    play.parameters = Parameters(boss, amount, ember, lit);
     const auto handle = world.GetVfx().Play(play);
     boss.vfxAccepted = handle.IsValid() && boss.vfxAccepted;
     return handle;
@@ -153,7 +161,8 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
         slot->rotation = BasisRotation(wave.direction, wave.across);
         slot->scale = wave.width / std::max(0.01f, boss.slashEffectWidth);
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = boss.slashEffect;
+        // 火を残す一撃は炎の刃、残さない一撃は煙の刃（出た刃を見れば、地面が燃えるかどうかが分かる）。
+        play.asset = wave.fire || boss.slashSmokeEffect.IsEmpty() ? boss.slashEffect : boss.slashSmokeEffect;
         play.transform.position = slot->position;
         play.transform.rotation = slot->rotation;
         play.transform.scale = {slot->scale, slot->scale, slot->scale};
@@ -231,7 +240,30 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
 
 } // namespace
 
-void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossComponent& boss, float seconds) {
+// 火を残す技の間、剣を燃やす：剣に沿って場の火の域へ燃料を入れ（振ると炎が弧を引く）、火が付いた瞬間に小さな火球を出す。
+void UpdateBladeFire(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, bool lit) {
+    const BossSwordPoints sword = boss.swordSmoke ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
+                                                  : BossPose::SwordPoints(boss, BossPose::Target(boss));
+    if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f)
+        BurnFieldRules::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
+    boss.bladeWasLit = lit;
+    if (!lit || !(boss.bladeFuel > 0.0f))
+        return;
+    const Vec3 points[2] = {sword.outer, Mul(Add(sword.inner, sword.outer), 0.5f)};
+    for (uint64_t i = 0; i < 2; ++i) {
+        // 同じ番号で出し続けるので、剣が動くとエンジンが通った線に沿って燃料を広げる（炎が剣の跡を引く）。
+        HIKARI::GameProjectFluidInteraction fuel{};
+        fuel.kind = HIKARI::GameProjectFluidInteractionKind::Fuel;
+        fuel.position = points[i];
+        fuel.extents = {boss.bladeFuelRadius, std::max(0.0f, boss.bladeFuelTemperature), 0.0f};
+        fuel.strength = boss.bladeFuel;
+        fuel.channels = FluidChannels::kFire;
+        boss.fluidAccepted =
+            world.GetFluid().Submit(object.GetHandle(), kBladeFuelBase + i, fuel).Accepted() && boss.fluidAccepted;
+    }
+}
+
+void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
     UpdateSlashes(world, boss, seconds);
     UpdateRing(world, boss, seconds);
     // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
@@ -239,6 +271,11 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossCompo
         if (!blast.effectPending)
             continue;
         blast.effectPending = false;
+        // 塊そのものは、場の火の域の流体で出す：剣が燃えている技で当てた所は火球、ほかは暗い煙の塊。
+        BurnFieldRules::AddBlast(world, blast.position,
+                                 (blast.puff ? boss.puffRadius : boss.hitBlastRadius) * blast.scale,
+                                 blast.fire && !blast.puff ? BurnBlastKind::Hit : BurnBlastKind::Smoke);
+        // その上に重ねるエフェクト（当たった所は光・衝撃の輪・火花）。
         const auto& asset = blast.puff ? boss.puffEffect : boss.blastEffect;
         if (asset.IsEmpty())
             continue;
@@ -283,7 +320,10 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossCompo
     // 剣先の霞：構えでは剣先に集まり、振っている間は剣先が弧を描く（動く注入は通った線に沿って広がる）。
     const bool swinging = boss.swordSmoke;
     const bool kamae = boss.glintFrames > 0 && boss.state == BossState::Act;
-    if (!swinging && !kamae) {
+    // 火を残す技の間は、前隙の最初から剣が燃えている（技を出す前の 1 枚の画面で見分けられる）。
+    const bool lit = boss.bladeLit && boss.state == BossState::Act;
+    UpdateBladeFire(world, object, boss, lit);
+    if (!swinging && !kamae && !lit) {
         StopHandle(world, boss.swordVfx);
         return;
     }
@@ -291,16 +331,18 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossCompo
     transform.position = swinging ? boss.swordOuter : BossPose::SwordPoints(boss, BossPose::Target(boss)).outer;
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     const float amount = swinging ? boss.swordEffectAmount : boss.kamaeEffectAmount;
-    const float ember = swinging ? boss.swordEmberScale : boss.kamaeEmberScale;
+    const float ember = lit        ? std::max(boss.bladeLitEmber, boss.swordEmberScale)
+                        : swinging ? boss.swordEmberScale
+                                   : boss.kamaeEmberScale;
     if (!boss.swordVfx.IsValid()) {
-        boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount, ember);
+        boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount, ember, lit);
         return;
     }
     HIKARI::GameProjectVfxUpdateRequest update{};
     update.updateTransform = 1u;
     update.updateParameters = 1u;
     update.transform = transform;
-    update.parameters = Parameters(boss, amount, ember);
+    update.parameters = Parameters(boss, amount, ember, lit);
     boss.vfxAccepted = world.GetVfx().Update(boss.swordVfx, update) && boss.vfxAccepted;
 }
 

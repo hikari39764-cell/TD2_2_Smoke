@@ -47,6 +47,10 @@ public:
                         BurnExplosion& result);
     // 引爆の溜めの進み（0〜1）を見た目へ渡す（BurnFieldComponent::charge）。規則は読まない。
     static void SetCharge(HIKARI::WorldView& world, float charge);
+    // 見た目だけの塊を、場の火の域へ 1 つ出す（当たった所の火球・煙の塊）。火の格子や当たりは変えない。
+    // 待ちがいっぱいなら捨てる。
+    static void AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
+                         BurnBlastKind kind);
     // 格子が出来ていなければ、持ち主の物体の位置で作る（BurnFieldSystem が最初の固定 tick に呼ぶ）。
     static void Initialize(HIKARI::ObjectView object, BurnFieldComponent& field);
 };

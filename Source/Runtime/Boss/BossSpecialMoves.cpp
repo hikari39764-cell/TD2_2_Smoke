@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
+#include "BossBurnMarks.h"
 #include "BossClones.h"
 #include "BossDetonate.h"
 #include "BossMath.h"
@@ -76,8 +77,10 @@ void AmbushAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress
         return;
     }
     if (segment.kind == BossSegmentKind::Appear) {
-        if (entered)
+        if (entered) {
             Appear(frame);
+            BossBurnMarks::Appeared(frame, move, segment.strike);
+        }
         boss.sink = boss.hideSinkDepth * (1.0f - Share(g.tIn, boss.appearRiseFrames));
         BossMoveExecutor::FaceRate(frame, boss.ambushAppearTurnRate);
         boss.crouch = Share(g.tIn, segment.length);
@@ -137,6 +140,7 @@ void BossSpecialMoves::Trigger(BossFrame& frame, const BossMove& move) {
         BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
         blast = {};
         blast.effectPending = true;
+        blast.fire = boss.bladeLit;
         blast.scale = boss.ringBurstScale;
         blast.position = {boss.ground.x, boss.ground.y + boss.ringHeight, boss.ground.z};
     } else if (move.type == BossMoveType::Clone) {

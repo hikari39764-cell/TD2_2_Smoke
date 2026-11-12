@@ -74,6 +74,12 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("blastTemperature", "火球の燃料の温度", blastTemperature, 0.0f, 64.0f);
         fields.Float("blastRise", "火球を上へ押す速さ (m/s。煙の柱の高さ)", blastRise, 0.0f, 20.0f);
         fields.Float("blastPush", "爆発が火と霧を外へ押す速さ (m/s)", blastPush, 0.0f, 100.0f);
+        fields.Float("hitFuelScale", "炎の刃が当たった所・刀の点火の火球の燃料 (引爆の火球に対する倍)", hitFuelScale,
+                     0.0f, 4.0f);
+        fields.Float("smokeBlastStrength", "煙の塊へ 1 フレームに入れる煙の強さ", smokeBlastStrength, 0.0f, 10000.0f);
+        fields.Float("smokeBlastFuelShare", "煙の塊に混ぜる燃料の割合（煙の中の炎のひらめき）", smokeBlastFuelShare,
+                     0.0f, 1.0f);
+        fields.Float("smokeBlastPush", "煙の塊が外へ押す速さ (m/s)", smokeBlastPush, 0.0f, 100.0f);
         fields.Note("溜めは、火そのものが熱く・細く・低くなることで見せます（地面や画面の予兆は出しません）。"
                     "爆発は、規則が爆ぜさせた火の塊ごとに、火の域へ燃料と衝撃を入れ、爆発のエフェクトを 1 つ出します"
                     "（1 フレームに 3 つまで。残りは次のフレームへ回るので、広い火は波のように順に爆ぜます）。");

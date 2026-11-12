@@ -68,9 +68,12 @@ struct BossWave {
     float smokeOwed = 0.0f;
     // 吸い込みで吸ったときにヒョウタンへ入る煙（試作 waveSmoke 25／knifeSmoke 6）。
     float absorbSmoke = 0.0f;
-    // 飛んだ地面に残す火（技の行の「残す火」が線の斬撃だけ。幅 0 は塗らない）。放ってから消えるまで毎 tick 塗る。
+    // 地面に残す火（幅 0 は塗らない）。斬撃は、この一撃に「線」が付く時に、放ってから消えるまで飛んだ地面を毎 tick 塗る。
+    // 回し蹴りの輪は、この一撃に「輪」が付く時に、広がりきった所へ帯を 1 回塗る。
     float burnWidth = 0.0f;
     float burnSeconds = 0.0f;
+    // この一撃が火を残す（線に限らず、表の「残す火」のどれかが付く）＝火の刃。規則は読まず、見た目（BossVisuals）が読む。
+    bool fire = false;
 };
 
 // 飛んでいる斬撃 1 つを見せるエフェクト（自前の流体域を持つ三日月の霧）。斬撃が消えた後も、残った霧が消えるまで飛ばす。
@@ -96,6 +99,8 @@ struct BossBlast {
     bool effectPending = false;
     // 霞隠れ・分身の消える／現れる所（煙の塊のエフェクト）。偽なら当たった所の爆発。
     bool puff = false;
+    // 火を残す技の間に出た（剣が燃えている）。当たった所を火球にする。偽なら暗い煙の塊。
+    bool fire = false;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
 };
@@ -292,6 +297,9 @@ public:
     float kickRingStartRadius = 0.8f;
     float kickResidueScale = 0.6f;
     float kickResidueRadiusShare = 0.7f;
+    // 地面に残す火の形（形そのものは技の表の「残す火」。交差の線の長さと、上段溜めの池を置く前の距離）
+    float burnCrossLength = 7.0f;
+    float burnPoolForward = 2.5f;
     // 霞隠れ→回り込み突進（試作：プレイヤーの向きの反対 ±100°、3.64 m に現れ、振りの間に 2.2 m 突っ込む）
     float ambushAppearDistance = 3.64f;
     float ambushAppearSpreadDegrees = 100.0f;
@@ -357,6 +365,9 @@ public:
     // 見た目：飛ぶ斬撃（自前の流体域を持つ三日月の霧。局所 +X が飛ぶ向き、刃は局所 XY 面）
     HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
                                                      "Assets/Vfx/BossSlashWave.hvfx"};
+    // 火を残さない斬撃の見た目（煙の刃）。空なら、どの斬撃も slashEffect（炎の刃）で出す。
+    HIKARI::GameProjectVfxAssetReference slashSmokeEffect{"a86e3e830ef54289e4dd42a4ef0a6100",
+                                                          "Assets/Vfx/BossSlashSmoke.hvfx"};
     float slashEffectWidth = 11.0f;
     float slashFadeSeconds = 0.25f;
     float slashImpactSeconds = 0.2f;
@@ -378,6 +389,14 @@ public:
     float kamaeEffectAmount = 0.15f;
     // 剣先の火の粉の光の大きさ（倍）。構えの合図。煙と違って場に残らない。
     float swordEmberScale = 1.0f;
+    // 見た目：火を残す技の間、剣が燃える（出す前の構えから、火を残す技だと見分けられる）
+    float bladeLitEmber = 2.5f;
+    HIKARI::GameProjectFloat3 bladeLitColor{1.0f, 0.45f, 0.14f};
+    float bladeFuel = 160.0f;
+    float bladeFuelRadius = 0.5f;
+    float bladeFuelTemperature = 6.0f;
+    float igniteFlashRadius = 0.7f;
+    float hitBlastRadius = 1.1f;
     float kamaeEmberScale = 0.6f;
     float knifeEffectAmount = 0.8f;
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
@@ -391,8 +410,8 @@ public:
     float ringPush = 6.0f;
     float ringPushRadius = 1.2f;
     // 見た目：霞隠れ・分身が消える／現れる所の煙の塊（流体域は使わない。場の霧へ煙は足さない。霧は押さない）
-    HIKARI::GameProjectVfxAssetReference puffEffect{"fd1495a095abfc856a36e258cafbe9d9",
-                                                    "Assets/Vfx/BossSmokePuff.hvfx"};
+    // 霞隠れ・分身の出入りの煙の塊は、場の火の域の流体で出す。ここは、その上に重ねるエフェクト（既定は無し）。
+    HIKARI::GameProjectVfxAssetReference puffEffect{};
     float puffEffectScale = 1.0f;
     // 確かめ用（正式シーンでは使わない）
     std::string testMove;
@@ -441,6 +460,8 @@ public:
     float poseY = -10.0f;
     HIKARI::GameProjectFloat3 stepFrom{};
     bool dashStarted = false;
+    // 瞬間突進の瞬間移動を終えた（跡の火を 1 回だけ塗る）。
+    bool dashLanded = false;
     HIKARI::GameProjectFloat3 dashFrom{};
     HIKARI::GameProjectFloat3 dashTo{};
     std::vector<bool> segmentDone;
@@ -466,6 +487,9 @@ public:
     bool cloneSpawnPending = false;
     int activeClones = 0;
     BossDetonation detonation;
+    // いまの技のどれかの一撃が、いまのフェーズで火を残す＝この技の間は剣が燃えている。技を始めた tick に決め、
+    // 待機へ戻る・打ち切られる（気絶・崩れ・撃破）まで保つ。規則は読まず、見た目（BossVisuals）が読む。
+    bool bladeLit = false;
     // 吸い込みで吸われた斬撃・ナイフの煙（この tick にヒョウタンへ渡す）。
     float absorbedSmoke = 0.0f;
     int wavesAbsorbed = 0;
@@ -497,6 +521,8 @@ public:
     HIKARI::GameProjectFloat3 lastBodyPosition{};
     // 描画フレームで使う剣の位置（固定 tick で決める）
     bool swordSmoke = false;
+    // 前のフレームに剣が燃えていたか（点火の瞬間を見つける。BossVisuals が使う）。
+    bool bladeWasLit = false;
     float swordSmokeRate = 0.0f;
     HIKARI::GameProjectFloat3 swordInner{};
     HIKARI::GameProjectFloat3 swordOuter{};

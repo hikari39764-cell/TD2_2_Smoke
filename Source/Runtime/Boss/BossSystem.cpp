@@ -99,16 +99,26 @@ void LogMoves(const BossComponent& boss) {
         std::string extras;
         for (const int extra : move.windupExtras)
             extras += (extras.empty() ? "" : "/") + std::to_string(extra);
+        // 残す火：形[:一撃]〔@フェーズ〕/幅/秒 を , で並べる（1 つで一撃・フェーズの限りが無ければ以前と同じ line/1.50/25.00）。
+        std::string burns;
+        for (int k = 0; k < move.burnMarkCount; ++k) {
+            const BossBurnMark& mark = move.burnMarks[static_cast<size_t>(k)];
+            char values[48]{};
+            std::snprintf(values, sizeof(values), "/%.2f/%.2f", static_cast<double>(mark.width),
+                          static_cast<double>(mark.seconds));
+            burns += std::string(k > 0 ? "," : "") + BossMoveTable::BurnKey(mark.shape) +
+                     (mark.strike > 0 ? ":" + std::to_string(mark.strike) : "") +
+                     (mark.minPhase > 1 ? "@" + std::to_string(mark.minPhase) : "") + values;
+        }
         char message[1024]{};
         std::snprintf(message, sizeof(message),
                       "Move index=%zu name=%s type=%s executable=%d pre=%d act=%d post=%d segments=%s damage=%d "
-                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f burn=%s/%.2f/%.2f trackStop=%d windup=%s "
+                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f burn=%s trackStop=%d windup=%s "
                       "breakHits=%d strikes=%s",
                       i, move.name.c_str(), BossMoveTable::TypeKey(move.type), static_cast<int>(move.executable),
                       move.pre, move.act, move.post, segments.c_str(), move.damage, static_cast<int>(move.damageAuto),
                       static_cast<double>(move.size), static_cast<double>(move.speed), static_cast<double>(move.homing),
-                      static_cast<double>(move.step), BossMoveTable::BurnKey(move.burnShape),
-                      static_cast<double>(move.burnWidth), static_cast<double>(move.burnSeconds), move.trackStopFrames,
+                      static_cast<double>(move.step), burns.empty() ? "none" : burns.c_str(), move.trackStopFrames,
                       extras.empty() ? "-" : extras.c_str(), move.breakHits, strikes.c_str());
         BossLog::Write(message);
     }

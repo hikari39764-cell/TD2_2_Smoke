@@ -1,0 +1,14 @@
+{
+  "displayName": "BossSlashSmoke",
+  "guid": "a86e3e830ef54289e4dd42a4ef0a6100",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossSlashSmoke.hvfx",
+  "type": "VfxEffect"
+}

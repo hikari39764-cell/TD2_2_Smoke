@@ -242,7 +242,7 @@
           "transform": {
             "position": [
               0.0,
-              2.0,
+              3.0,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -271,7 +271,7 @@
           "detailStrength": 0.8,
           "domainSize": [
             48.0,
-            4.0,
+            6.0,
             48.0
           ],
           "emissionColor": [

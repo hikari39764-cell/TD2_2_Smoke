@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "BossBurnMarks.h"
 #include "BossMath.h"
 #include "BossPose.h"
 #include "BossSpecialMoves.h"
@@ -196,6 +197,10 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
             }
             const float k = std::min(1.0f, (static_cast<float>(t) - start) / std::max(1.0f, teleport));
             boss.ground = Lerp(boss.dashFrom, boss.dashTo, 1.0f - std::pow(1.0f - k, 3.0f));
+            if (k >= 1.0f && !boss.dashLanded) {
+                boss.dashLanded = true;
+                BossBurnMarks::DashLanded(frame, move);
+            }
             if (!boss.aimFrozen)
                 boss.yaw = YawOf(Sub(PlayerGround(frame), boss.ground));
         }
@@ -287,6 +292,7 @@ void Release(BossFrame& frame, const BossSwing& swing) {
     launch.move = boss.move;
     launch.strike = swing.strike;
     BossWaves::SpawnSlash(frame, launch);
+    BossBurnMarks::Released(frame, CurrentMove(boss), swing.strike);
 }
 
 // 攻撃中：剣を振り抜く間に剣先の霞が斬撃になり、振り抜いた瞬間にそのまま飛ぶ（1 振り＝1 つの斬撃）。
@@ -386,6 +392,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.segmentDone.assign(move.segments.size(), false);
     boss.lastSegment = -1;
     boss.dashStarted = false;
+    boss.dashLanded = false;
     boss.glintFrames = 0;
     boss.spin = 0.0f;
     boss.hidden = false;
@@ -423,6 +430,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
                   BossMoveTable::TypeKey(move.type), move.pre, boss.windupHold, boss.actFrames, move.post,
                   move.hitCount);
     Log(boss, "MoveStart", extra);
+    BossBurnMarks::LightBlade(boss, move);
 }
 
 BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
@@ -475,6 +483,7 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
                     } else {
                         BossSpecialMoves::Trigger(frame, move);
                     }
+                    BossBurnMarks::Released(frame, move, g.hitIndex);
                 }
             } else {
                 // 追尾するのはボスの振り（向き）。斬撃そのものは追尾しない。
@@ -513,6 +522,7 @@ void BossMoveExecutor::EnterPost(BossComponent& boss) {
 
 void BossMoveExecutor::EnterIdle(BossComponent& boss) {
     boss.state = BossState::Idle;
+    boss.bladeLit = false;
     boss.aimFrozen = false;
     boss.windupHold = 0;
     boss.move = -1;
@@ -554,6 +564,8 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     boss.aimFrozen = false;
     boss.windupHold = 0;
     boss.dashStarted = false;
+    boss.dashLanded = false;
+    boss.bladeLit = false;
     boss.height = 0.0f;
     boss.sink = 0.0f;
     boss.spin = 0.0f;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -52,9 +53,24 @@ enum class BossMoveUse {
 // 霞隠れの区間の役目：隠れる（当たらない）／現れる（背後や横へ回り込んで構える）。ほかの型は Normal。
 enum class BossSegmentKind { Normal, Hide, Appear };
 
-// 技が地面に残す火の形（表の「残す火」列：なし／線／輪／池）。線は飛ぶ斬撃が通った跡を燃やす。
-// 輪と池は表から読んで持つだけで、まだどの技の動きからも塗っていない（塗るのは BurnFieldRules::PaintRing／PaintDisc）。
-enum class BossBurnShape { None, Line, Ring, Pool };
+// 技が地面に残す火の形（表の「残す火」列の 1 項目：線／跡／交差／池／輪）。どこへいつ塗るかは BossBurnMarks。
+// 線＝飛ぶ斬撃が通った地面、跡＝瞬間突進でボスが通った床、交差＝一撃の狙った所の X、池＝円、輪＝回し蹴りの輪の終わり。
+enum class BossBurnShape { None, Line, Trail, Cross, Pool, Ring };
+
+// 1 行に書ける火の数。表の 1 行に 2〜3 個あれば足りる（増やすと BossMove が大きくなるだけ）。
+inline constexpr size_t kBossBurnMarkCapacity = 4;
+
+// 「残す火」の 1 項目（形[:一撃番号][@フェーズN]）と、その「火の幅 m」「火の秒数」。
+struct BossBurnMark {
+    BossBurnShape shape = BossBurnShape::None;
+    // 火を残す一撃（1 から数える）。0 は、その形が付くどの一撃も。
+    int strike = 0;
+    // このフェーズ以上の時だけ残す。
+    int minPhase = 1;
+    // 線・跡・交差は線の幅、池は直径、輪は帯の幅 (m)。
+    float width = 0.0f;
+    float seconds = 0.0f;
+};
 
 // 「攻撃中」の 1 区間。hit の区間で剣を振り（斬撃を出し）、それ以外は構えや移動。
 struct BossSegment {
@@ -103,10 +119,10 @@ struct BossMove {
     int damage = 0;
     bool damageAuto = false;
     BossKnock knock = BossKnock::Flinch;
-    // 残す火（「火の幅 m」「火の秒数」）。行そのものの値で、連撃が参照した別の行の火は持ってこない。
-    BossBurnShape burnShape = BossBurnShape::None;
-    float burnWidth = 0.0f;
-    float burnSeconds = 0.0f;
+    // 残す火（「残す火」「火の幅 m」「火の秒数」）。行そのものの値で、連撃が参照した別の行の火は持ってこない。
+    // 読めなかった項目は入れない（burnMarkCount は読めた数）。
+    std::array<BossBurnMark, kBossBurnMarkCapacity> burnMarks{};
+    int burnMarkCount = 0;
     // 追尾を止める F：一撃を放つこの F 前から放つまで、ボスはプレイヤーの方へ向き直らない（0 は放つまで追う）。
     // 放つ直前に横へよければ外れる、という読み合いを作る。
     int trackStopFrames = 0;
@@ -169,7 +185,7 @@ public:
     // 名前が完全に一致する行。無ければ -1。
     int Find(std::string_view name) const;
     static const char* TypeKey(BossMoveType type);
-    // 残す火の形の名前（ログ用。none／line／ring／pool）。
+    // 残す火の形の名前（ログ用。none／line／trail／cross／pool／ring）。
     static const char* BurnKey(BossBurnShape shape);
     static bool IsMoveType(BossMoveType type);
     // 剣を振る型（振っている間に斬撃をかたどり、振り抜いた瞬間に飛ばす）。
