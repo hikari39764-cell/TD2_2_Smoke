@@ -110,6 +110,18 @@
     },
     {
       "clamp": true,
+      "displayName": "Switch Lock Target",
+      "id": "Gameplay.LockSwitch",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
+      "displayName": "Heal",
+      "id": "Gameplay.Heal",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
       "displayName": "Camera Move",
       "id": "Editor.CameraMove",
       "valueType": "Axis2D"

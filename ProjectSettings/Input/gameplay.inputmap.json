@@ -8,7 +8,7 @@
       "source": "Keyboard"
     },
     {
-      "action": "Gameplay.Move",
+      "action": "Gameplay.Look",
       "component": 0,
       "control": "Left",
       "scale": -1.0,
@@ -22,7 +22,7 @@
       "source": "Keyboard"
     },
     {
-      "action": "Gameplay.Move",
+      "action": "Gameplay.Look",
       "component": 0,
       "control": "Right",
       "scale": 1.0,
@@ -38,21 +38,7 @@
     {
       "action": "Gameplay.Move",
       "component": 1,
-      "control": "Up",
-      "scale": 1.0,
-      "source": "Keyboard"
-    },
-    {
-      "action": "Gameplay.Move",
-      "component": 1,
       "control": "S",
-      "scale": -1.0,
-      "source": "Keyboard"
-    },
-    {
-      "action": "Gameplay.Move",
-      "component": 1,
-      "control": "Down",
       "scale": -1.0,
       "source": "Keyboard"
     },
@@ -112,16 +98,9 @@
     {
       "action": "Gameplay.CameraRecenter",
       "component": 0,
-      "control": "R",
+      "control": "C",
       "scale": 1.0,
       "source": "Keyboard"
-    },
-    {
-      "action": "Gameplay.CameraRecenter",
-      "component": 0,
-      "control": "RightStick",
-      "scale": 1.0,
-      "source": "GamepadButton"
     },
     {
       "action": "Gameplay.Jump",
@@ -161,14 +140,14 @@
     {
       "action": "Gameplay.Interact",
       "component": 0,
-      "control": "X",
+      "control": "Y",
       "scale": 1.0,
       "source": "GamepadButton"
     },
     {
       "action": "Gameplay.Menu",
       "component": 0,
-      "control": "Tab",
+      "control": "P",
       "scale": 1.0,
       "source": "Keyboard"
     },
@@ -192,6 +171,20 @@
       "control": "RightShoulder",
       "scale": 1.0,
       "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.Attack",
+      "component": 0,
+      "control": "J",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Attack",
+      "component": 0,
+      "control": "RightTrigger",
+      "scale": 1.0,
+      "source": "GamepadAxis"
     },
     {
       "action": "Gameplay.Absorb",
@@ -224,7 +217,7 @@
     {
       "action": "Gameplay.LockOn",
       "component": 0,
-      "control": "Q",
+      "control": "Tab",
       "scale": 1.0,
       "source": "Keyboard"
     },
@@ -232,6 +225,27 @@
       "action": "Gameplay.LockOn",
       "component": 0,
       "control": "RightStick",
+      "scale": 1.0,
+      "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.LockSwitch",
+      "component": 0,
+      "control": "Q",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Heal",
+      "component": 0,
+      "control": "R",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Heal",
+      "component": 0,
+      "control": "X",
       "scale": 1.0,
       "source": "GamepadButton"
     }

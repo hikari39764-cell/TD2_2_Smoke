@@ -4,6 +4,11 @@
 #include <cstdint>
 #include <memory>
 
+#include "Player/PlayerComponent.h"
+#include "Player/PlayerSystem.h"
+#include "Player/PlayerDebugComponent.h"
+#include "Player/PlayerDebugSystem.h"
+
 namespace Project_TD2_2 {
 
 // Play 中にシーンをまたいで保持するプロジェクト状態。
@@ -50,7 +55,17 @@ public:
         return systems;
     }
     bool Register(HIKARI::RuntimeFeatureContext& context) override {
-        return context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"});
+        return context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
+               context.RegisterComponent<PlayerComponent>({.typeName = kPlayerType, .displayName = "プレイヤー"}) &&
+               context.RegisterSystem<PlayerSystem>({.systemId = kPlayerSystem, .displayName = "プレイヤー"}) &&
+               context.BindComponentSystem(
+                   {.componentType = kPlayerType, .systemId = kPlayerSystem, .defaultExecutionOrder = 100}) &&
+               context.RegisterComponent<PlayerDebugComponent>(
+                   {.typeName = kPlayerDebugType, .displayName = "プレイヤー検証（通常は無効）"}) &&
+               context.RegisterSystem<PlayerDebugSystem>(
+                   {.systemId = kPlayerDebugSystem, .displayName = "プレイヤー検証"}) &&
+               context.BindComponentSystem(
+                   {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90});
     }
 };
 

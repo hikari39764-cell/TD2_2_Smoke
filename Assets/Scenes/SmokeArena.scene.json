@@ -147,27 +147,6 @@
           "type": "PhysicsBodyComponent"
         },
         {
-          "id": 5,
-          "properties": {
-            "edgeGuardEnabled": false,
-            "enabled": true,
-            "maximumSpeed": 5.2,
-            "movementSpace": "Camera"
-          },
-          "type": "CharacterLocomotionComponent"
-        },
-        {
-          "id": 6,
-          "properties": {
-            "enabled": true,
-            "jumpAction": "Gameplay.Jump",
-            "lookAction": "Gameplay.Look",
-            "moveAction": "Gameplay.Move",
-            "sprintAction": "Gameplay.Sprint"
-          },
-          "type": "CharacterInputComponent"
-        },
-        {
           "id": 7,
           "properties": {
             "enabled": true,
@@ -175,6 +154,20 @@
             "useColliders": true
           },
           "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 8,
+          "properties": {
+            "camera": {
+              "$hikariRef": "SceneObject",
+              "id": 4
+            },
+            "lockTarget": {
+              "$hikariRef": "SceneObject",
+              "id": 3
+            }
+          },
+          "type": "Project_TD2_2.Player"
         }
       ],
       "editorLocked": false,
@@ -187,7 +180,7 @@
       "transform": {
         "position": [
           0.0,
-          3400.9,
+          3400.85,
           -14.0
         ],
         "rotationEulerDeg": [
