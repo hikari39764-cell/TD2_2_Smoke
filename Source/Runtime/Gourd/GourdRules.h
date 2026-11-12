@@ -14,6 +14,11 @@ class GourdRules final {
     static bool IsAbsorbing(const GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetMouthPosition(const GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetAimDirection(const GourdComponent& gourd);
+    // 射撃側の PreFixedUpdate から呼び、同じ tick の GourdSystem が一歩目を進める。
+    // direction は世界方向。反動の距離と F 数は射撃コンポーネント側で調整する。
+    static void AddRecoil(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction, float distance, int frames);
+    // 射撃側の LateUpdate から毎フレーム要求する。追従処理が消費し、次フレームへ残さない。
+    static void SetAimOverride(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction);
     // GPU の累計値が 120 フレーム後に失効した場合も、新しい累計の増分だけを収入にする。
     static void ReceiveRemovedSmoke(GourdComponent& gourd, double removedTotal);
 };

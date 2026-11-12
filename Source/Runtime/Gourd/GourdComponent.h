@@ -45,7 +45,15 @@ class GourdComponent final : public HIKARI::IGameComponent {
     uint64_t processedTick = 0;
     uint64_t renderFrameCount = 0;
     HIKARI::GameProjectFloat3 position{};
+    HIKARI::GameProjectFloat3 followPosition{};
     HIKARI::GameProjectFloat3 followVelocity{};
+    // 肩への追従と砲撃の反動を分離し、反動後も元の追従位置へ戻す。
+    HIKARI::GameProjectFloat3 recoilOffset{};
+    HIKARI::GameProjectFloat3 recoilVelocity{};
+    HIKARI::GameProjectFloat3 recoilPerFrame{};
+    int recoilFramesLeft = 0;
+    bool aimOverridePending = false;
+    HIKARI::GameProjectFloat3 aimOverrideDirection{0.0f, 0.0f, 1.0f};
     HIKARI::GameProjectFloat3 aimDirection{0.0f, 0.0f, 1.0f};
     HIKARI::GameProjectFloat3 mouthPosition{};
     HIKARI::GameProjectFloat3 sinkPosition{};

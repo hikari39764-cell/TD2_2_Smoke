@@ -87,6 +87,20 @@ void SpringAxis(float& value, float& velocity, float target, float frequency, fl
     velocity = (velocity - frequency * impulse) * decay;
 }
 
+void StepRecoil(GourdComponent& gourd, float dt) {
+    if (gourd.recoilFramesLeft > 0) {
+        gourd.recoilOffset.x += gourd.recoilPerFrame.x;
+        gourd.recoilOffset.y += gourd.recoilPerFrame.y;
+        gourd.recoilOffset.z += gourd.recoilPerFrame.z;
+        --gourd.recoilFramesLeft;
+        return;
+    }
+    // 押し戻す区間は固定 F、回位は既存の追従速度を使った臨界減衰にする。
+    SpringAxis(gourd.recoilOffset.x, gourd.recoilVelocity.x, 0.0f, gourd.followFrequency, dt);
+    SpringAxis(gourd.recoilOffset.y, gourd.recoilVelocity.y, 0.0f, gourd.followFrequency, dt);
+    SpringAxis(gourd.recoilOffset.z, gourd.recoilVelocity.z, 0.0f, gourd.followFrequency, dt);
+}
+
 void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float dt) {
     WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, PlayerComponent& player) {
         HIKARI::GameProjectTransform playerTransform{};
@@ -98,17 +112,19 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
         const Vec3 desired{playerTransform.position.x + right.x * offset.x + facing.x * offset.z,
                            playerTransform.position.y + offset.y,
                            playerTransform.position.z + right.z * offset.x + facing.z * offset.z};
-        const auto error = Difference(desired, gourd.position);
+        const auto error = Difference(desired, gourd.followPosition);
         const float distanceSquared = error.x * error.x + error.y * error.y + error.z * error.z;
         if (!gourd.poseInitialized || distanceSquared > gourd.teleportDistance * gourd.teleportDistance) {
-            gourd.position = desired;
+            gourd.followPosition = desired;
             gourd.followVelocity = {};
             gourd.poseInitialized = true;
         } else {
-            SpringAxis(gourd.position.x, gourd.followVelocity.x, desired.x, gourd.followFrequency, dt);
-            SpringAxis(gourd.position.y, gourd.followVelocity.y, desired.y, gourd.followFrequency, dt);
-            SpringAxis(gourd.position.z, gourd.followVelocity.z, desired.z, gourd.followFrequency, dt);
+            SpringAxis(gourd.followPosition.x, gourd.followVelocity.x, desired.x, gourd.followFrequency, dt);
+            SpringAxis(gourd.followPosition.y, gourd.followVelocity.y, desired.y, gourd.followFrequency, dt);
+            SpringAxis(gourd.followPosition.z, gourd.followVelocity.z, desired.z, gourd.followFrequency, dt);
         }
+        gourd.position = {gourd.followPosition.x + gourd.recoilOffset.x, gourd.followPosition.y + gourd.recoilOffset.y,
+                          gourd.followPosition.z + gourd.recoilOffset.z};
         Vec3 horizontal = CameraForward(world, gourd, facing);
         const auto lockTarget = world.FindObject(PlayerRules::GetLockTarget(player));
         HIKARI::GameProjectTransform targetTransform{};
@@ -119,6 +135,7 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
                               playerTransform.position.y + gourd.absorbHeightOffset,
                               gourd.position.z + horizontal.z * gourd.absorbForwardDistance};
         gourd.aimDirection = gourd.absorbing ? Normalize(Difference(gourd.sinkPosition, gourd.position), horizontal)
+                             : gourd.aimOverridePending ? gourd.aimOverrideDirection
                              : hasLock ? Normalize(Difference(targetTransform.position, gourd.position), horizontal)
                                        : horizontal;
         gourd.mouthPosition = {gourd.position.x + gourd.aimDirection.x * gourd.height * 0.5f,
@@ -138,7 +155,8 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         message, sizeof(message),
         "Trace tick=%llu frame=%llu object=%llu smoke=%.6f capacity=%.3f removedTotal=%.9f delta=%.9f "
         "absorbing=%d playerValid=%d position=(%.6f,%.6f,%.6f) sinkPosition=(%.6f,%.6f,%.6f) "
-        "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d readAccepted=%d",
+        "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d readAccepted=%d "
+        "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -148,7 +166,8 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         static_cast<double>(gourd.sinkPosition.z), static_cast<double>(gourd.mouthPosition.x),
         static_cast<double>(gourd.mouthPosition.y), static_cast<double>(gourd.mouthPosition.z),
         static_cast<int>(gourd.transformAccepted), static_cast<int>(gourd.fluidAccepted),
-        static_cast<int>(gourd.readAccepted));
+        static_cast<int>(gourd.readAccepted), static_cast<double>(gourd.recoilOffset.x),
+        static_cast<double>(gourd.recoilOffset.y), static_cast<double>(gourd.recoilOffset.z), gourd.recoilFramesLeft);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -175,6 +194,8 @@ void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
                                                gourd.processedTick = frame.fixedTickIndex;
                                                GourdRules::Initialize(gourd);
                                                RefreshPermission(world, gourd, true);
+                                               if (gourd.enabled && frame.fixedDt > 0.0f)
+                                                   StepRecoil(gourd, frame.fixedDt);
                                            });
 }
 
@@ -186,6 +207,7 @@ void GourdSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                                                RefreshPermission(world, gourd, false);
                                                if (gourd.enabled && gourd.playerValid)
                                                    Follow(world, object, gourd, std::max(0.0f, frame.gameDt));
+                                               gourd.aimOverridePending = false;
                                            });
 }
 

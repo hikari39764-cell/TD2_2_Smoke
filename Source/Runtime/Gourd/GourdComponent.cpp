@@ -9,6 +9,7 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.SceneObject("camera", "照準用カメラ（制御視点が無い時）", cameraId);
         fields.Float3("shoulderOffset", "肩からの位置（右・上・前 m）", shoulderOffset);
         fields.Float("followFrequency", "ばね追従の速さ (/s)", followFrequency, 0.1f, 100.0f);
+        fields.Note("砲撃の反動から戻る速さも、このばね追従の速さを使います。反動の距離と F 数は砲撃側で調整します。");
         fields.Float("teleportDistance", "瞬間移動とみなす距離 (m)", teleportDistance, 1.0f, 1000.0f);
         fields.Float("height", "高さ (m)", height, 0.02f, 10.0f);
         fields.Float("radius", "半径 (m)", radius, 0.01f, 5.0f);

@@ -30,6 +30,32 @@ bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbi
 HIKARI::GameProjectFloat3 GourdRules::GetMouthPosition(const GourdComponent& gourd) { return gourd.mouthPosition; }
 HIKARI::GameProjectFloat3 GourdRules::GetAimDirection(const GourdComponent& gourd) { return gourd.aimDirection; }
 
+void GourdRules::AddRecoil(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction, float distance, int frames) {
+    if (frames <= 0 || !std::isfinite(distance) || distance < 0.0f || !std::isfinite(direction.x) ||
+        !std::isfinite(direction.y) || !std::isfinite(direction.z))
+        return;
+    const float length = std::hypot(direction.x, direction.y, direction.z);
+    if (!std::isfinite(length) || length <= 0.0f)
+        return;
+    const float count = static_cast<float>(frames);
+    // 再射撃は現在位置から新しい最大変位へ進め、連射で反動を無限に積み重ねない。
+    gourd.recoilPerFrame = {(direction.x / length * distance - gourd.recoilOffset.x) / count,
+                            (direction.y / length * distance - gourd.recoilOffset.y) / count,
+                            (direction.z / length * distance - gourd.recoilOffset.z) / count};
+    gourd.recoilVelocity = {};
+    gourd.recoilFramesLeft = frames;
+}
+
+void GourdRules::SetAimOverride(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction) {
+    if (!std::isfinite(direction.x) || !std::isfinite(direction.y) || !std::isfinite(direction.z))
+        return;
+    const float length = std::hypot(direction.x, direction.y, direction.z);
+    if (!std::isfinite(length) || length <= 0.0f)
+        return;
+    gourd.aimOverrideDirection = {direction.x / length, direction.y / length, direction.z / length};
+    gourd.aimOverridePending = true;
+}
+
 void GourdRules::ReceiveRemovedSmoke(GourdComponent& gourd, double removedTotal) {
     Initialize(gourd);
     gourd.removedDelta = 0.0;

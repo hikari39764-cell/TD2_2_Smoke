@@ -251,6 +251,11 @@
             "useColliders": true
           },
           "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "type": "Project_TD2_2.Damageable",
+          "properties": {}
         }
       ],
       "editorLocked": false,
@@ -440,6 +445,16 @@
             "camera": {
               "$hikariRef": "SceneObject",
               "id": 4
+            }
+          }
+        },
+        {
+          "id": 4,
+          "type": "Project_TD2_2.GourdShot",
+          "properties": {
+            "trailEffect": {
+              "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
+              "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
             }
           }
         }

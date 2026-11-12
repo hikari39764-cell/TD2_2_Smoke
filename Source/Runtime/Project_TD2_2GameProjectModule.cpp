@@ -10,6 +10,9 @@
 #include "Player/PlayerDebugSystem.h"
 #include "Gourd/GourdComponent.h"
 #include "Gourd/GourdSystem.h"
+#include "Combat/DamageableComponent.h"
+#include "Gourd/GourdShotComponent.h"
+#include "Gourd/GourdShotSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -57,7 +60,9 @@ public:
         return systems;
     }
     bool Register(HIKARI::RuntimeFeatureContext& context) override {
-        return context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
+        return context.RegisterComponent<DamageableComponent>(
+                   {.typeName = kDamageableType, .displayName = "被弾と HP"}) &&
+               context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
                context.RegisterComponent<PlayerComponent>({.typeName = kPlayerType, .displayName = "プレイヤー"}) &&
                context.RegisterSystem<PlayerSystem>({.systemId = kPlayerSystem, .displayName = "プレイヤー"}) &&
                context.BindComponentSystem(
@@ -71,7 +76,13 @@ public:
                context.RegisterComponent<GourdComponent>({.typeName = kGourdType, .displayName = "ヒョウタン"}) &&
                context.RegisterSystem<GourdSystem>({.systemId = kGourdSystem, .displayName = "ヒョウタン"}) &&
                context.BindComponentSystem(
-                   {.componentType = kGourdType, .systemId = kGourdSystem, .defaultExecutionOrder = 110});
+                   {.componentType = kGourdType, .systemId = kGourdSystem, .defaultExecutionOrder = 110}) &&
+               context.RegisterComponent<GourdShotComponent>(
+                   {.typeName = kGourdShotType, .displayName = "ヒョウタン砲撃"}) &&
+               context.RegisterSystem<GourdShotSystem>(
+                   {.systemId = kGourdShotSystem, .displayName = "ヒョウタン砲撃"}) &&
+               context.BindComponentSystem(
+                   {.componentType = kGourdShotType, .systemId = kGourdShotSystem, .defaultExecutionOrder = 105});
     }
 };
 
