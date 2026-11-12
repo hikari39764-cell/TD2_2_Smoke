@@ -150,13 +150,32 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("slashImpactSeconds", "当たった瞬間に刃が砕けて散る時間 (秒)", slashImpactSeconds, 0.0f, 2.0f);
         fields.Float("slashHitSpeedScale", "当たった後の霧が進む速さ（元の速さに対する割合。小さいほどその場で散る）",
                      slashHitSpeedScale, 0.0f, 1.0f);
+        fields.Float("slashGlowFadeSeconds", "刃が消える・当たる時に、光る刃口や炎の層が縮んで消えるまでの時間 (秒)",
+                     slashGlowFadeSeconds, 0.0f, 1.0f);
         fields.Note(
             "斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
             "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。");
+        fields.Vfx("blastEffect", "当たった所の爆発のエフェクト（光・火花・爆炎）", blastEffect);
+        fields.Float("slashHitFadeSeconds", "当たった斬撃の炎を消すまでの時間 (秒。爆発の光に隠してすぐ消す)",
+                     slashHitFadeSeconds, 0.0f, 1.0f);
+        fields.Float("blastPush", "爆発が足元の霧を外へ押す速さ (m/秒、0 は無効)", blastPush, 0.0f, 100.0f);
+        fields.Float("blastPushRadius", "爆発が霧を押す半径 (m)", blastPushRadius, 0.1f, 50.0f);
+        fields.Float("knifeBlastScale", "ナイフが当たった時の爆発の大きさ（斬撃に対する倍率）", knifeBlastScale, 0.0f,
+                     2.0f);
+        fields.Note(
+            "爆発は、斬撃・ナイフ・剣がプレイヤーに当たった所に出ます。霧は地面に沿って外へ押すだけで、煙は足しません"
+            "（場の霧はほとんど消えないので、足すとプレイヤーの周りに溜まって画面を塞ぎます）。"
+            "光・火花・爆炎の形は BossSlashBurst で調整します。");
         fields.Vfx("swordEffect", "剣先の霞・ナイフの尾のエフェクト（流体注入）", swordEffect);
         fields.Color3("hazeColor", "剣先の霞・ナイフの尾の色（光らない霧色）", hazeColor);
         fields.Float("swordEffectAmount", "振っている剣の霞の濃さ（倍）", swordEffectAmount, 0.0f, 20.0f);
         fields.Float("kamaeEffectAmount", "構えで剣先に集まる霞の濃さ（倍）", kamaeEffectAmount, 0.0f, 20.0f);
+        fields.Float("swordEmberScale", "振っている剣先の火の粉の光の大きさ（倍、0 は出さない）", swordEmberScale, 0.0f,
+                     10.0f);
+        fields.Float("kamaeEmberScale", "構えで剣先に灯る火の粉の光の大きさ（倍）", kamaeEmberScale, 0.0f, 10.0f);
+        fields.Note(
+            "剣先の霞（煙）は場の霧に入って残ります。濃くすると技のたびにボスの頭上へ溜まり、長く戦うと視界を塞ぎます。"
+            "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
         fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", knifeEffectAmount, 0.0f, 20.0f);
         fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", knifeEffect);
         fields.Note("飛ぶ斬撃の霞はエフェクトではなく、場の霧の域へ直接入れます（Emit）。域は増やしません。");

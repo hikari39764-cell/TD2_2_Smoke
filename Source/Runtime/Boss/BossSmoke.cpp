@@ -16,6 +16,12 @@ using namespace BossMath;
 constexpr uint32_t kEmitBudget = 20;
 // 流体への提出 ID（持ち主はボスの物体なので、ヒョウタンの ID とは重ならない）。
 constexpr uint64_t kSwordOuterId = 1, kSwordInnerId = 2, kKamaeId = 3, kBodyId = 4, kDepositBase = 10, kWaveBase = 32;
+// 爆発が足元の霧を押す力の提出 ID と、押す向きの数、地面からの高さ (m)。
+// 向きのある押しを輪に並べる（向きの無い膨張は霧を上へも持ち上げ、連撃でカメラが霧の中に入った）。
+constexpr uint64_t kBlastPushBase = 110;
+constexpr int kBlastPushCount = 6;
+constexpr float kBlastPushHeight = 0.3f;
+constexpr float kTau = 6.28318530718f;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
 constexpr int kWavePoints = 4;
@@ -88,6 +94,28 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         const auto& deposit = boss.deposits[i];
         if (deposit.active)
             emitter.Emit(kDepositBase + i, deposit.position, deposit.radius, deposit.rate, {});
+    }
+    for (size_t i = 0; i < boss.blasts.size(); ++i) {
+        auto& blast = boss.blasts[i];
+        if (!blast.pushPending)
+            continue;
+        blast.pushPending = false;
+        if (!(boss.blastPush > 0.0f))
+            continue;
+        // 爆発：当たった所の真下から、地面に沿って六方へ 1 回押す。半径の半分ずつで輪を作り、全体で blastPushRadius まで届く。
+        const float reach = boss.blastPushRadius * blast.scale * 0.5f;
+        const Vec3 center{blast.position.x, boss.ground.y + kBlastPushHeight, blast.position.z};
+        for (int k = 0; k < kBlastPushCount; ++k) {
+            const float angle = kTau * static_cast<float>(k) / static_cast<float>(kBlastPushCount);
+            HIKARI::GameProjectFluidInteraction push{};
+            push.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
+            push.direction = {std::cos(angle), 0.0f, std::sin(angle)};
+            push.position = Add(center, Mul(push.direction, reach));
+            push.extents = {reach, 0.0f, 0.0f};
+            push.strength = boss.blastPush;
+            const uint64_t id = kBlastPushBase + i * kBlastPushCount + static_cast<uint64_t>(k);
+            boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, push).Accepted() && boss.fluidAccepted;
+        }
     }
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const auto& wave = boss.waves[i];

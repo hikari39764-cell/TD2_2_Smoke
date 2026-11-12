@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 #include "BossMath.h"
 #include "../Player/PlayerRules.h"
@@ -85,8 +86,15 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     const Vec3 push = FlatNormalize(direction);
     const bool accepted = PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
                                                    blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger);
-    if (accepted)
+    if (accepted) {
         ++boss.playerHits;
+        // 当たった所に爆発を出す（ナイフは小さく）。枠は輪で使い回す。
+        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
+        blast = {};
+        blast.pushPending = blast.effectPending = true;
+        blast.scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f;
+        blast.position = frame.playerCenter;
+    }
     std::snprintf(message, sizeof(message),
                   "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s accepted=%d playerHealth=%.3f "
                   "playerState=%d",
@@ -197,7 +205,8 @@ void BossWaves::Step(BossFrame& frame) {
                 wave.smokeRate = (smoke + payback) / frame.dt;
             }
         }
-        if (wave.travelled > boss.range || wave.position.y < boss.ground.y - kBelowGroundLimit) {
+        // 当たった斬撃・ナイフは、当たった所で爆発して終わる（見えない斬撃が後ろへ残り煙を引き続けないように）。
+        if (wave.travelled > boss.range || wave.position.y < boss.ground.y - kBelowGroundLimit || wave.struck) {
             const float smoke =
                 boss.residuePerTwoMeters * (wave.knife ? boss.knifeEndResidueScale : 1.0f) + wave.smokeOwed;
             AddDeposit(boss, {wave.position.x, boss.ground.y + boss.depositHeight, wave.position.z}, smoke,
@@ -261,6 +270,8 @@ void BossWaves::Clear(BossComponent& boss) {
         wave = {};
     for (auto& deposit : boss.deposits)
         deposit = {};
+    for (auto& blast : boss.blasts)
+        blast = {};
 }
 
 } // namespace Project_TD2_2

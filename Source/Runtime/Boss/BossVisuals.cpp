@@ -16,26 +16,31 @@ using namespace BossMath;
 // 資産の入力（エフェクト側の契約）。
 constexpr const char* kAmountInput = "input.amount";
 constexpr const char* kColorInput = "input.color";
+// 剣先の火の粉の光の大きさ（0 で出さない。ナイフの尾は出さない）。
+constexpr const char* kEmberInput = "input.ember";
 // 斬撃のエフェクトの入力：fly＝刃を出す量、impact＝当たって砕ける量。
 constexpr const char* kFlyInput = "input.fly";
 constexpr const char* kImpactInput = "input.impact";
+// 光の層（刃口・炎・光・屈折）の大きさ。霧の源（fly）とは別に、数フレームかけて縮める。
+constexpr const char* kGlowInput = "input.glow";
 
-HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount) {
+HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
+    VfxParameters::SetFloat(parameters, kEmberInput, ember);
     VfxParameters::SetColor(parameters, kColorInput, boss.hazeColor);
     return parameters;
 }
 
 HIKARI::GameProjectVfxPlaybackHandle Play(HIKARI::WorldView& world, BossComponent& boss,
                                           const HIKARI::GameProjectVfxAssetReference& asset,
-                                          const HIKARI::GameProjectTransform& transform, float amount) {
+                                          const HIKARI::GameProjectTransform& transform, float amount, float ember) {
     if (asset.IsEmpty())
         return {};
     HIKARI::GameProjectVfxPlayRequest play{};
     play.asset = asset;
     play.transform = transform;
-    play.parameters = Parameters(boss, amount);
+    play.parameters = Parameters(boss, amount, ember);
     const auto handle = world.GetVfx().Play(play);
     boss.vfxAccepted = handle.IsValid() && boss.vfxAccepted;
     return handle;
@@ -64,6 +69,7 @@ void SendSlash(HIKARI::WorldView& world, BossComponent& boss, const BossSlashEff
     update.transform.scale = {effect.scale, effect.scale, effect.scale};
     VfxParameters::SetFloat(update.parameters, kFlyInput, effect.flying ? 1.0f : 0.0f);
     VfxParameters::SetFloat(update.parameters, kImpactInput, effect.impactSeconds > 0.0f ? 1.0f : 0.0f);
+    VfxParameters::SetFloat(update.parameters, kGlowInput, effect.glow);
     boss.vfxAccepted = world.GetVfx().Update(effect.handle, update) && boss.vfxAccepted;
 }
 
@@ -88,7 +94,7 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
                 effect.struck = true;
                 effect.flying = false;
                 effect.impactSeconds = boss.slashImpactSeconds;
-                effect.fadeSeconds = boss.slashFadeSeconds;
+                effect.fadeSeconds = boss.slashHitFadeSeconds;
                 effect.velocity = Mul(effect.velocity, boss.slashHitSpeedScale);
             }
         } else {
@@ -105,6 +111,8 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
             }
             effect.position = Add(effect.position, Mul(effect.velocity, seconds));
         }
+        if (!effect.flying)
+            effect.glow = std::max(0.0f, effect.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
         effect.impactSeconds = std::max(0.0f, effect.impactSeconds - seconds);
         SendSlash(world, boss, effect);
     }
@@ -149,6 +157,7 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
         play.randomSeed = static_cast<uint32_t>(wave.id);
         VfxParameters::SetFloat(play.parameters, kFlyInput, 1.0f);
         VfxParameters::SetFloat(play.parameters, kImpactInput, 0.0f);
+        VfxParameters::SetFloat(play.parameters, kGlowInput, 1.0f);
         slot->handle = vfx.Play(play);
         boss.vfxAccepted = slot->handle.IsValid() && boss.vfxAccepted;
         // 位置は毎フレーム送る。エフェクト側の速度で二重に動かさない。
@@ -161,6 +170,20 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
 
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossComponent& boss, float seconds) {
     UpdateSlashes(world, boss, seconds);
+    // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
+    for (auto& blast : boss.blasts) {
+        if (!blast.effectPending)
+            continue;
+        blast.effectPending = false;
+        if (boss.blastEffect.IsEmpty())
+            continue;
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = boss.blastEffect;
+        play.transform.position = blast.position;
+        play.transform.scale = {blast.scale, blast.scale, blast.scale};
+        play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+        boss.vfxAccepted = world.GetVfx().Play(play).IsValid() && boss.vfxAccepted;
+    }
     // ナイフ：刃と光点のエフェクトを飛ばし、尾は場の霧へ霞を入れるエフェクトで出す。どちらもエフェクト側の速度で進める。
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
@@ -177,7 +200,7 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossCompo
         HIKARI::GameProjectTransform transform{};
         transform.position = wave.position;
         transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        handle = Play(world, boss, boss.swordEffect, transform, boss.knifeEffectAmount);
+        handle = Play(world, boss, boss.swordEffect, transform, boss.knifeEffectAmount, 0.0f);
         if (handle.IsValid())
             boss.vfxAccepted = world.GetVfx().SetVelocity(handle, velocity) && boss.vfxAccepted;
         if (boss.knifeEffect.IsEmpty())
@@ -203,15 +226,16 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossCompo
     transform.position = swinging ? boss.swordOuter : BossPose::SwordPoints(boss, BossPose::Target(boss)).outer;
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     const float amount = swinging ? boss.swordEffectAmount : boss.kamaeEffectAmount;
+    const float ember = swinging ? boss.swordEmberScale : boss.kamaeEmberScale;
     if (!boss.swordVfx.IsValid()) {
-        boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount);
+        boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount, ember);
         return;
     }
     HIKARI::GameProjectVfxUpdateRequest update{};
     update.updateTransform = 1u;
     update.updateParameters = 1u;
     update.transform = transform;
-    update.parameters = Parameters(boss, amount);
+    update.parameters = Parameters(boss, amount, ember);
     boss.vfxAccepted = world.GetVfx().Update(boss.swordVfx, update) && boss.vfxAccepted;
 }
 

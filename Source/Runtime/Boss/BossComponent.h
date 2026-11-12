@@ -18,6 +18,8 @@ inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
 // 場の霧・吸い口・砲撃と分け合う（出している間は砲撃の枠を同じ数だけ減らす）。
 inline constexpr size_t kBossSlashEffectCapacity = 2;
+// 当たった所の爆発の枠（連撃とナイフ 3 本が続けて当たっても足りる数）。
+inline constexpr size_t kBossBlastCapacity = 4;
 // 斬撃が消えた所などに置く残り煙の枠。
 inline constexpr size_t kBossDepositCapacity = 8;
 // 連続攻撃の判定に覚えておく命中の数（試作と同じ 40）。
@@ -67,11 +69,21 @@ struct BossSlashEffect {
     bool struck = false;
     float fadeSeconds = 0.0f;
     float impactSeconds = 0.0f;
+    // 光の層の大きさ（1＝出ている、0＝消えた）。刃を出すのをやめたら数フレームで 0 へ縮める。
+    float glow = 1.0f;
     float travelled = 0.0f;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 velocity{};
     HIKARI::GameProjectQuaternion rotation{0.0f, 0.0f, 0.0f, 1.0f};
+};
+
+// 斬撃・ナイフ・剣がプレイヤーに当たった所の爆発。光のエフェクトを 1 回出し、足元の霧を 1 回外へ押す。
+struct BossBlast {
+    bool pushPending = false;
+    bool effectPending = false;
+    float scale = 1.0f;
+    HIKARI::GameProjectFloat3 position{};
 };
 
 // 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡）。
@@ -226,10 +238,10 @@ public:
     float kamaeSmoke = 2.0f;
     int kamaeSmokeFrames = 15;
     float waveSmokeRadius = 1.2f;
-    float waveSmokeSink = 0.6f;
+    float waveSmokeSink = 1.5f;
     float waveSmokeDrag = 0.1f;
     float waveResidueLag = 5.0f;
-    float waveResidueHeight = 1.6f;
+    float waveResidueHeight = 0.7f;
     float swordSmokeRadius = 0.45f;
     float depositRadius = 1.5f;
     float depositHeight = 0.6f;
@@ -241,14 +253,26 @@ public:
     float slashEffectWidth = 11.0f;
     float slashFadeSeconds = 0.25f;
     float slashImpactSeconds = 0.2f;
-    float slashHitSpeedScale = 0.35f;
+    float slashHitSpeedScale = 0.15f;
+    float slashGlowFadeSeconds = 0.1f;
+    // 見た目：当たった所の爆発（光・火花・爆炎のエフェクトと、足元の霧を外へ押す力）
+    HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
+                                                     "Assets/Vfx/BossSlashBurst.hvfx"};
+    // 当たった斬撃の炎を消すまでの時間。爆発の光に隠して、ほぼすぐ消す（残すと、薄い域の炎が板のように広がって画面を塞ぐ）。
+    float slashHitFadeSeconds = 0.07f;
+    float blastPush = 9.0f;
+    float blastPushRadius = 3.0f;
+    float knifeBlastScale = 0.4f;
     // 見た目（流体注入のエフェクト。場の霧の域へ色の付いた霞を入れる）
     HIKARI::GameProjectVfxAssetReference swordEffect{"353886750fe7c2c7f8939f18e5df6b31",
                                                      "Assets/Vfx/BossSwordHaze.hvfx"};
     HIKARI::GameProjectFloat3 hazeColor{0.86f, 0.87f, 0.9f};
     float swordEffectAmount = 0.3f;
     float kamaeEffectAmount = 0.15f;
-    float knifeEffectAmount = 1.5f;
+    // 剣先の火の粉の光の大きさ（倍）。構えの合図。煙と違って場に残らない。
+    float swordEmberScale = 1.0f;
+    float kamaeEmberScale = 0.6f;
+    float knifeEffectAmount = 0.8f;
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
     HIKARI::GameProjectVfxAssetReference knifeEffect{"26fa37413fbcc48cc52d0605225433bb", "Assets/Vfx/BossKnife.hvfx"};
     // 確かめ用（正式シーンでは使わない）
@@ -323,6 +347,8 @@ public:
     std::array<BossWave, kBossWaveCapacity> waves{};
     uint64_t nextWaveId = 1;
     std::array<BossSmokeDeposit, kBossDepositCapacity> deposits{};
+    std::array<BossBlast, kBossBlastCapacity> blasts{};
+    size_t blastCursor = 0;
     float bodyTrail = 0.0f;
     float bodySmokeRate = 0.0f;
     HIKARI::GameProjectFloat3 lastBodyPosition{};

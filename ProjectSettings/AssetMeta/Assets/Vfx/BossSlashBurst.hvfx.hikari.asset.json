@@ -1,0 +1,14 @@
+{
+  "displayName": "BossSlashBurst",
+  "guid": "bd16110e0b1bf90ce62d5502eb61c0d3",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossSlashBurst.hvfx",
+  "type": "VfxEffect"
+}
