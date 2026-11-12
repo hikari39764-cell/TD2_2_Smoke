@@ -31,6 +31,12 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("gatherPulse", "奥から手前へ進む脈の強さ（0 は一定）", gatherPulse, 0.0f, 1.0f);
         fields.Float("gatherPulseFrequency", "脈の速さ (Hz)", gatherPulseFrequency, 0.0f, 10.0f);
         fields.Float("gatherLift", "足元に集まった霧を口へ持ち上げる力の倍率", gatherLift, 0.0f, 5.0f);
+        fields.Float("gatherAbsorption", "扇の中の霧が、口へ運ばれながら消える率 (/s、0 は消さない)", gatherAbsorption,
+                     0.0f, 100.0f);
+        fields.Float("gatherSmokeShare", "扇の中で消えた霧のうち、煙に数える割合", gatherSmokeShare, 0.0f, 1.0f);
+        fields.Note("gatherAbsorption を上げるほど、吸った所の霧が早く薄くなって穴が見えます。"
+                    "ヒョウタンが満ちる速さは gatherSmokeShare で合わせます（口元まで届いた霧は全部数えます）。"
+                    "穴が戻る速さは、場の霧（ArenaGroundFog）の補充と消散で決まります。");
         fields.Float("absorbForwardDistance", "霧を集める中心の前方距離 (m)", absorbForwardDistance, 0.0f, 10.0f);
         fields.Float("absorbHeightOffset", "霧を集める中心の高さ（プレイヤー原点から m）", absorbHeightOffset, -10.0f,
                      10.0f);

@@ -18,9 +18,11 @@ using VectorMath::Scale;
 using Vec3 = HIKARI::GameProjectFloat3;
 using Kind = HIKARI::GameProjectFluidInteractionKind;
 
-// 同じ所有者の中で力を識別する。1 は口元の回収（回読の対象）、2 からが霧を運ぶ力。
+// 同じ所有者の中で力を識別する。1 は口元の回収、2 からが霧を運ぶ力（どちらも消した量を ReadRemoved が読む）。
 constexpr uint64_t kSinkInstance = 1;
 constexpr uint64_t kGatherInstanceBase = 2;
+// 消した量を読む枠：0 は口元、1 は口の上、2 からは霧を運ぶ力（輪 4 つで 3 + 5 × 3 + 足元 + 持ち上げ = 20 個）。
+constexpr size_t kRemovedFixedSlots = 2;
 constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 // 奥の輪ほど、運ぶ流れを少し太くする（輪 1 つごとの増し分）。
@@ -48,7 +50,8 @@ struct Field {
     GourdComponent& gourd;
     uint64_t instance = kGatherInstanceBase;
 
-    void Push(Vec3 position, float radius, Vec3 direction, float strength) {
+    // absorption は、この力の半径の中の霧が運ばれながら消える率 [1/s]（消した量は ReadRemoved が数える）。
+    void Push(Vec3 position, float radius, Vec3 direction, float strength, float absorption) {
         if (strength <= 0.0f || radius <= 0.0f)
             return;
         HIKARI::GameProjectFluidInteraction force{};
@@ -57,6 +60,9 @@ struct Field {
         force.extents = {radius, 0.0f, 0.0f};
         force.direction = direction;
         force.strength = strength;
+        // 消した量を読めない番号の力では、霧を消さない（数えられない霧を場から減らさない）。
+        const size_t slot = kRemovedFixedSlots + static_cast<size_t>(instance - kGatherInstanceBase);
+        force.absorption = slot < gourd.removedByForce.size() ? absorption : 0.0f;
         gourd.fluidAccepted =
             world.GetFluid().Submit(object.GetHandle(), instance++, force).Accepted() && gourd.fluidAccepted;
         ++gourd.fluidSubmissions;
@@ -65,14 +71,36 @@ struct Field {
 
 } // namespace
 
-uint64_t GourdAbsorbField::SinkInstance() { return kSinkInstance; }
-uint64_t GourdAbsorbField::CatchInstance() { return kCatchInstance; }
+bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
+                                   double& outTotal) {
+    const HIKARI::FluidView fluid = world.GetFluid();
+    outTotal = gourd.removedSum;
+    for (size_t slot = 0; slot < gourd.removedByForce.size(); ++slot) {
+        const uint64_t instance = slot == 0   ? kSinkInstance
+                                  : slot == 1 ? kCatchInstance
+                                              : kGatherInstanceBase + (slot - kRemovedFixedSlots);
+        double total = 0.0;
+        if (!fluid.GetRemovedSmoke(object.GetHandle(), instance, total).Succeeded())
+            return false;
+        // エンジンは、出さなくなって 2 秒ほどたった力の累計を捨てて 0 から数え直す。減っていたら、その値が新しい分。
+        double& last = gourd.removedByForce[slot];
+        // 口元と口の上で消した霧は全部、扇の中で運びながら消した霧は gatherSmokeShare の割合だけを煙に数える。
+        const double share =
+            slot < kRemovedFixedSlots ? 1.0 : static_cast<double>(std::clamp(gourd.gatherSmokeShare, 0.0f, 1.0f));
+        gourd.removedSum += share * (total >= last ? total - last : total);
+        last = total;
+    }
+    outTotal = gourd.removedSum;
+    return true;
+}
 
 void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
                               float seconds) {
     // 満杯の時は霧を消さない（吸っても増えない煙を場から減らさない）。流れもそよ風まで弱める。
     const bool blocked = GourdRules::IsFull(gourd) && !gourd.absorbWhenFull;
     const float flow = blocked ? kFullFlowScale : 1.0f;
+    // 扇の中の霧は、口へ運ばれながら消える（吸った所に穴が見える）。満杯で吸わない設定の時は消さない。
+    const float fade = blocked ? 0.0f : gourd.gatherAbsorption;
     Field field{world, object, gourd};
     if (gourd.gatherStrength > 0.0f) {
         const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
@@ -103,7 +131,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
                 const Vec3 inward = Normalize(Difference(inner, position), Scale(outward, -1.0f));
                 const Vec3 tangent{inward.z, 0.0f, -inward.x};
                 field.Push(position, radius, Normalize(Add(inward, Scale(tangent, gourd.gatherSwirl)), inward),
-                           strength);
+                           strength, fade);
             }
             inner = Add(base, Scale(forward, distance));
         }
@@ -111,11 +139,11 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
         if (gourd.gatherNearRadius > 0.0f) {
             const Vec3 position = Add(base, Scale(forward, -gourd.gatherNearRadius * kNearBackShare));
             field.Push(position, gourd.gatherNearRadius, Normalize(Difference(foot, position), forward),
-                       gourd.gatherStrength * kNearStrengthShare * flow);
+                       gourd.gatherStrength * kNearStrengthShare * flow, fade);
         }
         // 集まった霧を、足元から口へ持ち上げる。
         field.Push(foot, gourd.gatherRadius, Normalize(Difference(gourd.mouthPosition, foot), {0.0f, 1.0f, 0.0f}),
-                   gourd.gatherStrength * gourd.gatherLift * flow);
+                   gourd.gatherStrength * gourd.gatherLift * flow, 0.0f);
     }
     // 吸われていく霧を温める。場の霧（ArenaGroundFog）と口のエフェクトの域は、温度が上がった煙が青緑に光るので、
     // 本物の霧が口へ近づくほど明るく光って見える。注入の強さ（足す煙）は 0 にして、温度だけを使う。

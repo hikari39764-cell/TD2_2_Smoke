@@ -263,14 +263,9 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
         return;
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView object,
                                                                                         GourdComponent& gourd) {
-        const auto fluid = world.GetFluid();
+        // 口元の吸入・口の上の回収・扇の中で消した霧を足して、煙に数える（どれも累計値）。
         double total = 0.0;
-        // 口元の吸入と、口の上の回収の両方が消した霧を足して、煙に数える（どちらも累計値）。
-        double caught = 0.0;
-        gourd.readAccepted =
-            fluid.GetRemovedSmoke(object.GetHandle(), GourdAbsorbField::SinkInstance(), total).Succeeded();
-        if (fluid.GetRemovedSmoke(object.GetHandle(), GourdAbsorbField::CatchInstance(), caught).Succeeded())
-            total += caught;
+        gourd.readAccepted = GourdAbsorbField::ReadRemoved(world, object, gourd, total);
         // 松開後の遅れた回読も回収する。容量超過時も累計の基準は必ず更新する。
         if (gourd.readAccepted)
             GourdRules::ReceiveRemovedSmoke(gourd, total);

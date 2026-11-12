@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 
@@ -37,7 +39,9 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float gatherPulseFrequency = 1.4f;
     float gatherLift = 0.3f;
     float gatherNearRadius = 0.0f;
-    bool absorbWhenFull = false;
+    float gatherAbsorption = 2.0f;
+    float gatherSmokeShare = 0.25f;
+    bool absorbWhenFull = true;
     float absorbCatchRadius = 1.1f;
     float absorbCatchHeight = 0.7f;
     float absorbCatchRate = 30.0f;
@@ -110,6 +114,10 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float intakeRate = 0.0f;
     float absorbSeconds = 0.0f;
     float mouthIdleSeconds = 0.0f;
+    // 霧を消す力ごとの、前に読んだ累計（0 は口元、1 は口の上、2 からは扇の力）と、増えた分を足し続けた合計。
+    // 力ごとに差を取るので、力の数が変わっても（輪の数を実行中に変えた時など）古い累計を二重に数えない。
+    std::array<double, 24> removedByForce{};
+    double removedSum = 0.0;
 };
 
 } // namespace Project_TD2_2
