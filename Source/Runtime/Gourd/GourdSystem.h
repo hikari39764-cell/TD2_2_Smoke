@@ -10,6 +10,7 @@ class GourdSystem final : public HIKARI::IGameSystem {
     void PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
     void LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
     void PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
+    void OnWorldDetached(HIKARI::WorldView& world) override;
 };
 
 } // namespace Project_TD2_2

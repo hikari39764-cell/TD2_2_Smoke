@@ -12,6 +12,8 @@ class GourdRules final {
     static float GetCapacity(const GourdComponent& gourd);
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
     static bool IsAbsorbing(const GourdComponent& gourd);
+    // 構え・吸い込み・後隙のどれかの最中。この間は砲撃を始めない。
+    static bool IsAbsorbBusy(const GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetMouthPosition(const GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetAimDirection(const GourdComponent& gourd);
     // 射撃側の PreFixedUpdate から呼び、同じ tick の GourdSystem が一歩目を進める。

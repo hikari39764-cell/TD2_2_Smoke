@@ -20,6 +20,11 @@ public:
     // その固定 tick の歩行倍率。PlayerSystem が毎 tick 1 に戻してから外部が要求する。
     static void SetMovementSpeedScale(PlayerComponent& player, float scale);
     static float GetMovementSpeedScale(const PlayerComponent& player);
+    // その固定 tick だけ、向きを入力の方向へ毎秒この角度まで回す（ロックオン中でも）。0 は通常の向き。
+    // PlayerSystem が毎 tick 0 に戻してから外部が要求する。
+    static void SetTurnOverride(PlayerComponent& player, float degreesPerSecond);
+    // 次の固定 tick の開始まで、ローリングと回復の開始を止める。続ける間は毎 tick 要求し直す。
+    static void BlockActions(PlayerComponent& player);
     static void AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames);
     static HIKARI::GameProjectFloat3 GetFacing(const PlayerComponent& player);
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);

@@ -17,6 +17,10 @@ constexpr uint64_t kHitStopSource = 0x5444325003ull;
 constexpr uint64_t kRollFogInstance = 1;
 constexpr int kPlayerPriority = 300;
 constexpr float kFramesPerSecond = 60.0f;
+constexpr float kTau = 6.28318530718f;
+constexpr float kRadiansPerDegree = kTau / 360.0f;
+// 向きを変える入力として扱う最小の倒し量。スティックの遊びで向きが震えないようにする。
+constexpr float kTurnInputDeadZone = 0.1f;
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
@@ -92,6 +96,9 @@ void CompleteState(PlayerComponent& player) {
 }
 
 void StartBufferedAction(PlayerComponent& player) {
+    // 外部の動作（吸い込み）の最中は、ローリングも回復も始められない。先行入力は残り、明けた時に通る。
+    if (player.externalActionBlock)
+        return;
     const bool canRoll =
         PlayerRules::CanStartAction(player) ||
         (player.state == PlayerState::Down && player.stateFrame >= std::min(player.downRollFrame, player.downFrames) &&
@@ -157,9 +164,20 @@ Vec3 StateVelocity(PlayerComponent& player, float dt) {
     return {player.actionDirection.x * speed, 0.0f, player.actionDirection.z * speed};
 }
 
-void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player) {
+void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt) {
     if (!PlayerRules::IsAlive(player))
         return;
+    if (player.externalTurnSpeed > 0.0f) {
+        // 外部の要求（吸い込み）：ロックオン中でも、入力した方向へ決まった速さで向きを変える。入力が無ければそのまま。
+        if (std::hypot(player.moveInput.x, player.moveInput.z) > kTurnInputDeadZone) {
+            const float current = std::atan2(player.facing.x, player.facing.z);
+            const float wanted = std::atan2(player.moveInput.x, player.moveInput.z);
+            const float limit = player.externalTurnSpeed * kRadiansPerDegree * dt;
+            const float yaw = current + std::clamp(std::remainder(wanted - current, kTau), -limit, limit);
+            player.facing = {std::sin(yaw), 0.0f, std::cos(yaw)};
+        }
+        return;
+    }
     if (player.lockedOn) {
         const auto target = world.FindObject(player.lockTarget);
         HIKARI::GameProjectTransform sourceTransform{}, targetTransform{};
@@ -206,7 +224,7 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         SubmitMovement(world, object, player, frame, {});
         return;
     }
-    UpdateFacing(world, object, player);
+    UpdateFacing(world, object, player, frame.fixedDt);
     Vec3 velocity = StateVelocity(player, frame.fixedDt);
     if (PlayerRules::IsAlive(player) && player.recoilFramesLeft > 0) {
         velocity.x += player.recoilPerFrame.x / frame.fixedDt;
@@ -246,6 +264,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 PlayerRules::Initialize(player);
                                                 // 毎 tick 失効させ、外部システムが消えても減速を残さない。
                                                 PlayerRules::SetMovementSpeedScale(player, 1.0f);
+                                                PlayerRules::SetTurnOverride(player, 0.0f);
                                                 // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
                                                 // ずれないようにする。
                                                 if (player.advanceStateNextTick)
@@ -253,6 +272,9 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 player.advanceStateNextTick = false;
                                                 CompleteState(player);
                                                 StartBufferedAction(player);
+                                                // 行動の停止は前の tick の要求。使ったら消し、
+                                                // 要求が途切れた次の tick から動けるようにする。
+                                                player.externalActionBlock = false;
                                             });
 }
 

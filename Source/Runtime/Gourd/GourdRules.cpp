@@ -27,6 +27,7 @@ bool GourdRules::TryConsumeSmoke(GourdComponent& gourd, float amount) {
 }
 
 bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbing; }
+bool GourdRules::IsAbsorbBusy(const GourdComponent& gourd) { return gourd.absorbPhase != GourdAbsorbPhase::Idle; }
 HIKARI::GameProjectFloat3 GourdRules::GetMouthPosition(const GourdComponent& gourd) { return gourd.mouthPosition; }
 HIKARI::GameProjectFloat3 GourdRules::GetAimDirection(const GourdComponent& gourd) { return gourd.aimDirection; }
 

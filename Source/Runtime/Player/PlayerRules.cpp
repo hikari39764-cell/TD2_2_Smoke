@@ -87,6 +87,12 @@ void PlayerRules::SetMovementSpeedScale(PlayerComponent& player, float scale) {
 
 float PlayerRules::GetMovementSpeedScale(const PlayerComponent& player) { return player.externalMoveScale; }
 
+void PlayerRules::SetTurnOverride(PlayerComponent& player, float degreesPerSecond) {
+    player.externalTurnSpeed = std::isfinite(degreesPerSecond) ? std::max(0.0f, degreesPerSecond) : 0.0f;
+}
+
+void PlayerRules::BlockActions(PlayerComponent& player) { player.externalActionBlock = true; }
+
 void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames) {
     Initialize(player);
     if (!IsAlive(player) || frames <= 0 || !std::isfinite(distance) || distance < 0.0f || !std::isfinite(direction.x) ||

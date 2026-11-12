@@ -55,6 +55,17 @@
             "moduleId": "module.spawn.fe213ce6eaf849388b69cce35f685c79",
             "propertyId": "rateMultiplier"
           }
+        },
+        {
+          "bias": 0.0,
+          "id": "emitter.b0e98482907940c7a27b3041ea09804c.link.input.color",
+          "inputId": "input.color",
+          "scale": 1.0,
+          "target": {
+            "emitterId": "emitter.b0e98482907940c7a27b3041ea09804c",
+            "moduleId": "module.color.2cf23996f61545119c99f37419417076",
+            "propertyId": "valueMultiplier"
+          }
         }
       ],
       "kind": "FluidSource",
@@ -204,15 +215,15 @@
             },
             "fixed": {
               "maximum": [
-                0.22,
-                0.5,
-                0.8,
+                1.0,
+                1.0,
+                1.0,
                 1.0
               ],
               "minimum": [
-                0.22,
-                0.5,
-                0.8,
+                1.0,
+                1.0,
+                1.0,
                 1.0
               ],
               "mode": "Constant",
@@ -276,7 +287,7 @@
           "id": "module.fluidSource.59052fbfd5d146bc91097b6bdfb441a2",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
+          "temperature": 0.35,
           "velocity": [
             0.0,
             0.0,
@@ -835,10 +846,10 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 180.0
+          "ratePerSecond": 24.0
         }
       },
-      "name": "Cannon Smoke Trail",
+      "name": "Ground Mist Injection",
       "order": 0,
       "parameterTracks": [],
       "parentEmitterId": "",
@@ -852,9 +863,20 @@
       "id": "input.amount",
       "name": "amount",
       "type": "Float"
+    },
+    {
+      "defaultValue": [
+        0.86,
+        0.88,
+        0.92,
+        1.0
+      ],
+      "id": "input.color",
+      "name": "Smoke Color",
+      "type": "Color"
     }
   ],
   "loop": false,
-  "name": "Gourd Cannon Trail",
+  "name": "Gourd Shot Ground Mist Trail",
   "version": 15
 }

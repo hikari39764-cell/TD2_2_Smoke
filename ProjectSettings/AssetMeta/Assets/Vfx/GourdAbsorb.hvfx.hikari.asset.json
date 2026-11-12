@@ -1,0 +1,14 @@
+{
+  "displayName": "GourdAbsorb",
+  "guid": "5f8903664eb0a5691bcc566b125bc81e",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdAbsorb.hvfx",
+  "type": "VfxEffect"
+}

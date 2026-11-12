@@ -84,6 +84,8 @@ public:
     bool hitStopAccepted = true;
     int pendingHitStopFrames = 0;
     float externalMoveScale = 1.0f;
+    float externalTurnSpeed = 0.0f;
+    bool externalActionBlock = false;
 };
 
 } // namespace Project_TD2_2

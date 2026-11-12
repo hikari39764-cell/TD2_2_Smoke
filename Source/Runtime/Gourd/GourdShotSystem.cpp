@@ -3,42 +3,30 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <cstring>
 
 #include "HIKARI/Project/ActionViews.h"
-#include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "GourdShotRules.h"
+#include "GourdShotVisuals.h"
 #include "GourdRules.h"
 #include "../Combat/DamageableRules.h"
+#include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
 
+using VectorMath::Add;
+using VectorMath::Difference;
+using VectorMath::Normalize;
+using VectorMath::Scale;
 using Vec3 = HIKARI::GameProjectFloat3;
 constexpr float kPi = 3.14159265358979323846f;
-// 地面の注入源 1 個と他の演出に余裕を残す。値ではなく SDK の提出予算を守る規則。
-constexpr uint32_t kTrailBudget = 8;
-constexpr uint32_t kFluidBudget = 24;
-constexpr uint64_t kMuzzleImpulseId = 100;
-constexpr uint64_t kMuzzleEmitId = 101;
-constexpr uint64_t kTrailEmitBaseId = 200;
-constexpr uint64_t kResidueImpulseBaseId = 300;
-constexpr uint64_t kResidueEmitBaseId = 400;
 
 bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     return world.GetGameSession() != nullptr && !frame.paused;
-}
-
-Vec3 Add(Vec3 a, Vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
-Vec3 Scale(Vec3 a, float value) { return {a.x * value, a.y * value, a.z * value}; }
-Vec3 Difference(Vec3 a, Vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
-Vec3 Normalize(Vec3 a, Vec3 fallback) {
-    const float length = std::sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
-    return length > 0.0f ? Scale(a, 1.0f / length) : fallback;
 }
 
 template <class Callback>
@@ -123,7 +111,10 @@ void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle play
         const float fraction = count > 1 ? static_cast<float>(pellet) / static_cast<float>(count - 1) - 0.5f : 0.0f;
         const float angle = fraction * shot.spreadDegrees * kPi / 180.0f;
         const float cosine = std::cos(angle), sine = std::sin(angle);
+        // 冷却中の炎の域が残っていても発射間隔は延ばさない。古い域は表現側が次の更新で止める。
+        const auto staleShell = projectile.shell.IsValid() ? projectile.shell : projectile.staleShell;
         projectile = {};
+        projectile.staleShell = staleShell;
         projectile.active = true;
         projectile.id = shot.nextProjectileId++;
         projectile.spawnedTick = shot.processedTick;
@@ -150,6 +141,7 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     const Vec3 direction = Aim(world, gourd, player);
     const Vec3 origin = Add(gourd.position, Scale(direction, gourd.height * 0.5f));
     SpawnPellets(shot, playerObject.GetHandle(), origin, direction);
+    GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
     PlayerRules::LockActions(player, shot.recoveryFrames);
     PlayerRules::AddRecoil(player, Scale(direction, -1.0f), shot.recoilDistance, shot.recoilFrames);
     GourdRules::AddRecoil(gourd, Scale(direction, -1.0f), shot.gourdRecoilDistance, shot.gourdRecoilFrames);
@@ -190,8 +182,15 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         shot.phase = GourdShotPhase::Idle;
         LogPhase(shot, "End");
     }
+    // 押したのに撃てない時（煙・スタミナ不足）は、無反応にせず空撃ちの手応えを返す。
+    if (shot.phase == GourdShotPhase::Idle && shot.attackPressed && PlayerRules::CanStartAction(player) &&
+        !GourdRules::IsAbsorbBusy(gourd) && BlockedReason(shot, gourd, player) != 0) {
+        ++shot.dryFires;
+        GourdRules::AddRecoil(gourd, Scale(Aim(world, gourd, player), -1.0f), shot.feedback.dryFireKickDistance,
+                              shot.feedback.dryFireKickFrames);
+    }
     if (shot.phase == GourdShotPhase::Idle && (shot.attackHeld || shot.attackBuffer > 0) &&
-        PlayerRules::CanStartAction(player) && CanPay(shot, gourd, player)) {
+        PlayerRules::CanStartAction(player) && !GourdRules::IsAbsorbBusy(gourd) && CanPay(shot, gourd, player)) {
         shot.phase = GourdShotPhase::Windup;
         shot.beginTick = shot.processedTick;
         shot.nextFireTick = shot.beginTick + static_cast<uint64_t>(shot.windupFrames);
@@ -199,6 +198,9 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         // 発射 tick の Player::PreFixedUpdate が先に走るため、その境界までロックをつなぐ。
         // 発射時刻は増やさず、同じ tick の Fire が後隙のロックに置き換える。
         PlayerRules::LockActions(player, shot.windupFrames + 1);
+        // 押した瞬間から構えが見えるように、発射までヒョウタンを後ろへ引く。発射の反動がそこから続く。
+        GourdRules::AddRecoil(gourd, Scale(Aim(world, gourd, player), -1.0f), shot.gourdWindupPull,
+                              shot.windupFrames);
         LogPhase(shot, "Begin");
     }
     if (shot.phase == GourdShotPhase::Windup && shot.processedTick >= shot.nextFireTick) {
@@ -210,12 +212,28 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
     }
 }
 
-void AddResidue(GourdShotComponent& shot, Vec3 position) {
+void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 position, uint64_t ignoredObject) {
     auto& residue = shot.residues[shot.residueCursor % kGourdResidueCapacity];
     ++shot.residueCursor;
+    if (residue.smoke.IsValid() && world.GetVfx().IsActive(residue.smoke))
+        shot.vfxAccepted = world.GetVfx().Stop(residue.smoke) && shot.vfxAccepted;
+    residue.smoke = {};
     residue.active = true;
-    residue.burstPending = true;
-    residue.framesLeft = std::max(1, shot.residueFrames);
+    // 霧を押す力は重なる流体の域すべてに効く。爆ぜた点で押すと炎の域の中身まで壁へ吹き飛ぶので、
+    // 真下の地面を探して、足元の霧だけを押す（高い所ほど弱く、届かなければ押さない）。
+    HIKARI::GameProjectPhysicsRaycastQuery query{};
+    query.origin = position;
+    query.direction = {0.0f, -1.0f, 0.0f};
+    query.maxDistance = shot.impactGroundReach;
+    query.filter.ignoredObjectHandle = ignoredObject;
+    query.filter.includeTriggers = 0;
+    HIKARI::GameProjectPhysicsHit ground{};
+    const bool grounded = world.GetPhysicsQueries().Raycast(query, ground);
+    residue.burstPending = grounded;
+    residue.burstScale = grounded ? std::clamp(1.0f - ground.distance / shot.impactGroundReach, 0.0f, 1.0f) : 0.0f;
+    if (grounded)
+        position = {ground.position.x, ground.position.y + shot.impactGroundOffset, ground.position.z};
+    residue.framesLeft = std::max(0, shot.residueFrames);
     residue.position = position;
 }
 
@@ -283,122 +301,24 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;
-        AddResidue(shot, projectile.position);
+        // 遠くで当たるほど威力が落ちる規則に合わせ、命中の派手さも射程端へ向けて抑える。
+        const float farBlend = GourdShotRules::GetFalloffFraction(shot, projectile.distance);
+        // 体に重なる所で爆ぜると隠れて小さく暗く見えるので、飛んで来た距離を超えない範囲で手前へ戻す。
+        const float standoff = std::min(shot.impactStandoff, projectile.distance);
+        GourdShotVisuals::QueueBurst(shot, false, Add(projectile.position, Scale(projectile.direction, -standoff)),
+                                     projectile.direction,
+                                     shot.impactScale * (1.0f - (1.0f - shot.impactFarScale) * farBlend));
+        projectile.flashFramesLeft = shot.shellFlashFrames;
+        projectile.fadeFramesLeft = std::max(shot.shellFadeFrames, shot.shellFlashFrames);
+        AddResidue(world, shot, projectile.position, hit.objectHandle);
     } else if (projectile.distance >= shot.range) {
         LogProjectile(shot, projectile, "Dissipate");
         projectile.active = false;
         projectile.finishTrailPending = true;
-        AddResidue(shot, projectile.position);
+        projectile.fadeFramesLeft = shot.shellFadeFrames;
+        AddResidue(world, shot, projectile.position, 0);
     } else if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
         LogProjectile(shot, projectile, "ProjectileStep");
-    }
-}
-
-void SetTrailParameters(HIKARI::GameProjectVfxParameterOverrides& parameters, float density) {
-    parameters.count = 1;
-    constexpr char kAmountInput[] = "input.amount";
-    std::memcpy(parameters.values[0].inputId, kAmountInput, sizeof(kAmountInput));
-    parameters.values[0].value.numeric[0] = density;
-}
-
-void UpdateTrail(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                 GourdProjectile& projectile, uint32_t& trailCount) {
-    const auto vfx = world.GetVfx();
-    if ((!projectile.active && !projectile.finishTrailPending) || shot.trailEffect.IsEmpty() ||
-        trailCount >= kTrailBudget) {
-        if (projectile.trail.IsValid()) {
-            shot.vfxAccepted = vfx.Stop(projectile.trail) && shot.vfxAccepted;
-            projectile.trail = {};
-        }
-        projectile.finishTrailPending = false;
-        return;
-    }
-    ++trailCount;
-    const float scale = projectile.radius / std::max(shot.projectileRadius, 0.01f);
-    HIKARI::GameProjectTransform transform{};
-    transform.position = projectile.position;
-    transform.scale = {scale, scale, scale};
-    if (!projectile.trail.IsValid()) {
-        HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = shot.trailEffect;
-        play.ownerObjectHandle = object.GetHandle().value;
-        play.transform = transform;
-        play.loopMode = HIKARI::GameProjectVfxLoopMode::Loop;
-        SetTrailParameters(play.parameters, projectile.densityScale);
-        projectile.trail = vfx.Play(play);
-        shot.vfxAccepted = projectile.trail.IsValid() && shot.vfxAccepted;
-    }
-    if (projectile.trail.IsValid()) {
-        HIKARI::GameProjectVfxUpdateRequest update{};
-        update.updateTransform = 1;
-        update.updateParameters = 1;
-        update.transform = transform;
-        SetTrailParameters(update.parameters, projectile.densityScale);
-        // 固定 tick が唯一の弾道。自動速度は 0 にし、絶対位置の更新を源の掃掠注入へ渡す。
-        shot.vfxAccepted =
-            vfx.SetVelocity(projectile.trail, {}) && vfx.Update(projectile.trail, update) && shot.vfxAccepted;
-    }
-    // 全 LateUpdate の後で VFX が進むため、終点を渡したこのフレームは止めない。
-    // 次の LateUpdate で Stop するまでスロットも再利用しない。
-    if (!projectile.active)
-        projectile.finishTrailPending = false;
-}
-
-void SubmitFluid(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot, uint32_t& total,
-                 uint64_t id, HIKARI::GameProjectFluidInteractionKind kind, Vec3 position, float radius, float strength,
-                 Vec3 direction = {}) {
-    if (total >= kFluidBudget) {
-        ++shot.droppedVisuals;
-        return;
-    }
-    HIKARI::GameProjectFluidInteraction interaction{};
-    interaction.kind = kind;
-    interaction.position = position;
-    interaction.extents = {radius, 0.0f, 0.0f};
-    interaction.strength = strength;
-    interaction.direction = direction;
-    shot.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, interaction).Accepted() && shot.fluidAccepted;
-    ++total;
-    ++shot.fluidSubmissions;
-}
-
-void RenderSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot, uint32_t& total) {
-    using Kind = HIKARI::GameProjectFluidInteractionKind;
-    shot.fluidSubmissions = 0;
-    if (shot.muzzlePending) {
-        SubmitFluid(world, object, shot, total, kMuzzleImpulseId, Kind::Impulse, shot.muzzlePosition, shot.muzzleRadius,
-                    shot.muzzleStrength, shot.muzzleDirection);
-        SubmitFluid(world, object, shot, total, kMuzzleEmitId, Kind::Emit, shot.muzzlePosition, shot.muzzleRadius,
-                    shot.muzzleSmokeRate);
-        shot.muzzlePending = false;
-    }
-    for (size_t i = 0; i < shot.projectiles.size(); ++i) {
-        const auto& projectile = shot.projectiles[i];
-        if (projectile.active && !projectile.trail.IsValid())
-            SubmitFluid(world, object, shot, total, kTrailEmitBaseId + i, Kind::Emit, projectile.position,
-                        projectile.radius, shot.fallbackTrailRate * projectile.densityScale);
-    }
-    for (size_t i = 0; i < shot.residues.size(); ++i) {
-        auto& residue = shot.residues[i];
-        if (!residue.active)
-            continue;
-        if (residue.burstPending) {
-            SubmitFluid(world, object, shot, total, kResidueImpulseBaseId + i, Kind::Impulse, residue.position,
-                        shot.impactRadius, shot.impactStrength);
-            residue.burstPending = false;
-        }
-        SubmitFluid(world, object, shot, total, kResidueEmitBaseId + i, Kind::Emit, residue.position,
-                    shot.residueRadius, shot.residueSmokeRate);
-    }
-    if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
-        char message[256]{};
-        std::snprintf(message, sizeof(message),
-                      "Visual tick=%llu active=%u fluidSubmissions=%u totalShotFluid=%u dropped=%u vfxAccepted=%d "
-                      "fluidAccepted=%d",
-                      static_cast<unsigned long long>(shot.processedTick),
-                      GourdShotRules::GetActiveProjectileCount(shot), shot.fluidSubmissions, total, shot.droppedVisuals,
-                      static_cast<int>(shot.vfxAccepted), static_cast<int>(shot.fluidAccepted));
-        Log(shot, message);
     }
 }
 
@@ -412,8 +332,10 @@ void GourdShotSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContex
     world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
                                                [&](HIKARI::ObjectView, GourdShotComponent& shot) {
                                                    shot.attackHeld = valid && action.down;
-                                                   if (valid && action.pressed)
+                                                   if (valid && action.pressed) {
                                                        shot.attackBuffer = shot.inputBufferFrames;
+                                                       shot.attackPressed = true;
+                                                   }
                                                });
 }
 
@@ -429,6 +351,7 @@ void GourdShotSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::Fra
                 });
             if (!found)
                 shot.phase = GourdShotPhase::Idle;
+            shot.attackPressed = false;
             shot.attackBuffer = std::max(0, shot.attackBuffer - 1);
         });
 }
@@ -439,10 +362,15 @@ void GourdShotSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     world.ForEachComponent<GourdShotComponent>(
         HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
             for (auto& residue : shot.residues) {
-                if (residue.active && --residue.framesLeft <= 0)
-                    residue.active = false;
+                if (residue.active) {
+                    residue.framesLeft = std::max(0, residue.framesLeft - 1);
+                    if (residue.framesLeft <= 0 && !residue.burstPending)
+                        residue.active = false;
+                }
             }
             for (auto& projectile : shot.projectiles) {
+                projectile.flashFramesLeft = std::max(0, projectile.flashFramesLeft - 1);
+                projectile.fadeFramesLeft = std::max(0, projectile.fadeFramesLeft - 1);
                 if (projectile.active)
                     StepProjectile(world, object, shot, projectile, frame.fixedDt);
             }
@@ -460,8 +388,7 @@ void GourdShotSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
                     GourdRules::SetAimOverride(gourd, Aim(world, gourd, player));
                 });
             }
-            for (auto& projectile : shot.projectiles)
-                UpdateTrail(world, object, shot, projectile, trails);
+            GourdShotVisuals::Update(world, object, shot, trails);
         });
 }
 
@@ -469,20 +396,16 @@ void GourdShotSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameCon
     if (!IsPlaying(world, frame))
         return;
     uint32_t submitted = 0;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType),
-        [&](HIKARI::ObjectView object, GourdShotComponent& shot) { RenderSmoke(world, object, shot, submitted); });
+    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
+                                               [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
+                                                   GourdShotVisuals::Render(world, object, shot, submitted);
+                                               });
 }
 
 void GourdShotSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
-                                                   for (auto& projectile : shot.projectiles) {
-                                                       if (projectile.trail.IsValid())
-                                                           world.GetVfx().Stop(projectile.trail);
-                                                       projectile.trail = {};
-                                                   }
-                                               });
+    world.ForEachComponent<GourdShotComponent>(
+        HIKARI::MakeComponentTypeId(kGourdShotType),
+        [&](HIKARI::ObjectView, GourdShotComponent& shot) { GourdShotVisuals::Stop(world, shot); });
 }
 
 } // namespace Project_TD2_2
