@@ -18,6 +18,10 @@ public:
     static float GetLastDamage(const DamageableComponent& target);
     static HIKARI::GameProjectFloat3 GetLastDirection(const DamageableComponent& target);
     static uint64_t GetHitCount(const DamageableComponent& target);
+    // 次に受けるダメージにかける倍率（0 以上）。ApplyDamage は amount × 倍率を HP から引く。
+    static void SetIncomingDamageScale(DamageableComponent& target, float scale);
+    // 倍率をかける前の量で数えた、受け付けたダメージの累計。
+    static double GetBaseDamageTotal(const DamageableComponent& target);
 };
 
 } // namespace Project_TD2_2

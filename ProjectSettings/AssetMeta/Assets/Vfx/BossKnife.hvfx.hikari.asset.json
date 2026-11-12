@@ -1,0 +1,14 @@
+{
+  "displayName": "BossKnife",
+  "guid": "26fa37413fbcc48cc52d0605225433bb",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossKnife.hvfx",
+  "type": "VfxEffect"
+}

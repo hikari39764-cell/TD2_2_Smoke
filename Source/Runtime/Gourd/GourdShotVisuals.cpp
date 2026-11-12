@@ -41,9 +41,10 @@ bool IsLive(HIKARI::WorldView& world, const HIKARI::GameProjectVfxPlaybackHandle
     return handle.IsValid() && world.GetVfx().IsActive(handle);
 }
 
-// 新しい炎の域を出す前に、砲撃の域の数を枠の中へ収める。命中の爆発（古い方）→ 冷却中の弾 → 砲口の順に止める。
-// 飛んでいる弾の域は止めない。
-void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot) {
+// 砲撃の域の数を枠の中へ収める（incoming はこれから出す数）。命中の爆発（古い方）→ 冷却中の弾 → 砲口の順に止める。
+// 飛んでいる弾の域は止めない。枠は、他の表現（ボスの斬撃）が使う数だけ減る。
+void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot, size_t incoming) {
+    const size_t budget = kGourdShotDomainBudget - std::min(shot.reservedDomains, kGourdShotDomainBudget - 1);
     for (;;) {
         size_t live = 0;
         for (const auto& handle : shot.muzzleLive)
@@ -52,7 +53,7 @@ void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot) {
             live += IsLive(world, handle) ? 1 : 0;
         for (const auto& projectile : shot.projectiles)
             live += (IsLive(world, projectile.shell) ? 1 : 0) + (IsLive(world, projectile.staleShell) ? 1 : 0);
-        if (live < kGourdShotDomainBudget)
+        if (live + incoming <= budget)
             return;
         // impactLiveCursor が次に使う枠＝いちばん古い爆発。
         bool stopped = false;
@@ -166,7 +167,7 @@ void UpdateShell(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotC
     VfxParameters::SetFloat(parameters, "input.fly", projectile.active ? projectile.densityScale : 0.0f);
     VfxParameters::SetFloat(parameters, "input.flash", lingering && projectile.flashFramesLeft > 0 ? 1.0f : 0.0f);
     if (!IsLive(world, projectile.shell))
-        MakeRoom(world, shot);
+        MakeRoom(world, shot, 1);
     UpdateEffect(world, object, shot, projectile.shell, shot.shellEffect, transform, parameters);
 }
 
@@ -190,7 +191,7 @@ void PlayBurst(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotCom
     auto& slot = burst.muzzle ? shot.muzzleLive[shot.muzzleLiveCursor++ % shot.muzzleLive.size()]
                               : shot.impactLive[shot.impactLiveCursor++ % shot.impactLive.size()];
     StopHandle(world, shot, slot);
-    MakeRoom(world, shot);
+    MakeRoom(world, shot, 1);
     slot = world.GetVfx().Play(play);
     shot.vfxAccepted = slot.IsValid() && shot.vfxAccepted;
     ++shot.burstsPlayed;
@@ -252,6 +253,9 @@ void GourdShotVisuals::QueueBurst(GourdShotComponent& shot, bool muzzle, Vec3 po
 
 void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
                               uint32_t& sourceCount) {
+    // 他の表現が流体域を使い始めたら、新しく撃たなくても枠の中へ収める。予約は毎フレーム入れ直してもらう。
+    if (shot.reservedDomains > 0)
+        MakeRoom(world, shot, 0);
     for (auto& projectile : shot.projectiles) {
         UpdateTrail(world, object, shot, projectile, sourceCount);
         UpdateShell(world, object, shot, projectile);
@@ -264,6 +268,7 @@ void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView objec
         PlayBurst(world, object, shot, burst);
         burst.pending = false;
     }
+    shot.reservedDomains = 0;
     if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
         char message[192]{};
         std::snprintf(message, sizeof(message), "Effects tick=%llu sourceCount=%u bursts=%llu vfxAccepted=%d",

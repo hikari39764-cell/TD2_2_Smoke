@@ -22,8 +22,11 @@ bool DamageableRules::ApplyDamage(DamageableComponent& target, float amount, HIK
         return false;
     }
     const float previousHealth = GetHealth(target);
-    target.currentHealth = std::max(0.0f, previousHealth - amount);
-    target.lastDamage = amount;
+    const float scale = std::isfinite(target.incomingDamageScale) ? std::max(0.0f, target.incomingDamageScale) : 1.0f;
+    const float scaled = amount * scale;
+    target.currentHealth = std::max(0.0f, previousHealth - scaled);
+    target.lastDamage = scaled;
+    target.baseDamageTotal += static_cast<double>(amount);
     const double length = std::hypot(static_cast<double>(direction.x), static_cast<double>(direction.y),
                                      static_cast<double>(direction.z));
     target.lastDirection = length > 0.0 ? HIKARI::GameProjectFloat3{static_cast<float>(direction.x / length),
@@ -61,5 +64,11 @@ HIKARI::GameProjectFloat3 DamageableRules::GetLastDirection(const DamageableComp
 }
 
 uint64_t DamageableRules::GetHitCount(const DamageableComponent& target) { return target.hitCount; }
+
+void DamageableRules::SetIncomingDamageScale(DamageableComponent& target, float scale) {
+    target.incomingDamageScale = std::isfinite(scale) ? std::max(0.0f, scale) : 1.0f;
+}
+
+double DamageableRules::GetBaseDamageTotal(const DamageableComponent& target) { return target.baseDamageTotal; }
 
 } // namespace Project_TD2_2

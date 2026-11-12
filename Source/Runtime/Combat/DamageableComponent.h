@@ -38,6 +38,10 @@ public:
     bool initialized = false;
     float currentHealth = 0.0f;
     float lastDamage = 0.0f;
+    // 受けるダメージの倍率（ボスの気絶中など、持ち主のルールが毎 tick 決める）。
+    float incomingDamageScale = 1.0f;
+    // 倍率をかける前の、受け付けたダメージの累計。気絶値のように「当てた量」に比例する規則が差分を読む。
+    double baseDamageTotal = 0.0;
     HIKARI::GameProjectFloat3 lastDirection{};
     uint64_t hitCount = 0;
     uint64_t feedbackHitCount = 0;

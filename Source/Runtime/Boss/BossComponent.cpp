@@ -1,0 +1,162 @@
+#include "BossComponent.h"
+
+namespace Project_TD2_2 {
+
+void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
+    if (fields.Section("技の表", true)) {
+        fields.Text("movesPath", "技の表（Data/ からの場所）", movesPath);
+        fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", typesPath);
+        fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
+                    "HP は同じ物体の「被弾と HP」の最大 HP（試作 1500）です。");
+    }
+    if (fields.Section("斬撃の共通の値", true)) {
+        fields.Float("range", "斬撃の飛距離 (m)", range, 1.0f, 200.0f);
+        fields.Int("swingFrames", "剣を振り抜く長さ (F)", swingFrames, 1, 120);
+        fields.Int("gapSmallFrames", "連撃の構え 小 (F)", gapSmallFrames, 0, 300);
+        fields.Int("gapMediumFrames", "連撃の構え 中 (F)", gapMediumFrames, 0, 300);
+        fields.Int("gapLargeFrames", "連撃の構え 大 (F)", gapLargeFrames, 0, 300);
+        fields.Int("followFrames", "連撃の振り抜き後 (F)", followFrames, 0, 120);
+        fields.Int("feintFrames", "フェイント（遅）の溜め (F)", feintFrames, 0, 300);
+        fields.Int("kamaeFrames", "振る前の構え（剣を止めて溜める）(F)", kamaeFrames, 1, 300);
+        fields.Int("raiseFrames", "振り上げ（構えの前に剣を引く）(F)", raiseFrames, 0, 300);
+        fields.Int("swingInFrames", "振り出し（ゆっくり動き始める）(F)", swingInFrames, 0, 60);
+        fields.Float("damageBase", "威力（空欄時）＝基本", damageBase, 0.0f, 1000.0f);
+        fields.Float("damagePerFrame", "…＋隙 F × この係数", damagePerFrame, 0.0f, 10.0f, 0.01f);
+        fields.Float("thickness", "斬撃の厚み (m)", thickness, 0.01f, 5.0f, 0.01f);
+    }
+    if (fields.Section("フェーズと気絶", true)) {
+        fields.Float("phaseTwoHealthPercent", "フェーズ 2 になる HP (%)", phaseTwoHealthPercent, 0.0f, 100.0f);
+        fields.Float("stunMax", "気絶値（これだけたまると気絶）", stunMax, 1.0f, 100000.0f);
+        fields.Int("stunLimit", "気絶する回数の上限（0＝上限なし）", stunLimit, 0, 99);
+        fields.Int("stunFrames", "気絶している長さ (F)", stunFrames, 1, 3600);
+        fields.Float("stunDamageScale", "気絶中に受けるダメージ (倍)", stunDamageScale, 0.0f, 10.0f);
+        fields.Float("stunDecayDelaySeconds", "気絶値が減り始めるまで (秒)", stunDecayDelaySeconds, 0.0f, 120.0f);
+        fields.Float("stunDecayPerSecond", "気絶値が 1 秒に減る量", stunDecayPerSecond, 0.0f, 10000.0f);
+        fields.Float("stunPerShot", "気絶値：煙弾 1 発", stunPerShot, 0.0f, 10000.0f);
+        fields.Float("stunReferenceDamage", "…この威力の命中を 1 発とみなす（砲撃の基礎威力）", stunReferenceDamage,
+                     0.01f, 100000.0f);
+        fields.Note("気絶値は受けた威力に比例してたまります（遠くで弱まった弾は少なく）。気絶中はたまりません。");
+    }
+    if (fields.Section("体と浮遊")) {
+        fields.Float("bodyHalfHeight", "体の高さの半分 (m)", bodyHalfHeight, 0.1f, 20.0f);
+        fields.Float("bodyRadius", "体の半径 (m)", bodyRadius, 0.05f, 10.0f);
+        fields.Float3("arenaCenter", "戦場の中心（地面）", arenaCenter);
+        fields.Float("arenaRadius", "動ける半径 (m)", arenaRadius, 1.0f, 500.0f);
+        fields.Float("walkSpeed", "移動の速さ (m/秒)", walkSpeed, 0.0f, 50.0f);
+        fields.Float("floatMin", "浮く高さ 最低 (m)", floatMin, 0.0f, 10.0f);
+        fields.Float("floatMax", "浮く高さ 最高 (m)", floatMax, 0.0f, 10.0f);
+        fields.Float("floatBob", "上下にゆれる幅 (m)", floatBob, 0.0f, 2.0f);
+        fields.Float("idleTurnRate", "待機中に振り向く速さ (度/秒)", idleTurnRate, 0.0f, 3600.0f);
+        fields.Float("preTurnRate", "前隙に振り向く速さ (度/秒)", preTurnRate, 0.0f, 3600.0f);
+        fields.Float("overheadTurnRate", "上段の前隙に振り向く速さ (度/秒)", overheadTurnRate, 0.0f, 3600.0f);
+        fields.Float("stringGapTurnRate", "連撃の構えの間に振り向く速さ (度/秒)", stringGapTurnRate, 0.0f, 3600.0f);
+    }
+    if (fields.Section("体の構え（前隙の見せ方）")) {
+        fields.Float("leanFromSpeed", "動いた向きへ傾く量 (rad / m/秒)", leanFromSpeed, 0.0f, 1.0f, 0.005f);
+        fields.Float("leanMaxRadians", "動きで傾く最大 (rad)", leanMaxRadians, 0.0f, 1.5f);
+        fields.Float("poseLeanDegrees", "剣の上下で前後に傾く量 (度、剣 100 度あたり)", poseLeanDegrees, 0.0f, 45.0f);
+        fields.Float("poseSwayDegrees", "剣の左右で横に傾く量 (度、剣 100 度あたり)", poseSwayDegrees, 0.0f, 45.0f);
+        fields.Float("crouchSquash", "屈むと縮む割合", crouchSquash, 0.0f, 0.9f);
+        fields.Float("stunLeanRadians", "気絶で前へ崩れる角度 (rad)", stunLeanRadians, 0.0f, 1.5f);
+        fields.Note(
+            "地面や画面に予告は出しません（ソウルライク）。前隙は体の傾き・屈み・剣先に集まる霞だけで見せます。");
+    }
+    if (fields.Section("動きの型ごとの体の動き")) {
+        fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", dashStopDistance, 0.0f, 30.0f);
+        fields.Int("dashTeleportFrames", "瞬間突進：瞬間移動にかける長さ (F)", dashTeleportFrames, 1, 120);
+        fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", slashApproachSpeed, 0.0f, 20.0f);
+        fields.Float("stringApproachSpeed", "連撃：前隙に近づく速さ (m/秒)", stringApproachSpeed, 0.0f, 20.0f);
+        fields.Float("stringApproachStop", "連撃：これより近いと近づかない (m)", stringApproachStop, 0.0f, 30.0f);
+        fields.Float("overheadLungeDistance", "上段：前隙の終わりの踏み込み (m)", overheadLungeDistance, 0.0f, 20.0f);
+        fields.Float("stepInClearance", "踏み込み：プレイヤーとの間に残す距離 (m)", stepInClearance, 0.0f, 10.0f);
+        fields.Float("walkInStopDistance", "間合いを詰める：横歩きに切り替える距離 (m)", walkInStopDistance, 0.0f,
+                     50.0f);
+        fields.Float("walkInSpeedScale", "間合いを詰める：歩く速さの倍率", walkInSpeedScale, 0.0f, 10.0f);
+        fields.Float("backstepDistance", "後ろへ下がる：距離 (m)", backstepDistance, 0.0f, 30.0f);
+        fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", backstepHeight, 0.0f, 10.0f);
+    }
+    if (fields.Section("剣と斬撃の出方")) {
+        fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", swordShoulder);
+        fields.Float("swordLength", "剣の長さ (m)", swordLength, 0.1f, 20.0f);
+        fields.Float("swordHazeLength", "剣先の霞の長さ (m)", swordHazeLength, 0.0f, 10.0f);
+        fields.Float("waveForward", "斬撃を放つ位置：体の前 (m)", waveForward, 0.0f, 10.0f);
+        fields.Float("waveMinHeight", "斬撃を放つ高さ 最低 (m)", waveMinHeight, 0.0f, 10.0f);
+        fields.Float("waveMaxHeight", "斬撃を放つ高さ 最高 (m、跳んだ高さを足す)", waveMaxHeight, 0.0f, 10.0f);
+        fields.Int("waveGrowFrames", "放った斬撃が判定サイズまで伸びる長さ (F)", waveGrowFrames, 1, 120);
+        fields.Float("knifeHeight", "ナイフを投げる高さ (m)", knifeHeight, 0.0f, 10.0f);
+        fields.Float("knifeForward", "ナイフを投げる位置：体の前 (m)", knifeForward, 0.0f, 10.0f);
+        fields.Float("knifeSpreadDegrees", "ナイフの扇の間隔 (度)", knifeSpreadDegrees, 0.0f, 90.0f);
+        fields.Float("knifeWidth", "ナイフの当たりの幅 (m)", knifeWidth, 0.01f, 5.0f);
+        fields.Float("knifeThickness", "ナイフの当たりの厚み (m)", knifeThickness, 0.01f, 5.0f);
+        fields.Float("playerHitLow", "プレイヤーの当たり：下端（原点から m）", playerHitLow, -5.0f, 5.0f);
+        fields.Float("playerHitHigh", "プレイヤーの当たり：上端（原点から m）", playerHitHigh, -5.0f, 5.0f);
+        fields.Float("playerHitRadius", "プレイヤーの当たり：半径 (m)", playerHitRadius, 0.0f, 5.0f);
+        fields.Float("playerAimHeight", "狙う高さ（プレイヤーの原点から m）", playerAimHeight, -5.0f, 5.0f);
+    }
+    if (fields.Section("残る煙（場の霧へ入れる）")) {
+        fields.Float("residuePerTwoMeters", "斬撃が 2 m 進むごとに残す煙", residuePerTwoMeters, 0.0f, 1000.0f);
+        fields.Float("knifeEndResidueScale", "ナイフが消えた所に残す煙（斬撃の何倍）", knifeEndResidueScale, 0.0f,
+                     10.0f);
+        fields.Float("bossResidue", "ボスが動いた跡に残す煙（1 回ぶん）", bossResidue, 0.0f, 1000.0f);
+        fields.Float("bossResidueStep", "…この距離動くごと (m)", bossResidueStep, 0.1f, 100.0f);
+        fields.Float("swingSmoke", "剣の一振りが描く煙（仮）", swingSmoke, 0.0f, 1000.0f);
+        fields.Float("kamaeSmoke", "構えで剣先に集まる煙（仮）", kamaeSmoke, 0.0f, 1000.0f);
+        fields.Int("kamaeSmokeFrames", "構えの煙を出す長さ (F)", kamaeSmokeFrames, 1, 120);
+        fields.Note(
+            "斬撃の残り煙は、刃が通り過ぎた後ろの地面近くへ入れます（吸える霧）。斬撃そのものの見た目はエフェクトです。");
+        fields.Float("waveSmokeRadius", "斬撃の残り煙の 1 点の半径 (m)", waveSmokeRadius, 0.05f, 10.0f);
+        fields.Float("waveResidueLag", "残り煙を入れる位置（刃の何 m 後ろか。斬撃のエフェクトの域より後ろにする）",
+                     waveResidueLag, 0.0f, 20.0f);
+        fields.Float("waveResidueHeight", "残り煙を入れる高さの上限（地面から m）", waveResidueHeight, 0.0f, 10.0f);
+        fields.Float("waveSmokeDrag", "残り煙を押す速さ（斬撃の速さに対する割合）", waveSmokeDrag, 0.0f, 2.0f);
+        fields.Float("waveSmokeSink", "残り煙が下へ落ちる速さ (m/秒)", waveSmokeSink, 0.0f, 20.0f);
+        fields.Float("swordSmokeRadius", "剣が煙を入れる半径 (m)", swordSmokeRadius, 0.05f, 10.0f);
+        fields.Float("depositRadius", "斬撃が消えた所の煙の半径 (m)", depositRadius, 0.05f, 10.0f);
+        fields.Float("depositHeight", "残す煙の高さ（地面から m）", depositHeight, 0.0f, 5.0f);
+        fields.Int("depositFrames", "消えた所の煙を出し切る長さ (F)", depositFrames, 1, 600);
+        fields.Float("bodySmokeRadius", "ボスの通った跡の煙の半径 (m)", bodySmokeRadius, 0.05f, 10.0f);
+        fields.Float("waveAbsorbSmoke", "吸い込み：斬撃 1 つの煙（吸い込みのカードが使う）", waveAbsorbSmoke, 0.0f,
+                     1000.0f);
+        fields.Float("knifeAbsorbSmoke", "吸い込み：ナイフ 1 本の煙（吸い込みのカードが使う）", knifeAbsorbSmoke, 0.0f,
+                     1000.0f);
+        fields.Note("煙の単位はヒョウタンの煙と同じ。場の霧の量への換算はヒョウタンの「霧の量の換算」を使います。"
+                    "残った煙は場の霧に混ざるので、ヒョウタンの吸い込みでそのまま吸えます。");
+    }
+    if (fields.Section("見た目（霞の色とエフェクト）")) {
+        fields.Vfx("slashEffect", "飛ぶ斬撃のエフェクト（三日月の霧。自前の流体域を持つ）", slashEffect);
+        fields.Float("slashEffectWidth", "斬撃のエフェクトが作られている幅 (m。判定サイズ ÷ これ が大きさの倍率)",
+                     slashEffectWidth, 0.5f, 50.0f);
+        fields.Float("slashFadeSeconds", "斬撃が消えた後、霧が消えるまで飛ばし続ける時間 (秒)", slashFadeSeconds, 0.0f,
+                     3.0f);
+        fields.Float("slashImpactSeconds", "当たった瞬間に刃が砕けて散る時間 (秒)", slashImpactSeconds, 0.0f, 2.0f);
+        fields.Float("slashHitSpeedScale", "当たった後の霧が進む速さ（元の速さに対する割合。小さいほどその場で散る）",
+                     slashHitSpeedScale, 0.0f, 1.0f);
+        fields.Note(
+            "斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
+            "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。");
+        fields.Vfx("swordEffect", "剣先の霞・ナイフの尾のエフェクト（流体注入）", swordEffect);
+        fields.Color3("hazeColor", "剣先の霞・ナイフの尾の色（光らない霧色）", hazeColor);
+        fields.Float("swordEffectAmount", "振っている剣の霞の濃さ（倍）", swordEffectAmount, 0.0f, 20.0f);
+        fields.Float("kamaeEffectAmount", "構えで剣先に集まる霞の濃さ（倍）", kamaeEffectAmount, 0.0f, 20.0f);
+        fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", knifeEffectAmount, 0.0f, 20.0f);
+        fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", knifeEffect);
+        fields.Note("飛ぶ斬撃の霞はエフェクトではなく、場の霧の域へ直接入れます（Emit）。域は増やしません。");
+    }
+    if (fields.Section("確かめ用（正式シーンでは使わない）")) {
+        fields.Text("testMove", "試す技（行の名前。空は使わない）", testMove);
+        fields.Bool("testSequence", "表の技を順番に全部出す", testSequence);
+        fields.Bool("testLoop", "最後まで出したら最初から", testLoop);
+        fields.Int("testStartFrames", "最初の技までの待ち (F)", testStartFrames, 0, 7200);
+        fields.Int("testGapFrames", "技と技の間の待ち (F)", testGapFrames, 0, 7200);
+        fields.Bool("testHoldStill", "待機中に横歩きしない", testHoldStill);
+        fields.Int("testDamageAtFrame", "ボスに確かめのダメージを入れる F（-1 は使わない）", testDamageAtFrame, -1,
+                   72000);
+        fields.Float("testDamageAmount", "確かめのダメージの量", testDamageAmount, 0.0f, 100000.0f);
+        fields.Int("testDamageRepeatFrames", "確かめのダメージの間隔 (F、0 は 1 回)", testDamageRepeatFrames, 0, 7200);
+        fields.Int("testDamageRepeatCount", "確かめのダメージの回数", testDamageRepeatCount, 1, 7200);
+        fields.Int("traceEveryFrames", "状態をログに出す間隔 (F、0 は出さない)", traceEveryFrames, 0, 7200);
+        fields.Int("randomSeed", "乱数の種（移動の長さ・浮く高さ）", randomSeed, 0, 1000000);
+    }
+}
+
+} // namespace Project_TD2_2

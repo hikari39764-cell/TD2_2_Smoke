@@ -1,0 +1,32 @@
+#pragma once
+
+#include "BossComponent.h"
+
+namespace Project_TD2_2 {
+
+// 技の選び方の入口。実行器（体・剣・斬撃）とは分け、選び方だけを差し替えられるようにする。
+// 行動ツリー（c-44ba9d）はこれを実装し、BossRules::RequestMove で技を頼む。
+struct BossBrainContext {
+    BossComponent& boss;
+    // プレイヤーまでの水平距離（m）。プレイヤーがいなければ負。
+    float playerDistance = -1.0f;
+    int phaseNumber = 1;
+};
+
+class IBossBrain {
+public:
+    virtual ~IBossBrain() = default;
+    // 待機中の固定 tick ごと。技を出すなら RequestMove する。
+    virtual void OnIdle(BossBrainContext& context) = 0;
+    // いまの技の攻撃中が終わった tick（後隙の前）。コンボを続けるなら RequestMove(..., true)。
+    virtual void OnActFinished(BossBrainContext& context) = 0;
+};
+
+// 確かめ用：「試す技」を 1 つ、または表の技を順番に出す。表の順で、実行器が動かせない型は飛ばす。
+class BossTestBrain final : public IBossBrain {
+public:
+    void OnIdle(BossBrainContext& context) override;
+    void OnActFinished(BossBrainContext& context) override;
+};
+
+} // namespace Project_TD2_2

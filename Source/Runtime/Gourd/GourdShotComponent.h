@@ -193,6 +193,8 @@ public:
     HIKARI::GameProjectFloat3 muzzleDirection{0.0f, 0.0f, 1.0f};
     bool vfxAccepted = true;
     bool fluidAccepted = true;
+    // 他の表現（ボスの斬撃）が使う流体域の数。使う側が毎フレーム入れ、砲撃の枠をその分だけ減らす。
+    size_t reservedDomains = 0;
     uint32_t fluidSubmissions = 0;
     uint32_t droppedVisuals = 0;
     uint32_t residueCursor = 0;

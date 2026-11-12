@@ -1,0 +1,14 @@
+{
+  "displayName": "BossSlashWave",
+  "guid": "6e539e255514847188410bf7c2d81a0c",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossSlashWave.hvfx",
+  "type": "VfxEffect"
+}

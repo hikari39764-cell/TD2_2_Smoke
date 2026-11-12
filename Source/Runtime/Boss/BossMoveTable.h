@@ -1,0 +1,144 @@
+#pragma once
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace Project_TD2_2 {
+
+// 動きの型。表の「動きの型」列（表示名か型の名前）で決まる。体の動かし方と斬撃の出方がこれで変わる。
+enum class BossMoveType {
+    Dash,
+    Jump,
+    SlashR,
+    SlashL,
+    Overhead,
+    Kick,
+    Knife,
+    String,
+    Ambush,
+    Clone,
+    SlashH,
+    SlashV,
+    WalkSide,
+    WalkIn,
+    Backstep,
+    Count
+};
+
+// 被弾の種類：のけぞり／吹っ飛び／最後の一撃だけ吹っ飛び。
+enum class BossKnock { Flinch, Blow, LastBlow };
+
+// 連撃の一撃の振り方。横は左右を往復、縦は上から下、袈裟・逆袈裟は斜め。
+enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa };
+
+// 「攻撃中」の 1 区間。hit の区間で剣を振り（斬撃を出し）、それ以外は構えや移動。
+struct BossSegment {
+    int length = 1;
+    bool hit = false;
+    int strike = 0;
+    bool feint = false;
+    // 移動の行：出すたびにこの範囲から長さを決める。
+    int rangeMin = 0;
+    int rangeMax = 0;
+};
+
+// 一撃ぶんの値。連撃で別の行を参照した一撃は、その行の値が入る。
+struct BossStrikeData {
+    BossStrikeDirection direction = BossStrikeDirection::Horizontal;
+    bool feint = false;
+    float size = 0.0f;
+    float speed = 0.0f;
+    float homing = 0.0f;
+    float step = 0.0f;
+    bool blow = false;
+    int damage = 0;
+    // 参照した行（-1 は参照なし）。
+    int reference = -1;
+};
+
+// 表の 1 行を読んだ結果。F は 1/60 秒の固定 tick。
+struct BossMove {
+    std::string name;
+    std::string description;
+    std::string role;
+    std::string condition;
+    std::string comboText;
+    BossMoveType type = BossMoveType::SlashH;
+    int pre = 0;
+    int post = 0;
+    int act = 0;
+    std::vector<BossSegment> segments;
+    std::vector<BossStrikeData> strikes;
+    float size = 0.0f;
+    float speed = 0.0f;
+    float homing = 0.0f;
+    float step = 0.0f;
+    float side = 0.0f;
+    int damage = 0;
+    bool damageAuto = false;
+    BossKnock knock = BossKnock::Flinch;
+    // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
+    float distanceWeight = -1.0f;
+    float comboChance = -1.0f;
+    bool comboOnly = false;
+    int hitCount = 0;
+    // このカードの実行器が動かせる型か。動かせない型の行は読み込むが、出そうとすると断る。
+    bool executable = false;
+    std::vector<std::string> warnings;
+};
+
+// 表を読むときに使う共通の値（ボスのコンポーネントの項目）。
+struct BossTiming {
+    int swingFrames = 10;
+    int gapSmallFrames = 10;
+    int gapMediumFrames = 20;
+    int gapLargeFrames = 44;
+    int followFrames = 6;
+    int feintFrames = 24;
+    int kamaeFrames = 20;
+    int raiseFrames = 12;
+    int swingInFrames = 6;
+    float damageBase = 6.0f;
+    float damagePerFrame = 0.15f;
+};
+
+// 動きの型の既定値（Data/Boss/kasumi_bushi_move_types.csv の 1 行）。表の空欄はこの値になる。
+struct BossTypeDefaults {
+    std::string label;
+    int pre = 0;
+    std::string act;
+    int post = 0;
+    float size = 0.0f;
+    float damage = 0.0f;
+    float speed = 0.0f;
+    float homing = 0.0f;
+    float step = 0.0f;
+    bool loaded = false;
+};
+
+// 技の表。読み方は試作「霞の剣客」の行動表と同じ（攻撃中の「30F/5F/35F」、連撃の「小横/大縦振り/中遅横」、移動の「40~100F」）。
+class BossMoveTable final {
+public:
+    // 型の既定値の表を読む。読めない行は warnings に入れて飛ばす。
+    bool LoadTypes(std::string_view csv, std::vector<std::string>& warnings);
+    // 技の表を読む。先に LoadTypes を済ませておく。読めない値は行の warnings に入れ、既定値で動かす。
+    bool LoadMoves(std::string_view csv, const BossTiming& timing, std::vector<std::string>& warnings);
+    const std::vector<BossMove>& GetMoves() const { return moves_; }
+    // 名前が完全に一致する行。無ければ -1。
+    int Find(std::string_view name) const;
+    static const char* TypeKey(BossMoveType type);
+    static bool IsMoveType(BossMoveType type);
+    // 剣を振る型（振っている間に斬撃をかたどり、振り抜いた瞬間に飛ばす）。
+    static bool IsSwingType(BossMoveType type);
+    // このカードの実行器が動かせる型。跳躍・回し蹴り・霞隠れ・分身は c-54ab2d。
+    static bool IsExecutable(BossMoveType type);
+    // 一撃 strike の値。strike が範囲外なら最後の一撃。
+    static const BossStrikeData& Strike(const BossMove& move, int strike);
+
+private:
+    BossTypeDefaults types_[static_cast<int>(BossMoveType::Count)];
+    std::vector<BossMove> moves_;
+};
+
+} // namespace Project_TD2_2

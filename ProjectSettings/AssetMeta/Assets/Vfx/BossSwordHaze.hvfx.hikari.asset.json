@@ -1,0 +1,14 @@
+{
+  "displayName": "BossSwordHaze",
+  "guid": "353886750fe7c2c7f8939f18e5df6b31",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossSwordHaze.hvfx",
+  "type": "VfxEffect"
+}

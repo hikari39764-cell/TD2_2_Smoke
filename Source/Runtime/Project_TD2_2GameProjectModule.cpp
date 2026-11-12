@@ -15,6 +15,8 @@
 #include "Gourd/GourdShotComponent.h"
 #include "Gourd/GourdShotSystem.h"
 #include "Gourd/GourdFeedbackSystem.h"
+#include "Boss/BossComponent.h"
+#include "Boss/BossSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -92,7 +94,11 @@ public:
                context.RegisterSystem<GourdFeedbackSystem>(
                    {.systemId = kGourdFeedbackSystem, .displayName = "発射のカメラ反動"}) &&
                context.BindComponentSystem(
-                   {.componentType = kGourdShotType, .systemId = kGourdFeedbackSystem, .defaultExecutionOrder = 115});
+                   {.componentType = kGourdShotType, .systemId = kGourdFeedbackSystem, .defaultExecutionOrder = 115}) &&
+               context.RegisterComponent<BossComponent>({.typeName = kBossType, .displayName = "ボス 霞武士"}) &&
+               context.RegisterSystem<BossSystem>({.systemId = kBossSystem, .displayName = "ボス 霞武士"}) &&
+               context.BindComponentSystem(
+                   {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125});
     }
 };
 
