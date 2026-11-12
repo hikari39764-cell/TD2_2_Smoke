@@ -1,0 +1,14 @@
+{
+  "displayName": "BossSmokePuff",
+  "guid": "fd1495a095abfc856a36e258cafbe9d9",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossSmokePuff.hvfx",
+  "type": "VfxEffect"
+}

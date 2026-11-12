@@ -20,8 +20,6 @@ inline constexpr size_t kBossWaveCapacity = 12;
 inline constexpr size_t kBossSlashEffectCapacity = 2;
 // 当たった所の爆発と、霞隠れ・分身の霞の爆ぜ（押す力の無い爆発）の枠。分身を出す時の 4 つと当たりが重なっても足りる数。
 inline constexpr size_t kBossBlastCapacity = 6;
-// 回し蹴りの霞の輪を見せる炎の筋の数（輪の上に等間隔に並べて外へ飛ばす）。
-inline constexpr size_t kBossRingStreaks = 12;
 // 霞分身で一度に出せる分身の数の上限（実際の数は表の判定サイズと、シーンに置いた分身の物体の数で決まる）。
 inline constexpr size_t kBossCloneCapacity = 4;
 // 斬撃が消えた所などに置く残り煙の枠。
@@ -93,6 +91,8 @@ struct BossSlashEffect {
 struct BossBlast {
     bool pushPending = false;
     bool effectPending = false;
+    // 霞隠れ・分身の消える／現れる所（煙の塊のエフェクト）。偽なら当たった所の爆発。
+    bool puff = false;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
 };
@@ -321,15 +321,18 @@ public:
     float knifeEffectAmount = 0.8f;
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
     HIKARI::GameProjectVfxAssetReference knifeEffect{"26fa37413fbcc48cc52d0605225433bb", "Assets/Vfx/BossKnife.hvfx"};
-    // 見た目：回し蹴りの霞の輪（炎の筋を輪に並べて外へ飛ばす。足元の霧を外へ押す。流体域は使わない）
+    // 見た目：回し蹴りの霞の輪（広がる炎の輪。自前の流体域を 1 つ使う。足元の霧を外へ押す）
     HIKARI::GameProjectVfxAssetReference ringEffect{"cbffd59dc133951894e126d8243b0fd2", "Assets/Vfx/BossKickRing.hvfx"};
-    float ringStreakScale = 1.0f;
+    float ringEffectRadius = 9.0f;
+    float ringFadeSeconds = 0.35f;
     float ringHeight = 0.6f;
     float ringBurstScale = 0.6f;
     float ringPush = 6.0f;
     float ringPushRadius = 1.2f;
-    // 見た目：霞隠れ・分身が消える／現れる所の爆ぜ（当たった所の爆発のエフェクトを小さく出す。霧は押さない）
-    float puffEffectScale = 0.6f;
+    // 見た目：霞隠れ・分身が消える／現れる所の煙の塊（流体域は使わない。場の霧へ煙は足さない。霧は押さない）
+    HIKARI::GameProjectVfxAssetReference puffEffect{"fd1495a095abfc856a36e258cafbe9d9",
+                                                    "Assets/Vfx/BossSmokePuff.hvfx"};
+    float puffEffectScale = 1.0f;
     // 確かめ用（正式シーンでは使わない）
     std::string testMove;
     bool testSequence = false;
@@ -429,8 +432,12 @@ public:
     std::array<HIKARI::GameProjectVfxPlaybackHandle, kBossWaveCapacity> waveVfx{};
     std::array<HIKARI::GameProjectVfxPlaybackHandle, kBossWaveCapacity> knifeVfx{};
     std::array<uint64_t, kBossWaveCapacity> waveVfxId{};
-    std::array<HIKARI::GameProjectVfxPlaybackHandle, kBossRingStreaks> ringVfx{};
+    HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
     uint64_t ringVfxId = 0;
+    // 輪が消えた後、炎が消えるのを待っている残り時間（秒。負は輪が広がっている間）。
+    float ringFade = -1.0f;
+    float ringScale = 0.0f;
+    HIKARI::GameProjectFloat3 ringCenter{};
     std::array<BossSlashEffect, kBossSlashEffectCapacity> slashEffects{};
     HIKARI::GameProjectVfxPlaybackHandle swordVfx{};
     bool vfxAccepted = true;

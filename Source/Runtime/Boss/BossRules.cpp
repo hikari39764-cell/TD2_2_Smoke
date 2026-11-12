@@ -51,11 +51,15 @@ int BossRules::GetPhaseNumber(const BossComponent& boss, const DamageableCompone
 }
 
 size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
-    size_t live = 0;
+    size_t live = boss.ringVfx.IsValid() ? 1 : 0;
     for (const auto& effect : boss.slashEffects)
         live += effect.handle.IsValid() ? 1 : 0;
     // 剣を振っている間は、振り抜いた瞬間に出す斬撃の分を先に取っておく（出すフレームに枠が空いているように）。
-    return std::min(kBossSlashEffectCapacity, live + (boss.swordSmoke ? 1 : 0));
+    // 回し蹴りも、炎の輪を出す前（前隙・攻撃中）から先に取っておく。
+    const BossMove* move = GetMove(boss, boss.move);
+    const bool kicking =
+        boss.state == BossState::Act && move != nullptr && move->type == BossMoveType::Kick && !boss.ringVfx.IsValid();
+    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0));
 }
 
 float BossRules::GetStun(const BossComponent& boss) { return boss.stun; }

@@ -23,6 +23,8 @@ constexpr const char* kFlyInput = "input.fly";
 constexpr const char* kImpactInput = "input.impact";
 // 光の層（刃口・炎・光・屈折）の大きさ。霧の源（fly）とは別に、数フレームかけて縮める。
 constexpr const char* kGlowInput = "input.glow";
+// 炎の輪のシェーダーの層の明るさ（Color。輪が消える時に 0 へ下げる）。
+constexpr const char* kFadeInput = "input.fade";
 
 HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
@@ -167,56 +169,81 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
     }
 }
 
-constexpr float kTau = 6.28318530718f;
-
-// 回し蹴りの霞の輪：輪の上に炎の筋を等間隔に並べ、輪と同じ速さで外へ飛ばす（流体域は使わない）。輪が消えたら止める。
-void UpdateRing(HIKARI::WorldView& world, BossComponent& boss) {
+// 回し蹴りの霞の輪：広がる炎の輪のエフェクトを 1 つ出し、輪の半径に合わせて根の大きさを変える。
+// 輪が消えたら燃料を止め、炎が消えるまで待ってから止める（域ごと急に消さない）。
+void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
+    const auto vfx = world.GetVfx();
+    if (boss.ringVfx.IsValid() && !vfx.IsActive(boss.ringVfx))
+        boss.ringVfx = {};
     const BossWave* ring = nullptr;
     for (const auto& wave : boss.waves) {
         if (wave.active && wave.ring)
             ring = &wave;
     }
-    if (ring == nullptr || ring->id != boss.ringVfxId) {
-        for (auto& handle : boss.ringVfx)
-            StopHandle(world, handle);
-        boss.ringVfxId = 0;
-    }
-    if (ring == nullptr || ring->id == boss.ringVfxId || boss.ringEffect.IsEmpty())
-        return;
-    boss.ringVfxId = ring->id;
-    for (size_t k = 0; k < boss.ringVfx.size(); ++k) {
-        const float angle = kTau * static_cast<float>(k) / static_cast<float>(boss.ringVfx.size());
-        const Vec3 out{std::sin(angle), 0.0f, std::cos(angle)};
+    if (ring != nullptr && ring->id != boss.ringVfxId && !boss.ringEffect.IsEmpty()) {
+        // 前の輪が残っていたら止め、次のフレームで出す（止めた域もそのフレームの間は流体域の数に入る）。
+        if (boss.ringVfx.IsValid()) {
+            StopHandle(world, boss.ringVfx);
+            return;
+        }
+        boss.ringVfxId = ring->id;
+        boss.ringFade = -1.0f;
+        boss.ringScale = ring->radius / std::max(0.01f, boss.ringEffectRadius);
+        boss.ringCenter = {ring->position.x, boss.ground.y + boss.ringHeight, ring->position.z};
         HIKARI::GameProjectVfxPlayRequest play{};
         play.asset = boss.ringEffect;
-        play.transform.position =
-            Add({ring->position.x, boss.ground.y + boss.ringHeight, ring->position.z}, Mul(out, ring->radius));
-        // 局所 +X が外向き、刃の面は地面に沿う（輪を上から見ても横から見ても筋が見える）。
-        play.transform.rotation = BasisRotation(out, {out.z, 0.0f, -out.x});
-        play.transform.scale = {boss.ringStreakScale, boss.ringStreakScale, boss.ringStreakScale};
-        play.randomSeed = static_cast<uint32_t>(ring->id * 31u + k);
-        auto& handle = boss.ringVfx[k];
-        handle = world.GetVfx().Play(play);
-        boss.vfxAccepted = handle.IsValid() && boss.vfxAccepted;
-        if (handle.IsValid())
-            boss.vfxAccepted = world.GetVfx().SetVelocity(handle, Mul(out, ring->speed)) && boss.vfxAccepted;
+        play.transform.position = boss.ringCenter;
+        play.transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        play.transform.scale = {boss.ringScale, boss.ringScale, boss.ringScale};
+        play.randomSeed = static_cast<uint32_t>(ring->id);
+        VfxParameters::SetFloat(play.parameters, kFlyInput, 1.0f);
+        VfxParameters::SetColor(play.parameters, kFadeInput, {1.0f, 1.0f, 1.0f});
+        boss.ringVfx = vfx.Play(play);
+        boss.vfxAccepted = boss.ringVfx.IsValid() && boss.vfxAccepted;
+        return;
     }
+    if (!boss.ringVfx.IsValid())
+        return;
+    const bool flying = ring != nullptr && ring->id == boss.ringVfxId;
+    if (flying) {
+        boss.ringScale = ring->radius / std::max(0.01f, boss.ringEffectRadius);
+    } else {
+        if (boss.ringFade < 0.0f)
+            boss.ringFade = boss.ringFadeSeconds;
+        boss.ringFade -= seconds;
+        if (boss.ringFade <= 0.0f) {
+            StopHandle(world, boss.ringVfx);
+            return;
+        }
+    }
+    // シェーダーの輪は、輪が消えたら明るさを 0 へ下げる（流体の炎は自分で燃え尽きる）。
+    const float glow = flying ? 1.0f : std::clamp(boss.ringFade / std::max(0.001f, boss.ringFadeSeconds), 0.0f, 1.0f);
+    HIKARI::GameProjectVfxUpdateRequest update{};
+    update.updateTransform = 1u;
+    update.updateParameters = 1u;
+    update.transform.position = boss.ringCenter;
+    update.transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    update.transform.scale = {boss.ringScale, boss.ringScale, boss.ringScale};
+    VfxParameters::SetFloat(update.parameters, kFlyInput, flying ? 1.0f : 0.0f);
+    VfxParameters::SetColor(update.parameters, kFadeInput, {glow, glow, glow});
+    boss.vfxAccepted = vfx.Update(boss.ringVfx, update) && boss.vfxAccepted;
 }
 
 } // namespace
 
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossComponent& boss, float seconds) {
     UpdateSlashes(world, boss, seconds);
-    UpdateRing(world, boss);
+    UpdateRing(world, boss, seconds);
     // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
     for (auto& blast : boss.blasts) {
         if (!blast.effectPending)
             continue;
         blast.effectPending = false;
-        if (boss.blastEffect.IsEmpty())
+        const auto& asset = blast.puff ? boss.puffEffect : boss.blastEffect;
+        if (asset.IsEmpty())
             continue;
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = boss.blastEffect;
+        play.asset = asset;
         play.transform.position = blast.position;
         play.transform.scale = {blast.scale, blast.scale, blast.scale};
         play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
@@ -282,8 +309,7 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
         StopHandle(world, handle);
     for (auto& handle : boss.knifeVfx)
         StopHandle(world, handle);
-    for (auto& handle : boss.ringVfx)
-        StopHandle(world, handle);
+    StopHandle(world, boss.ringVfx);
     boss.ringVfxId = 0;
     for (auto& effect : boss.slashEffects) {
         StopHandle(world, effect.handle);

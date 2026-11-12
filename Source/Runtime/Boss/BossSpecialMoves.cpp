@@ -161,6 +161,7 @@ void BossSpecialMoves::Puff(BossComponent& boss, Vec3 ground, bool residue) {
     BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
     blast = {};
     blast.effectPending = true;
+    blast.puff = true;
     blast.scale = boss.puffEffectScale;
     blast.position = {ground.x, ground.y + boss.bodyHalfHeight, ground.z};
 }

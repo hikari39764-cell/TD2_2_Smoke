@@ -214,15 +214,19 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
         fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", knifeEffectAmount, 0.0f, 20.0f);
         fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", knifeEffect);
-        fields.Vfx("ringEffect", "回し蹴りの霞の輪の炎の筋のエフェクト（輪に並べて外へ飛ばす）", ringEffect);
-        fields.Float("ringStreakScale", "…炎の筋の大きさ (倍)", ringStreakScale, 0.0f, 20.0f);
-        fields.Float("ringHeight", "…炎の筋の高さ（地面から m）", ringHeight, 0.0f, 10.0f);
+        fields.Vfx("ringEffect", "回し蹴りの霞の輪のエフェクト（広がる炎の輪。自前の流体域を持つ）", ringEffect);
+        fields.Float("ringEffectRadius", "…エフェクトが作られている半径 (m。輪の半径 ÷ これ が大きさの倍率)",
+                     ringEffectRadius, 0.5f, 50.0f);
+        fields.Float("ringFadeSeconds", "…輪が消えた後、炎が消えるまで残す時間 (秒)", ringFadeSeconds, 0.0f, 3.0f);
+        fields.Float("ringHeight", "…輪の高さ（地面から m）", ringHeight, 0.0f, 10.0f);
+        fields.Note("炎の輪は流体域を 1 つ使います。回し蹴りの間は、砲撃の炎の枠がその分だけ減ります。"
+                    "炎・煙の濃さや色は、エフェクト BossKickRing の Fire Domain と各層で調整します。");
         fields.Float("ringBurstScale", "回し蹴りの足元の爆ぜの大きさ（当たった所の爆発の倍率）", ringBurstScale, 0.0f,
                      5.0f);
         fields.Float("ringPush", "霞の輪が足元の霧を外へ押す速さ (m/秒、0 は押さない)", ringPush, 0.0f, 100.0f);
         fields.Float("ringPushRadius", "…押す 1 点の半径 (m)", ringPushRadius, 0.1f, 20.0f);
-        fields.Float("puffEffectScale", "霞隠れ・分身が消える／現れる所の爆ぜの大きさ（当たった所の爆発の倍率）",
-                     puffEffectScale, 0.0f, 5.0f);
+        fields.Vfx("puffEffect", "霞隠れ・分身が消える／現れる所の煙の塊のエフェクト", puffEffect);
+        fields.Float("puffEffectScale", "…煙の塊の大きさ (倍)", puffEffectScale, 0.0f, 5.0f);
         fields.Note("飛ぶ斬撃の霞はエフェクトではなく、場の霧の域へ直接入れます（Emit）。域は増やしません。");
     }
     if (fields.Section("確かめ用（正式シーンでは使わない）")) {
