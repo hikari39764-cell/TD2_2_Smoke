@@ -59,13 +59,27 @@ bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::Gam
     player.pendingHitStopFrames =
         kind == PlayerDamageKind::Knockback ? player.knockbackHitStopFrames : player.staggerHitStopFrames;
     if (player.health <= 0.0f) {
-        EnterState(player, PlayerState::Dead);
-        player.lockedOn = false;
-        player.lockTarget = {};
+        EnterDeath(player);
     } else {
         EnterState(player, kind == PlayerDamageKind::Knockback ? PlayerState::Knockback : PlayerState::Stagger);
     }
     return true;
+}
+
+bool PlayerRules::ApplyDamageOverTime(PlayerComponent& player, float amount) {
+    Initialize(player);
+    if (!IsAlive(player) || IsInvulnerable(player) || !std::isfinite(amount) || amount <= 0.0f)
+        return false;
+    player.health = std::max(0.0f, player.health - amount);
+    if (player.health <= 0.0f)
+        EnterDeath(player);
+    return true;
+}
+
+void PlayerRules::EnterDeath(PlayerComponent& player) {
+    EnterState(player, PlayerState::Dead);
+    player.lockedOn = false;
+    player.lockTarget = {};
 }
 
 bool PlayerRules::TryConsumeStamina(PlayerComponent& player, float amount, bool allowInsufficient) {

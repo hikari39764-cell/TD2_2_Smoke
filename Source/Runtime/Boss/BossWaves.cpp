@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <string_view>
 
+#include "HIKARI/Project/ProjectLog.h"
 #include "BossMath.h"
+#include "../Burn/BurnFieldRules.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -185,6 +188,15 @@ void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
     wave.done = launch.noHit;
     wave.absorbSmoke = boss.waveAbsorbSmoke;
     LogWave(boss, wave, "WaveRelease");
+    // 火は放った行そのものの値（連撃が参照した「縦振り」の行の火は持ってこない）。
+    if (move->burnShape == BossBurnShape::Line) {
+        wave.burnWidth = move->burnWidth;
+        wave.burnSeconds = move->burnSeconds;
+        char message[192]{};
+        std::snprintf(message, sizeof(message), "Paint line move=%s width=%.3f seconds=%.3f", move->name.c_str(),
+                      static_cast<double>(wave.burnWidth), static_cast<double>(wave.burnSeconds));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
+    }
 }
 
 void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim) {
@@ -275,6 +287,7 @@ void BossWaves::Step(BossFrame& frame) {
             wave.width = wave.fullWidth * wave.grow;
         }
         const float before = wave.travelled;
+        const Vec3 from = wave.position;
         for (int s = 0; s < kHitSubsteps; ++s) {
             const float stepLength = wave.speed * frame.dt / static_cast<float>(kHitSubsteps);
             wave.position = Add(wave.position, Mul(wave.direction, stepLength));
@@ -290,6 +303,9 @@ void BossWaves::Step(BossFrame& frame) {
                 wave.dodged = dodged;
             }
         }
+        // この tick に飛んだ分の地面を燃やす（当たって・飛びきって消える tick の分も塗ってから消す）。
+        if (wave.burnWidth > 0.0f)
+            BurnFieldRules::PaintSegment(frame.world, from, wave.position, wave.burnWidth, wave.burnSeconds);
         // 斬撃は霞：通った跡に煙が残る（2 m 進むごとに residuePerTwoMeters）。ナイフは消えた所だけ。
         // 煙は刃の waveResidueLag 後ろへ入れる。そこまで進む前の分は貯めておき、後から少しずつ足す。
         if (!wave.knife) {

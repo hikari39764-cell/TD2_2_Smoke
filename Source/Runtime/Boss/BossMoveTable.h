@@ -49,6 +49,10 @@ enum class BossMoveUse {
 // 霞隠れの区間の役目：隠れる（当たらない）／現れる（背後や横へ回り込んで構える）。ほかの型は Normal。
 enum class BossSegmentKind { Normal, Hide, Appear };
 
+// 技が地面に残す火の形（表の「残す火」列：なし／線／輪／池）。線は飛ぶ斬撃が通った跡を燃やす。
+// 輪と池は表から読んで持つだけで、まだどの技の動きからも塗っていない（塗るのは BurnFieldRules::PaintRing／PaintDisc）。
+enum class BossBurnShape { None, Line, Ring, Pool };
+
 // 「攻撃中」の 1 区間。hit の区間で剣を振り（斬撃を出し）、それ以外は構えや移動。
 struct BossSegment {
     int length = 1;
@@ -96,6 +100,10 @@ struct BossMove {
     int damage = 0;
     bool damageAuto = false;
     BossKnock knock = BossKnock::Flinch;
+    // 残す火（「火の幅 m」「火の秒数」）。行そのものの値で、連撃が参照した別の行の火は持ってこない。
+    BossBurnShape burnShape = BossBurnShape::None;
+    float burnWidth = 0.0f;
+    float burnSeconds = 0.0f;
     // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;
@@ -151,6 +159,8 @@ public:
     // 名前が完全に一致する行。無ければ -1。
     int Find(std::string_view name) const;
     static const char* TypeKey(BossMoveType type);
+    // 残す火の形の名前（ログ用。none／line／ring／pool）。
+    static const char* BurnKey(BossBurnShape shape);
     static bool IsMoveType(BossMoveType type);
     // 剣を振る型（振っている間に斬撃をかたどり、振り抜いた瞬間に飛ばす）。
     static bool IsSwingType(BossMoveType type);

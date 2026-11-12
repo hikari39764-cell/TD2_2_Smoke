@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "GourdRules.h"
+#include "../Common/FluidChannels.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 
@@ -48,6 +49,7 @@ struct Field {
     HIKARI::WorldView& world;
     HIKARI::ObjectView object;
     GourdComponent& gourd;
+    uint32_t channels = FluidChannels::kFog;
     uint64_t instance = kGatherInstanceBase;
 
     // absorption は、この力の半径の中の霧が運ばれながら消える率 [1/s]（消した量は ReadRemoved が数える）。
@@ -63,6 +65,7 @@ struct Field {
         // 消した量を読めない番号の力では、霧を消さない（数えられない霧を場から減らさない）。
         const size_t slot = kRemovedFixedSlots + static_cast<size_t>(instance - kGatherInstanceBase);
         force.absorption = slot < gourd.removedByForce.size() ? absorption : 0.0f;
+        force.channels = channels;
         gourd.fluidAccepted =
             world.GetFluid().Submit(object.GetHandle(), instance++, force).Accepted() && gourd.fluidAccepted;
         ++gourd.fluidSubmissions;
@@ -101,7 +104,10 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     const float flow = blocked ? kFullFlowScale : 1.0f;
     // 扇の中の霧は、口へ運ばれながら消える（吸った所に穴が見える）。満杯で吸わない設定の時は消さない。
     const float fade = blocked ? 0.0f : gourd.gatherAbsorption;
-    Field field{world, object, gourd};
+    // 場の霧にはいつも届く。煙が入る間は場の火にも届き、火の舌が口へ曲がって吸われる
+    // （満杯では火を吸えない規則に合わせて、満杯の間は火に触らない）。
+    const uint32_t channels = FluidChannels::kFog | (GourdRules::IsFull(gourd) ? 0u : FluidChannels::kFire);
+    Field field{world, object, gourd, channels};
     if (gourd.gatherStrength > 0.0f) {
         const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
         const Vec3 right{forward.z, 0.0f, -forward.x};
@@ -173,6 +179,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
                           gourd.mouthPosition.z};
         above.extents = {gourd.absorbCatchRadius, 0.0f, 0.0f};
         above.absorption = gourd.absorbCatchRate;
+        above.channels = channels;
         gourd.fluidAccepted =
             world.GetFluid().Submit(object.GetHandle(), kCatchInstance, above).Accepted() && gourd.fluidAccepted;
         ++gourd.fluidSubmissions;
@@ -183,6 +190,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     sink.extents = {gourd.absorbRadius, 0.0f, 0.0f};
     sink.strength = blocked ? 0.0f : -gourd.absorbStrength;
     sink.absorption = blocked ? 0.0f : gourd.absorption;
+    sink.channels = channels;
     gourd.fluidAccepted =
         world.GetFluid().Submit(object.GetHandle(), kSinkInstance, sink).Accepted() && gourd.fluidAccepted;
     ++gourd.fluidSubmissions;

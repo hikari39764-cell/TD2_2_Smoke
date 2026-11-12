@@ -1,0 +1,14 @@
+{
+  "displayName": "ArenaFireField",
+  "guid": "966995f50f61b975c5796f0caa781ce3",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/ArenaFireField.hvfx",
+  "type": "VfxEffect"
+}

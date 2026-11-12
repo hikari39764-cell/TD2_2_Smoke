@@ -19,6 +19,8 @@
 #include "Boss/BossCloneComponent.h"
 #include "Boss/BossComponent.h"
 #include "Boss/BossSystem.h"
+#include "Burn/BurnFieldComponent.h"
+#include "Burn/BurnFieldSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -111,7 +113,13 @@ public:
                    {.typeName = kBossCloneType, .displayName = "ボス 霞武士の分身"}) &&
                context.RegisterSystem<BossSystem>({.systemId = kBossSystem, .displayName = "ボス 霞武士"}) &&
                context.BindComponentSystem(
-                   {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125});
+                   {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125}) &&
+               context.RegisterComponent<BurnFieldComponent>(
+                   {.typeName = kBurnFieldType, .displayName = "燃える地面"}) &&
+               context.RegisterSystem<BurnFieldSystem>({.systemId = kBurnFieldSystem, .displayName = "燃える地面"}) &&
+               // 同じ tick にボスの斬撃が塗った火を数え、当て、吸わせるので、ボス（125）の後に動かす。
+               context.BindComponentSystem(
+                   {.componentType = kBurnFieldType, .systemId = kBurnFieldSystem, .defaultExecutionOrder = 130});
     }
 };
 

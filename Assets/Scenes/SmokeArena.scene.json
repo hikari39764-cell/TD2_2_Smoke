@@ -697,6 +697,82 @@
           1.0
         ]
       }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "enabled": true
+          },
+          "type": "Project_TD2_2.BurnField"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "enabled": true,
+            "slots": [
+              {
+                "effectAssetGuid": "966995f50f61b975c5796f0caa781ce3",
+                "enabled": true,
+                "fixedObjectId": 0,
+                "followTarget": true,
+                "id": 1,
+                "loopMode": "ForceLoop",
+                "name": "Arena Fire Field",
+                "offset": {
+                  "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotationEulerDegrees": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                "playOnStart": true,
+                "randomSeed": 11,
+                "retriggerPolicy": "Restart",
+                "spawnTarget": "Owner",
+                "triggerEventId": "",
+                "variableBindings": []
+              }
+            ]
+          },
+          "type": "VfxPlayerComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 40,
+      "name": "Burning Ground",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
     }
   ],
   "sceneName": "SmokeArena",

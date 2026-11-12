@@ -97,11 +97,12 @@ void LogMoves(const BossComponent& boss) {
         char message[1024]{};
         std::snprintf(message, sizeof(message),
                       "Move index=%zu name=%s type=%s executable=%d pre=%d act=%d post=%d segments=%s damage=%d "
-                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f strikes=%s",
+                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f burn=%s/%.2f/%.2f strikes=%s",
                       i, move.name.c_str(), BossMoveTable::TypeKey(move.type), static_cast<int>(move.executable),
                       move.pre, move.act, move.post, segments.c_str(), move.damage, static_cast<int>(move.damageAuto),
                       static_cast<double>(move.size), static_cast<double>(move.speed), static_cast<double>(move.homing),
-                      static_cast<double>(move.step), strikes.c_str());
+                      static_cast<double>(move.step), BossMoveTable::BurnKey(move.burnShape),
+                      static_cast<double>(move.burnWidth), static_cast<double>(move.burnSeconds), strikes.c_str());
         BossLog::Write(message);
     }
 }

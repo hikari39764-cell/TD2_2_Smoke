@@ -68,6 +68,9 @@ struct BossWave {
     float smokeOwed = 0.0f;
     // 吸い込みで吸ったときにヒョウタンへ入る煙（試作 waveSmoke 25／knifeSmoke 6）。
     float absorbSmoke = 0.0f;
+    // 飛んだ地面に残す火（技の行の「残す火」が線の斬撃だけ。幅 0 は塗らない）。放ってから消えるまで毎 tick 塗る。
+    float burnWidth = 0.0f;
+    float burnSeconds = 0.0f;
 };
 
 // 飛んでいる斬撃 1 つを見せるエフェクト（自前の流体域を持つ三日月の霧）。斬撃が消えた後も、残った霧が消えるまで飛ばす。

@@ -14,6 +14,9 @@ public:
     // direction は攻撃が押す世界方向。無敵・死亡・無効な量では false。
     static bool ApplyDamage(PlayerComponent& player, float amount, HIKARI::GameProjectFloat3 direction,
                             PlayerDamageKind kind);
+    // 燃える地面のような、続けて受けるダメージ。HP だけを減らし、のけぞり・ヒットストップ・向きの変化・入力の取り消しは
+    // 起こさない（被弾ではない）。無敵・死亡・無効な量で false。HP が 0 になれば ApplyDamage と同じく死亡にする。
+    static bool ApplyDamageOverTime(PlayerComponent& player, float amount);
     // allowInsufficient は残量が正なら不足分を認める。残量 0 では射撃できない。
     static bool TryConsumeStamina(PlayerComponent& player, float amount, bool allowInsufficient = false);
     static void LockActions(PlayerComponent& player, int frames);
@@ -53,6 +56,10 @@ public:
     static HIKARI::GameProjectFloat3 FlatNormalize(HIKARI::GameProjectFloat3 value,
                                                    HIKARI::GameProjectFloat3 fallback = {0.0f, 0.0f, 1.0f});
     static void EnterState(PlayerComponent& player, PlayerState state);
+
+private:
+    // 死亡へ移す（ロックオンも外す）。被弾でも火でも同じ死に方にする。
+    static void EnterDeath(PlayerComponent& player);
 };
 
 } // namespace Project_TD2_2
