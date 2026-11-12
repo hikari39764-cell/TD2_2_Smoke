@@ -8,6 +8,7 @@
 #include "HIKARI/Project/ProjectDataView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BossClones.h"
+#include "BossDetonate.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossObserver.h"
@@ -429,6 +430,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 // 受けたダメージ（気絶値・フェーズ・撃破）は体を動かした後に読む（試作と同じ順で、気絶の長さが 1 F ずれない）。
                 if (health != nullptr)
                     SyncHealth(bossFrame, object, *health);
+                // 崩れ・気絶・撃破で引爆が打ち切られたら、溜めを燃える地面から下ろす。
+                BossDetonate::Sync(bossFrame);
                 // ボスが動いた跡にも煙が残る（bossResidueStep ごとに 1 回ぶん。吸い込める）。
                 boss.bodyTrail += FlatLength(Sub(boss.ground, boss.lastBodyPosition));
                 boss.lastBodyPosition = boss.ground;

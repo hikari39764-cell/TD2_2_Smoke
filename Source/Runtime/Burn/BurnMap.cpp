@@ -226,6 +226,16 @@ float BurnMap::ClearAll() {
     return area;
 }
 
+float BurnMap::FarthestFrom(HIKARI::GameProjectFloat3 origin) const {
+    float farthestSquared = -1.0f;
+    ForEachBurning([&](int ix, int iz, float) {
+        const HIKARI::GameProjectFloat3 c = CellCenter(ix, iz);
+        farthestSquared =
+            std::max(farthestSquared, (c.x - origin.x) * (c.x - origin.x) + (c.z - origin.z) * (c.z - origin.z));
+    });
+    return farthestSquared < 0.0f ? -1.0f : std::sqrt(farthestSquared);
+}
+
 HIKARI::GameProjectFloat3 BurnMap::CellCenter(int ix, int iz) const {
     return {originX_ + (static_cast<float>(ix) + 0.5f) * cellSize_, floorY_,
             originZ_ + (static_cast<float>(iz) + 0.5f) * cellSize_};

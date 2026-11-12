@@ -91,14 +91,14 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
 void Trace(const BurnFieldComponent& field) {
     if (field.traceEveryFrames <= 0 || field.tick % static_cast<uint64_t>(field.traceEveryFrames) != 0)
         return;
-    char message[320]{};
+    char message[384]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-                  "painters=%d fluidAccepted=%d",
+                  "painters=%d fluidAccepted=%d charge=%.3f blasts=%u",
                   static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
                   static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds),
                   field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activePainters,
-                  static_cast<int>(field.fluidAccepted));
+                  static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.blastCount);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 

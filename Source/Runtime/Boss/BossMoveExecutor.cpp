@@ -171,7 +171,10 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
     // 溜めの揺らぎで止まっている間も、構えと同じく歩かない。
     const bool inKamae = move.pre - t < std::min(boss.kamaeFrames, move.pre) || Holding(boss);
     // 前隙の間はずっとプレイヤーを向く（追尾を止めている間は FaceRate が向かない）。
-    BossMoveExecutor::FaceRate(frame, move.type == BossMoveType::Overhead ? boss.overheadTurnRate : boss.preTurnRate);
+    // 引爆は狙わない（足元から全方向へ爆ぜる）ので、溜めの間は立ったまま向きも変えない。
+    if (move.type != BossMoveType::Detonate)
+        BossMoveExecutor::FaceRate(frame,
+                                   move.type == BossMoveType::Overhead ? boss.overheadTurnRate : boss.preTurnRate);
     const Vec3 forward = Forward(boss.yaw);
     switch (move.type) {
     case BossMoveType::Dash: {

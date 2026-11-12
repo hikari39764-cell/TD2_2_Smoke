@@ -7,13 +7,14 @@
       "id": 1,
       "type": "Selector",
       "name": "霞武士",
-      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。プレイヤーの回復・吸い込み・後ろへのローリング・密着には、待ちを切り上げて咎める技を出す。",
+      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。火が広く燃えていたら（引爆（火が広い））、待ちを切り上げて引爆する。プレイヤーの回復・吸い込み・後ろへのローリング・密着には、待ちを切り上げて咎める技を出す。",
       "params": {
         "reactive": true
       },
       "children": [
         22,
         2,
+        46,
         29,
         7
       ]
@@ -230,9 +231,10 @@
       "id": 25,
       "type": "Selector",
       "name": "次の技",
-      "note": "左から順に試す。分身を出せる時（HP の条件は表）は分身が先、出せなければ技を選ぶ。",
+      "note": "左から順に試す。分身を出せる時（HP の条件は表）は分身が先。火が少し燃えていれば、燃えている面積に比例した確率で引爆。どちらでもなければ技を選ぶ。",
       "children": [
         26,
+        50,
         9
       ]
     },
@@ -418,6 +420,95 @@
       "name": "回し蹴り",
       "params": {
         "move": "回し蹴り",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 46,
+      "type": "Sequence",
+      "name": "引爆（火が広い）",
+      "note": "場の火が広い（以上 12 %）と、次に待っている時に引爆する。間隔は「引爆（ときどき）」と同じ名前「引爆」で分け合う。",
+      "children": [
+        47,
+        48,
+        49
+      ]
+    },
+    {
+      "id": 47,
+      "type": "Project_TD2_2.BossBurning",
+      "params": {
+        "atLeastPercent": 12.0,
+        "atMostPercent": 100.0
+      }
+    },
+    {
+      "id": 48,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "引爆",
+      "params": {
+        "chance": 100.0,
+        "cooldown": 20.0,
+        "cutRecovery": false,
+        "label": "引爆",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 49,
+      "type": "Project_TD2_2.BossMove",
+      "name": "引爆",
+      "params": {
+        "move": "引爆",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 50,
+      "type": "Sequence",
+      "name": "引爆（ときどき）",
+      "note": "火が少し燃えている（1〜12 %）間、技を選ぶたびに、燃えている面積に比例した確率で引爆する。",
+      "children": [
+        51,
+        52,
+        53,
+        54
+      ]
+    },
+    {
+      "id": 51,
+      "type": "Project_TD2_2.BossBurning",
+      "params": {
+        "atLeastPercent": 1.0,
+        "atMostPercent": 12.0
+      }
+    },
+    {
+      "id": 52,
+      "type": "Project_TD2_2.BossBurningRoll",
+      "params": {
+        "chancePerPercent": 4.0,
+        "maxChance": 60.0
+      }
+    },
+    {
+      "id": 53,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "引爆",
+      "params": {
+        "chance": 100.0,
+        "cooldown": 20.0,
+        "cutRecovery": false,
+        "label": "引爆",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 54,
+      "type": "Project_TD2_2.BossMove",
+      "name": "引爆",
+      "params": {
+        "move": "引爆",
         "pick": "always"
       }
     }

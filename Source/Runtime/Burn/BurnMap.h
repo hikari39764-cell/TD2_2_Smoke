@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -34,6 +35,36 @@ public:
     float ClearFan(HIKARI::GameProjectFloat3 origin, HIKARI::GameProjectFloat3 forward, float range,
                    float halfAngleRadians, float nearRadius, float maxArea);
     float ClearAll();
+    // origin から一番遠い燃えているセルの中心までの水平距離 (m)。燃えていなければ負。
+    float FarthestFrom(HIKARI::GameProjectFloat3 origin) const;
+    // origin からの水平距離が innerRadius 以上 outerRadius 未満の燃えているセルを消す（引爆の前線が通った輪）。
+    // 消したセルごとに visit(中心の世界座標) を呼ぶ。続く tick の輪を隙間なく並べられるよう、内側だけを含める。
+    template <class Visitor>
+    size_t ClearBand(HIKARI::GameProjectFloat3 origin, float innerRadius, float outerRadius, Visitor&& visit) {
+        int x0, x1, z0, z1;
+        if (burningCells_ == 0 || !(outerRadius > innerRadius) ||
+            !CellRange(origin.x - outerRadius, origin.x + outerRadius, origin.z - outerRadius, origin.z + outerRadius,
+                       x0, x1, z0, z1))
+            return 0;
+        size_t cleared = 0;
+        for (int iz = std::max(z0, minZ_); iz <= std::min(z1, maxZ_); ++iz) {
+            for (int ix = std::max(x0, minX_); ix <= std::min(x1, maxX_); ++ix) {
+                float& cell = cells_[Index(ix, iz)];
+                if (cell <= 0.0f)
+                    continue;
+                const HIKARI::GameProjectFloat3 c = CellCenter(ix, iz);
+                const float d2 = (c.x - origin.x) * (c.x - origin.x) + (c.z - origin.z) * (c.z - origin.z);
+                if (d2 < innerRadius * innerRadius || d2 >= outerRadius * outerRadius)
+                    continue;
+                cell = 0.0f;
+                ++cleared;
+                visit(c);
+            }
+        }
+        if (cleared > 0)
+            RecomputeBounds();
+        return cleared;
+    }
 
     // 見た目用の読み出し。
     int Width() const { return width_; }

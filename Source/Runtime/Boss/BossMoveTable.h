@@ -25,6 +25,9 @@ enum class BossMoveType {
     WalkSide,
     WalkIn,
     Backstep,
+    // 引爆：溜めてから、燃えている地面を足元から外へ順に爆ぜさせる（判定サイズ＝爆ぜたセルから当たる距離、
+    // 斬撃速度＝前線の広がる速さ）。燃えている所が無ければ出せない。
+    Detonate,
     Count
 };
 
@@ -42,7 +45,7 @@ enum class BossMoveUse {
     Combo,
     // 割り込み専用（発生条件が連続攻撃で、距離重みが空欄）。
     Interrupt,
-    // 特別な出し方（霞分身）。
+    // 特別な出し方（霞分身・引爆）。中立の技選びとコンボには出ず、行動ツリーの枝が名前で出す。
     Special,
 };
 

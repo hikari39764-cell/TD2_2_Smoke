@@ -124,6 +124,24 @@ struct BossSwing {
     HIKARI::GameProjectFloat3 lastOuter{};
 };
 
+// 引爆の 1 回ぶん。攻撃中に入った tick に始め、前線が火を通り過ぎたら（または打ち切られたら）終える。
+struct BossDetonation {
+    bool active = false;
+    // 溜めの進みを燃える地面へ渡している間（溜めをやめた tick に 0 へ戻すため）。
+    bool charging = false;
+    // 前線の中心（攻撃中に入った時のボスの足元）と、その時に一番遠かった燃えているセルまでの距離 (m)。
+    HIKARI::GameProjectFloat3 origin{};
+    float farthest = -1.0f;
+    uint32_t startCells = 0;
+    uint32_t exploded = 0;
+    uint32_t blasts = 0;
+    uint32_t blastsDropped = 0;
+    // 当たり（1 回の引爆で 1 回だけ）：当てた・無敵でよけられた。
+    bool caught = false;
+    bool hit = false;
+    bool dodged = false;
+};
+
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
 inline constexpr size_t kBossReactionMemory = 16;
 
@@ -447,6 +465,7 @@ public:
     int cloneSpotCount = 0;
     bool cloneSpawnPending = false;
     int activeClones = 0;
+    BossDetonation detonation;
     // 吸い込みで吸われた斬撃・ナイフの煙（この tick にヒョウタンへ渡す）。
     float absorbedSmoke = 0.0f;
     int wavesAbsorbed = 0;

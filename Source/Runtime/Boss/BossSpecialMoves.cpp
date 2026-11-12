@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "BossClones.h"
+#include "BossDetonate.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossWaves.h"
@@ -106,6 +107,7 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     // 霞隠れ・分身：霧の中へ少しずつ沈む（試作では体が薄れていく）。
     case BossMoveType::Ambush:
     case BossMoveType::Clone: boss.sink = boss.hidePreSinkDepth * std::clamp(progress, 0.0f, 1.0f); break;
+    case BossMoveType::Detonate: BossDetonate::Charge(frame, std::clamp(progress, 0.0f, 1.0f)); break;
     default: break;
     }
 }
@@ -119,6 +121,7 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
         boss.crouch = Lerp(boss.crouch, 0.0f, kKickCrouchBlend);
         break;
     case BossMoveType::Ambush: AmbushAct(frame, move, g, entered); break;
+    case BossMoveType::Detonate: BossDetonate::Step(frame, move); break;
     case BossMoveType::Clone:
         // 新しい場所で、霧から浮かび上がる。
         boss.sink = boss.hidePreSinkDepth * (1.0f - Share(boss.stateFrame, boss.appearRiseFrames));
@@ -138,6 +141,8 @@ void BossSpecialMoves::Trigger(BossFrame& frame, const BossMove& move) {
         blast.position = {boss.ground.x, boss.ground.y + boss.ringHeight, boss.ground.z};
     } else if (move.type == BossMoveType::Clone) {
         BossClones::Place(frame, move);
+    } else if (move.type == BossMoveType::Detonate) {
+        BossDetonate::Begin(frame);
     }
 }
 

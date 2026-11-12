@@ -12,9 +12,9 @@ namespace {
 
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
-constexpr const char* kTypeKeys[kTypeCount] = {"dash",   "jump",   "slashR",   "slashL", "overhead",
-                                               "kick",   "knife",  "string",   "ambush", "clone",
-                                               "slashH", "slashV", "walkSide", "walkIn", "backstep"};
+constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",  "overhead", "kick",
+                                               "knife",    "string", "ambush",   "clone",   "slashH",   "slashV",
+                                               "walkSide", "walkIn", "backstep", "detonate"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -632,10 +632,10 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                                     "」が読めないので「常に」にしました（読める例：フェーズ2以上 / HP60%以下 / "
                                     "距離8m以内 / 連続攻撃）");
         // 出し方：連続攻撃が条件で距離重みが空欄＝割り込み専用、距離重みも書いてあれば始動＋割り込み。
-        move.use = move.type == BossMoveType::Clone                   ? BossMoveUse::Special
-                   : move.when.pressure && move.distanceWeight < 0.0f ? BossMoveUse::Interrupt
-                   : move.comboOnly                                   ? BossMoveUse::Combo
-                                                                      : BossMoveUse::Start;
+        move.use = move.type == BossMoveType::Clone || move.type == BossMoveType::Detonate ? BossMoveUse::Special
+                   : move.when.pressure && move.distanceWeight < 0.0f                      ? BossMoveUse::Interrupt
+                   : move.comboOnly                                                        ? BossMoveUse::Combo
+                                                                                           : BossMoveUse::Start;
         move.pre = static_cast<int>(pre);
         move.post = static_cast<int>(post);
         // 威力が空欄なら「隙が小さいほど低い」：基本＋（前隙＋後隙）×係数。連撃は一撃ごとに前の構え、ナイフは 1 本あたり。

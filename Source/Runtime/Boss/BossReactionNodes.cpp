@@ -122,6 +122,35 @@ Status TickBurning(INodeContext& context, void*, void* user) noexcept {
     return Result(percent >= context.ParamFloat(kBurningAtLeast) && percent <= context.ParamFloat(kBurningAtMost));
 }
 
+// ---- 燃えている面積に比例した確率：燃えている割合 × 1% あたりの確率（上限まで）で成功する。呼ばれるたびに振る。 ----
+
+enum : uint32_t { kRollPerPercent, kRollMax };
+constexpr ParamDesc kBurningRollParams[] = {
+    {"chancePerPercent", ValueType::Float, "1% あたりの確率", 4.0, nullptr, false, nullptr,
+     "闘技場の円のうち燃えている面積 1 % ごとの確率。燃えている割合 × これ が成功する確率。", 0.0, 100.0, "%"},
+    {"maxChance", ValueType::Float, "上限", 60.0, nullptr, false, nullptr, "確率の上限。", 0.0, 100.0, "%"},
+};
+
+Status TickBurningRoll(INodeContext& context, void*, void* user) noexcept {
+    const BossThought* thought = BossBehaviorNodes::ThoughtOf(user);
+    if (thought == nullptr)
+        return Status::Failure;
+    const BossComponent& boss = thought->boss;
+    const float percent = boss.watch.burningPercent;
+    const float chance = std::min(context.ParamFloat(kRollMax), percent * context.ParamFloat(kRollPerPercent));
+    // 燃えていない間は振らない（ログも出さない）。
+    if (!(chance > 0.0f))
+        return Status::Failure;
+    const float roll = context.Random() * 100.0f;
+    const bool pass = roll < chance;
+    char message[192]{};
+    std::snprintf(message, sizeof(message), "BurningRoll tick=%llu percent=%.3f roll=%.2f chance=%.2f pass=%d",
+                  static_cast<unsigned long long>(boss.tick), static_cast<double>(percent), static_cast<double>(roll),
+                  static_cast<double>(chance), static_cast<int>(pass));
+    BossLog::Write(message);
+    return Result(pass);
+}
+
 // ---- 反応の間隔：間隔が過ぎていて、確率に当たれば通す。通した後ろの技が始まったら、そこから間隔を数える。 ----
 
 enum : uint32_t { kReactionLabel, kReactionCooldown, kReactionChance, kReactionReroll, kReactionCutRecovery };
@@ -239,6 +268,13 @@ bool BossReactionNodes::Register(NodeRegistration& registration, void* user) {
                                      "（燃える地面がシーンに無ければ 0 %）。",
                                      &TickBurning, user);
     SetParams(burning, kBurningParams);
+    NodeTypeDesc burningRoll = Condition(
+        "Project_TD2_2.BossBurningRoll", "燃えている面積に比例した確率",
+        "燃えている面積の割合 × 「1% あたりの確率」（「上限」まで）の確率で成功する。呼ばれるたびに振り直すので、"
+        "「中立」→「次の技」の中（技を 1 つ選ぶたびに 1 回だけ呼ばれる所）に置く。根や「プレイヤーへの反応」のように"
+        "毎 tick 試される所に置くと、何度も振ってすぐに当たってしまう。",
+        &TickBurningRoll, user);
+    SetParams(burningRoll, kBurningRollParams);
     NodeTypeDesc reaction = Condition(
         "Project_TD2_2.BossReaction", "反応の間隔",
         "プレイヤーへの反応の門。条件の後ろ・技を実行の前に置く。待機中（「後隙を切り上げる」なら後隙の間も）、"
@@ -247,7 +283,7 @@ bool BossReactionNodes::Register(NodeRegistration& registration, void* user) {
     SetParams(reaction, kReactionParams);
     return registration.Register(absorbing) && registration.Register(healing) && registration.Register(inFire) &&
            registration.Register(rolled) && registration.Register(distance) && registration.Register(burning) &&
-           registration.Register(reaction);
+           registration.Register(burningRoll) && registration.Register(reaction);
 }
 
 void BossReactionNodes::NoteStarted(BossThought& thought) {

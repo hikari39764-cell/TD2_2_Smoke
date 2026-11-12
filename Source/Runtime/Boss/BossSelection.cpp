@@ -39,8 +39,10 @@ bool HasComboTarget(const BossMove& move, int row) {
 
 bool BossSelection::CanPerform(const BossComponent& boss, int row, const BossSituation& situation) {
     const BossMove* move = BossRules::GetMove(boss, row);
+    // 引爆は爆ぜさせる火が無ければ出せない（木の枝はここで断られて失敗し、次の枝へ進む）。
     return move != nullptr && move->executable && situation.distance >= 0.0f &&
-           BossMoveConditionHolds(move->when, situation);
+           BossMoveConditionHolds(move->when, situation) &&
+           (move->type != BossMoveType::Detonate || boss.watch.burningPercent > 0.0f);
 }
 
 float BossSelection::NeutralWeight(const BossComponent& boss, int row, const BossSituation& situation) {
