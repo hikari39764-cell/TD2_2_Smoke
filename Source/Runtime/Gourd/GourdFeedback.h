@@ -8,14 +8,16 @@ namespace Project_TD2_2 {
 struct GourdFeedback {
     void DescribeProperties(HIKARI::PropertyFields& fields);
 
-    int cameraFrames = 10;
-    float cameraKickDistance = 0.2f;
-    float cameraShakeAmplitude = 0.035f;
+    // 発射のカメラの手応えは、連射（8F ごと）で重なっても画面が震え続けない強さにする。
+    // 自分の通常攻撃でカメラを揺らさない（揺れ幅 0）。後ろへ少し押されて戻るだけ。
+    int cameraFrames = 6;
+    float cameraKickDistance = 0.04f;
+    float cameraShakeAmplitude = 0.0f;
     float cameraShakeFrequency = 22.0f;
-    float cameraFovDegrees = 1.6f;
-    int chromaFrames = 5;
-    float chromaPixels = 5.0f;
-    float chromaContrast = 0.15f;
+    float cameraFovDegrees = 0.3f;
+    int chromaFrames = 4;
+    float chromaPixels = 1.0f;
+    float chromaContrast = 0.04f;
     int rumbleFrames = 10;
     float rumbleLow = 0.6f;
     float rumbleHigh = 0.35f;

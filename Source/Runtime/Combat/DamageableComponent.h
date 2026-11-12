@@ -17,11 +17,12 @@ public:
     bool traceEveryHit = false;
     int hitStopFrames = 0;
     float hitStopScale = 0.0f;
-    int hitCameraFrames = 14;
-    float hitCameraAmplitude = 0.16f;
+    // 命中のカメラの手応え。連射が当たり続けても画面が震え続けない強さにする（当たった重さは、体の光と振動で出す）。
+    int hitCameraFrames = 6;
+    float hitCameraAmplitude = 0.015f;
     float hitCameraFrequency = 24.0f;
-    float hitCameraKickDistance = 0.12f;
-    float hitCameraFovDegrees = 1.2f;
+    float hitCameraKickDistance = 0.03f;
+    float hitCameraFovDegrees = 0.0f;
     uint64_t feedbackCameraId = 0;
     int hitRumbleFrames = 9;
     float hitRumbleLow = 0.85f;
@@ -29,9 +30,9 @@ public:
     int hitFlashFrames = 8;
     float hitFlashStrength = 3.0f;
     HIKARI::GameProjectFloat3 hitFlashColor{0.45f, 0.92f, 1.0f};
-    int hitChromaFrames = 6;
-    float hitChromaPixels = 7.0f;
-    float hitChromaContrast = 0.25f;
+    int hitChromaFrames = 4;
+    float hitChromaPixels = 1.5f;
+    float hitChromaContrast = 0.06f;
     int hitMaterialIndex = 0;
 
     // 実行時の記録は保存しない。敵の種類や被弾後の動作には依存しない。

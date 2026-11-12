@@ -12,6 +12,8 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("staminaPerSecond", "スタミナ回復 (/s)", staminaPerSecond, 0.0f, 1000.0f);
         fields.Float("maximumFallSpeed", "落下速度上限 (m/s)", maximumFallSpeed, 0.0f, 200.0f);
         fields.Int("inputBufferFrames", "先行入力 (F)", inputBufferFrames, 1, 60);
+        fields.Float("moveAccelSeconds", "歩き出しで最高速になるまで (秒、0 で一瞬)", moveAccelSeconds, 0.0f, 2.0f);
+        fields.Float("moveDecelSeconds", "入力を離して止まるまで (秒、0 で一瞬)", moveDecelSeconds, 0.0f, 2.0f);
     }
     if (fields.Section("ローリング", true)) {
         fields.Note("移動 F は全体 F までに制限します。無敵は 0F から指定した F 数です。");
@@ -55,20 +57,33 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("ロックオン")) {
         fields.SceneObject("lockTarget", "ロック対象", lockTargetId);
         fields.SceneObject("camera", "ゲームカメラ", cameraId);
-        fields.Float("lockTargetWeight", "画面内の対象の重み", lockTargetWeight, 0.0f, 1.0f);
-        fields.Float("lockYawSpeed", "左右の追従 (度/s)", lockYawSpeed, 0.0f, 2000.0f);
-        fields.Float("lockPitch", "見下ろし角度", lockPitch, -80.0f, 80.0f);
-        fields.Float("lockPitchSpeed", "上下の追従 (度/s)", lockPitchSpeed, 0.0f, 2000.0f);
-        fields.Float("lockDistanceScale", "対象距離による引き", lockDistanceScale, 0.0f, 2.0f);
-        fields.Float("lockMaximumDistanceOffset", "最大追加距離 (m)", lockMaximumDistanceOffset, 0.0f, 30.0f);
+        fields.Note("ロックオン中、カメラは対象の向きへ回ります。回る速さに上限があるので、"
+                    "対象が背後へ現れても振り回されません。距離は変わりません。");
+        fields.Float("lockYawSeconds", "対象の向きへ回るならし (秒、小さいほど素早く追う)", lockYawSeconds, 0.0f, 2.0f);
+        fields.Float("lockYawMaxSpeed", "回る速さの上限 (度/s)", lockYawMaxSpeed, 10.0f, 2000.0f);
+        fields.Float("lockPitch", "見下ろし角度 (度)", lockPitch, -80.0f, 80.0f);
+        fields.Float("lockPitchFollow", "対象が高い時に見上げる割合 (0 で見上げない)", lockPitchFollow, 0.0f, 1.5f);
+        fields.Float("lockPitchSeconds", "見上げ・見下ろしのならし (秒)", lockPitchSeconds, 0.0f, 2.0f);
     }
-    if (fields.Section("カメラの構図")) {
-        fields.Note("追従カメラ（Gameplay Camera）の結果に足すずらしです。距離・見下ろし角・注視の高さは "
-                    "CameraFollow の値で調整します。");
-        fields.Float("cameraSideOffset", "視点の横ずらし (m、負で左)", cameraSideOffset, -10.0f, 10.0f);
-        fields.Float("cameraLookAhead", "注視点を前へ送る距離 (m)", cameraLookAhead, 0.0f, 20.0f);
-        fields.Float("cameraLockLookAhead", "ロックオン中の注視点の前送り (m)", cameraLockLookAhead, 0.0f, 20.0f);
-        fields.Float("cameraBlendSeconds", "ロックオンの切り替えをならす時間 (秒)", cameraBlendSeconds, 0.0f, 3.0f);
+    if (fields.Section("カメラ")) {
+        fields.Note(
+            "カメラの姿勢はここの値で決まります（Gameplay Camera の CameraFollow の値は使いません。"
+            "画角だけ Gameplay Camera の値です）。軸＝体の中心から少し上の点で、視点は軸の後ろ・上にあります。");
+        fields.Float("cameraDistance", "軸から視点までの距離 (m)", cameraDistance, 0.5f, 30.0f);
+        fields.Float("cameraPivotHeight", "軸の高さ（体の中心から上へ m）", cameraPivotHeight, -5.0f, 10.0f);
+        fields.Float("cameraPitch", "始めの見下ろし角度 (度)", cameraPitch, -80.0f, 80.0f);
+        fields.Float("cameraSideOffset", "肩越しの横ずらし (m、負で左。0 で真後ろ)", cameraSideOffset, -10.0f, 10.0f);
+        fields.Float("cameraFollowSeconds", "水平に追うならし (秒、大きいほど遅れてついてくる)", cameraFollowSeconds,
+                     0.0f, 2.0f);
+        fields.Float("cameraVerticalSeconds", "上下に追うならし (秒)", cameraVerticalSeconds, 0.0f, 3.0f);
+        fields.Float("cameraVerticalDeadZone", "上下を追わない幅 (m)", cameraVerticalDeadZone, 0.0f, 10.0f);
+        fields.Float("cameraMouseSensitivity", "マウスの感度 (度/画素)", cameraMouseSensitivity, 0.0f, 10.0f);
+        fields.Float("cameraStickYawSpeed", "スティックの左右の速さ (度/s)", cameraStickYawSpeed, 0.0f, 3600.0f);
+        fields.Float("cameraStickPitchSpeed", "スティックの上下の速さ (度/s)", cameraStickPitchSpeed, 0.0f, 3600.0f);
+        fields.Float("cameraMinPitch", "見上げる限度 (度、負で見上げ)", cameraMinPitch, -89.0f, 89.0f);
+        fields.Float("cameraMaxPitch", "見下ろす限度 (度)", cameraMaxPitch, -89.0f, 89.0f);
+        fields.Float("cameraEyeFloor", "見上げた時に視点が軸から下がれる限度 (m)", cameraEyeFloor, 0.0f, 10.0f);
+        fields.Bool("cameraTrace", "カメラの姿勢を毎フレーム記録する（確かめ用）", cameraTrace);
     }
 }
 

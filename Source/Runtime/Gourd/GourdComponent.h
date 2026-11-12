@@ -60,9 +60,9 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbGlowRadius = 1.3f;
     float absorbGlowReach = 1.4f;
     int absorbRetireFrames = 12;
-    float absorbFovDegrees = 4.5f;
+    float absorbFovDegrees = 2.0f;
     int absorbFovEaseFrames = 10;
-    float absorbShakeAmplitude = 0.012f;
+    float absorbShakeAmplitude = 0.004f;
     float absorbShakeFrequency = 17.0f;
     float absorbPulseScale = 0.12f;
     float absorbPulseFrequency = 5.0f;

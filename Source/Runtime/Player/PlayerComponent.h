@@ -53,20 +53,36 @@ public:
     float rollFogRadius = 1.0f;
     float rollFogStrength = 3.0f;
     float rollFogHeightOffset = -0.45f;
+    // 歩き出し・止まる時に速さを変える時間（0 で一瞬）。回避・被弾などの動作には掛からない。
+    float moveAccelSeconds = 0.08f;
+    float moveDecelSeconds = 0.06f;
     uint64_t lockTargetId = 0;
     uint64_t cameraId = 0;
-    float lockTargetWeight = 0.62f;
-    float lockYawSpeed = 540.0f;
+    // カメラ。姿勢は PlayerCamera が作る（Gameplay Camera の CameraFollow の値は使わない。画角だけカメラの値）。
+    // 軸＝体の中心から cameraPivotHeight 上の点。視点は軸から cameraDistance 後ろ、cameraPitch だけ見下ろす。
+    float cameraDistance = 6.0f;
+    float cameraPivotHeight = 0.95f;
+    float cameraPitch = 16.0f;
+    // 肩越し。視点と注視点を一緒に横へずらす（負で左。プレイヤーが画面の中心より少し右に見える）。
+    float cameraSideOffset = -0.6f;
+    float cameraFollowSeconds = 0.09f;
+    float cameraVerticalSeconds = 0.35f;
+    float cameraVerticalDeadZone = 0.5f;
+    float cameraMouseSensitivity = 0.12f;
+    float cameraStickYawSpeed = 170.0f;
+    float cameraStickPitchSpeed = 110.0f;
+    float cameraMinPitch = -15.0f;
+    float cameraMaxPitch = 55.0f;
+    // 見上げた時に、視点が軸からどこまで下がってよいか (m)。地面へ潜らないようにする。
+    float cameraEyeFloor = 1.5f;
+    bool cameraTrace = false;
+    // ロックオン中のカメラ。対象の向きへ lockYawSeconds でならして回り、回る速さは lockYawMaxSpeed まで。
+    float lockYawSeconds = 0.16f;
+    float lockYawMaxSpeed = 300.0f;
     float lockPitch = 17.0f;
-    float lockPitchSpeed = 240.0f;
-    float lockDistanceScale = 0.18f;
-    float lockMaximumDistanceOffset = 2.0f;
-    // 肩越しの構図。追従カメラの視点を画面の横へずらし（負で左）、注視点を前へ送る。
-    // 距離・見下ろし角・注視の高さは Gameplay Camera の CameraFollow の値で決まる。
-    float cameraSideOffset = -1.9f;
-    float cameraLookAhead = 3.0f;
-    float cameraLockLookAhead = 0.0f;
-    float cameraBlendSeconds = 0.25f;
+    // 対象が高い所にいる時に見上げる割合（0 で見上げない、1 で対象の高さの角度だけ）。
+    float lockPitchFollow = 0.6f;
+    float lockPitchSeconds = 0.28f;
 
     // 実行時のデータは保存しない。ルールは PlayerRules と PlayerSystem が所有する。
     bool initialized = false;
@@ -109,8 +125,17 @@ public:
     bool aimTurnPending = false;
     float aimTurnSpeed = 0.0f;
     HIKARI::GameProjectFloat3 aimTurnDirection{0.0f, 0.0f, 1.0f};
-    // 0 は自由、1 はロックオン中の構図。切り替えでカメラが跳ねないように描画時間でならす。
-    float cameraLockBlend = 0.0f;
+    // いまの歩く速度（歩き出し・止まる時のならし）。
+    HIKARI::GameProjectFloat3 moveVelocity{};
+    // カメラの状態（PlayerCamera が持つ）。角度は rad。yaw は水平の向き、pitch は見下ろす角度。
+    bool cameraReady = false;
+    float cameraYaw = 0.0f;
+    float cameraPitchNow = 0.0f;
+    float cameraYawVelocity = 0.0f;
+    float cameraPitchVelocity = 0.0f;
+    float cameraFovRadians = 0.0f;
+    HIKARI::GameProjectFloat3 cameraPivot{};
+    HIKARI::GameProjectFloat3 cameraPivotVelocity{};
 };
 
 } // namespace Project_TD2_2
