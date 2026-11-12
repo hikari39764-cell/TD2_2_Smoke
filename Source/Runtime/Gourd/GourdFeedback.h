@@ -13,6 +13,9 @@ struct GourdFeedback {
     float cameraShakeAmplitude = 0.035f;
     float cameraShakeFrequency = 22.0f;
     float cameraFovDegrees = 1.6f;
+    int chromaFrames = 5;
+    float chromaPixels = 5.0f;
+    float chromaContrast = 0.15f;
     int rumbleFrames = 10;
     float rumbleLow = 0.6f;
     float rumbleHigh = 0.35f;

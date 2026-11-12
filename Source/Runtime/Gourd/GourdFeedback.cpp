@@ -9,6 +9,9 @@ void GourdFeedback::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("shotCameraShakeAmplitude", "発射のカメラ揺れ幅 (m、0 は無効)", cameraShakeAmplitude, 0.0f, 1.0f);
         fields.Float("shotCameraShakeFrequency", "発射のカメラ揺れ周波数 (Hz)", cameraShakeFrequency, 0.0f, 60.0f);
         fields.Float("shotCameraFovDegrees", "発射で広がる視野角 (度、0 は無効)", cameraFovDegrees, 0.0f, 20.0f);
+        fields.Int("shotChromaFrames", "発射の瞬間の色ずれの時間 (F、0 は無効)", chromaFrames, 0, 60);
+        fields.Float("shotChromaPixels", "発射の瞬間の色ずれの幅 (画素)", chromaPixels, 0.0f, 24.0f);
+        fields.Float("shotChromaContrast", "発射の瞬間に上げるコントラスト (0〜2)", chromaContrast, 0.0f, 2.0f);
         fields.Int("shotRumbleFrames", "発射のコントローラー振動時間 (F、0 は無効)", rumbleFrames, 0, 120);
         fields.Float("shotRumbleLow", "発射の振動：重いモーター (0〜1)", rumbleLow, 0.0f, 1.0f);
         fields.Float("shotRumbleHigh", "発射の振動：軽いモーター (0〜1)", rumbleHigh, 0.0f, 1.0f);

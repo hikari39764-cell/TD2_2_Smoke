@@ -43,6 +43,8 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("impactFarScale", "射程端で命中した時の爆発の倍率", impactFarScale, 0.0f, 1.0f);
         fields.Float("impactStandoff", "爆発を出す位置を命中点から撃った側へ戻す距離 (m)", impactStandoff, 0.0f,
                      3.0f);
+        fields.Note("流体の域は同時に 6 個までしか描けません。連射中は、砲口の炎 1・命中の爆発 2・弾 2 を超える分を"
+                    "古いものから止めます（場の霧が消えないようにするため）。");
         fields.Note("弾と砲口の資産は +X が前、爆発は世界の向き。倍率は源（噴き出し口）だけに効き、流体の域の"
                     "大きさは資産の値です。炎の色・明るさ・消える速さ・画面の波紋は各資産で調整します。");
         fields.Note("爆発を敵の体に重ねて出すと隠れて小さく暗く見えるので、少し手前で出します。霧散（射程切れ）"
@@ -58,6 +60,10 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("impactGroundReach", "足元の霧に届く高さ (m。これより高い所で爆ぜると霧は動かない)",
                      impactGroundReach, 0.1f, 100.0f);
         fields.Float("impactGroundOffset", "霧を押す中心の地面からの高さ (m)", impactGroundOffset, 0.0f, 5.0f);
+        fields.Float("shellWakeStrength", "飛んでいる弾が足元の霧を左右へ割る加速度 (m/s2、0 は無効)",
+                     shellWakeStrength, 0.0f, 200.0f);
+        fields.Float("shellWakeRadius", "弾が霧を割る力の半径 (m)", shellWakeRadius, 0.05f, 10.0f);
+        fields.Float("shellWakeSpread", "弾道の左右へ力を置く幅 (m)", shellWakeSpread, 0.0f, 5.0f);
         fields.Note("霧を押す力は、重なっている流体の域すべてに効きます。爆発の炎の域を吹き飛ばさないように、"
                     "爆ぜた点の真下の地面で押します（高い所ほど弱い）。");
         fields.Float("residueRadius", "残り煙の注入半径 (m)", residueRadius, 0.01f, 100.0f);

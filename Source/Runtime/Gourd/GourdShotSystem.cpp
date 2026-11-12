@@ -113,7 +113,8 @@ bool CanPay(GourdShotComponent& shot, const GourdComponent& gourd, const PlayerC
     return reason == 0;
 }
 
-void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle player, Vec3 origin, Vec3 direction) {
+void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle player, Vec3 origin, Vec3 direction,
+                  float groundClearance) {
     const int count = std::clamp(shot.pelletsPerShot, 1, static_cast<int>(kGourdProjectileCapacity));
     int pellet = 0;
     for (auto& projectile : shot.projectiles) {
@@ -136,6 +137,7 @@ void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle play
         projectile.ignoredPlayer = player;
         projectile.speed = shot.initialSpeed;
         projectile.radius = shot.projectileRadius;
+        projectile.groundClearance = groundClearance;
         ++pellet;
     }
 }
@@ -152,7 +154,10 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
         return false;
     const Vec3 direction = Aim(world, gourd, player);
     const Vec3 origin = Add(gourd.position, Scale(direction, gourd.height * 0.5f));
-    SpawnPellets(shot, playerObject.GetHandle(), origin, direction);
+    Vec3 ground{};
+    const bool grounded =
+        GourdShotFogReturn::FindGround(world, origin, shot.impactGroundReach, playerObject.GetHandle().value, ground);
+    SpawnPellets(shot, playerObject.GetHandle(), origin, direction, grounded ? origin.y - ground.y : -1.0f);
     GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
     GourdShotFogReturn::MarkFire(shot, origin, shot.muzzleFireFrames);
     PlayerRules::LockActions(player, shot.recoveryFrames);

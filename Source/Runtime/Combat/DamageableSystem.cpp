@@ -19,6 +19,8 @@ constexpr float kRadiansPerDegree = kTau / 360.0f;
 constexpr uint64_t kHitStopSource = 0x5444324401ull;
 constexpr uint64_t kCameraSource = 0x5444324402ull;
 constexpr int kFeedbackPriority = 320;
+constexpr uint64_t kChromaSource = 0x5444324403ull;
+constexpr int kChromaPriority = 320;
 
 bool ClearFlash(HIKARI::ObjectView object, DamageableComponent& target) {
     if (!target.flashActive)
@@ -121,6 +123,18 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageabl
     const bool flashAccepted = ApplyFlash(object, target);
     HIKARI::GameProjectCameraModifier modifier{};
     const bool cameraAccepted = ApplyCamera(world, object, target, modifier);
+    // 命中の瞬間だけ、画面の色をずらしてコントラストを上げる（毎フレーム出し直す。時間が過ぎれば自然に消える）。
+    const float chromaSeconds = static_cast<float>(target.hitChromaFrames) / kFramesPerSecond;
+    if (chromaSeconds > 0.0f && target.feedbackAgeSeconds < chromaSeconds && target.hitChromaPixels > 0.0f) {
+        const float fade = 1.0f - target.feedbackAgeSeconds / chromaSeconds;
+        HIKARI::GameProjectActionCinematicGradeRequest grade{};
+        grade.sourceId = kChromaSource ^ object.GetHandle().value;
+        grade.priority = kChromaPriority;
+        grade.weight = fade;
+        grade.chromaticSeparationPixels = target.hitChromaPixels * fade;
+        grade.contrastStrength = target.hitChromaContrast * fade;
+        world.GetPresentationVfx().SubmitActionCinematicGrade(grade);
+    }
     if (target.traceEveryHit) {
         char message[384]{};
         std::snprintf(

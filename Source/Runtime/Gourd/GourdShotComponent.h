@@ -15,6 +15,12 @@ inline constexpr size_t kGourdResidueCapacity = 8;
 inline constexpr size_t kGourdBurstCapacity = 8;
 inline constexpr size_t kGourdFogDepositCapacity = 12;
 inline constexpr size_t kGourdFireZoneCapacity = 12;
+// 同時に残す一度きりの炎の域の枠。流体域は 1 フレームに 6 個まで（均衡画質）で、場の霧が 1 つ使う。
+// 砲撃の域（砲口・命中・弾）は合わせて kGourdShotDomainBudget 個までにし、新しい域を出す前に古いものから止める。
+// 止めた域も、そのフレームの間は数に入るので、上限より 1 つ少なくしておく。
+inline constexpr size_t kGourdMuzzleLiveCapacity = 1;
+inline constexpr size_t kGourdImpactLiveCapacity = 2;
+inline constexpr size_t kGourdShotDomainBudget = 4;
 
 enum class GourdShotPhase { Idle, Windup, Recovery };
 
@@ -31,6 +37,8 @@ struct GourdProjectile {
     float speed = 0.0f;
     float radius = 0.0f;
     float densityScale = 1.0f;
+    // 発射した高さ（地面から）。負は地面が見つからなかった。足元の霧を割る位置に使う。
+    float groundClearance = -1.0f;
     HIKARI::GameProjectVfxPlaybackHandle trail{};
     // 炎の域。当たった後も閃きと冷却の数 F だけ残し、枠を再利用する時は古い域を先に止める。
     HIKARI::GameProjectVfxPlaybackHandle shell{};
@@ -131,6 +139,9 @@ public:
     float fogReturnClearance = 3.4f;
     int impactFireFrames = 48;
     int muzzleFireFrames = 18;
+    float shellWakeStrength = 22.0f;
+    float shellWakeRadius = 0.8f;
+    float shellWakeSpread = 0.5f;
     HIKARI::GameProjectVfxAssetReference trailEffect{};
     HIKARI::GameProjectVfxAssetReference shellEffect{"80ac20536e6b4989b654e6ba7b223c24",
                                                      "Assets/Vfx/GourdShotFlame.hvfx"};
@@ -178,6 +189,10 @@ public:
     std::array<GourdShotResidue, kGourdResidueCapacity> residues{};
     std::array<GourdShotBurst, kGourdBurstCapacity> bursts{};
     std::array<GourdFogDeposit, kGourdFogDepositCapacity> fogDeposits{};
+    std::array<HIKARI::GameProjectVfxPlaybackHandle, kGourdMuzzleLiveCapacity> muzzleLive{};
+    std::array<HIKARI::GameProjectVfxPlaybackHandle, kGourdImpactLiveCapacity> impactLive{};
+    uint32_t muzzleLiveCursor = 0;
+    uint32_t impactLiveCursor = 0;
     std::array<GourdFireZone, kGourdFireZoneCapacity> fireZones{};
 };
 

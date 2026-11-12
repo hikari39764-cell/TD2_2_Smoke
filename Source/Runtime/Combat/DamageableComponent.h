@@ -28,7 +28,10 @@ public:
     float hitRumbleHigh = 0.6f;
     int hitFlashFrames = 8;
     float hitFlashStrength = 3.0f;
-    HIKARI::GameProjectFloat3 hitFlashColor{1.0f, 0.7f, 0.3f};
+    HIKARI::GameProjectFloat3 hitFlashColor{0.45f, 0.92f, 1.0f};
+    int hitChromaFrames = 6;
+    float hitChromaPixels = 7.0f;
+    float hitChromaContrast = 0.25f;
     int hitMaterialIndex = 0;
 
     // 実行時の記録は保存しない。敵の種類や被弾後の動作には依存しない。

@@ -18,6 +18,9 @@ constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 constexpr uint64_t kCameraSource = 0x5444324701ull;
 constexpr int kCameraPriority = 310;
+// 色ずれ（動作の色調）の出どころと優先度。命中（320）が発射より勝つ。
+constexpr uint64_t kChromaSource = 0x5444324702ull;
+constexpr int kChromaPriority = 310;
 
 void LogStart(const GourdShotComponent& shot) {
     if (shot.traceEveryFrames <= 0)
@@ -87,6 +90,18 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
     }
     HIKARI::GameProjectCameraModifier modifier{};
     const bool accepted = SubmitCamera(world, object, feedback, modifier);
+    // 発射の瞬間だけ、画面の色をずらして砲の圧を伝える。毎フレーム出し直す種類の効果で、時間が過ぎれば自然に消える。
+    const float chromaSeconds = static_cast<float>(feedback.chromaFrames) / kFramesPerSecond;
+    if (chromaSeconds > 0.0f && feedback.ageSeconds < chromaSeconds && feedback.chromaPixels > 0.0f) {
+        const float fade = 1.0f - feedback.ageSeconds / chromaSeconds;
+        HIKARI::GameProjectActionCinematicGradeRequest grade{};
+        grade.sourceId = kChromaSource ^ object.GetHandle().value;
+        grade.priority = kChromaPriority;
+        grade.weight = fade;
+        grade.chromaticSeparationPixels = feedback.chromaPixels * fade;
+        grade.contrastStrength = feedback.chromaContrast * fade;
+        world.GetPresentationVfx().SubmitActionCinematicGrade(grade);
+    }
     if (shot.traceEveryFrames > 0) {
         char message[384]{};
         std::snprintf(

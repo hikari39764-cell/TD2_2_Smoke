@@ -24,6 +24,9 @@ void DamageableComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("hitFlashFrames", "被弾の発光時間 (F、0 は無効)", hitFlashFrames, 0, 120);
         fields.Float("hitFlashStrength", "被弾の発光強度（0 は無効）", hitFlashStrength, 0.0f, 16.0f);
         fields.Color3("hitFlashColor", "被弾の発光色", hitFlashColor);
+        fields.Int("hitChromaFrames", "命中の瞬間の色ずれの時間 (F、0 は無効)", hitChromaFrames, 0, 60);
+        fields.Float("hitChromaPixels", "命中の瞬間の色ずれの幅 (画素)", hitChromaPixels, 0.0f, 24.0f);
+        fields.Float("hitChromaContrast", "命中の瞬間に上げるコントラスト (0〜2)", hitChromaContrast, 0.0f, 2.0f);
         fields.Int("hitMaterialIndex", "被弾で光らせる材質の番号", hitMaterialIndex, 0, 255);
         fields.Note(
             "成功した被弾だけで作動します。F は 1/60 秒、演出は停止中も実時間で戻ります。形状・衝突は変えません。");

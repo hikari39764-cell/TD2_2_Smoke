@@ -24,6 +24,9 @@ constexpr float kSmokeSourceRadius = 0.25f;
 // 足元の霧を外へ押す向きの数。向きのある押しを輪に並べる（向きの無い膨張は、上にある炎の域まで持ち上げて潰す）。
 constexpr int kGroundPushCount = 6;
 constexpr float kTau = 6.28318530718f;
+// 弾が足元の霧を割る力の提出 ID（弾 1 つにつき左右 2 個）と、外向きに対する前向きの割合。
+constexpr uint64_t kWakeInstanceBase = 700;
+constexpr float kWakeForwardShare = 0.6f;
 
 void StopHandle(HIKARI::WorldView& world, GourdShotComponent& shot, HIKARI::GameProjectVfxPlaybackHandle& handle) {
     if (handle.IsValid()) {
@@ -31,6 +34,60 @@ void StopHandle(HIKARI::WorldView& world, GourdShotComponent& shot, HIKARI::Game
         if (vfx.IsActive(handle))
             shot.vfxAccepted = vfx.Stop(handle) && shot.vfxAccepted;
         handle = {};
+    }
+}
+
+bool IsLive(HIKARI::WorldView& world, const HIKARI::GameProjectVfxPlaybackHandle& handle) {
+    return handle.IsValid() && world.GetVfx().IsActive(handle);
+}
+
+// 新しい炎の域を出す前に、砲撃の域の数を枠の中へ収める。命中の爆発（古い方）→ 冷却中の弾 → 砲口の順に止める。
+// 飛んでいる弾の域は止めない。
+void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot) {
+    for (;;) {
+        size_t live = 0;
+        for (const auto& handle : shot.muzzleLive)
+            live += IsLive(world, handle) ? 1 : 0;
+        for (const auto& handle : shot.impactLive)
+            live += IsLive(world, handle) ? 1 : 0;
+        for (const auto& projectile : shot.projectiles)
+            live += (IsLive(world, projectile.shell) ? 1 : 0) + (IsLive(world, projectile.staleShell) ? 1 : 0);
+        if (live < kGourdShotDomainBudget)
+            return;
+        // impactLiveCursor が次に使う枠＝いちばん古い爆発。
+        bool stopped = false;
+        for (size_t k = 0; k < shot.impactLive.size() && !stopped; ++k) {
+            auto& handle = shot.impactLive[(shot.impactLiveCursor + k) % shot.impactLive.size()];
+            if (IsLive(world, handle)) {
+                StopHandle(world, shot, handle);
+                stopped = true;
+            }
+        }
+        GourdProjectile* oldest = nullptr;
+        for (auto& projectile : shot.projectiles) {
+            if (IsLive(world, projectile.staleShell)) {
+                StopHandle(world, shot, projectile.staleShell);
+                stopped = true;
+                break;
+            }
+            if (!projectile.active && IsLive(world, projectile.shell) &&
+                (oldest == nullptr || projectile.id < oldest->id))
+                oldest = &projectile;
+        }
+        if (!stopped && oldest != nullptr) {
+            oldest->fadeFramesLeft = 0;
+            oldest->flashFramesLeft = 0;
+            StopHandle(world, shot, oldest->shell);
+            stopped = true;
+        }
+        for (auto& handle : shot.muzzleLive) {
+            if (!stopped && IsLive(world, handle)) {
+                StopHandle(world, shot, handle);
+                stopped = true;
+            }
+        }
+        if (!stopped)
+            return;
     }
 }
 
@@ -108,6 +165,8 @@ void UpdateShell(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotC
     // 止まった後は燃料を切り、命中なら数 F だけ熱い閃きを弾く。域はすぐ止めるので、明るい塊が残らない。
     VfxParameters::SetFloat(parameters, "input.fly", projectile.active ? projectile.densityScale : 0.0f);
     VfxParameters::SetFloat(parameters, "input.flash", lingering && projectile.flashFramesLeft > 0 ? 1.0f : 0.0f);
+    if (!IsLive(world, projectile.shell))
+        MakeRoom(world, shot);
     UpdateEffect(world, object, shot, projectile.shell, shot.shellEffect, transform, parameters);
 }
 
@@ -126,8 +185,14 @@ void PlayBurst(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotCom
     play.transform.scale = {burst.scale, burst.scale, burst.scale};
     play.randomSeed = static_cast<uint32_t>(shot.burstsPlayed);
     play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
-    // 一度きりの再生は資産の時間で自分から終わるので、ハンドルを持ち越さない。
-    shot.vfxAccepted = world.GetVfx().Play(play).IsValid() && shot.vfxAccepted;
+    // 同時に残す数を決めた枠に入れる。枠が埋まっていたら、いちばん古い再生を止めてから出す
+    // （速い連射で流体域の上限を超えて、場の霧が描かれなくなるのを防ぐ）。
+    auto& slot = burst.muzzle ? shot.muzzleLive[shot.muzzleLiveCursor++ % shot.muzzleLive.size()]
+                              : shot.impactLive[shot.impactLiveCursor++ % shot.impactLive.size()];
+    StopHandle(world, shot, slot);
+    MakeRoom(world, shot);
+    slot = world.GetVfx().Play(play);
+    shot.vfxAccepted = slot.IsValid() && shot.vfxAccepted;
     ++shot.burstsPlayed;
 }
 
@@ -221,6 +286,23 @@ void GourdShotVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     }
     for (size_t i = 0; i < shot.projectiles.size(); ++i) {
         const auto& projectile = shot.projectiles[i];
+        // 飛んでいる弾の真下で、足元の霧を左右へ割る（弾道に沿って溝ができる）。
+        if (projectile.active && projectile.groundClearance >= 0.0f && shot.shellWakeStrength > 0.0f) {
+            const Vec3 forward =
+                VectorMath::Normalize({projectile.direction.x, 0.0f, projectile.direction.z}, {0.0f, 0.0f, 1.0f});
+            const Vec3 right{forward.z, 0.0f, -forward.x};
+            const Vec3 ground{projectile.position.x,
+                              projectile.position.y - projectile.groundClearance + shot.impactGroundOffset,
+                              projectile.position.z};
+            for (int side = -1; side <= 1; side += 2) {
+                const Vec3 outward = VectorMath::Scale(right, static_cast<float>(side));
+                SubmitFluid(world, object, shot, total, kWakeInstanceBase + i * 2 + (side > 0 ? 1 : 0), Kind::Force,
+                            VectorMath::Add(ground, VectorMath::Scale(outward, shot.shellWakeSpread)),
+                            shot.shellWakeRadius, shot.shellWakeStrength,
+                            VectorMath::Normalize(
+                                VectorMath::Add(outward, VectorMath::Scale(forward, kWakeForwardShare)), outward));
+            }
+        }
         if (projectile.active && !projectile.trail.IsValid() && shot.trailSmokeScale > 0.0f)
             SubmitFluid(world, object, shot, total, 200 + i, Kind::Emit, projectile.position, projectile.radius,
                         shot.fallbackTrailRate * projectile.densityScale * shot.trailSmokeScale);
@@ -270,6 +352,10 @@ void GourdShotVisuals::Stop(HIKARI::WorldView& world, GourdShotComponent& shot) 
         StopHandle(world, shot, residue.smoke);
     for (auto& burst : shot.bursts)
         burst.pending = false;
+    for (auto& handle : shot.muzzleLive)
+        StopHandle(world, shot, handle);
+    for (auto& handle : shot.impactLive)
+        StopHandle(world, shot, handle);
 }
 
 } // namespace Project_TD2_2
