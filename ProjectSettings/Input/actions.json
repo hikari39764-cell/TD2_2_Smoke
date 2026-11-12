@@ -86,6 +86,30 @@
     },
     {
       "clamp": true,
+      "displayName": "Attack",
+      "id": "Gameplay.Attack",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
+      "displayName": "Absorb Smoke",
+      "id": "Gameplay.Absorb",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
+      "displayName": "Dodge",
+      "id": "Gameplay.Dodge",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
+      "displayName": "Lock On",
+      "id": "Gameplay.LockOn",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
       "displayName": "Camera Move",
       "id": "Editor.CameraMove",
       "valueType": "Axis2D"

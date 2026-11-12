@@ -178,6 +178,62 @@
       "control": "Start",
       "scale": 1.0,
       "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.Attack",
+      "component": 0,
+      "control": "Left",
+      "scale": 1.0,
+      "source": "MouseButton"
+    },
+    {
+      "action": "Gameplay.Attack",
+      "component": 0,
+      "control": "RightShoulder",
+      "scale": 1.0,
+      "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.Absorb",
+      "component": 0,
+      "control": "Right",
+      "scale": 1.0,
+      "source": "MouseButton"
+    },
+    {
+      "action": "Gameplay.Absorb",
+      "component": 0,
+      "control": "LeftTrigger",
+      "scale": 1.0,
+      "source": "GamepadAxis"
+    },
+    {
+      "action": "Gameplay.Dodge",
+      "component": 0,
+      "control": "Space",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Dodge",
+      "component": 0,
+      "control": "B",
+      "scale": 1.0,
+      "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.LockOn",
+      "component": 0,
+      "control": "Q",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.LockOn",
+      "component": 0,
+      "control": "RightStick",
+      "scale": 1.0,
+      "source": "GamepadButton"
     }
   ],
   "consumeInput": false,

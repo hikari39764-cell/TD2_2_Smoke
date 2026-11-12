@@ -6,8 +6,10 @@
     "HIKARI.SceneFlow",
     "Project_TD2_2.Gameplay",
     "Physics",
-    "GameplayBasic"
+    "GameplayBasic",
+    "Vfx",
+    "ActionPresentation"
   ],
-  "startupSceneGuid": "",
+  "startupSceneGuid": "a3c3ee3ba2d420afff05ff8fc9e6916f",
   "version": 5
 }
