@@ -254,8 +254,28 @@
         },
         {
           "id": 5,
-          "type": "Project_TD2_2.Damageable",
-          "properties": {}
+          "properties": {
+            "maxHealth": 1500.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 90,
+          "properties": {},
+          "type": "Project_TD2_2.Boss"
+        },
+        {
+          "id": 91,
+          "properties": {
+            "enabled": true,
+            "interval": 0.0,
+            "tree": {
+              "$hikari.assetGuid": "4aff4df1aef95d8a09e8215bca9d7eb7"
+            },
+            "update": "GameCode",
+            "values": ""
+          },
+          "type": "HIKARI.BehaviorKit.BehaviorTree"
         }
       ],
       "editorLocked": false,
@@ -471,6 +491,200 @@
           0.65,
           3401.4,
           -14.15
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 1.36,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 3.4,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 1.36
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 3.4,
+            "radius": 0.68,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "properties": {
+            "maxHealth": 1000.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 92,
+          "properties": {
+            "parkDepth": 40.0
+          },
+          "type": "Project_TD2_2.BossClone"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 30,
+      "name": "Boss Clone 1",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3361.699951171875,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 1.36,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 3.4,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 1.36
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 3.4,
+            "radius": 0.68,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "properties": {
+            "maxHealth": 1000.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 92,
+          "properties": {
+            "parkDepth": 40.0
+          },
+          "type": "Project_TD2_2.BossClone"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 31,
+      "name": "Boss Clone 2",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3361.699951171875,
+          6.0
         ],
         "rotationEulerDeg": [
           0.0,
