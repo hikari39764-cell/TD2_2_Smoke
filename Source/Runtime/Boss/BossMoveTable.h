@@ -4,6 +4,8 @@
 #include <string_view>
 #include <vector>
 
+#include "BossMoveCondition.h"
+
 namespace Project_TD2_2 {
 
 // 動きの型。表の「動きの型」列（表示名か型の名前）で決まる。体の動かし方と斬撃の出方がこれで変わる。
@@ -31,6 +33,18 @@ enum class BossKnock { Flinch, Blow, LastBlow };
 
 // 連撃の一撃の振り方。横は左右を往復、縦は上から下、袈裟・逆袈裟は斜め。
 enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa };
+
+// 技の出し方（試作の use）。
+enum class BossMoveUse {
+    // 中立の技選びで始動する。発生条件に連続攻撃も書いてあれば、割り込みにも出る。
+    Start,
+    // コンボ先としてだけ出る（役割が「コンボ用」）。
+    Combo,
+    // 割り込み専用（発生条件が連続攻撃で、距離重みが空欄）。
+    Interrupt,
+    // 特別な出し方（霞分身）。
+    Special,
+};
 
 // 「攻撃中」の 1 区間。hit の区間で剣を振り（斬撃を出し）、それ以外は構えや移動。
 struct BossSegment {
@@ -82,6 +96,11 @@ struct BossMove {
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;
     bool comboOnly = false;
+    BossMoveUse use = BossMoveUse::Start;
+    // 発生条件を読んだもの。
+    BossMoveCondition when;
+    // コンボ先の行（「コンボ先」の名前に合う行。1 つの名前が何行にも合えば全部）。
+    std::vector<int> comboTargets;
     int hitCount = 0;
     // このカードの実行器が動かせる型か。動かせない型の行は読み込むが、出そうとすると断る。
     bool executable = false;

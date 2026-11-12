@@ -20,6 +20,8 @@ inline constexpr size_t kBossWaveCapacity = 12;
 inline constexpr size_t kBossSlashEffectCapacity = 2;
 // 斬撃が消えた所などに置く残り煙の枠。
 inline constexpr size_t kBossDepositCapacity = 8;
+// 連続攻撃の判定に覚えておく命中の数（試作と同じ 40）。
+inline constexpr size_t kBossHitMemory = 40;
 
 enum class BossState { Idle, Act, Stunned, Dead };
 enum class BossActPhase { Pre, Act, Post };
@@ -96,8 +98,33 @@ struct BossSwing {
     HIKARI::GameProjectFloat3 lastOuter{};
 };
 
+// 技の選び方が覚えていること（行動ツリーの節が BossSelection を通して読み書きする）。
+struct BossBrainMemory {
+    // 直前に始動した技の行（中立の技選びで重みを減らす）。無ければ -1。
+    int lastStarted = -1;
+    // 待機中・移動中に撃たれた回数。突進系を出すと 0 に戻る。
+    int moveHits = 0;
+    // ボスに当たった時刻（秒）。新しいものから kBossHitMemory 個まで（輪にして使う）。
+    std::array<float, kBossHitMemory> hitSeconds{};
+    size_t hitCount = 0;
+    size_t hitNext = 0;
+    uint64_t seenHits = 0;
+    // 連続攻撃へ次に反応できる時刻（秒）。
+    float pressureReadySeconds = 0.0f;
+    // 行動ツリーを最後に進めた時刻（秒）。木の中の時間（Wait・Cooldown）はこの差で進む。
+    float thoughtSeconds = 0.0f;
+    // 表に始動技としてあるのに、木に節が無い行を一度だけ知らせるための記録（表を読み直すと消す）。
+    uint64_t scoredRows = 0;
+    bool coverageChecked = false;
+    // 木の節が出そうとして表に無かった名前（名前ごとに一度だけ知らせる）。
+    std::array<size_t, 8> unknownNames{};
+    size_t unknownCount = 0;
+    bool treeProblemLogged = false;
+};
+
 // ボス「霞武士」の本体。HP は同じ物体の Damageable が持ち、ここは技の実行・気絶・浮遊・斬撃を持つ。
-// 技の表は Data/ の CSV。どの技を出すかは BossRules::RequestMove（行動ツリーのカード c-44ba9d がつなぐ）。
+// 技の表は Data/ の CSV。どの技を出すかは、同じ物体の行動ツリー（Behavior Tree、Update＝GameCode）が
+// BossRules::RequestMove で頼む。
 class BossComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
@@ -129,6 +156,16 @@ public:
     float stunDecayPerSecond = 10.0f;
     float stunPerShot = 22.0f;
     float stunReferenceDamage = 40.0f;
+    // 技の選び方（行動ツリーの節が使う共通の値。試作の共通パラメータ）
+    float selectFarDistance = 20.0f;
+    float selectMinWeight = 0.05f;
+    float selectPower = 2.0f;
+    float selectRepeatScale = 0.5f;
+    float moveHitBoost = 1.0f;
+    int moveHitMax = 5;
+    float interruptPower = 3.0f;
+    int comboMaxChain = 3;
+    float comboChancePercent = 65.0f;
     // 体
     float bodyHalfHeight = 1.7f;
     float bodyRadius = 0.68f;
@@ -278,6 +315,7 @@ public:
     // 技の要求（行動ツリーや確かめ用が入れる）
     int requestedMove = -1;
     bool requestedAsCombo = false;
+    BossBrainMemory brain;
     int sequenceCursor = 0;
     int testDamageDone = 0;
     uint32_t random = 0;

@@ -1,0 +1,205 @@
+{
+  "formatVersion": 3,
+  "blackboard": [],
+  "root": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Selector",
+      "name": "霞武士",
+      "note": "上の枝が先。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。",
+      "params": {
+        "reactive": true
+      },
+      "children": [
+        2,
+        7
+      ]
+    },
+    {
+      "id": 2,
+      "type": "Sequence",
+      "name": "割り込み",
+      "children": [
+        3,
+        4
+      ]
+    },
+    {
+      "id": 3,
+      "type": "Project_TD2_2.BossPressured",
+      "params": {
+        "cooldown": 6.0,
+        "hits": 2,
+        "seconds": 4.0
+      }
+    },
+    {
+      "id": 4,
+      "type": "Selector",
+      "name": "割り込みの技",
+      "note": "発生条件に「連続攻撃」がある技。いまの距離に合う方が出やすい。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        5,
+        6
+      ]
+    },
+    {
+      "id": 5,
+      "type": "Project_TD2_2.BossMove",
+      "name": "回し蹴り",
+      "params": {
+        "move": "回し蹴り",
+        "pick": "interrupt"
+      }
+    },
+    {
+      "id": 6,
+      "type": "Project_TD2_2.BossMove",
+      "name": "投げナイフ",
+      "params": {
+        "move": "投げナイフ",
+        "pick": "interrupt"
+      }
+    },
+    {
+      "id": 7,
+      "type": "Sequence",
+      "name": "中立",
+      "children": [
+        8,
+        9
+      ]
+    },
+    {
+      "id": 8,
+      "type": "Project_TD2_2.BossWait",
+      "params": {
+        "maxFrames": 110,
+        "minFrames": 20
+      }
+    },
+    {
+      "id": 9,
+      "type": "Selector",
+      "name": "技を選ぶ",
+      "note": "表の始動技を 1 行に 1 つ並べる。距離重みがいまの距離に近い技ほど出やすい。表に始動技を足したら、ここにも節を足す。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    {
+      "id": 10,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横なぎ",
+      "params": {
+        "move": "突進横なぎ"
+      }
+    },
+    {
+      "id": 11,
+      "type": "Project_TD2_2.BossMove",
+      "name": "ジャンプ、2段",
+      "params": {
+        "move": "ジャンプ、2段"
+      }
+    },
+    {
+      "id": 12,
+      "type": "Project_TD2_2.BossMove",
+      "name": "上段溜め",
+      "params": {
+        "move": "上段溜め"
+      }
+    },
+    {
+      "id": 13,
+      "type": "Project_TD2_2.BossMove",
+      "name": "縦振り",
+      "params": {
+        "move": "縦振り"
+      }
+    },
+    {
+      "id": 14,
+      "type": "Project_TD2_2.BossMove",
+      "name": "回し蹴り",
+      "params": {
+        "move": "回し蹴り"
+      }
+    },
+    {
+      "id": 15,
+      "type": "Project_TD2_2.BossMove",
+      "name": "投げナイフ",
+      "params": {
+        "move": "投げナイフ"
+      }
+    },
+    {
+      "id": 16,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横横溜め縦縦横",
+      "params": {
+        "move": "横横溜め縦縦横"
+      }
+    },
+    {
+      "id": 17,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横なぎ二連",
+      "params": {
+        "move": "横なぎ二連"
+      }
+    },
+    {
+      "id": 18,
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞隠れ三連突進",
+      "params": {
+        "move": "霞隠れ三連突進"
+      }
+    },
+    {
+      "id": 19,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横歩き",
+      "params": {
+        "move": "横歩き"
+      }
+    },
+    {
+      "id": 20,
+      "type": "Project_TD2_2.BossMove",
+      "name": "間合いを詰める",
+      "params": {
+        "move": "間合いを詰める"
+      }
+    },
+    {
+      "id": 21,
+      "type": "Project_TD2_2.BossMove",
+      "name": "後ろへ下がる",
+      "params": {
+        "move": "後ろへ下がる"
+      }
+    }
+  ]
+}

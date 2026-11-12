@@ -4,6 +4,8 @@
 
 namespace Project_TD2_2 {
 
+bool BossTestBrain::Wants(const BossComponent& boss) { return boss.testSequence || !boss.testMove.empty(); }
+
 void BossTestBrain::OnIdle(BossBrainContext& context) {
     BossComponent& boss = context.boss;
     const bool firstMove = boss.sequenceCursor == 0;
@@ -31,7 +33,11 @@ void BossTestBrain::OnIdle(BossBrainContext& context) {
 }
 
 void BossTestBrain::OnActFinished(BossBrainContext&) {
-    // 確かめ用はコンボを出さない（どの技も後隙まで見せる）。コンボの選び方は c-44ba9d。
+    // 確かめ用はコンボを出さない（どの技も後隙まで見せる）。コンボは行動ツリーの brain が表のとおりにつなぐ。
+}
+
+void BossTestBrain::OnRecovery(BossBrainContext&) {
+    // 確かめ用は後隙を切り上げない。
 }
 
 } // namespace Project_TD2_2

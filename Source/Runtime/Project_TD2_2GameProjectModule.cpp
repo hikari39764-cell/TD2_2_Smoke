@@ -15,6 +15,7 @@
 #include "Gourd/GourdShotComponent.h"
 #include "Gourd/GourdShotSystem.h"
 #include "Gourd/GourdFeedbackSystem.h"
+#include "Boss/BossBehaviorNodes.h"
 #include "Boss/BossComponent.h"
 #include "Boss/BossSystem.h"
 
@@ -43,6 +44,12 @@ public:
 // システムは通常どおり World に Attach され、ゲーム状態は Play session から取得する。
 class Game final : public HIKARI::IGameSystem {
 public:
+    void OnWorldAttached(HIKARI::WorldView&) override {
+        // 行動ツリーのボスの節は、ボスのいないシーンを開いている時も編集器が知っているように、ここでも持っておく
+        // （登録は BossSystem と分け合う）。
+        bossNodes_ = BossBehaviorNodes::Acquire();
+    }
+
     void Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override {
         auto* session = dynamic_cast<GameSession*>(world.GetGameSession());
         if (session == nullptr || !session->sceneActive || frame.paused) {
@@ -50,6 +57,9 @@ public:
         }
         session->gameplaySeconds += frame.gameDt;
     }
+
+private:
+    std::shared_ptr<BossBehaviorNodes> bossNodes_;
 };
 
 // 以下はエンジンへの登録。日常のゲーム処理は上の Game に書く。

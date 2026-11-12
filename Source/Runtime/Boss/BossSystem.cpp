@@ -11,6 +11,7 @@
 #include "BossMoveExecutor.h"
 #include "BossPose.h"
 #include "BossRules.h"
+#include "BossSelection.h"
 #include "BossSmoke.h"
 #include "BossVisuals.h"
 #include "BossWaves.h"
@@ -123,6 +124,10 @@ void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
     boss.loadedTypesText = types.text;
     boss.loadedMovesText = moves.text;
     boss.tableLoaded = true;
+    // 行が変わったので、行動ツリーの節と表の突き合わせ（節の無い始動技・表に無い名前）をやり直す。
+    boss.brain.scoredRows = 0;
+    boss.brain.coverageChecked = false;
+    boss.brain.unknownCount = 0;
     for (const auto& warning : warnings)
         BossLog::Warn(warning.c_str());
     char message[160]{};
@@ -189,6 +194,8 @@ void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent
         }
         ++boss.testDamageDone;
     }
+    // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。
+    BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health));
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
@@ -230,12 +237,11 @@ void StartRequested(BossFrame& frame, int chain) {
     if (move == nullptr || !move->executable)
         return;
     BossMoveExecutor::Start(frame, index, chain);
+    BossSelection::NoteStarted(boss, index, chain);
 }
 
-void StepState(BossFrame& frame, IBossBrain& brain, int phaseNumber) {
+void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
     BossComponent& boss = frame.boss;
-    BossBrainContext context{boss, frame.player != nullptr ? FlatLength(Sub(frame.playerCenter, boss.ground)) : -1.0f,
-                             phaseNumber};
     switch (boss.state) {
     case BossState::Dead: boss.crouch = Lerp(boss.crouch, 1.0f, kStunCrouchBlend); return;
     case BossState::Stunned:
@@ -264,8 +270,14 @@ void StepState(BossFrame& frame, IBossBrain& brain, int phaseNumber) {
                 StartRequested(frame, boss.chain + 1);
             else
                 BossMoveExecutor::EnterPost(boss);
-        } else if (result == BossMoveExecutor::StepResult::Finished) {
-            BossMoveExecutor::EnterIdle(boss);
+        } else if (boss.phase == BossActPhase::Post) {
+            // 後隙：brain が技を頼めば切り上げて出す（連続攻撃への割り込み）。頼まれなければ最後まで待って待機へ。
+            context.recoveryDone = result == BossMoveExecutor::StepResult::Finished;
+            brain.OnRecovery(context);
+            if (boss.requestedMove >= 0)
+                StartRequested(frame, boss.requestedAsCombo ? boss.chain + 1 : 0);
+            else if (context.recoveryDone)
+                BossMoveExecutor::EnterIdle(boss);
         }
         return;
     }
@@ -327,6 +339,8 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
 
 } // namespace
 
+void BossSystem::OnWorldAttached(HIKARI::WorldView&) { treeBrain_.Attach(); }
+
 void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
@@ -344,7 +358,15 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
                 BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt};
                 BossMoveExecutor::StepFloat(boss);
-                StepState(bossFrame, testBrain_, boss.lastPhaseNumber);
+                BossBrainContext context{boss, object.GetHandle()};
+                if (player != nullptr)
+                    context.playerDistance = FlatLength(Sub(playerCenter, boss.ground));
+                context.phaseNumber = boss.lastPhaseNumber;
+                if (health != nullptr && DamageableRules::GetMaxHealth(*health) > 0.0f)
+                    context.healthPercent = static_cast<double>(DamageableRules::GetHealth(*health)) /
+                                            static_cast<double>(DamageableRules::GetMaxHealth(*health)) * 100.0;
+                StepState(bossFrame, BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(testBrain_) : treeBrain_,
+                          context);
                 // 受けたダメージ（気絶値・フェーズ・撃破）は体を動かした後に読む（試作と同じ順で、気絶の長さが 1 F ずれない）。
                 if (health != nullptr)
                     SyncHealth(bossFrame, object, *health);

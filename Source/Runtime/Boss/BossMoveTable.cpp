@@ -141,8 +141,8 @@ std::optional<double> NumberOf(std::string_view text) {
     return std::nullopt;
 }
 
-// 区切り（/ ／ , 、 と、split の時は空白も）で分ける。
-std::vector<std::string> Split(std::string_view text, bool spaces) {
+// 区切り（/ ／ , 、 と、spaces の時は空白も、dots の時は ・ も）で分ける。
+std::vector<std::string> Split(std::string_view text, bool spaces, bool dots = false) {
     std::vector<std::string> parts;
     std::string current;
     auto flush = [&]() {
@@ -155,7 +155,8 @@ std::vector<std::string> Split(std::string_view text, bool spaces) {
             flush();
             ++i;
         } else if (StartsWith(text.substr(i), "\xEF\xBC\x8F") || StartsWith(text.substr(i), "\xE3\x80\x81") ||
-                   (spaces && StartsWith(text.substr(i), "\xE3\x80\x80"))) {
+                   (spaces && StartsWith(text.substr(i), "\xE3\x80\x80")) ||
+                   (dots && StartsWith(text.substr(i), "\xE3\x83\xBB"))) {
             flush();
             i += 3;
         } else {
@@ -275,6 +276,36 @@ struct Parsed {
     std::vector<int> strikeDamage;
     bool hasReference = false;
 };
+
+// コンボ先の名前を行につなぐ：完全一致 → 無ければ名前を含む行（自分は除く。合う行は全部）。
+// 「/」「、」「・」で複数書ける（試作と同じ）。
+void LinkCombos(std::vector<BossMove>& moves, std::vector<std::string>& warnings) {
+    for (size_t self = 0; self < moves.size(); ++self) {
+        BossMove& move = moves[self];
+        for (const auto& part : Split(move.comboText, false, true)) {
+            const std::string name = Trim(part);
+            if (name.empty())
+                continue;
+            std::vector<int> hits;
+            for (size_t i = 0; i < moves.size(); ++i) {
+                if (moves[i].name == name)
+                    hits.push_back(static_cast<int>(i));
+            }
+            if (hits.empty()) {
+                for (size_t i = 0; i < moves.size(); ++i) {
+                    if (i != self && (Contains(moves[i].name, name) || Contains(name, moves[i].name)))
+                        hits.push_back(static_cast<int>(i));
+                }
+            }
+            if (hits.empty())
+                warnings.push_back("「" + move.name + "」: コンボ先「" + name + "」という行動が表にありません");
+            for (const int hit : hits) {
+                if (std::find(move.comboTargets.begin(), move.comboTargets.end(), hit) == move.comboTargets.end())
+                    move.comboTargets.push_back(hit);
+            }
+        }
+    }
+}
 
 } // namespace
 
@@ -620,6 +651,16 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.distanceWeight = static_cast<float>(NumberOf(raw[Column::Weight]).value_or(-1.0));
         move.comboChance = static_cast<float>(NumberOf(raw[Column::Chance]).value_or(-1.0));
         move.comboOnly = Contains(move.role, "コンボ用");
+        move.when = ParseBossMoveCondition(move.condition);
+        if (move.when.unreadable)
+            move.warnings.push_back("発生条件「" + move.condition +
+                                    "」が読めないので「常に」にしました（読める例：フェーズ2以上 / HP60%以下 / "
+                                    "距離8m以内 / 連続攻撃）");
+        // 出し方：連続攻撃が条件で距離重みが空欄＝割り込み専用、距離重みも書いてあれば始動＋割り込み。
+        move.use = move.type == BossMoveType::Clone                   ? BossMoveUse::Special
+                   : move.when.pressure && move.distanceWeight < 0.0f ? BossMoveUse::Interrupt
+                   : move.comboOnly                                   ? BossMoveUse::Combo
+                                                                      : BossMoveUse::Start;
         move.pre = static_cast<int>(pre);
         move.post = static_cast<int>(post);
         // 威力が空欄なら「隙が小さいほど低い」：基本＋（前隙＋後隙）×係数。連撃は一撃ごとに前の構え、ナイフは 1 本あたり。
@@ -714,6 +755,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             warnings.push_back("「" + move.name + "」: " + warning);
         moves_.push_back(std::move(move));
     }
+    LinkCombos(moves_, warnings);
     return !moves_.empty();
 }
 

@@ -37,6 +37,25 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      0.01f, 100000.0f);
         fields.Note("気絶値は受けた威力に比例してたまります（遠くで弱まった弾は少なく）。気絶中はたまりません。");
     }
+    if (fields.Section("技の選び方（行動ツリーの節が使う値）", true)) {
+        fields.Float("selectFarDistance", "距離重み 1.0 になる距離 (m)", selectFarDistance, 0.1f, 200.0f);
+        fields.Float("selectMinWeight", "重みの下限（得意な距離から一番遠い技にも残す分）", selectMinWeight, 0.0f, 1.0f,
+                     0.01f);
+        fields.Float("selectPower", "得意な距離へのかたより（重みの指数。大きいほど距離に合う技ばかり出る）",
+                     selectPower, 0.0f, 8.0f, 0.1f);
+        fields.Float("selectRepeatScale", "直前に始動した技の重み (倍)", selectRepeatScale, 0.0f, 1.0f, 0.05f);
+        fields.Float("moveHitBoost", "待機・移動中の被弾 1 回ごとの突進系の重み (+倍)", moveHitBoost, 0.0f, 10.0f,
+                     0.1f);
+        fields.Int("moveHitMax", "…数える被弾の上限 (回)", moveHitMax, 0, 40);
+        fields.Float("interruptPower", "割り込みの技の、得意な距離へのかたより（重みの指数）", interruptPower, 0.0f,
+                     8.0f, 0.1f);
+        fields.Int("comboMaxChain", "コンボの最大連続 (技の数)", comboMaxChain, 1, 10);
+        fields.Float("comboChancePercent", "コンボ確率（表の「コンボ確率%」が空欄のとき）(%)", comboChancePercent, 0.0f,
+                     100.0f, 1.0f);
+        fields.Note("どの技を出すかは、同じ物体の Behavior Tree（木は KasumiBushi、Update は GameCode）が決めます。"
+                    "技の間の待ち・連続攻撃とみなす命中数と時間は、木の節（待ち／連続攻撃された）で調整します。"
+                    "距離重み・発生条件・コンボ先・コンボ確率は技の表の列です。");
+    }
     if (fields.Section("体と浮遊")) {
         fields.Float("bodyHalfHeight", "体の高さの半分 (m)", bodyHalfHeight, 0.1f, 20.0f);
         fields.Float("bodyRadius", "体の半径 (m)", bodyRadius, 0.05f, 10.0f);
