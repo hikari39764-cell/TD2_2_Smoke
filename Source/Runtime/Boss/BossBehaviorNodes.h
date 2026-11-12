@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include "HIKARI/BehaviorKit/BehaviorNodeApi.h"
 #include "BossComponent.h"
@@ -27,16 +28,27 @@ struct BossThought {
     // 「連続攻撃された」が成り立った。この回に割り込みの技が始まったら、反応を使ったことにする。
     bool pressureArmed = false;
     float pressureCooldown = 0.0f;
+    // 「反応の間隔」が通った。この回にすぐ後ろの技が始まったら、その節の間隔を始める（Pick のログは why=reaction）。
+    // 技が出せなかったら取り消す（同じ回の別の枝の技を、反応として数えない）。
+    bool reactionArmed = false;
+    size_t reactionKey = 0;
+    float reactionCooldown = 0.0f;
+    char reactionLabel[64] = {};
 };
 
 // 行動ツリー（HIKARI.BehaviorKit）へ登録する、ボスの節：
 //   待ち（横歩き）／技を実行／連続攻撃された／フェーズ・HP／分身を出せる／分身を撃たれた
+//   ＋プレイヤーへの反応の節（BossReactionNodes）
 // 節の名前はプロセスで 1 つなので、登録は 1 つを分け合う（Acquire）。最後の持ち主が消えると登録も外れる。
 class BossBehaviorNodes final {
 public:
     // モジュールが全部読み込まれた後（システムの OnWorldAttached）に呼ぶ。
     // 行動ツリーのモジュールが無い・登録できない時は nullptr。
     static std::shared_ptr<BossBehaviorNodes> Acquire();
+    // 節の関数に渡る user（登録した BossBehaviorNodes）から、いま進めている 1 回ぶん。
+    static BossThought* ThoughtOf(void* user) { return static_cast<BossBehaviorNodes*>(user)->Current(); }
+    // UTF-8 の文字の途中で切らないように写す（target は capacity バイト、必ず 0 で終わる）。
+    static void CopyText(char* target, size_t capacity, std::string_view text);
 
     // object の行動ツリー（Behavior Tree の部品、Update＝GameCode）を 1 回進める。節は thought を読んで技を頼む。
     HIKARI::BEHAVIOR::TickOutcome Think(BossThought& thought, HIKARI::GameProjectObjectHandle object,

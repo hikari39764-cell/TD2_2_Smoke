@@ -50,10 +50,17 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("interruptPower", "割り込みの技の、得意な距離へのかたより（重みの指数）", interruptPower, 0.0f,
                      8.0f, 0.1f);
         fields.Int("comboMaxChain", "コンボの最大連続 (技の数)", comboMaxChain, 1, 10);
+        fields.Int("recoveryGuardFrames", "後隙のうち、割り込み・反応で切り上げない最初の F", recoveryGuardFrames, 0,
+                   600);
         fields.Float("comboChancePercent", "コンボ確率（表の「コンボ確率%」が空欄のとき）(%)", comboChancePercent, 0.0f,
                      100.0f, 1.0f);
+        fields.Float("rollAxisDegrees",
+                     "ローリングの向き：ボスへ向かう・離れる向きからこの角度以内なら前後、外れたら横 (度)",
+                     rollAxisDegrees, 0.0f, 90.0f, 1.0f);
         fields.Note("どの技を出すかは、同じ物体の Behavior Tree（木は KasumiBushi、Update は GameCode）が決めます。"
                     "技の間の待ち・連続攻撃とみなす命中数と時間は、木の節（待ち／連続攻撃された）で調整します。"
+                    "プレイヤーへの反応（回復・吸い込み・ローリング・密着を咎める）は、木の枝「プレイヤーへの反応」の"
+                    "節（条件と反応の間隔）で調整します。"
                     "距離重み・発生条件・コンボ先・コンボ確率は技の表の列です。");
     }
     if (fields.Section("体と浮遊")) {

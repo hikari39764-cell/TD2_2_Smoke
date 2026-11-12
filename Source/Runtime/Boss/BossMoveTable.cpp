@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <optional>
 
+#include "BossCsv.h"
+
 namespace Project_TD2_2 {
 namespace {
 
@@ -37,142 +39,52 @@ enum class Column {
     BurnShape,
     BurnWidth,
     BurnSeconds,
+    TrackStop,
+    WindupJitter,
+    BreakHits,
     Count
 };
 struct HeaderKey {
     const char* text;
     Column column;
 };
+// 「追尾を止める」は「追尾」より、「崩せる被弾数」は「被弾」より先に見る（後ろの短い見出しに取られないように）。
 constexpr HeaderKey kHeaders[] = {
-    {"左右移動", Column::Side},    {"被弾", Column::Knock},           {"吹っ飛", Column::Knock},
-    {"踏み込み", Column::Step},    {"ボス行動", Column::Name},        {"行動名", Column::Name},
-    {"技", Column::Name},          {"概要", Column::Description},     {"役割", Column::Role},
-    {"前隙", Column::Pre},         {"攻撃中", Column::Act},           {"持続", Column::Act},
-    {"後隙", Column::Post},        {"発生条件", Column::Condition},   {"条件", Column::Condition},
-    {"距離重み", Column::Weight},  {"判定サイズ", Column::Size},      {"判定", Column::Size},
-    {"威力", Column::Damage},      {"ダメージ", Column::Damage},      {"コンボ先", Column::Combo},
-    {"派生", Column::Combo},       {"動きの型", Column::Type},        {"コンボ確率", Column::Chance},
-    {"斬撃速度", Column::Speed},   {"追尾", Column::Homing},          {"残す火", Column::BurnShape},
-    {"火の幅", Column::BurnWidth}, {"火の秒数", Column::BurnSeconds},
+    {"追尾を止める", Column::TrackStop},
+    {"溜めの揺らぎ", Column::WindupJitter},
+    {"崩せる", Column::BreakHits},
+    {"左右移動", Column::Side},
+    {"被弾", Column::Knock},
+    {"吹っ飛", Column::Knock},
+    {"踏み込み", Column::Step},
+    {"ボス行動", Column::Name},
+    {"行動名", Column::Name},
+    {"技", Column::Name},
+    {"概要", Column::Description},
+    {"役割", Column::Role},
+    {"前隙", Column::Pre},
+    {"攻撃中", Column::Act},
+    {"持続", Column::Act},
+    {"後隙", Column::Post},
+    {"発生条件", Column::Condition},
+    {"条件", Column::Condition},
+    {"距離重み", Column::Weight},
+    {"判定サイズ", Column::Size},
+    {"判定", Column::Size},
+    {"威力", Column::Damage},
+    {"ダメージ", Column::Damage},
+    {"コンボ先", Column::Combo},
+    {"派生", Column::Combo},
+    {"動きの型", Column::Type},
+    {"コンボ確率", Column::Chance},
+    {"斬撃速度", Column::Speed},
+    {"追尾", Column::Homing},
+    {"残す火", Column::BurnShape},
+    {"火の幅", Column::BurnWidth},
+    {"火の秒数", Column::BurnSeconds},
 };
 
-using Row = std::vector<std::string>;
-
-bool Contains(std::string_view text, std::string_view part) { return text.find(part) != std::string_view::npos; }
-bool StartsWith(std::string_view text, std::string_view part) { return text.substr(0, part.size()) == part; }
-
-std::string Trim(std::string_view text) {
-    size_t begin = 0, end = text.size();
-    while (begin < end && (text[begin] == ' ' || text[begin] == '\t' || text[begin] == '\r' || text[begin] == '\n'))
-        ++begin;
-    while (end > begin &&
-           (text[end - 1] == ' ' || text[end - 1] == '\t' || text[end - 1] == '\r' || text[end - 1] == '\n'))
-        --end;
-    // 全角の空白も落とす。
-    std::string result(text.substr(begin, end - begin));
-    while (StartsWith(result, "\xE3\x80\x80"))
-        result.erase(0, 3);
-    while (result.size() >= 3 && result.compare(result.size() - 3, 3, "\xE3\x80\x80") == 0)
-        result.erase(result.size() - 3);
-    return result;
-}
-
-// セルの中の改行（"..."）にも対応した CSV。空の行は捨てる。
-std::vector<Row> ParseCsv(std::string_view text) {
-    std::vector<Row> rows;
-    Row row;
-    std::string cell;
-    bool quoted = false;
-    if (StartsWith(text, "\xEF\xBB\xBF"))
-        text.remove_prefix(3);
-    auto endRow = [&]() {
-        row.push_back(cell);
-        cell.clear();
-        if (std::any_of(row.begin(), row.end(), [](const std::string& c) { return !Trim(c).empty(); }))
-            rows.push_back(row);
-        row.clear();
-    };
-    for (size_t i = 0; i < text.size(); ++i) {
-        const char ch = text[i];
-        if (quoted) {
-            if (ch == '"') {
-                if (i + 1 < text.size() && text[i + 1] == '"') {
-                    cell += '"';
-                    ++i;
-                } else {
-                    quoted = false;
-                }
-            } else {
-                cell += ch;
-            }
-            continue;
-        }
-        if (ch == '"' && cell.empty()) {
-            quoted = true;
-        } else if (ch == ',') {
-            row.push_back(cell);
-            cell.clear();
-        } else if (ch == '\n' || ch == '\r') {
-            if (ch == '\r' && i + 1 < text.size() && text[i + 1] == '\n')
-                ++i;
-            endRow();
-        } else {
-            cell += ch;
-        }
-    }
-    if (!cell.empty() || !row.empty())
-        endRow();
-    return rows;
-}
-
-// 最初に出てくる数（-?\d+(\.\d+)?）。無ければ空。「72F」は 72。
-std::optional<double> NumberOf(std::string_view text) {
-    for (size_t i = 0; i < text.size(); ++i) {
-        const bool digit = text[i] >= '0' && text[i] <= '9';
-        const bool sign = text[i] == '-' && i + 1 < text.size() && text[i + 1] >= '0' && text[i + 1] <= '9';
-        if (!digit && !sign)
-            continue;
-        size_t end = i + (sign ? 1 : 0);
-        while (end < text.size() && text[end] >= '0' && text[end] <= '9')
-            ++end;
-        if (end + 1 < text.size() && text[end] == '.' && text[end + 1] >= '0' && text[end + 1] <= '9') {
-            ++end;
-            while (end < text.size() && text[end] >= '0' && text[end] <= '9')
-                ++end;
-        }
-        return std::strtod(std::string(text.substr(i, end - i)).c_str(), nullptr);
-    }
-    return std::nullopt;
-}
-
-// 区切り（/ ／ , 、 と、spaces の時は空白も、dots の時は ・ も）で分ける。
-std::vector<std::string> Split(std::string_view text, bool spaces, bool dots = false) {
-    std::vector<std::string> parts;
-    std::string current;
-    auto flush = [&]() {
-        if (!current.empty())
-            parts.push_back(current);
-        current.clear();
-    };
-    for (size_t i = 0; i < text.size();) {
-        if (text[i] == '/' || text[i] == ',' || (spaces && (text[i] == ' ' || text[i] == '\t'))) {
-            flush();
-            ++i;
-        } else if (StartsWith(text.substr(i), "\xEF\xBC\x8F") || StartsWith(text.substr(i), "\xE3\x80\x81") ||
-                   (spaces && StartsWith(text.substr(i), "\xE3\x80\x80")) ||
-                   (dots && StartsWith(text.substr(i), "\xE3\x83\xBB"))) {
-            flush();
-            i += 3;
-        } else {
-            current += text[i++];
-        }
-    }
-    flush();
-    return parts;
-}
-
-// 試作と同じ丸め（Math.round：0.5 は上へ）。
-int RoundHalfUp(double value) { return static_cast<int>(std::floor(value + 0.5)); }
+using namespace BossCsv;
 
 std::optional<BossStrikeDirection> DirectionOf(std::string_view body) {
     if (body == "横")
@@ -295,6 +207,31 @@ void ReadBurn(const RawMove& raw, BossMove& move) {
     move.burnShape = parsed;
     move.burnWidth = static_cast<float>(*width);
     move.burnSeconds = static_cast<float>(*seconds);
+}
+
+// 「追尾を止める F」「溜めの揺らぎ F」「崩せる被弾数」。列が無い・空欄は今までどおり（最後まで追う・揺らがない・崩れない）。
+void ReadWindup(const RawMove& raw, BossMove& move) {
+    const std::string& track = raw[Column::TrackStop];
+    const auto stop = NumberOf(track);
+    if (!track.empty() && (!stop || *stop < 0.0))
+        move.warnings.push_back("追尾を止める F「" + track + "」が読めないので最後まで追います（0 以上の F）");
+    move.trackStopFrames = stop && *stop > 0.0 ? RoundHalfUp(*stop) : 0;
+    const std::string& jitter = raw[Column::WindupJitter];
+    for (const auto& part : Split(jitter, true)) {
+        const auto extra = NumberOf(part);
+        if (!extra || *extra < 0.0) {
+            move.warnings.push_back("溜めの揺らぎ F「" + jitter +
+                                    "」が読めないので揺らしません（0/20/40 のように書く）");
+            move.windupExtras.clear();
+            break;
+        }
+        move.windupExtras.push_back(RoundHalfUp(*extra));
+    }
+    const std::string& hits = raw[Column::BreakHits];
+    const auto breakHits = NumberOf(hits);
+    if (!hits.empty() && (!breakHits || *breakHits < 1.0))
+        move.warnings.push_back("崩せる被弾数「" + hits + "」が読めないので崩れません（1 以上の回数）");
+    move.breakHits = breakHits && *breakHits >= 1.0 ? RoundHalfUp(*breakHits) : 0;
 }
 
 // 1 行を読む中間結果。連撃の参照（別の行の名前）を解くため、全部の行を 2 回読む。
@@ -736,6 +673,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         ReadBurn(raw, move);
+        ReadWindup(raw, move);
         move.act = 0;
         move.hitCount = 0;
         for (const auto& segment : move.segments) {

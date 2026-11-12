@@ -10,6 +10,7 @@
 #include "BossClones.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
+#include "BossObserver.h"
 #include "BossPose.h"
 #include "BossRules.h"
 #include "BossSelection.h"
@@ -94,15 +95,20 @@ void LogMoves(const BossComponent& boss) {
                           strike.blow ? "blow" : "flinch", strike.reference);
             strikes += text;
         }
+        std::string extras;
+        for (const int extra : move.windupExtras)
+            extras += (extras.empty() ? "" : "/") + std::to_string(extra);
         char message[1024]{};
         std::snprintf(message, sizeof(message),
                       "Move index=%zu name=%s type=%s executable=%d pre=%d act=%d post=%d segments=%s damage=%d "
-                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f burn=%s/%.2f/%.2f strikes=%s",
+                      "auto=%d size=%.2f speed=%.2f homing=%.1f step=%.2f burn=%s/%.2f/%.2f trackStop=%d windup=%s "
+                      "breakHits=%d strikes=%s",
                       i, move.name.c_str(), BossMoveTable::TypeKey(move.type), static_cast<int>(move.executable),
                       move.pre, move.act, move.post, segments.c_str(), move.damage, static_cast<int>(move.damageAuto),
                       static_cast<double>(move.size), static_cast<double>(move.speed), static_cast<double>(move.homing),
                       static_cast<double>(move.step), BossMoveTable::BurnKey(move.burnShape),
-                      static_cast<double>(move.burnWidth), static_cast<double>(move.burnSeconds), strikes.c_str());
+                      static_cast<double>(move.burnWidth), static_cast<double>(move.burnSeconds), move.trackStopFrames,
+                      extras.empty() ? "-" : extras.c_str(), move.breakHits, strikes.c_str());
         BossLog::Write(message);
     }
 }
@@ -159,6 +165,22 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     LoadTable(world, boss);
 }
 
+// 気絶：技を打ち切って沈み込み、動けなくなる（飛んでいる斬撃はそのまま）。気絶値がたまった時と、大技が崩れた時。
+void EnterStun(BossComponent& boss) {
+    ++boss.stunCount;
+    boss.stun = 0.0f;
+    BossMoveExecutor::Interrupt(boss);
+    BossRules::CancelRequest(boss);
+    // 気絶すると、分身を撃たれた後の突進も取りやめる（試作と同じ）。
+    boss.brain.cloneStruck = false;
+    boss.state = BossState::Stunned;
+    boss.stateFrame = 0;
+    char message[160]{};
+    std::snprintf(message, sizeof(message), "Stunned tick=%llu count=%d frames=%d",
+                  static_cast<unsigned long long>(boss.tick), boss.stunCount, boss.stunFrames);
+    BossLog::Write(message);
+}
+
 void AddStun(BossComponent& boss, float amount) {
     if (amount <= 0.0f || boss.state == BossState::Stunned || boss.state == BossState::Dead ||
         (boss.stunLimit > 0 && boss.stunCount >= boss.stunLimit))
@@ -170,20 +192,27 @@ void AddStun(BossComponent& boss, float amount) {
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(amount),
                   static_cast<double>(boss.stun), static_cast<double>(boss.stunMax));
     BossLog::Write(message);
-    if (boss.stun < boss.stunMax)
+    if (boss.stun >= boss.stunMax)
+        EnterStun(boss);
+}
+
+// 崩せる大技：前隙（溜めを含む）の間に表の「崩せる被弾数」だけ当てられたら、技を打ち切って気絶させる。
+// 当たりは Damageable が受け付けた命中（無敵で弾かれたものは数えない）。崩れた気絶も気絶の回数に数える。
+void CheckBreak(BossComponent& boss, uint64_t freshHits) {
+    if (freshHits == 0 || boss.state != BossState::Act || boss.phase != BossActPhase::Pre)
         return;
-    // 気絶：技を打ち切って沈み込み、動けなくなる（飛んでいる斬撃はそのまま）。
-    ++boss.stunCount;
-    boss.stun = 0.0f;
-    BossMoveExecutor::Interrupt(boss);
-    BossRules::CancelRequest(boss);
-    // 気絶すると、分身を撃たれた後の突進も取りやめる（試作と同じ）。
-    boss.brain.cloneStruck = false;
-    boss.state = BossState::Stunned;
-    boss.stateFrame = 0;
-    std::snprintf(message, sizeof(message), "Stunned tick=%llu count=%d frames=%d",
-                  static_cast<unsigned long long>(boss.tick), boss.stunCount, boss.stunFrames);
+    const BossMove* move = BossRules::GetMove(boss, boss.move);
+    if (move == nullptr || move->breakHits <= 0)
+        return;
+    boss.windupHits += static_cast<int>(std::min<uint64_t>(freshHits, kBossHitMemory));
+    if (boss.windupHits < move->breakHits)
+        return;
+    char message[192]{};
+    std::snprintf(message, sizeof(message), "MoveBroken tick=%llu move=%s hits=%d need=%d stateFrame=%d",
+                  static_cast<unsigned long long>(boss.tick), move->name.c_str(), boss.windupHits, move->breakHits,
+                  boss.stateFrame);
     BossLog::Write(message);
+    EnterStun(boss);
 }
 
 // HP の持ち主は Damageable。受けた量から気絶値をため、フェーズと死亡を決める。
@@ -204,8 +233,8 @@ void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent
         }
         ++boss.testDamageDone;
     }
-    // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。
-    BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health));
+    // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。前隙の間なら大技が崩れる。
+    CheckBreak(boss, BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health)));
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
@@ -287,8 +316,10 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
                 BossMoveExecutor::EnterPost(boss);
         } else if (boss.phase == BossActPhase::Post) {
             // 後隙：brain が技を頼めば切り上げて出す（連続攻撃への割り込み）。頼まれなければ最後まで待って待機へ。
+            // 後隙の最初の recoveryGuardFrames は brain に聞かない：大技の後の隙を、撃ち返されて切り上げられる前に咎められる。
             context.recoveryDone = result == BossMoveExecutor::StepResult::Finished;
-            brain.OnRecovery(context);
+            if (context.recoveryDone || boss.stateFrame >= boss.recoveryGuardFrames)
+                brain.OnRecovery(context);
             if (boss.requestedMove >= 0)
                 StartRequested(frame, boss.requestedAsCombo ? boss.chain + 1 : 0);
             else if (context.recoveryDone)
@@ -362,9 +393,11 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
     // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。煙がもう入らなければ吸えずに当たる（試作と同じ）。
-    bool absorbing = false;
+    // ボスがプレイヤーの様子として見るのは、煙が入るかどうかに関わらず吸い込みの構えをしているか。
+    bool absorbing = false, inhaling = false;
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView,
                                                                                         GourdComponent& gourd) {
+        inhaling = inhaling || GourdRules::IsAbsorbing(gourd);
         absorbing = absorbing || (GourdRules::IsAbsorbing(gourd) &&
                                   GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd) > kAbsorbRoomEpsilon);
     });
@@ -382,6 +415,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
                 BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing};
+                BossObserver::Observe(world, boss, player, playerCenter, inhaling);
                 BossMoveExecutor::StepFloat(boss);
                 BossBrainContext context{boss, object.GetHandle()};
                 if (player != nullptr)

@@ -24,8 +24,8 @@ public:
     static bool IsPressured(const BossComponent& boss, int hits, float seconds);
     // 連続攻撃に反応した：数えた命中を忘れ、cooldownSeconds 秒は反応しない。
     static void UsePressure(BossComponent& boss, float cooldownSeconds);
-    // ボスが受けた命中の累計（Damageable の数）を渡す。増えた分を、いまの時刻の命中として覚える。
-    static void NoteHits(BossComponent& boss, uint64_t totalHits);
+    // ボスが受けた命中の累計（Damageable の数）を渡す。増えた分を、いまの時刻の命中として覚え、増えた数を返す。
+    static uint64_t NoteHits(BossComponent& boss, uint64_t totalHits);
     // 技を始めた（実行器が始めた直後に呼ぶ）。chain は何連目か（0 が始動）。
     static void NoteStarted(BossComponent& boss, int row, int chain);
 };

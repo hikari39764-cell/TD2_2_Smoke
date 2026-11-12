@@ -59,10 +59,62 @@ Vec3 AimDirection(const BossFrame& frame, Vec3 from) {
     const Vec3 forward = Forward(frame.boss.yaw);
     if (frame.player == nullptr)
         return forward;
-    const float horizontal = std::max(1.0f, FlatLength(Sub(frame.playerCenter, from)));
-    const Vec3 aim{forward.x * horizontal, frame.playerCenter.y + frame.boss.playerAimHeight - from.y,
-                   forward.z * horizontal};
+    // 追尾を止めている間は、止めた時のプレイヤーの位置へ放つ（高さの狙いも動かさない）。
+    const Vec3 target = frame.boss.aimFrozen ? frame.boss.aimPoint : frame.playerCenter;
+    const float horizontal = std::max(1.0f, FlatLength(Sub(target, from)));
+    const Vec3 aim{forward.x * horizontal, target.y + frame.boss.playerAimHeight - from.y, forward.z * horizontal};
     return Normalize(aim, forward);
+}
+
+// 溜めの揺らぎで構えたまま止まっている tick（前隙の windupHoldAt F 目で、まだ止まる F が残っている）。
+bool Holding(const BossComponent& boss) {
+    return boss.phase == BossActPhase::Pre && boss.windupHold > 0 && boss.stateFrame == boss.windupHoldAt;
+}
+
+// いまの tick から、次の一撃を放つ tick まで何 tick あるか（放つ tick は 0）。もう放たない時は -1。
+// 剣を振る型は振り抜いた tick（SwingStep の Release）、ほかの型は打つ区間に入った tick（ナイフ・輪・分身）に放つ。
+int FramesToRelease(const BossComponent& boss, const BossMove& move) {
+    const bool swingType = BossMoveTable::IsSwingType(move.type);
+    int accumulated = 0;
+    int base = 0, now = boss.stateFrame;
+    if (boss.phase == BossActPhase::Pre) {
+        // 攻撃中の 0 F 目は前隙が終わる tick。残りの前隙と、まだ止まる溜めの分だけ先になる。
+        base = move.pre - boss.stateFrame + (boss.stateFrame <= boss.windupHoldAt ? boss.windupHold : 0);
+        now = 0;
+    } else if (boss.phase != BossActPhase::Act) {
+        return -1;
+    }
+    for (size_t k = 0; k < move.segments.size(); ++k) {
+        const BossSegment& segment = move.segments[k];
+        const int length =
+            BossMoveTable::IsMoveType(move.type) && k == 0 ? std::max(1, boss.actFrames) : segment.length;
+        if (segment.hit) {
+            const int release =
+                accumulated + (swingType ? std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames)) : 1);
+            if (release >= now)
+                return base + release - now;
+        }
+        accumulated += length;
+    }
+    return -1;
+}
+
+// 追尾を止める F：次の一撃を放つまでが表の F より短くなったら、向き直るのをやめ、狙いの点も止める。放ったら戻す。
+void UpdateAimFreeze(BossFrame& frame, const BossMove& move) {
+    BossComponent& boss = frame.boss;
+    const int remaining = move.trackStopFrames > 0 ? FramesToRelease(boss, move) : -1;
+    const bool freeze = remaining >= 0 && remaining < move.trackStopFrames;
+    if (freeze == boss.aimFrozen)
+        return;
+    boss.aimFrozen = freeze;
+    if (!freeze)
+        return;
+    boss.aimPoint = frame.player != nullptr ? frame.playerCenter : Add(boss.ground, Forward(boss.yaw));
+    char extra[160]{};
+    std::snprintf(extra, sizeof(extra), "release=%d yaw=%.4f aim=(%.3f,%.3f,%.3f)", remaining,
+                  static_cast<double>(boss.yaw), static_cast<double>(boss.aimPoint.x),
+                  static_cast<double>(boss.aimPoint.y), static_cast<double>(boss.aimPoint.z));
+    Log(boss, "AimFreeze", extra);
 }
 
 // 連撃の左右移動：一撃ごとに左右交互へ動く。構えに入るところが一番速く、振る瞬間に向けて減速する。
@@ -116,8 +168,9 @@ void SideMove(BossFrame& frame, const BossMove& move) {
 void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPlayer, float distance) {
     BossComponent& boss = frame.boss;
     const int t = boss.stateFrame;
-    const bool inKamae = move.pre - t < std::min(boss.kamaeFrames, move.pre);
-    // 前隙の間はずっとプレイヤーを向く。
+    // 溜めの揺らぎで止まっている間も、構えと同じく歩かない。
+    const bool inKamae = move.pre - t < std::min(boss.kamaeFrames, move.pre) || Holding(boss);
+    // 前隙の間はずっとプレイヤーを向く（追尾を止めている間は FaceRate が向かない）。
     BossMoveExecutor::FaceRate(frame, move.type == BossMoveType::Overhead ? boss.overheadTurnRate : boss.preTurnRate);
     const Vec3 forward = Forward(boss.yaw);
     switch (move.type) {
@@ -140,7 +193,8 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
             }
             const float k = std::min(1.0f, (static_cast<float>(t) - start) / std::max(1.0f, teleport));
             boss.ground = Lerp(boss.dashFrom, boss.dashTo, 1.0f - std::pow(1.0f - k, 3.0f));
-            boss.yaw = YawOf(Sub(PlayerGround(frame), boss.ground));
+            if (!boss.aimFrozen)
+                boss.yaw = YawOf(Sub(PlayerGround(frame), boss.ground));
         }
         break;
     }
@@ -284,7 +338,8 @@ void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
 
 void BossMoveExecutor::FaceRate(BossFrame& frame, float degreesPerSecond) {
     BossComponent& boss = frame.boss;
-    if (frame.player == nullptr)
+    // 追尾を止めている間は向き直らない（どの型の、前隙・攻撃中のどの向き直りも）。
+    if (frame.player == nullptr || boss.aimFrozen)
         return;
     const Vec3 offset = Sub(PlayerGround(frame), boss.ground);
     if (FlatLength(offset) < 1e-4f)
@@ -343,16 +398,39 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
         boss.strafe = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
         boss.stepFrom = boss.ground;
     }
-    char extra[160]{};
-    std::snprintf(extra, sizeof(extra), "type=%s pre=%d act=%d post=%d hits=%d", BossMoveTable::TypeKey(move.type),
-                  move.pre, boss.actFrames, move.post, move.hitCount);
+    boss.aimFrozen = false;
+    boss.windupHits = 0;
+    boss.windupHold = 0;
+    // 構えきる F（構えの合図の F）。前隙が短すぎて止まれない技は揺らがない。
+    boss.windupHoldAt = move.pre - std::min(boss.kamaeFrames, move.pre - 1);
+    if (!move.windupExtras.empty() && move.pre >= 2) {
+        // 見た目の乱数で選ぶ。技選びの乱数や、プレイヤーに見える合図とは結び付かない。
+        // 始めた tick を混ぜる：見た目の乱数は種が決まっているので、混ぜないと Play のたびに最初の溜めが同じ長さになる。
+        boss.random ^= static_cast<uint32_t>(boss.tick) * 2654435761u;
+        const size_t count = move.windupExtras.size();
+        const size_t pick = std::min(count - 1, static_cast<size_t>(BossRandom(boss) * static_cast<float>(count)));
+        boss.windupHold = std::max(0, move.windupExtras[pick]);
+        char message[192]{};
+        std::snprintf(message, sizeof(message), "Windup tick=%llu move=%s extra=%d pick=%zu/%zu",
+                      static_cast<unsigned long long>(boss.tick), move.name.c_str(), boss.windupHold, pick + 1, count);
+        BossLog::Write(message);
+    }
+    char extra[192]{};
+    std::snprintf(extra, sizeof(extra), "type=%s pre=%d extra=%d act=%d post=%d hits=%d",
+                  BossMoveTable::TypeKey(move.type), move.pre, boss.windupHold, boss.actFrames, move.post,
+                  move.hitCount);
     Log(boss, "MoveStart", extra);
 }
 
 BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     BossComponent& boss = frame.boss;
     const BossMove& move = CurrentMove(boss);
-    ++boss.stateFrame;
+    // 溜めの揺らぎの間は前隙の F を進めない：体・剣の構え・踏み込みの時間がそこで止まり、構えたまま待つ。
+    if (Holding(boss))
+        --boss.windupHold;
+    else
+        ++boss.stateFrame;
+    UpdateAimFreeze(frame, move);
     const Vec3 offset = Sub(PlayerGround(frame), boss.ground);
     const float distance = FlatLength(offset);
     const Vec3 toPlayer = FlatNormalize(offset, Forward(boss.yaw));
@@ -361,7 +439,8 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     StepResult result = StepResult::Running;
     if (boss.phase == BossActPhase::Pre) {
         const float progress = move.pre > 0 ? static_cast<float>(boss.stateFrame) / move.pre : 1.0f;
-        if (swingType && move.pre - boss.stateFrame == std::min(kamae, move.pre - 1))
+        // 構え（剣先に霞が集まる）は、溜めの揺らぎで止まった後、振るまでいつもの長さの所で出す。
+        if (swingType && move.pre - boss.stateFrame == std::min(kamae, move.pre - 1) && boss.windupHold == 0)
             Glint(boss);
         PreMotion(frame, move, progress, toPlayer, distance);
         SideMove(frame, move);
@@ -426,10 +505,13 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
 void BossMoveExecutor::EnterPost(BossComponent& boss) {
     boss.phase = BossActPhase::Post;
     boss.stateFrame = 0;
+    boss.aimFrozen = false;
 }
 
 void BossMoveExecutor::EnterIdle(BossComponent& boss) {
     boss.state = BossState::Idle;
+    boss.aimFrozen = false;
+    boss.windupHold = 0;
     boss.move = -1;
     boss.stateFrame = 0;
     boss.idleFrames = 0;
@@ -466,6 +548,8 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     boss.segmentDone.clear();
     boss.move = -1;
     boss.chain = 0;
+    boss.aimFrozen = false;
+    boss.windupHold = 0;
     boss.dashStarted = false;
     boss.height = 0.0f;
     boss.sink = 0.0f;

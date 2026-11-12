@@ -113,12 +113,12 @@ void BossSelection::UsePressure(BossComponent& boss, float cooldownSeconds) {
     boss.brain.pressureReadySeconds = boss.clockSeconds + std::max(0.0f, cooldownSeconds);
 }
 
-void BossSelection::NoteHits(BossComponent& boss, uint64_t totalHits) {
+uint64_t BossSelection::NoteHits(BossComponent& boss, uint64_t totalHits) {
     BossBrainMemory& memory = boss.brain;
     const uint64_t fresh = totalHits > memory.seenHits ? totalHits - memory.seenHits : 0;
     memory.seenHits = totalHits;
     if (fresh == 0)
-        return;
+        return 0;
     for (uint64_t n = 0; n < std::min<uint64_t>(fresh, kBossHitMemory); ++n) {
         memory.hitSeconds[memory.hitNext] = boss.clockSeconds;
         memory.hitNext = (memory.hitNext + 1) % kBossHitMemory;
@@ -128,12 +128,13 @@ void BossSelection::NoteHits(BossComponent& boss, uint64_t totalHits) {
     const BossMove* current = BossRules::GetMove(boss, BossRules::GetCurrentMove(boss));
     if (BossRules::GetState(boss) != BossState::Idle &&
         (current == nullptr || !BossMoveTable::IsMoveType(current->type)))
-        return;
+        return fresh;
     memory.moveHits += static_cast<int>(std::min<uint64_t>(fresh, kBossHitMemory));
     char message[128]{};
     std::snprintf(message, sizeof(message), "MoveHit tick=%llu moveHits=%d", static_cast<unsigned long long>(boss.tick),
                   memory.moveHits);
     BossLog::Write(message);
+    return fresh;
 }
 
 void BossSelection::NoteStarted(BossComponent& boss, int row, int chain) {

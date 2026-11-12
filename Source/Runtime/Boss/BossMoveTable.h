@@ -104,6 +104,13 @@ struct BossMove {
     BossBurnShape burnShape = BossBurnShape::None;
     float burnWidth = 0.0f;
     float burnSeconds = 0.0f;
+    // 追尾を止める F：一撃を放つこの F 前から放つまで、ボスはプレイヤーの方へ向き直らない（0 は放つまで追う）。
+    // 放つ直前に横へよければ外れる、という読み合いを作る。
+    int trackStopFrames = 0;
+    // 溜めの揺らぎ F：出すたびに前隙の溜め（構えたまま止まる間）へ足す F の候補。同じ確率で 1 つ。空は足さない。
+    std::vector<int> windupExtras;
+    // 崩せる被弾数：前隙（溜めを含む）の間にこれだけ当てられると技が崩れ、気絶する。0 は崩れない。
+    int breakHits = 0;
     // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;

@@ -124,6 +124,39 @@ struct BossSwing {
     HIKARI::GameProjectFloat3 lastOuter{};
 };
 
+// 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
+inline constexpr size_t kBossReactionMemory = 16;
+
+// 「反応の間隔」1 つぶんの覚え（節の名前の欄で見分ける。同じ名前の節は間隔を分け合う）。時刻は boss.clockSeconds。
+struct BossReactionMemory {
+    size_t key = 0;
+    // 反応の技を出した後、また反応できる時刻。
+    float readySeconds = 0.0f;
+    // 確率を振った後、次に振れる時刻（外れた時にすぐ振り直さない）。
+    float rerollSeconds = 0.0f;
+};
+
+// ボスから見たローリングの向き。
+enum class BossRollDirection { Away, Toward, Sideways };
+
+// ボスが毎 tick 見ているプレイヤーの様子（行動ツリーの反応の節が読む）。時刻は boss.clockSeconds の秒。
+struct BossPlayerWatch {
+    bool present = false;
+    bool healing = false;
+    bool absorbing = false;
+    float absorbSince = 0.0f;
+    bool inFire = false;
+    float fireSince = 0.0f;
+    // 最後にローリングを始めた時刻（負はまだ見ていない）と、始めた時のボスから見た向き。
+    float rollSeconds = -1.0f;
+    BossRollDirection rollDirection = BossRollDirection::Away;
+    // 前の tick にローリング中だったか・その経過 F（続けてもう一度転がったのを見分ける）。
+    bool wasRolling = false;
+    int rollFrame = 0;
+    // 場の燃えている面積の割合 (%)。
+    float burningPercent = 0.0f;
+};
+
 // 技の選び方が覚えていること（行動ツリーの節が BossSelection を通して読み書きする）。
 struct BossBrainMemory {
     // 直前に始動した技の行（中立の技選びで重みを減らす）。無ければ -1。
@@ -150,6 +183,10 @@ struct BossBrainMemory {
     bool cloneStruck = false;
     // 霞分身を次に出せる時刻（秒）。
     float cloneReadySeconds = 0.0f;
+    // 反応の間隔の節ごとの覚え。
+    std::array<BossReactionMemory, kBossReactionMemory> reactions{};
+    size_t reactionCount = 0;
+    bool reactionFullLogged = false;
 };
 
 // ボス「霞武士」の本体。HP は同じ物体の Damageable が持ち、ここは技の実行・気絶・浮遊・斬撃を持つ。
@@ -195,7 +232,10 @@ public:
     int moveHitMax = 5;
     float interruptPower = 3.0f;
     int comboMaxChain = 3;
+    int recoveryGuardFrames = 30;
     float comboChancePercent = 65.0f;
+    // ローリングの向きを分ける角度：ボスへ向かう・離れる向きからこの角度以内なら前後、それより外れたら横。
+    float rollAxisDegrees = 45.0f;
     // 体
     float bodyHalfHeight = 1.7f;
     float bodyRadius = 0.68f;
@@ -387,6 +427,14 @@ public:
     HIKARI::GameProjectFloat3 dashTo{};
     std::vector<bool> segmentDone;
     std::array<BossSwing, 16> swings{};
+    // 溜めの揺らぎ：前隙の windupHoldAt F 目で、あと windupHold F だけ構えたまま止まる。
+    int windupHold = 0;
+    int windupHoldAt = -1;
+    // 前隙の間に当てられた回数（崩せる被弾数と比べる）。
+    int windupHits = 0;
+    // 追尾を止めている間（一撃を放つまで）。狙いは止めた時のプレイヤーの位置のまま。
+    bool aimFrozen = false;
+    HIKARI::GameProjectFloat3 aimPoint{};
     int glintFrames = 0;
     // 回し蹴りの回転（見た目の向きに足す rad）。霧へ沈んでいる深さ (m)。隠れている間は当たらない。
     float spin = 0.0f;
@@ -415,6 +463,7 @@ public:
     int requestedMove = -1;
     bool requestedAsCombo = false;
     BossBrainMemory brain;
+    BossPlayerWatch watch;
     int sequenceCursor = 0;
     int testDamageDone = 0;
     uint32_t random = 0;

@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include "BossFrame.h"
+#include "BossReactionNodes.h"
 #include "BossRules.h"
 #include "BossSelection.h"
 
@@ -20,16 +21,7 @@ using namespace HIKARI::BEHAVIOR;
 // 編集器の節の一覧での分類。
 constexpr char kCategory[] = "ボス 霞武士";
 
-BossThought* ThoughtOf(void* user) { return static_cast<BossBehaviorNodes*>(user)->Current(); }
-
-// UTF-8 の文字の途中で切らないように写す。
-void CopyText(char* target, size_t capacity, std::string_view text) {
-    size_t length = std::min(text.size(), capacity - 1);
-    while (length > 0 && length < text.size() && (static_cast<unsigned char>(text[length]) & 0xC0u) == 0x80u)
-        --length;
-    std::memcpy(target, text.data(), length);
-    target[length] = '\0';
-}
+BossThought* ThoughtOf(void* user) { return BossBehaviorNodes::ThoughtOf(user); }
 
 // ---- 待ち（横歩き）：行動の間、最小〜最大 F のどれかだけ待つ。待つ間の横歩きは実行器の待機の動き。 ----
 
@@ -227,20 +219,29 @@ struct MoveState {
     char label[32];
 };
 
+// 頼めた時は true。頼めなかった時は、すぐ前の「反応の間隔」が通った分を取り消す（ほかの枝の技を反応として数えない）。
+bool RequestRow(BossThought& thought, PickMode mode, int row, bool& continues, float& weight) {
+    BossComponent& boss = thought.boss;
+    bool requested = false;
+    // 攻撃中が終わった tick は、走っている節がコンボを決める。新しく始まる節は技を出せない。
+    if (row >= 0 && thought.moment != BossBrainMoment::ActFinished) {
+        weight = WeightOf(mode, thought, row);
+        // 後隙を切り上げて出す技が、いまの技のコンボ先なら、コンボの続きとして数える。
+        continues = thought.moment == BossBrainMoment::Recovery && BossSelection::IsComboOfCurrent(boss, row);
+        requested = weight > 0.0f && BossRules::RequestMove(boss, row, continues);
+    }
+    if (!requested)
+        BossReactionNodes::NoteFailed(thought);
+    return requested;
+}
+
 Status RequestFirst(INodeContext& context, MoveState& run, BossThought& thought) {
     BossComponent& boss = thought.boss;
     const std::string_view name = context.ParamText(kMoveName);
     const PickMode mode = ModeOf(context.ParamText(kMovePick));
-    const int row = RowOf(boss, name);
-    // 攻撃中が終わった tick は、走っている節がコンボを決める。新しく始まる節は技を出せない。
-    if (row < 0 || thought.moment == BossBrainMoment::ActFinished)
-        return Status::Failure;
-    const float weight = WeightOf(mode, thought, row);
-    if (!(weight > 0.0f))
-        return Status::Failure;
-    // 後隙を切り上げて出す技が、いまの技のコンボ先なら、コンボの続きとして数える。
-    const bool continues = thought.moment == BossBrainMoment::Recovery && BossSelection::IsComboOfCurrent(boss, row);
-    if (!BossRules::RequestMove(boss, row, continues))
+    bool continues = false;
+    float weight = 0.0f;
+    if (!RequestRow(thought, mode, RowOf(boss, name), continues, weight))
         return Status::Failure;
     run.requested = true;
     if (mode == PickMode::Neutral)
@@ -249,14 +250,21 @@ Status RequestFirst(INodeContext& context, MoveState& run, BossThought& thought)
         BossSelection::UsePressure(boss, thought.pressureCooldown);
         thought.pressureArmed = false;
     }
-    char message[320]{};
+    // 反応の枝の技は why=reaction と枝の名前（反応の間隔の「名前」）を出す。調整の時にどの枝が出たかを見る。
+    const bool reaction = thought.reactionArmed;
+    char branch[80]{};
+    if (reaction)
+        std::snprintf(branch, sizeof(branch), " branch=%s", thought.reactionLabel);
+    BossReactionNodes::NoteStarted(thought);
+    char message[384]{};
     std::snprintf(message, sizeof(message),
                   "Pick tick=%llu move=%.*s why=%s from=%s continues=%d dist=%.3f weight=%.5f last=%d moveHits=%d "
-                  "phase=%d",
+                  "phase=%d%s",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(name.size()), name.data(),
-                  ModeName(mode), thought.moment == BossBrainMoment::Recovery ? "recovery" : "idle",
-                  static_cast<int>(continues), static_cast<double>(thought.situation.distance),
-                  static_cast<double>(weight), boss.brain.lastStarted, boss.brain.moveHits, thought.situation.phase);
+                  reaction ? "reaction" : ModeName(mode),
+                  thought.moment == BossBrainMoment::Recovery ? "recovery" : "idle", static_cast<int>(continues),
+                  static_cast<double>(thought.situation.distance), static_cast<double>(weight), boss.brain.lastStarted,
+                  boss.brain.moveHits, thought.situation.phase, branch);
     BossLog::Write(message);
     return Status::Running;
 }
@@ -279,7 +287,7 @@ Status TickMove(INodeContext& context, void* state, void* user) noexcept {
             const BossMove* move = BossRules::GetMove(boss, next);
             ++run.chain;
             run.fraction = static_cast<float>(run.chain + 1) / static_cast<float>(std::max(1, boss.comboMaxChain));
-            CopyText(run.label, sizeof(run.label), move->name);
+            BossBehaviorNodes::CopyText(run.label, sizeof(run.label), move->name);
             char message[224]{};
             std::snprintf(message, sizeof(message), "Combo tick=%llu to=%s chain=%d roll=%.3f",
                           static_cast<unsigned long long>(boss.tick), move->name.c_str(), run.chain,
@@ -311,11 +319,19 @@ bool MoveProgress(INodeContext&, const void* state, void*, NodeProgress& out) no
     out.fraction = std::clamp(run.fraction, 0.0f, 1.0f);
     std::snprintf(out.text, sizeof(out.text), "コンボ %d: ", run.chain);
     const size_t used = std::strlen(out.text);
-    CopyText(out.text + used, sizeof(out.text) - used, run.label);
+    BossBehaviorNodes::CopyText(out.text + used, sizeof(out.text) - used, run.label);
     return true;
 }
 
 } // namespace
+
+void BossBehaviorNodes::CopyText(char* target, size_t capacity, std::string_view text) {
+    size_t length = std::min(text.size(), capacity - 1);
+    while (length > 0 && length < text.size() && (static_cast<unsigned char>(text[length]) & 0xC0u) == 0x80u)
+        --length;
+    std::memcpy(target, text.data(), length);
+    target[length] = '\0';
+}
 
 std::shared_ptr<BossBehaviorNodes> BossBehaviorNodes::Acquire() {
     // 節の種類の名前はプロセスで 1 つしか登録できないので、システムが何個あっても 1 つの登録を分け合う。
@@ -413,7 +429,7 @@ bool BossBehaviorNodes::Register() {
 
     return registration_.Register(wait) && registration_.Register(move) && registration_.Register(pressured) &&
            registration_.Register(situation) && registration_.Register(cloneReady) &&
-           registration_.Register(cloneStruck);
+           registration_.Register(cloneStruck) && BossReactionNodes::Register(registration_, this);
 }
 
 TickOutcome BossBehaviorNodes::Think(BossThought& thought, HIKARI::GameProjectObjectHandle object, float deltaSeconds) {

@@ -7,13 +7,14 @@
       "id": 1,
       "type": "Selector",
       "name": "霞武士",
-      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。",
+      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。プレイヤーの回復・吸い込み・後ろへのローリング・密着には、待ちを切り上げて咎める技を出す。",
       "params": {
         "reactive": true
       },
       "children": [
         22,
         2,
+        29,
         7
       ]
     },
@@ -254,6 +255,169 @@
       "name": "霞分身",
       "params": {
         "move": "霞分身",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 29,
+      "type": "Selector",
+      "name": "プレイヤーへの反応",
+      "note": "条件 → 反応の間隔 → 技を実行 の枝を並べる。左から順に試し、成り立った枝の技を待ちを切り上げて出す。反応の間隔の「後隙を切り上げる」がオフの枝は、ボスの後隙の間は反応しない（大技の後隙は咎められるまま）。",
+      "children": [
+        30,
+        34,
+        38,
+        42
+      ]
+    },
+    {
+      "id": 30,
+      "type": "Sequence",
+      "name": "回復を咎める",
+      "children": [
+        31,
+        32,
+        33
+      ]
+    },
+    {
+      "id": 31,
+      "type": "Project_TD2_2.BossPlayerHealing"
+    },
+    {
+      "id": 32,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "回復を咎める",
+      "params": {
+        "chance": 80.0,
+        "cooldown": 8.0,
+        "cutRecovery": false,
+        "label": "回復を咎める",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 33,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横なぎ",
+      "params": {
+        "move": "突進横なぎ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 34,
+      "type": "Sequence",
+      "name": "吸い込みを咎める",
+      "children": [
+        35,
+        36,
+        37
+      ]
+    },
+    {
+      "id": 35,
+      "type": "Project_TD2_2.BossPlayerAbsorbing",
+      "params": {
+        "minSeconds": 0.4
+      }
+    },
+    {
+      "id": 36,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "吸い込みを咎める",
+      "params": {
+        "chance": 70.0,
+        "cooldown": 6.0,
+        "cutRecovery": false,
+        "label": "吸い込みを咎める",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 37,
+      "type": "Project_TD2_2.BossMove",
+      "name": "投げナイフ",
+      "params": {
+        "move": "投げナイフ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 38,
+      "type": "Sequence",
+      "name": "後ろローリングを追う",
+      "children": [
+        39,
+        40,
+        41
+      ]
+    },
+    {
+      "id": 39,
+      "type": "Project_TD2_2.BossPlayerRolled",
+      "params": {
+        "direction": "away",
+        "withinSeconds": 0.5
+      }
+    },
+    {
+      "id": 40,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "後ろローリングを追う",
+      "params": {
+        "chance": 60.0,
+        "cooldown": 5.0,
+        "cutRecovery": false,
+        "label": "後ろローリングを追う",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 41,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横なぎ",
+      "params": {
+        "move": "突進横なぎ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 42,
+      "type": "Sequence",
+      "name": "密着を払う",
+      "children": [
+        43,
+        44,
+        45
+      ]
+    },
+    {
+      "id": 43,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 2.2,
+        "min": 0.0
+      }
+    },
+    {
+      "id": 44,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "密着を払う",
+      "params": {
+        "chance": 60.0,
+        "cooldown": 4.0,
+        "cutRecovery": false,
+        "label": "密着を払う",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 45,
+      "type": "Project_TD2_2.BossMove",
+      "name": "回し蹴り",
+      "params": {
+        "move": "回し蹴り",
         "pick": "always"
       }
     }
