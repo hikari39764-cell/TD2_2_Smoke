@@ -321,7 +321,10 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     const bool swinging = boss.swordSmoke;
     const bool kamae = boss.glintFrames > 0 && boss.state == BossState::Act;
     // 火を残す技の間は、前隙の最初から剣が燃えている（技を出す前の 1 枚の画面で見分けられる）。
-    const bool lit = boss.bladeLit && boss.state == BossState::Act;
+    // フェーズ 2 では、待機中も技の間も、剣がいつも燃えている（剣の斬撃がどれも火を残すようになる）。気絶の間は消える。
+    const bool acting = boss.state == BossState::Act;
+    const bool lit = (boss.bladeLit && acting) ||
+                     (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
     UpdateBladeFire(world, object, boss, lit);
     if (!swinging && !kamae && !lit) {
         StopHandle(world, boss.swordVfx);

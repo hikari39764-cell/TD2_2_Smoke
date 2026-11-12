@@ -14,6 +14,7 @@
       "children": [
         22,
         2,
+        55,
         46,
         29,
         7
@@ -438,7 +439,7 @@
       "id": 47,
       "type": "Project_TD2_2.BossBurning",
       "params": {
-        "atLeastPercent": 12.0,
+        "atLeastPercent": 8.0,
         "atMostPercent": 100.0
       }
     },
@@ -480,7 +481,7 @@
       "type": "Project_TD2_2.BossBurning",
       "params": {
         "atLeastPercent": 1.0,
-        "atMostPercent": 12.0
+        "atMostPercent": 8.0
       }
     },
     {
@@ -505,6 +506,55 @@
     },
     {
       "id": 54,
+      "type": "Project_TD2_2.BossMove",
+      "name": "引爆",
+      "params": {
+        "move": "引爆",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 55,
+      "type": "Sequence",
+      "name": "引爆（フェーズ 2）",
+      "note": "場の火が広い（以上 12 %）と、次に待っている時に引爆する。間隔は「引爆（ときどき）」と同じ名前「引爆」で分け合う。",
+      "children": [
+        56,
+        57,
+        58,
+        59
+      ]
+    },
+    {
+      "id": 56,
+      "type": "Project_TD2_2.BossSituation",
+      "params": {
+        "phaseAtLeast": 2,
+        "healthAtMost": 100.0
+      }
+    },
+    {
+      "id": 57,
+      "type": "Project_TD2_2.BossBurning",
+      "params": {
+        "atLeastPercent": 6.0,
+        "atMostPercent": 100.0
+      }
+    },
+    {
+      "id": 58,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "引爆",
+      "params": {
+        "chance": 100.0,
+        "cooldown": 20.0,
+        "cutRecovery": false,
+        "label": "引爆",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 59,
       "type": "Project_TD2_2.BossMove",
       "name": "引爆",
       "params": {
