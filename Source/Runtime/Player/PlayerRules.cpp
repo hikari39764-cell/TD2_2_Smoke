@@ -81,6 +81,12 @@ void PlayerRules::LockActions(PlayerComponent& player, int frames) {
     player.actionLockFrames = std::max(player.actionLockFrames, std::max(0, frames));
 }
 
+void PlayerRules::SetMovementSpeedScale(PlayerComponent& player, float scale) {
+    player.externalMoveScale = std::isfinite(scale) ? std::clamp(scale, 0.0f, 1.0f) : 1.0f;
+}
+
+float PlayerRules::GetMovementSpeedScale(const PlayerComponent& player) { return player.externalMoveScale; }
+
 void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames) {
     Initialize(player);
     if (!IsAlive(player) || frames <= 0 || !std::isfinite(distance) || distance < 0.0f || !std::isfinite(direction.x) ||

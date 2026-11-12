@@ -244,6 +244,8 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
                                                 PlayerRules::Initialize(player);
+                                                // 毎 tick 失効させ、外部システムが消えても減速を残さない。
+                                                PlayerRules::SetMovementSpeedScale(player, 1.0f);
                                                 // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
                                                 // ずれないようにする。
                                                 if (player.advanceStateNextTick)

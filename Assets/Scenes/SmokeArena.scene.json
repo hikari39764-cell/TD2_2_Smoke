@@ -402,6 +402,72 @@
           1.0
         ]
       }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 0.36,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 0.5,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 0.36
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "type": "Project_TD2_2.Gourd",
+          "properties": {
+            "player": {
+              "$hikariRef": "SceneObject",
+              "id": 2
+            },
+            "camera": {
+              "$hikariRef": "SceneObject",
+              "id": 4
+            }
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 6,
+      "name": "Gourd",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.65,
+          3401.4,
+          -14.15
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
     }
   ],
   "sceneName": "SmokeArena",

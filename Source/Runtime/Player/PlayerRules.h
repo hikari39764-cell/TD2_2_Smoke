@@ -17,6 +17,9 @@ public:
     // allowInsufficient は残量が正なら不足分を認める。残量 0 では射撃できない。
     static bool TryConsumeStamina(PlayerComponent& player, float amount, bool allowInsufficient = false);
     static void LockActions(PlayerComponent& player, int frames);
+    // その固定 tick の歩行倍率。PlayerSystem が毎 tick 1 に戻してから外部が要求する。
+    static void SetMovementSpeedScale(PlayerComponent& player, float scale);
+    static float GetMovementSpeedScale(const PlayerComponent& player);
     static void AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames);
     static HIKARI::GameProjectFloat3 GetFacing(const PlayerComponent& player);
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);

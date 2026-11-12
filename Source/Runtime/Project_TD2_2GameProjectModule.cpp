@@ -8,6 +8,8 @@
 #include "Player/PlayerSystem.h"
 #include "Player/PlayerDebugComponent.h"
 #include "Player/PlayerDebugSystem.h"
+#include "Gourd/GourdComponent.h"
+#include "Gourd/GourdSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -65,7 +67,11 @@ public:
                context.RegisterSystem<PlayerDebugSystem>(
                    {.systemId = kPlayerDebugSystem, .displayName = "プレイヤー検証"}) &&
                context.BindComponentSystem(
-                   {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90});
+                   {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90}) &&
+               context.RegisterComponent<GourdComponent>({.typeName = kGourdType, .displayName = "ヒョウタン"}) &&
+               context.RegisterSystem<GourdSystem>({.systemId = kGourdSystem, .displayName = "ヒョウタン"}) &&
+               context.BindComponentSystem(
+                   {.componentType = kGourdType, .systemId = kGourdSystem, .defaultExecutionOrder = 110});
     }
 };
 
