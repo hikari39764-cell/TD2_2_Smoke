@@ -15,7 +15,7 @@ public:
     float maxHealth = 1000.0f;
     bool invulnerable = false;
     bool traceEveryHit = false;
-    int hitStopFrames = 4;
+    int hitStopFrames = 0;
     float hitStopScale = 0.0f;
     int hitCameraFrames = 14;
     float hitCameraAmplitude = 0.16f;

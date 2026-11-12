@@ -45,7 +45,7 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbMoveScale = 0.06f;
     float absorbTurnSpeed = 720.0f;
     float capacity = 100.0f;
-    float initialSmoke = 0.0f;
+    float initialSmoke = 100.0f;
     float smokePerVolume = 8.0f;
     HIKARI::GameProjectVfxAssetReference absorbEffect{"5f8903664eb0a5691bcc566b125bc81e",
                                                       "Assets/Vfx/GourdAbsorb.hvfx"};

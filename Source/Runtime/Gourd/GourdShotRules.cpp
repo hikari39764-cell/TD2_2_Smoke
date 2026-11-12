@@ -1,6 +1,7 @@
 #include "GourdShotRules.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace Project_TD2_2 {
 
@@ -26,6 +27,14 @@ float GourdShotRules::GetRadiusAtDistance(const GourdShotComponent& shot, float 
 
 float GourdShotRules::GetDensityAtDistance(const GourdShotComponent& shot, float distance) {
     return 1.0f - (1.0f - shot.finalDensityRatio) * GetFalloffFraction(shot, distance);
+}
+
+int GourdShotRules::GetRepeatFrames(const GourdShotComponent& shot, int chainShots) {
+    const float speedUp =
+        std::min(std::max(shot.rapidMax, 1.0f),
+                 1.0f + std::max(shot.rapidAccel, 0.0f) * static_cast<float>(std::max(chainShots - 1, 0)));
+    const int frames = static_cast<int>(std::lround(static_cast<float>(shot.repeatFrames) / speedUp));
+    return std::max({1, shot.rapidMinFrames, frames});
 }
 
 bool GourdShotRules::IsFiring(const GourdShotComponent& shot) { return shot.phase != GourdShotPhase::Idle; }

@@ -50,6 +50,8 @@ bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::Gam
     }
     player.health = std::max(0.0f, player.health - amount);
     player.actionDirection = FlatNormalize(direction, {-player.facing.x, 0.0f, -player.facing.z});
+    // 押された向きの反対（攻撃した相手の方）を向いて、のけぞり・吹っ飛ぶ。
+    player.facing = {-player.actionDirection.x, 0.0f, -player.actionDirection.z};
     player.rollBuffer = 0;
     player.healBuffer = 0;
     player.actionLockFrames = 0;
@@ -81,6 +83,28 @@ void PlayerRules::LockActions(PlayerComponent& player, int frames) {
     player.actionLockFrames = std::max(player.actionLockFrames, std::max(0, frames));
 }
 
+void PlayerRules::ReleaseActionLock(PlayerComponent& player) { player.actionLockFrames = 0; }
+
+void PlayerRules::SetAimTurn(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float degreesPerSecond) {
+    if (!std::isfinite(direction.x) || !std::isfinite(direction.z) || !std::isfinite(degreesPerSecond))
+        return;
+    player.aimTurnPending = true;
+    player.aimTurnSpeed = std::max(0.0f, degreesPerSecond);
+    player.aimTurnDirection = FlatNormalize(direction, player.facing);
+}
+
+void PlayerRules::FaceDirection(PlayerComponent& player, HIKARI::GameProjectFloat3 direction) {
+    if (std::isfinite(direction.x) && std::isfinite(direction.z))
+        player.facing = FlatNormalize(direction, player.facing);
+}
+
+float PlayerRules::EaseOutFraction(int elapsedFrames, int frames, float easePower) {
+    if (frames <= 0)
+        return 1.0f;
+    const float progress = std::clamp(static_cast<float>(elapsedFrames) / static_cast<float>(frames), 0.0f, 1.0f);
+    return 1.0f - std::pow(1.0f - progress, std::max(easePower, 0.01f));
+}
+
 void PlayerRules::SetMovementSpeedScale(PlayerComponent& player, float scale) {
     player.externalMoveScale = std::isfinite(scale) ? std::clamp(scale, 0.0f, 1.0f) : 1.0f;
 }
@@ -93,15 +117,17 @@ void PlayerRules::SetTurnOverride(PlayerComponent& player, float degreesPerSecon
 
 void PlayerRules::BlockActions(PlayerComponent& player) { player.externalActionBlock = true; }
 
-void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames) {
+void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames,
+                            float easePower) {
     Initialize(player);
     if (!IsAlive(player) || frames <= 0 || !std::isfinite(distance) || distance < 0.0f || !std::isfinite(direction.x) ||
-        !std::isfinite(direction.z)) {
+        !std::isfinite(direction.z) || !std::isfinite(easePower)) {
         return;
     }
-    const auto unit = FlatNormalize(direction);
-    const float step = distance / static_cast<float>(frames);
-    player.recoilPerFrame = {unit.x * step, 0.0f, unit.z * step};
+    player.recoilDirection = FlatNormalize(direction);
+    player.recoilDistance = distance;
+    player.recoilFrames = frames;
+    player.recoilEasePower = std::max(easePower, 0.01f);
     player.recoilFramesLeft = frames;
 }
 

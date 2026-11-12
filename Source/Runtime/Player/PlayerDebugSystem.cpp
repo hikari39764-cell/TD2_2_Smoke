@@ -85,7 +85,7 @@ void TracePlayer(HIKARI::ObjectView object, const PlayerComponent& player, const
         message, sizeof(message),
         "Trace tick=%llu object=%llu state=%s stateFrame=%d health=%.3f stamina=%.3f healCharges=%d invulnerable=%d "
         "positionValid=%d position=(%.6f,%.6f,%.6f) motionAccepted=%d cameraAccepted=%d "
-        "fluidAccepted=%d hitStopAccepted=%d actionLockFrames=%d recoilFramesLeft=%d",
+        "fluidAccepted=%d hitStopAccepted=%d actionLockFrames=%d recoilFramesLeft=%d facing=(%.4f,%.4f)",
         static_cast<unsigned long long>(debug.processedTick),
         static_cast<unsigned long long>(object.GetSceneObjectId()), StateName(player.state), player.stateFrame,
         static_cast<double>(player.health), static_cast<double>(player.stamina), player.healCharges,
@@ -93,7 +93,8 @@ void TracePlayer(HIKARI::ObjectView object, const PlayerComponent& player, const
         static_cast<double>(transform.position.x), static_cast<double>(transform.position.y),
         static_cast<double>(transform.position.z), static_cast<int>(player.motionAccepted),
         static_cast<int>(player.cameraAccepted), static_cast<int>(player.fluidAccepted),
-        static_cast<int>(player.hitStopAccepted), player.actionLockFrames, player.recoilFramesLeft);
+        static_cast<int>(player.hitStopAccepted), player.actionLockFrames, player.recoilFramesLeft,
+        static_cast<double>(player.facing.x), static_cast<double>(player.facing.z));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerDebug", message);
 }
 

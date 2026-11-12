@@ -61,13 +61,21 @@ float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
     return value;
 }
 
-Vec3 Aim(HIKARI::WorldView& world, const GourdComponent& gourd, const PlayerComponent& player) {
-    const auto fallback = PlayerRules::GetFacing(player);
+// ロックオン中は対象へ。ロックしていない時はカメラの正面（画面の中央）へ撃つ。
+// カメラは上から見下ろすので、下向きは aimMinVertical までにして足元へ撃ち込まないようにする。
+Vec3 Aim(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdComponent& gourd,
+         const PlayerComponent& player) {
+    const auto fallback = PlayerRules::FlatNormalize(PlayerRules::GetFacing(player));
     const auto target = world.FindObject(PlayerRules::GetLockTarget(player));
     HIKARI::GameProjectTransform transform{};
     if (target.IsValid() && target.GetWorldTransform(transform))
         return Normalize(Difference(transform.position, gourd.position), fallback);
-    return PlayerRules::FlatNormalize(fallback);
+    HIKARI::GameProjectCameraPose pose{};
+    if (!world.GetCamera().GetControlPose(pose))
+        return fallback;
+    Vec3 forward = Normalize(Difference(pose.target, pose.eye), fallback);
+    forward.y = std::max(forward.y, std::clamp(shot.aimMinVertical, -1.0f, 1.0f));
+    return Normalize(forward, fallback);
 }
 
 void Log(const GourdShotComponent& shot, const char* message) {
@@ -152,7 +160,12 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
         return false;
     if (shot.smokeCost > 0.0f && !GourdRules::TryConsumeSmoke(gourd, shot.smokeCost))
         return false;
-    const Vec3 direction = Aim(world, gourd, player);
+    const Vec3 direction = Aim(world, shot, gourd, player);
+    // 押し続けている間だけ連射が速くなる。構えからの一発目と、離した後の一発目は最初の間隔から。
+    shot.chainShots = shot.phase == GourdShotPhase::Recovery && shot.chainHeld ? shot.chainShots + 1 : 1;
+    shot.chainHeld = true;
+    // 発射の瞬間に体の向きを撃つ向きへそろえる。
+    PlayerRules::FaceDirection(player, direction);
     const Vec3 origin = Add(gourd.position, Scale(direction, gourd.height * 0.5f));
     Vec3 ground{};
     const bool grounded =
@@ -161,11 +174,13 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
     GourdShotFogReturn::MarkFire(shot, origin, shot.muzzleFireFrames);
     PlayerRules::LockActions(player, shot.recoveryFrames);
-    PlayerRules::AddRecoil(player, Scale(direction, -1.0f), shot.recoilDistance, shot.recoilFrames);
+    PlayerRules::AddRecoil(player, Scale(direction, -1.0f), shot.recoilDistance, shot.recoilFrames,
+                           shot.recoilEasePower);
     GourdRules::AddRecoil(gourd, Scale(direction, -1.0f), shot.gourdRecoilDistance, shot.gourdRecoilFrames);
     shot.phase = GourdShotPhase::Recovery;
     shot.lastShotTick = shot.processedTick;
-    shot.nextFireTick = shot.processedTick + static_cast<uint64_t>(shot.repeatFrames);
+    shot.nextFireTick =
+        shot.processedTick + static_cast<uint64_t>(GourdShotRules::GetRepeatFrames(shot, shot.chainShots));
     shot.recoveryEndTick = shot.processedTick + static_cast<uint64_t>(shot.recoveryFrames);
     ++shot.shotsFired;
     shot.attackBuffer = 0;
@@ -173,16 +188,17 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     shot.muzzlePosition = origin;
     shot.muzzleDirection = direction;
     char message[512]{};
-    std::snprintf(message, sizeof(message),
-                  "Shot tick=%llu ordinal=%llu pellets=%d staminaBefore=%.3f stamina=%.3f smokeBefore=%.6f smoke=%.6f "
-                  "nextFireTick=%llu recoveryEnd=%llu position=(%.6f,%.6f,%.6f) direction=(%.6f,%.6f,%.6f)",
-                  static_cast<unsigned long long>(shot.processedTick), static_cast<unsigned long long>(shot.shotsFired),
-                  shot.pelletsPerShot, static_cast<double>(staminaBefore),
-                  static_cast<double>(PlayerRules::GetStamina(player)), static_cast<double>(smokeBefore),
-                  static_cast<double>(GourdRules::GetSmoke(gourd)), static_cast<unsigned long long>(shot.nextFireTick),
-                  static_cast<unsigned long long>(shot.recoveryEndTick), static_cast<double>(origin.x),
-                  static_cast<double>(origin.y), static_cast<double>(origin.z), static_cast<double>(direction.x),
-                  static_cast<double>(direction.y), static_cast<double>(direction.z));
+    std::snprintf(
+        message, sizeof(message),
+        "Shot tick=%llu ordinal=%llu chain=%d pellets=%d staminaBefore=%.3f stamina=%.3f smokeBefore=%.6f smoke=%.6f "
+        "nextFireTick=%llu recoveryEnd=%llu position=(%.6f,%.6f,%.6f) direction=(%.6f,%.6f,%.6f)",
+        static_cast<unsigned long long>(shot.processedTick), static_cast<unsigned long long>(shot.shotsFired),
+        shot.chainShots, shot.pelletsPerShot, static_cast<double>(staminaBefore),
+        static_cast<double>(PlayerRules::GetStamina(player)), static_cast<double>(smokeBefore),
+        static_cast<double>(GourdRules::GetSmoke(gourd)), static_cast<unsigned long long>(shot.nextFireTick),
+        static_cast<unsigned long long>(shot.recoveryEndTick), static_cast<double>(origin.x),
+        static_cast<double>(origin.y), static_cast<double>(origin.z), static_cast<double>(direction.x),
+        static_cast<double>(direction.y), static_cast<double>(direction.z));
     Log(shot, message);
     return true;
 }
@@ -200,11 +216,23 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         shot.phase = GourdShotPhase::Idle;
         LogPhase(shot, "End");
     }
+    if (!shot.attackHeld)
+        shot.chainHeld = false;
+    // 後隙の途中でも、攻撃を離して吸い込みを押していれば、反動の後から吸い込みの構えへ移れる。
+    // 同じ tick の GourdSystem（実行順が後）が、解いたロックを見て吸い込みを始める。
+    if (shot.phase == GourdShotPhase::Recovery && !shot.attackHeld && gourd.enabled && gourd.absorbHeld &&
+        shot.processedTick >= shot.lastShotTick + static_cast<uint64_t>(std::max(0, shot.absorbCancelFrames))) {
+        shot.phase = GourdShotPhase::Idle;
+        shot.attackBuffer = 0;
+        PlayerRules::ReleaseActionLock(player);
+        LogPhase(shot, "AbsorbCancel");
+        return;
+    }
     // 押したのに撃てない時（煙・スタミナ不足）は、無反応にせず空撃ちの手応えを返す。
     if (shot.phase == GourdShotPhase::Idle && shot.attackPressed && PlayerRules::CanStartAction(player) &&
         !GourdRules::IsAbsorbBusy(gourd) && BlockedReason(shot, gourd, player) != 0) {
         ++shot.dryFires;
-        GourdRules::AddRecoil(gourd, Scale(Aim(world, gourd, player), -1.0f), shot.feedback.dryFireKickDistance,
+        GourdRules::AddRecoil(gourd, Scale(Aim(world, shot, gourd, player), -1.0f), shot.feedback.dryFireKickDistance,
                               shot.feedback.dryFireKickFrames);
     }
     if (shot.phase == GourdShotPhase::Idle && (shot.attackHeld || shot.attackBuffer > 0) &&
@@ -217,7 +245,7 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         // 発射時刻は増やさず、同じ tick の Fire が後隙のロックに置き換える。
         PlayerRules::LockActions(player, shot.windupFrames + 1);
         // 押した瞬間から構えが見えるように、発射までヒョウタンを後ろへ引く。発射の反動がそこから続く。
-        GourdRules::AddRecoil(gourd, Scale(Aim(world, gourd, player), -1.0f), shot.gourdWindupPull,
+        GourdRules::AddRecoil(gourd, Scale(Aim(world, shot, gourd, player), -1.0f), shot.gourdWindupPull,
                               shot.windupFrames);
         LogPhase(shot, "Begin");
     }
@@ -228,6 +256,11 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
                (shot.attackHeld || shot.attackBuffer > 0)) {
         Fire(world, shot, gourd, playerObject, player);
     }
+    // 構えの間と押し続けている間は撃つ向きへ振り向く。離した後の後隙は向きを変えない。
+    if (shot.phase == GourdShotPhase::Windup || (shot.phase == GourdShotPhase::Recovery && shot.attackHeld))
+        PlayerRules::SetAimTurn(player, Aim(world, shot, gourd, player), shot.aimTurnSpeed);
+    else if (shot.phase == GourdShotPhase::Recovery)
+        PlayerRules::SetAimTurn(player, PlayerRules::GetFacing(player), 0.0f);
 }
 
 void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 position, uint64_t ignoredObject) {
@@ -403,7 +436,7 @@ void GourdShotSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
         HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
             if (GourdShotRules::IsFiring(shot)) {
                 WithShooter(world, object, [&](GourdComponent& gourd, HIKARI::ObjectView, PlayerComponent& player) {
-                    GourdRules::SetAimOverride(gourd, Aim(world, gourd, player));
+                    GourdRules::SetAimOverride(gourd, Aim(world, shot, gourd, player));
                 });
             }
             GourdShotVisuals::Update(world, object, shot, trails);

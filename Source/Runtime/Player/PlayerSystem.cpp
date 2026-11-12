@@ -14,6 +14,7 @@ namespace {
 constexpr uint64_t kMotionSource = 0x5444325001ull;
 constexpr uint64_t kCameraSource = 0x5444325002ull;
 constexpr uint64_t kHitStopSource = 0x5444325003ull;
+constexpr uint64_t kFramingSource = 0x5444325004ull;
 constexpr uint64_t kRollFogInstance = 1;
 constexpr int kPlayerPriority = 300;
 constexpr float kFramesPerSecond = 60.0f;
@@ -95,7 +96,24 @@ void CompleteState(PlayerComponent& player) {
     PlayerRules::EnterState(player, next);
 }
 
-void StartBufferedAction(PlayerComponent& player) {
+// ロックオン中の対象への水平方向。対象が無い・位置が取れないときは false。
+bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
+                           Vec3& outDirection) {
+    if (!player.lockedOn)
+        return false;
+    const auto target = world.FindObject(player.lockTarget);
+    HIKARI::GameProjectTransform sourceTransform{}, targetTransform{};
+    if (!target.IsValid() || !target.GetWorldTransform(targetTransform) || !object.GetWorldTransform(sourceTransform))
+        return false;
+    const Vec3 offset{targetTransform.position.x - sourceTransform.position.x, 0.0f,
+                      targetTransform.position.z - sourceTransform.position.z};
+    if (std::hypot(offset.x, offset.z) <= 0.0f)
+        return false;
+    outDirection = PlayerRules::FlatNormalize(offset);
+    return true;
+}
+
+void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player) {
     // 外部の動作（吸い込み）の最中は、ローリングも回復も始められない。先行入力は残り、明けた時に通る。
     if (player.externalActionBlock)
         return;
@@ -105,11 +123,14 @@ void StartBufferedAction(PlayerComponent& player) {
          player.actionLockFrames == 0);
     if (player.rollBuffer > 0 && canRoll) {
         const bool moving = std::hypot(player.moveInput.x, player.moveInput.z) > 0.0f;
-        player.actionDirection =
-            moving ? PlayerRules::FlatNormalize(player.moveInput) : Vec3{-player.facing.x, 0.0f, -player.facing.z};
-        if (moving && !player.lockedOn) {
-            player.facing = player.actionDirection;
-        }
+        // 入力が無ければ、ロックオン中は対象から離れる向き、そうでなければ今の向きの後ろへ下がる。
+        Vec3 toTarget{};
+        const Vec3 away = DirectionToLockTarget(world, object, player, toTarget)
+                              ? Vec3{-toTarget.x, 0.0f, -toTarget.z}
+                              : Vec3{-player.facing.x, 0.0f, -player.facing.z};
+        player.actionDirection = moving ? PlayerRules::FlatNormalize(player.moveInput) : away;
+        // 転がる向きへその場で体を向ける（ロックオン中も）。転がっている間は向きを変えない。
+        player.facing = player.actionDirection;
         // 回避だけは残量 0 でも開始できる。射撃用の消費関数とは条件が違う。
         player.stamina = std::max(0.0f, player.stamina - player.rollStamina);
         player.staminaAge = 0;
@@ -152,9 +173,12 @@ Vec3 StateVelocity(PlayerComponent& player, float dt) {
     }
     float distance = 0.0f;
     if (player.state == PlayerState::Roll) {
-        const int moveFrames = std::min(player.rollMoveFrames, player.rollFrames);
+        // 初め速くあとゆっくり。この tick に進む分 = 次の F までの距離 − いまの F までの距離。合計は rollDistance。
+        const int moveFrames = std::max(1, std::min(player.rollMoveFrames, player.rollFrames));
         if (player.stateFrame < moveFrames)
-            distance = player.rollDistance / static_cast<float>(moveFrames);
+            distance = player.rollDistance *
+                       (PlayerRules::EaseOutFraction(player.stateFrame + 1, moveFrames, player.rollEasePower) -
+                        PlayerRules::EaseOutFraction(player.stateFrame, moveFrames, player.rollEasePower));
     } else if (player.state == PlayerState::Stagger) {
         distance = StaggerStep(player);
     } else if (player.state == PlayerState::Knockback) {
@@ -164,39 +188,60 @@ Vec3 StateVelocity(PlayerComponent& player, float dt) {
     return {player.actionDirection.x * speed, 0.0f, player.actionDirection.z * speed};
 }
 
+// 向きを wanted（水平）へ、毎秒 degreesPerSecond までの速さで回す。
+void TurnToward(PlayerComponent& player, Vec3 wanted, float degreesPerSecond, float dt) {
+    const float current = std::atan2(player.facing.x, player.facing.z);
+    const float target = std::atan2(wanted.x, wanted.z);
+    const float limit = degreesPerSecond * kRadiansPerDegree * dt;
+    const float yaw = current + std::clamp(std::remainder(target - current, kTau), -limit, limit);
+    player.facing = {std::sin(yaw), 0.0f, std::cos(yaw)};
+}
+
 void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt) {
+    const bool aimTurn = player.aimTurnPending;
+    player.aimTurnPending = false;
     if (!PlayerRules::IsAlive(player))
         return;
+    Vec3 toTarget{};
+    const bool hasTarget = DirectionToLockTarget(world, object, player, toTarget);
+    if (player.lockedOn && !hasTarget) {
+        player.lockedOn = false;
+        player.lockTarget = {};
+    }
+    const bool hasInput = std::hypot(player.moveInput.x, player.moveInput.z) > kTurnInputDeadZone;
     if (player.externalTurnSpeed > 0.0f) {
         // 外部の要求（吸い込み）：ロックオン中でも、入力した方向へ決まった速さで向きを変える。入力が無ければそのまま。
-        if (std::hypot(player.moveInput.x, player.moveInput.z) > kTurnInputDeadZone) {
-            const float current = std::atan2(player.facing.x, player.facing.z);
-            const float wanted = std::atan2(player.moveInput.x, player.moveInput.z);
-            const float limit = player.externalTurnSpeed * kRadiansPerDegree * dt;
-            const float yaw = current + std::clamp(std::remainder(wanted - current, kTau), -limit, limit);
-            player.facing = {std::sin(yaw), 0.0f, std::cos(yaw)};
-        }
+        if (hasInput)
+            TurnToward(player, player.moveInput, player.externalTurnSpeed, dt);
         return;
     }
-    if (player.lockedOn) {
-        const auto target = world.FindObject(player.lockTarget);
-        HIKARI::GameProjectTransform sourceTransform{}, targetTransform{};
-        if (target.IsValid() && target.GetWorldTransform(targetTransform) &&
-            object.GetWorldTransform(sourceTransform)) {
-            player.facing = PlayerRules::FlatNormalize({targetTransform.position.x - sourceTransform.position.x, 0.0f,
-                                                        targetTransform.position.z - sourceTransform.position.z},
-                                                       player.facing);
-        } else {
-            player.lockedOn = false;
-            player.lockTarget = {};
-        }
-    } else if (player.state == PlayerState::Normal || player.state == PlayerState::Heal) {
-        player.facing = PlayerRules::FlatNormalize(player.moveInput, player.facing);
+    if (aimTurn) {
+        // 射撃の構え：撃つ向きへ振り向く。発射の瞬間に射撃側が向きをそろえる。
+        TurnToward(player, player.aimTurnDirection, player.aimTurnSpeed, dt);
+        return;
     }
+    // 回避・被弾などの最中は、その動作を始めた時の向きのまま。
+    if (player.state != PlayerState::Normal && player.state != PlayerState::Heal)
+        return;
+    if (hasTarget)
+        TurnToward(player, toTarget, player.turnSpeed, dt);
+    else if (hasInput)
+        TurnToward(player, player.moveInput, player.turnSpeed, dt);
+}
+
+// 吹っ飛びの放物線。knockbackFrames（N F、T 秒）の半分で knockbackHeight（h）に届き、終わりに元の高さへ戻る。
+// 下向きの加速度は 8h/T²。運動学ソルバーは F ごとに速度を先に減らしてから進めるので、初速を (N+1)/N 倍して
+// 頂点と着地を F の刻みにそろえる（4h/T のままだと頂点が 1 割ほど低くなる）。
+void KnockbackArc(const PlayerComponent& player, float& outLaunchSpeed, float& outGravity) {
+    const float frames = static_cast<float>(std::max(1, player.knockbackFrames));
+    const float seconds = frames / kFramesPerSecond;
+    const float height = std::max(0.0f, player.knockbackHeight);
+    outGravity = 8.0f * height / (seconds * seconds);
+    outLaunchSpeed = 4.0f * height / seconds * (frames + 1.0f) / frames;
 }
 
 void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
-                    const HIKARI::FrameContext& frame, Vec3 velocity) {
+                    const HIKARI::FrameContext& frame, Vec3 velocity, bool frozen = false) {
     HIKARI::GameProjectKinematicMove move{};
     move.objectHandle = object.GetHandle().value;
     move.sourceId = kMotionSource;
@@ -207,7 +252,22 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
     const float halfYaw = std::atan2(player.facing.x, player.facing.z) * 0.5f;
     move.hasDesiredRotation = 1;
     move.desiredRotation = {0.0f, std::sin(halfYaw), 0.0f, std::cos(halfYaw)};
-    player.motionAccepted = world.GetMotion().SubmitKinematicMove(move);
+    if (frozen || player.state != PlayerState::Knockback || player.knockbackHeight <= 0.0f) {
+        player.motionAccepted = world.GetMotion().SubmitKinematicMove(move);
+        return;
+    }
+    // 吹っ飛びの間だけ重力を差し替え、最初の F に跳ね上げて放物線を描かせる。着地の判定は運動学ソルバーに任せる。
+    float launchSpeed = 0.0f, gravity = 0.0f;
+    KnockbackArc(player, launchSpeed, gravity);
+    if (player.stateFrame == 0) {
+        move.jumpRequested = 1;
+        move.jumpSpeed = launchSpeed;
+        move.allowJumpWithoutGroundContact = 1;
+    }
+    HIKARI::GameProjectKinematicMoveOptions options{};
+    options.overrideVerticalGravity = 1;
+    options.verticalGravityAcceleration = -gravity;
+    player.motionAccepted = world.GetMotion().SubmitKinematicMoveWithOptions(move, options);
 }
 
 void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
@@ -221,14 +281,19 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         request.durationUnscaledSeconds = static_cast<float>(player.pendingHitStopFrames) / kFramesPerSecond;
         player.hitStopAccepted = world.GetTimeDilation().Request(request) != 0;
         player.pendingHitStopFrames = 0;
-        SubmitMovement(world, object, player, frame, {});
+        // ヒットストップを出す tick は止まるだけにし、吹っ飛びの跳ね上げは止まった後の最初の F に回す。
+        SubmitMovement(world, object, player, frame, {}, true);
         return;
     }
     UpdateFacing(world, object, player, frame.fixedDt);
     Vec3 velocity = StateVelocity(player, frame.fixedDt);
     if (PlayerRules::IsAlive(player) && player.recoilFramesLeft > 0) {
-        velocity.x += player.recoilPerFrame.x / frame.fixedDt;
-        velocity.z += player.recoilPerFrame.z / frame.fixedDt;
+        const int elapsed = player.recoilFrames - player.recoilFramesLeft;
+        const float step = player.recoilDistance *
+                           (PlayerRules::EaseOutFraction(elapsed + 1, player.recoilFrames, player.recoilEasePower) -
+                            PlayerRules::EaseOutFraction(elapsed, player.recoilFrames, player.recoilEasePower));
+        velocity.x += player.recoilDirection.x * step / frame.fixedDt;
+        velocity.z += player.recoilDirection.z * step / frame.fixedDt;
         --player.recoilFramesLeft;
     }
     SubmitMovement(world, object, player, frame, velocity);
@@ -242,6 +307,42 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
     player.rollBuffer = std::max(0, player.rollBuffer - 1);
     player.healBuffer = std::max(0, player.healBuffer - 1);
     player.actionLockFrames = std::max(0, player.actionLockFrames - 1);
+}
+
+bool SubmitLockFraming(HIKARI::WorldView& world, HIKARI::ObjectView camera, const PlayerComponent& player) {
+    HIKARI::GameProjectCameraTargetFramingRequest request{};
+    request.cameraObjectHandle = camera.GetHandle().value;
+    request.targetObjectHandle = player.lockTarget.value;
+    request.sourceId = kCameraSource;
+    request.priority = kPlayerPriority;
+    request.targetPivotOffset = {};
+    request.targetWeight = player.lockTargetWeight;
+    request.yawTrackingSpeedDegreesPerSecond = player.lockYawSpeed;
+    request.preferredPitchDegrees = player.lockPitch;
+    request.pitchTrackingSpeedDegreesPerSecond = player.lockPitchSpeed;
+    request.distanceScale = player.lockDistanceScale;
+    request.maximumDistanceOffset = player.lockMaximumDistanceOffset;
+    return world.GetCamera().SubmitTargetFraming(request);
+}
+
+// 肩越しの構図。追従カメラの結果を、カメラの局所の向きでずらす（視点だけ横へ、注視点は前へ）。
+// 局所の値は追従カメラ自身の向きで解かれるので、読み戻した姿勢に足し続けて回り出すことはない。
+bool SubmitShoulderFraming(HIKARI::WorldView& world, HIKARI::ObjectView camera, PlayerComponent& player, bool locked,
+                           float dt) {
+    const float wanted = locked ? 1.0f : 0.0f;
+    player.cameraLockBlend = player.cameraBlendSeconds > 0.0f
+                                 ? player.cameraLockBlend + (wanted - player.cameraLockBlend) *
+                                                                (1.0f - std::exp(-dt / player.cameraBlendSeconds))
+                                 : wanted;
+    const float lookAhead =
+        player.cameraLookAhead + (player.cameraLockLookAhead - player.cameraLookAhead) * player.cameraLockBlend;
+    HIKARI::GameProjectCameraModifier modifier{};
+    modifier.cameraObjectHandle = camera.GetHandle().value;
+    modifier.sourceId = kFramingSource;
+    modifier.priority = kPlayerPriority;
+    modifier.localPositionOffset = {player.cameraSideOffset, 0.0f, 0.0f};
+    modifier.localTargetOffset = {0.0f, 0.0f, lookAhead};
+    return world.GetCamera().SubmitModifier(modifier);
 }
 
 } // namespace
@@ -260,7 +361,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
     world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                            [&](HIKARI::ObjectView object, PlayerComponent& player) {
                                                 PlayerRules::Initialize(player);
                                                 // 毎 tick 失効させ、外部システムが消えても減速を残さない。
                                                 PlayerRules::SetMovementSpeedScale(player, 1.0f);
@@ -271,7 +372,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                     ++player.stateFrame;
                                                 player.advanceStateNextTick = false;
                                                 CompleteState(player);
-                                                StartBufferedAction(player);
+                                                StartBufferedAction(world, object, player);
                                                 // 行動の停止は前の tick の要求。使ったら消し、
                                                 // 要求が途切れた次の tick から動けるようにする。
                                                 player.externalActionBlock = false;
@@ -291,26 +392,18 @@ void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameConte
         return;
     world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                if (!player.lockedOn || !world.FindObject(player.lockTarget).IsValid())
-                                                    return;
                                                 const auto camera = world.FindSceneObject(player.cameraId);
                                                 if (!camera.IsValid()) {
                                                     player.cameraAccepted = false;
                                                     return;
                                                 }
-                                                HIKARI::GameProjectCameraTargetFramingRequest request{};
-                                                request.cameraObjectHandle = camera.GetHandle().value;
-                                                request.targetObjectHandle = player.lockTarget.value;
-                                                request.sourceId = kCameraSource;
-                                                request.priority = kPlayerPriority;
-                                                request.targetPivotOffset = {};
-                                                request.targetWeight = player.lockTargetWeight;
-                                                request.yawTrackingSpeedDegreesPerSecond = player.lockYawSpeed;
-                                                request.preferredPitchDegrees = player.lockPitch;
-                                                request.pitchTrackingSpeedDegreesPerSecond = player.lockPitchSpeed;
-                                                request.distanceScale = player.lockDistanceScale;
-                                                request.maximumDistanceOffset = player.lockMaximumDistanceOffset;
-                                                player.cameraAccepted = world.GetCamera().SubmitTargetFraming(request);
+                                                const bool locked =
+                                                    player.lockedOn && world.FindObject(player.lockTarget).IsValid();
+                                                bool accepted = SubmitShoulderFraming(world, camera, player, locked,
+                                                                                      std::max(0.0f, frame.unscaledDt));
+                                                if (locked)
+                                                    accepted = SubmitLockFraming(world, camera, player) && accepted;
+                                                player.cameraAccepted = accepted;
                                             });
 }
 

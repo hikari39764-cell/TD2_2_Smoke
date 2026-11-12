@@ -6,13 +6,23 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("砲撃の時間と消費", true)) {
         fields.Bool("enabled", "有効", enabled);
         fields.Int("windupFrames", "構えの前隙 (F)", windupFrames, 0, 7200);
-        fields.Int("repeatFrames", "連射の間隔 (F)", repeatFrames, 1, 7200);
+        fields.Int("repeatFrames", "長押し連射の最初の間隔 (F)", repeatFrames, 1, 7200);
+        fields.Float("rapidAccel", "1 発ごとに連射が速くなる割合 (+倍)", rapidAccel, 0.0f, 10.0f);
+        fields.Float("rapidMax", "連射の速さの上限 (倍)", rapidMax, 1.0f, 20.0f);
+        fields.Int("rapidMinFrames", "連射の間隔の下限 (F)", rapidMinFrames, 1, 7200);
+        fields.Note("既定は 24・16・12・10・8・8… F。攻撃を離すと次の長押しは最初の間隔に戻ります。");
         fields.Int("recoveryFrames", "最後の発射からの後隙 (F)", recoveryFrames, 0, 7200);
+        fields.Int("absorbCancelFrames", "後隙を吸い込みで取り消せる最初の F", absorbCancelFrames, 0, 7200);
         fields.Int("inputBufferFrames", "先行入力 (F)", inputBufferFrames, 1, 60);
         fields.Float("staminaCost", "一発のスタミナ消費（0 は制限なし）", staminaCost, 0.0f, 100000.0f);
         fields.Float("smokeCost", "一発の煙消費（0 は制限なし）", smokeCost, 0.0f, 100000.0f);
         fields.Float("recoilDistance", "プレイヤー反動距離 (m)", recoilDistance, 0.0f, 100.0f);
         fields.Int("recoilFrames", "プレイヤー反動時間 (F)", recoilFrames, 1, 600);
+        fields.Float("recoilEasePower", "反動の出だしの速さ（1 は等速、2 は初め速くあとゆっくり）", recoilEasePower,
+                     1.0f, 5.0f);
+        fields.Float("aimTurnSpeed", "構えの間に撃つ向きへ振り向く速さ (度/s)", aimTurnSpeed, 0.0f, 5000.0f);
+        fields.Float("aimMinVertical", "ロックなしで撃つ向きの下向きの限界（方向の y）", aimMinVertical, -1.0f, 1.0f);
+        fields.Note("ロックオン中は対象へ、ロックしていない時はカメラの正面へ撃ちます。");
         fields.Float("gourdRecoilDistance", "ヒョウタン反動距離 (m)", gourdRecoilDistance, 0.0f, 10.0f);
         fields.Int("gourdRecoilFrames", "ヒョウタン反動時間 (F)", gourdRecoilFrames, 1, 600);
         fields.Float("gourdWindupPull", "構え中にヒョウタンを引く距離 (m、0 は無効)", gourdWindupPull, 0.0f, 2.0f);

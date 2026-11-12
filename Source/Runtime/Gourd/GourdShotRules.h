@@ -11,6 +11,8 @@ public:
     static float GetSpeedAtDistance(const GourdShotComponent& shot, float distance);
     static float GetRadiusAtDistance(const GourdShotComponent& shot, float distance);
     static float GetDensityAtDistance(const GourdShotComponent& shot, float distance);
+    // chainShots 発目を撃った後、次を撃つまでの F。押し続けるほど短くなる。
+    static int GetRepeatFrames(const GourdShotComponent& shot, int chainShots);
     static bool IsFiring(const GourdShotComponent& shot);
     static uint32_t GetActiveProjectileCount(const GourdShotComponent& shot);
 };

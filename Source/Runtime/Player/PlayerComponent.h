@@ -16,12 +16,16 @@ public:
 
     float maxHealth = 100.0f;
     float moveSpeed = 5.2f;
+    // 通常・回復中に向きを変える速さ。試作の 12 rad/秒。
+    float turnSpeed = 688.0f;
     float maxStamina = 100.0f;
     int staminaDelayFrames = 40;
     float staminaPerSecond = 45.0f;
     int rollFrames = 30;
     int rollMoveFrames = 22;
     float rollDistance = 4.2f;
+    // 進んだ距離 = rollDistance × (1 − (1 − 進み)^rollEasePower)。1 で等速、大きいほど出だしが速い。
+    float rollEasePower = 1.6f;
     int rollInvincibleFrames = 14;
     float rollStamina = 25.0f;
     int inputBufferFrames = 12;
@@ -34,6 +38,8 @@ public:
     int staggerHitStopFrames = 5;
     float knockbackDistance = 6.0f;
     int knockbackFrames = 30;
+    // 吹っ飛びの放物線の頂点の高さ。knockbackFrames の半分で頂点に届き、終わりに着地する。
+    float knockbackHeight = 1.3f;
     int knockbackHitStopFrames = 8;
     int downFrames = 40;
     int downRollFrame = 14;
@@ -49,12 +55,18 @@ public:
     float rollFogHeightOffset = -0.45f;
     uint64_t lockTargetId = 0;
     uint64_t cameraId = 0;
-    float lockTargetWeight = 0.45f;
+    float lockTargetWeight = 0.62f;
     float lockYawSpeed = 540.0f;
     float lockPitch = 17.0f;
     float lockPitchSpeed = 240.0f;
     float lockDistanceScale = 0.18f;
     float lockMaximumDistanceOffset = 2.0f;
+    // 肩越しの構図。追従カメラの視点を画面の横へずらし（負で左）、注視点を前へ送る。
+    // 距離・見下ろし角・注視の高さは Gameplay Camera の CameraFollow の値で決まる。
+    float cameraSideOffset = -1.9f;
+    float cameraLookAhead = 3.0f;
+    float cameraLockLookAhead = 0.0f;
+    float cameraBlendSeconds = 0.25f;
 
     // 実行時のデータは保存しない。ルールは PlayerRules と PlayerSystem が所有する。
     bool initialized = false;
@@ -69,7 +81,10 @@ public:
     int healBuffer = 0;
     int actionLockFrames = 0;
     int recoilFramesLeft = 0;
-    HIKARI::GameProjectFloat3 recoilPerFrame{};
+    int recoilFrames = 0;
+    float recoilDistance = 0.0f;
+    float recoilEasePower = 1.0f;
+    HIKARI::GameProjectFloat3 recoilDirection{};
     HIKARI::GameProjectFloat3 moveInput{};
     HIKARI::GameProjectFloat3 cameraForward{0.0f, 0.0f, 1.0f};
     HIKARI::GameProjectFloat3 facing{0.0f, 0.0f, 1.0f};
@@ -86,6 +101,12 @@ public:
     float externalMoveScale = 1.0f;
     float externalTurnSpeed = 0.0f;
     bool externalActionBlock = false;
+    // 射撃の構え中に向く方向。毎 tick 外部が要求し、PlayerSystem が使ったら消す。
+    bool aimTurnPending = false;
+    float aimTurnSpeed = 0.0f;
+    HIKARI::GameProjectFloat3 aimTurnDirection{0.0f, 0.0f, 1.0f};
+    // 0 は自由、1 はロックオン中の構図。切り替えでカメラが跳ねないように描画時間でならす。
+    float cameraLockBlend = 0.0f;
 };
 
 } // namespace Project_TD2_2

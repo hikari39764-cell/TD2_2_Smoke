@@ -91,17 +91,30 @@ public:
 
     bool enabled = true;
     int windupFrames = 12;
+    // 長押し連射の最初の間隔。n 発目の後の間隔は
+    // max(rapidMinFrames, round(repeatFrames / min(rapidMax, 1 + rapidAccel × (n − 1))))。
     int repeatFrames = 24;
-    int recoveryFrames = 36;
+    float rapidAccel = 0.5f;
+    float rapidMax = 3.0f;
+    int rapidMinFrames = 4;
+    int recoveryFrames = 56;
+    // 最後の発射からこの F 以降は、攻撃を離して吸い込みを押すと後隙を取り消して吸い込みの構えへ移れる。
+    int absorbCancelFrames = 6;
     int inputBufferFrames = 12;
     float staminaCost = 20.0f;
     float smokeCost = 20.0f;
-    float recoilDistance = 2.0f;
+    float recoilDistance = 0.7f;
     int recoilFrames = 8;
+    // 反動の進み方。2 で初め速くあとゆっくり、1 で等速。
+    float recoilEasePower = 2.0f;
+    // 構えの間と長押しの間に、撃つ向きへ振り向く速さ（度/秒。573 ≒ 10 rad/s）。
+    float aimTurnSpeed = 573.0f;
+    // ロックしていない時はカメラの正面へ撃つ。下向きはこの値（方向の y 成分）までにして、足元へ撃ち込まない。
+    float aimMinVertical = -0.05f;
     float gourdRecoilDistance = 0.48f;
     int gourdRecoilFrames = 8;
     float gourdWindupPull = 0.14f;
-    float damage = 80.0f;
+    float damage = 40.0f;
     float initialSpeed = 60.0f;
     float range = 15.0f;
     float falloffStart = 10.0f;
@@ -169,6 +182,9 @@ public:
     uint64_t recoveryEndTick = 0;
     uint64_t lastShotTick = 0;
     uint64_t shotsFired = 0;
+    // 押し続けている間の何発目か。離すと 0 に戻り、次の長押しは最初の間隔から。
+    int chainShots = 0;
+    bool chainHeld = false;
     uint64_t dryFires = 0;
     uint64_t nextProjectileId = 1;
     int blockedReason = 0;
