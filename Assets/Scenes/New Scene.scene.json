@@ -1,0 +1,201 @@
+{
+  "camera": {
+    "defaultCameraObjectId": null
+  },
+  "cinematics": {
+    "defaultSequenceId": 1,
+    "sequences": [
+      {
+        "bindings": [],
+        "durationSeconds": 10.0,
+        "id": 1,
+        "name": "Main Sequence",
+        "screenEffects": [],
+        "tracks": [
+          {
+            "clips": [],
+            "enabled": true,
+            "id": 1,
+            "type": "cameraCut"
+          }
+        ]
+      }
+    ]
+  },
+  "environment": {
+    "location": {
+      "latitudeDegrees": 35.68,
+      "longitudeDegrees": 139.69,
+      "northYawDegrees": 0.0,
+      "utcOffsetHours": 9.0
+    },
+    "profile": "engine.environment.default",
+    "renderStyle": "engine.style.realistic",
+    "time": {
+      "day": 21,
+      "localHours": 10.0,
+      "month": 6,
+      "year": 2026
+    },
+    "timeScale": 0.0,
+    "weather": ""
+  },
+  "lightingBake": {
+    "bounceCount": 8,
+    "sampleCount": 256
+  },
+  "objects": [
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": false,
+            "receiveShadow": true,
+            "renderStatic": true,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 100.0,
+            "doubleSided": true,
+            "generateTangents": true,
+            "height": 1.0,
+            "kind": "GridPlane",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "segmentsX": 50,
+            "segmentsY": 50,
+            "segmentsZ": 1,
+            "sphereSlices": 32,
+            "sphereStacks": 16,
+            "width": 100.0
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "filter": {
+              "layer": 1,
+              "mask": 4294967295
+            },
+            "fitMode": "Geometry",
+            "height": 0.019999999552965164,
+            "material": {
+              "density": 1.0,
+              "friction": 0.5,
+              "restitution": 0.0
+            },
+            "radius": 0.009999999776482582,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Box",
+            "size": [
+              100.0,
+              0.019999999552965164,
+              100.0
+            ],
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 1,
+      "name": "Grid Floor",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "firstTileX": 0,
+            "firstTileZ": 0,
+            "heightMin": -512.0,
+            "heightRange": 2048.0,
+            "islands": false,
+            "tileCells": 256,
+            "tileSizeMeters": 256.0,
+            "tilesX": 8,
+            "tilesZ": 8
+          },
+          "type": "HIKARI.TerrainKit.Terrain"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 2,
+      "name": "GameObject_2",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          -0.10695013403892517,
+          1.587312936782837,
+          -3.0304460525512695
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sceneName": "Untitled Scene",
+  "systems": [
+    {
+      "enabled": true,
+      "executionOrder": 100,
+      "settings": {},
+      "systemId": "ModelRenderSystem"
+    },
+    {
+      "enabled": true,
+      "executionOrder": 100,
+      "settings": {},
+      "systemId": "Project_TD2_2.Game"
+    }
+  ],
+  "version": 10
+}

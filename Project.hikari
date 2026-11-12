@@ -1,5 +1,13 @@
 {
   "formatVersion": 1,
   "gameProjectManifest": "CMakeLists.txt",
+  "modules": [
+    {
+      "id": "HIKARI.BehaviorKit"
+    },
+    {
+      "id": "HIKARI.TerrainKit"
+    }
+  ],
   "name": "TD2_2"
 }
