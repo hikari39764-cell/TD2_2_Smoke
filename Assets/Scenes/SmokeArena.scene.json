@@ -166,6 +166,15 @@
             "sprintAction": "Gameplay.Sprint"
           },
           "type": "CharacterInputComponent"
+        },
+        {
+          "id": 7,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
         }
       ],
       "editorLocked": false,
@@ -240,6 +249,15 @@
             "trigger": false
           },
           "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
         }
       ],
       "editorLocked": false,
@@ -313,6 +331,75 @@
         ],
         "rotationEulerDeg": [
           16.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "enabled": true,
+            "slots": [
+              {
+                "effectAssetGuid": "f338c3e53f8889949a416dd0f98ee306",
+                "enabled": true,
+                "fixedObjectId": 0,
+                "followTarget": true,
+                "id": 1,
+                "loopMode": "ForceLoop",
+                "name": "Arena Ground Fog",
+                "offset": {
+                  "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotationEulerDegrees": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                "playOnStart": true,
+                "randomSeed": 7,
+                "retriggerPolicy": "Restart",
+                "spawnTarget": "Owner",
+                "triggerEventId": "",
+                "variableBindings": []
+              }
+            ]
+          },
+          "type": "VfxPlayerComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 5,
+      "name": "Arena Ground Fog",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
           0.0,
           0.0
         ],

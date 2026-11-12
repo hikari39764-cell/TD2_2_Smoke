@@ -1,0 +1,14 @@
+{
+  "displayName": "ArenaGroundFog",
+  "guid": "f338c3e53f8889949a416dd0f98ee306",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/ArenaGroundFog.hvfx",
+  "type": "VfxEffect"
+}

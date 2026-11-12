@@ -1,0 +1,1706 @@
+{
+  "durationSeconds": 20.0,
+  "emitters": [
+    {
+      "activeDuration": 0.0,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.0a9d257aa772ea19e4233dce55a684df",
+      "inputLinks": [],
+      "kind": "Fluid",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.attachment.6268b64fa89427181ef1c3b50733c135",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.basic.bf7f0083df2b59c2a4b712afdab8f8b4",
+          "lifetime": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.color.95eceff5414f57c5b55edba3c1050044",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "id": "gradient.stop.ce80cc00da4ae597fc97070651a3ae58",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0
+                  ],
+                  "id": "gradient.stop.66d61361f002d4ae48a06d5baf3d4a8d",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Fixed"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.emitterTransform.8dd36ce966d4f89c4f517d31f6c9e525",
+          "transform": {
+            "position": [
+              0.0,
+              4.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "fluidDomain": {
+          "ambientStrength": 1.2,
+          "anisotropy": 0.4,
+          "boundary": "ClosedFloor",
+          "buoyancy": 0.0,
+          "burnRate": 14.0,
+          "castShadows": false,
+          "cellColor": true,
+          "combustion": false,
+          "densityDissipation": 0.3,
+          "detailScale": 0.3,
+          "detailStrength": 0.6,
+          "domainSize": [
+            48.0,
+            8.0,
+            48.0
+          ],
+          "emissionColor": [
+            1.0,
+            0.06,
+            0.0
+          ],
+          "emissionHotColor": [
+            1.0,
+            0.4,
+            0.05
+          ],
+          "emissionHotTemperature": 3.2,
+          "emissionIntensity": 0.0,
+          "emissionTemperature": 0.5,
+          "expansionPerBurn": 0.35,
+          "extinction": 1.2,
+          "fuelPerBurn": 1.0,
+          "heatPerBurn": 2.5,
+          "id": "module.fluidDomain.7e7c64fc12c4b32cb5e4f0df3a8020bd",
+          "ignitionTemperature": 0.3,
+          "inertia": 0.0,
+          "maxSubsteps": 2,
+          "multipleScattering": 1.0,
+          "prewarmSeconds": 6.0,
+          "priority": 100,
+          "relativeWind": 0.0,
+          "resolution": 192,
+          "scatteringColor": [
+            0.95,
+            0.95,
+            0.95
+          ],
+          "smokePerBurn": 0.45,
+          "substepRate": 60.0,
+          "temperatureDissipation": 1.0,
+          "vorticity": 0.5,
+          "weight": 0.0
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.1,
+            "frequency": 0.2,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "fluidFollow": 0.0,
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.forces.92b0a2805cf8c793109ef8d7fa5d4eb6",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.position.1c343e70400b357a4249237065494027",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Alpha",
+          "colorTextureAssetGuid": "",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.renderCommon.6c017d4df14927c8d4947b92d3449fa8",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.15000000596046448
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "Fixed",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.renderShape.60aa69ae204b63119b50ad09df1ab923",
+          "ribbonSegmentCount": 16,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 32,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.rotation.fb6102e888cf62f150b50804096b3ade"
+        },
+        "scale": {
+          "id": "module.scale.6598bcf15e9ecdd9dcc73114ebb209a7",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.shape.a81e6c7e2851aa6bc4cc6b4802f7beb1",
+          "radius": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Point"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.spawn.2a5e96286053a89580413a2d83242463",
+          "maximumParticles": 1024,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Fog Domain",
+      "order": 0,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    },
+    {
+      "activeDuration": 0.0,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.923736cd8884ba5235c016d3d7b09037",
+      "inputLinks": [
+        {
+          "bias": 0.0,
+          "id": "emitter.923736cd8884ba5235c016d3d7b09037.link.input.amount",
+          "inputId": "input.amount",
+          "scale": 1.0,
+          "target": {
+            "emitterId": "emitter.923736cd8884ba5235c016d3d7b09037",
+            "moduleId": "module.spawn.e88ed1cdd53d4a309a7ddbb510e85e5c",
+            "propertyId": "rateMultiplier"
+          }
+        }
+      ],
+      "kind": "FluidSource",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.attachment.4556be0e8f31aafd87a48f0b409f4b7f",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.basic.b547be2e7d43f2d676321332f3cb4320",
+          "lifetime": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.color.c5c5b0f4510f0af336c6e5910ff597ab",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.86,
+                0.88,
+                0.92,
+                1.0
+              ],
+              "minimum": [
+                0.86,
+                0.88,
+                0.92,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "id": "gradient.stop.9b858c922722399c5df2bb49fa7f7c2d",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0
+                  ],
+                  "id": "gradient.stop.b869af275219580d04ba1a7db565cdf4",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Fixed"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.emitterTransform.3d5dd3fc42f2bd678f4a2d46f94150a5",
+          "transform": {
+            "position": [
+              0.0,
+              -4.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "fluidSource": {
+          "absorption": 0.0,
+          "emissionNoise": 0.5,
+          "emissionNoiseScale": 5.0,
+          "forceMode": "Acceleration",
+          "fuelFraction": 0.0,
+          "guideStrength": 0.0,
+          "guideThickness": 0.25,
+          "id": "module.fluidSource.3cfe982fecd6e9a9310601d359275246",
+          "outflow": 0.0,
+          "radialSpeed": 0.0,
+          "temperature": 0.0,
+          "velocity": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.3,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.1,
+            "frequency": 0.2,
+            "radius": 40.0,
+            "turbulence": 0.05,
+            "vortex": 0.0
+          },
+          "fluidFollow": 0.0,
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.forces.8738fc92da4967aacd72d5fecfd27765",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.position.06c35d8007e70377af67df5437f70049",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Alpha",
+          "colorTextureAssetGuid": "",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.renderCommon.684246a2fa7f24cd4a854c663be9dd28",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.15000000596046448
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "Fixed",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.renderShape.db338d1076b452547bb942bcb82c1128",
+          "ribbonSegmentCount": 16,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 32,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.rotation.75e93d66ba21defa2d0c8f1938d8b10c"
+        },
+        "scale": {
+          "id": "module.scale.c828b403383d074043db559744462fdf",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 0.5,
+          "edgeLength": 1.0,
+          "id": "module.shape.f4f7126fae69728959a517fba34599b1",
+          "radius": {
+            "maximum": 23.0,
+            "minimum": 23.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Cylinder"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.spawn.e88ed1cdd53d4a309a7ddbb510e85e5c",
+          "maximumParticles": 1024,
+          "ratePerSecond": 0.3
+        }
+      },
+      "name": "Fog Carpet",
+      "order": 1,
+      "parameterTracks": [],
+      "parentEmitterId": "emitter.0a9d257aa772ea19e4233dce55a684df",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    }
+  ],
+  "inputs": [
+    {
+      "defaultValue": 1.0,
+      "id": "input.amount",
+      "name": "amount",
+      "type": "Float"
+    }
+  ],
+  "loop": true,
+  "name": "Arena Ground Fog",
+  "version": 15
+}
