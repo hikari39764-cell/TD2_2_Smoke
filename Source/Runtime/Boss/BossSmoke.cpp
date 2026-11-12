@@ -22,6 +22,9 @@ constexpr uint64_t kBlastPushBase = 110;
 constexpr int kBlastPushCount = 6;
 constexpr float kBlastPushHeight = 0.3f;
 constexpr float kTau = 6.28318530718f;
+// 回し蹴りの霞の輪が足元の霧を外へ押す力の提出 ID と、輪に並べる向きの数（爆発と同じ、向きのある押しを輪に並べる）。
+constexpr uint64_t kRingPushBase = 160;
+constexpr int kRingPushCount = 6;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
 constexpr int kWavePoints = 4;
@@ -117,9 +120,32 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
             boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, push).Accepted() && boss.fluidAccepted;
         }
     }
+    for (size_t i = 0; i < boss.waves.size() && boss.ringPush > 0.0f; ++i) {
+        auto& wave = boss.waves[i];
+        if (!wave.active || !wave.ring ||
+            (wave.pushedRadius >= 0.0f && wave.radius - wave.pushedRadius < boss.ringPushRadius))
+            continue;
+        // 霞の輪：広がっている輪の線の上で、足元の霧を地面に沿って外へ押す（霧そのものが輪になって広がる）。
+        // 押しは 1 回きりの速さなので、輪が押す半径ぶん広がるごとに 1 回だけ入れる（毎フレーム入れると強すぎる）。
+        wave.pushedRadius = wave.radius;
+        for (int k = 0; k < kRingPushCount; ++k) {
+            const float angle = kTau * (static_cast<float>(k) + 0.5f) / static_cast<float>(kRingPushCount);
+            HIKARI::GameProjectFluidInteraction push{};
+            push.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
+            push.direction = {std::sin(angle), 0.0f, std::cos(angle)};
+            push.position = Add({wave.position.x, boss.ground.y + kBlastPushHeight, wave.position.z},
+                                Mul(push.direction, wave.radius));
+            push.extents = {boss.ringPushRadius, 0.0f, 0.0f};
+            push.strength = boss.ringPush;
+            boss.fluidAccepted = world.GetFluid()
+                                     .Submit(object.GetHandle(), kRingPushBase + static_cast<uint64_t>(k), push)
+                                     .Accepted() &&
+                                 boss.fluidAccepted;
+        }
+    }
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const auto& wave = boss.waves[i];
-        if (!wave.active || wave.knife || wave.smokeRate <= 0.0f)
+        if (!wave.active || wave.knife || wave.ring || wave.smokeRate <= 0.0f)
             continue;
         // 斬撃の本体はエフェクト（BossVisuals）が見せる。ここは通った跡に残る煙（residuePerTwoMeters）だけを、
         // 刃の waveResidueLag 後ろの地面近くへ入れる。刃のすぐ近くへ入れると、斬撃のエフェクトの域にも入って三日月が崩れる。

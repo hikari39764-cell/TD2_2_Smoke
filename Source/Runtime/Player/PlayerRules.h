@@ -40,6 +40,13 @@ public:
     static float EaseOutFraction(int elapsedFrames, int frames, float easePower);
     static HIKARI::GameProjectFloat3 GetFacing(const PlayerComponent& player);
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);
+    // ロックオン中なら、ロック対象を target に変える（ボスと分身の切り替え）。ロックしていなければ何もしない。
+    static void SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target);
+    // 「ロック対象を変える」が押されていたら true を返して消す（対象の候補を知っている側が呼ぶ）。
+    static bool TakeLockSwitch(PlayerComponent& player);
+    // ロック中のカメラが見る点のずれ（世界 m）。外部が入れた値を次に入れ直すまで使う。
+    static void SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset);
+    static HIKARI::GameProjectFloat3 GetLockPivotOffset(const PlayerComponent& player);
     static float GetHealth(const PlayerComponent& player);
     static float GetStamina(const PlayerComponent& player);
     static int GetHealCharges(const PlayerComponent& player);

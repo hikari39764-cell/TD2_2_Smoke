@@ -17,6 +17,8 @@ struct BossFrame {
     PlayerComponent* player = nullptr;
     HIKARI::GameProjectFloat3 playerCenter{};
     float dt = 1.0f / 60.0f;
+    // ヒョウタンが吸い込み中で、まだ煙が入る（飛んで来た斬撃・ナイフを吸える）。
+    bool absorbing = false;
 };
 
 namespace BossLog {

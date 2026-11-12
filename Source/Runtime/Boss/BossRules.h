@@ -15,7 +15,7 @@ public:
     // 表の index 行の技を出すよう頼む。待機中なら次の固定 tick から始める。
     // asCombo は「いまの技の攻撃中が終わった時点で、後隙を出さずに続ける」（コンボ）。
     // 後隙の間に頼むと、後隙を切り上げて始める（asCombo ならコンボの続きとして数える）。
-    // 範囲外の行・このカードの実行器が動かせない型（跳躍・回し蹴り・霞隠れ・分身）は false。
+    // 範囲外の行・実行器が動かせない型の行・撃破された後は false。
     static bool RequestMove(BossComponent& boss, int index, bool asCombo = false);
     static bool RequestMoveByName(BossComponent& boss, std::string_view name, bool asCombo = false);
     static void CancelRequest(BossComponent& boss);

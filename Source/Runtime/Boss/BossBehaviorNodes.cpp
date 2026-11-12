@@ -126,6 +126,28 @@ Status TickSituation(INodeContext& context, void*, void* user) noexcept {
                : Status::Failure;
 }
 
+// ---- 分身を出せる：霞分身の再使用の時間が過ぎていて、分身が 1 体も出ていない。 ----
+
+Status TickCloneReady(INodeContext&, void*, void* user) noexcept {
+    const BossThought* thought = ThoughtOf(user);
+    if (thought == nullptr)
+        return Status::Failure;
+    const BossComponent& boss = thought->boss;
+    return boss.clockSeconds >= boss.brain.cloneReadySeconds && boss.activeClones == 0 && !boss.cloneSpawnPending
+               ? Status::Success
+               : Status::Failure;
+}
+
+// ---- 分身を撃たれた：プレイヤーが分身を撃った後、本体がまだ突進で来ていない（待機中か後隙の間だけ成り立つ）。 ----
+
+Status TickCloneStruck(INodeContext&, void*, void* user) noexcept {
+    const BossThought* thought = ThoughtOf(user);
+    if (thought == nullptr ||
+        (thought->moment != BossBrainMoment::Idle && thought->moment != BossBrainMoment::Recovery))
+        return Status::Failure;
+    return thought->boss.brain.cloneStruck ? Status::Success : Status::Failure;
+}
+
 // ---- 技を実行：表の 1 行を出し、終わるまで走る。コンボは表（コンボ先・コンボ確率）のとおりにこの節がつなぐ。 ----
 // 親の Selector の order が random のとき、score（重み）に比例した確率で選ばれる。
 
@@ -368,8 +390,30 @@ bool BossBehaviorNodes::Register() {
     situation.tick = &TickSituation;
     situation.user = this;
 
+    NodeTypeDesc cloneReady{};
+    cloneReady.kind = NodeKind::Condition;
+    cloneReady.typeName = "Project_TD2_2.BossCloneReady";
+    cloneReady.displayName = "分身を出せる";
+    cloneReady.category = kCategory;
+    cloneReady.description =
+        "霞分身の再使用（ボスの「分身の再使用」秒）が過ぎていて、分身が 1 体も出ていなければ成功する。"
+        "この後ろに「技を実行（霞分身、選び方 always）」を置く。HP の条件は技の表の発生条件。";
+    cloneReady.tick = &TickCloneReady;
+    cloneReady.user = this;
+
+    NodeTypeDesc cloneStruck{};
+    cloneStruck.kind = NodeKind::Condition;
+    cloneStruck.typeName = "Project_TD2_2.BossCloneStruck";
+    cloneStruck.displayName = "分身を撃たれた";
+    cloneStruck.category = kCategory;
+    cloneStruck.description = "プレイヤーが分身を撃った後、本体がまだ突進（瞬間突進の型）を出していなければ成功する"
+                              "（待機中と後隙の間だけ）。この後ろに「技を実行（突進横なぎ、選び方 always）」を置く。";
+    cloneStruck.tick = &TickCloneStruck;
+    cloneStruck.user = this;
+
     return registration_.Register(wait) && registration_.Register(move) && registration_.Register(pressured) &&
-           registration_.Register(situation);
+           registration_.Register(situation) && registration_.Register(cloneReady) &&
+           registration_.Register(cloneStruck);
 }
 
 TickOutcome BossBehaviorNodes::Think(BossThought& thought, HIKARI::GameProjectObjectHandle object, float deltaSeconds) {

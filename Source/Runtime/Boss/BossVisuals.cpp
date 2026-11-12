@@ -54,7 +54,7 @@ void StopHandle(HIKARI::WorldView& world, HIKARI::GameProjectVfxPlaybackHandle& 
 
 const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
     for (const auto& wave : boss.waves) {
-        if (wave.active && !wave.knife && wave.id == id)
+        if (wave.active && !wave.knife && !wave.ring && wave.id == id)
             return &wave;
     }
     return nullptr;
@@ -121,7 +121,8 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
         // waveVfxId は「この斬撃にはもうエフェクトを出した」の印（1 つの斬撃に出すのは 1 回だけ）。
-        if (!wave.active || wave.knife || boss.waveVfxId[i] == wave.id)
+        // 霞の輪（回し蹴り）は斬撃のエフェクトを使わない（UpdateRing が見せる）。
+        if (!wave.active || wave.knife || wave.ring || boss.waveVfxId[i] == wave.id)
             continue;
         BossSlashEffect* slot = nullptr;
         BossSlashEffect* oldest = nullptr;
@@ -166,10 +167,47 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
     }
 }
 
+constexpr float kTau = 6.28318530718f;
+
+// 回し蹴りの霞の輪：輪の上に炎の筋を等間隔に並べ、輪と同じ速さで外へ飛ばす（流体域は使わない）。輪が消えたら止める。
+void UpdateRing(HIKARI::WorldView& world, BossComponent& boss) {
+    const BossWave* ring = nullptr;
+    for (const auto& wave : boss.waves) {
+        if (wave.active && wave.ring)
+            ring = &wave;
+    }
+    if (ring == nullptr || ring->id != boss.ringVfxId) {
+        for (auto& handle : boss.ringVfx)
+            StopHandle(world, handle);
+        boss.ringVfxId = 0;
+    }
+    if (ring == nullptr || ring->id == boss.ringVfxId || boss.ringEffect.IsEmpty())
+        return;
+    boss.ringVfxId = ring->id;
+    for (size_t k = 0; k < boss.ringVfx.size(); ++k) {
+        const float angle = kTau * static_cast<float>(k) / static_cast<float>(boss.ringVfx.size());
+        const Vec3 out{std::sin(angle), 0.0f, std::cos(angle)};
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = boss.ringEffect;
+        play.transform.position =
+            Add({ring->position.x, boss.ground.y + boss.ringHeight, ring->position.z}, Mul(out, ring->radius));
+        // 局所 +X が外向き、刃の面は地面に沿う（輪を上から見ても横から見ても筋が見える）。
+        play.transform.rotation = BasisRotation(out, {out.z, 0.0f, -out.x});
+        play.transform.scale = {boss.ringStreakScale, boss.ringStreakScale, boss.ringStreakScale};
+        play.randomSeed = static_cast<uint32_t>(ring->id * 31u + k);
+        auto& handle = boss.ringVfx[k];
+        handle = world.GetVfx().Play(play);
+        boss.vfxAccepted = handle.IsValid() && boss.vfxAccepted;
+        if (handle.IsValid())
+            boss.vfxAccepted = world.GetVfx().SetVelocity(handle, Mul(out, ring->speed)) && boss.vfxAccepted;
+    }
+}
+
 } // namespace
 
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView, BossComponent& boss, float seconds) {
     UpdateSlashes(world, boss, seconds);
+    UpdateRing(world, boss);
     // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
     for (auto& blast : boss.blasts) {
         if (!blast.effectPending)
@@ -244,6 +282,9 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
         StopHandle(world, handle);
     for (auto& handle : boss.knifeVfx)
         StopHandle(world, handle);
+    for (auto& handle : boss.ringVfx)
+        StopHandle(world, handle);
+    boss.ringVfxId = 0;
     for (auto& effect : boss.slashEffects) {
         StopHandle(world, effect.handle);
         effect = {};

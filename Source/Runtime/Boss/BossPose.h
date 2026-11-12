@@ -33,7 +33,7 @@ public:
     static BossSegmentProgress Progress(const BossComponent& boss, const BossMove& move);
     static BossSwordPose Target(const BossComponent& boss);
     static BossSwordPoints SwordPoints(const BossComponent& boss, BossSwordPose pose);
-    // 地面から足元までの高さ（跳躍・浮遊。見た目の上下のゆれは含めない）。
+    // 地面から足元までの高さ（跳躍・浮遊から、霧へ沈んだ深さを引く。見た目の上下のゆれは含めない）。
     static float RootHeight(const BossComponent& boss);
 };
 

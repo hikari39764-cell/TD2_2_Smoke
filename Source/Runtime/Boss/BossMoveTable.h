@@ -46,6 +46,9 @@ enum class BossMoveUse {
     Special,
 };
 
+// 霞隠れの区間の役目：隠れる（当たらない）／現れる（背後や横へ回り込んで構える）。ほかの型は Normal。
+enum class BossSegmentKind { Normal, Hide, Appear };
+
 // 「攻撃中」の 1 区間。hit の区間で剣を振り（斬撃を出し）、それ以外は構えや移動。
 struct BossSegment {
     int length = 1;
@@ -55,6 +58,7 @@ struct BossSegment {
     // 移動の行：出すたびにこの範囲から長さを決める。
     int rangeMin = 0;
     int rangeMax = 0;
+    BossSegmentKind kind = BossSegmentKind::Normal;
 };
 
 // 一撃ぶんの値。連撃で別の行を参照した一撃は、その行の値が入る。
@@ -102,7 +106,7 @@ struct BossMove {
     // コンボ先の行（「コンボ先」の名前に合う行。1 つの名前が何行にも合えば全部）。
     std::vector<int> comboTargets;
     int hitCount = 0;
-    // このカードの実行器が動かせる型か。動かせない型の行は読み込むが、出そうとすると断る。
+    // 実行器が動かせる型か。動かせない型の行は読み込むが、出そうとすると断る。
     bool executable = false;
     std::vector<std::string> warnings;
 };
@@ -150,7 +154,7 @@ public:
     static bool IsMoveType(BossMoveType type);
     // 剣を振る型（振っている間に斬撃をかたどり、振り抜いた瞬間に飛ばす）。
     static bool IsSwingType(BossMoveType type);
-    // このカードの実行器が動かせる型。跳躍・回し蹴り・霞隠れ・分身は c-54ab2d。
+    // 実行器が動かせる型（いまは全部の型）。
     static bool IsExecutable(BossMoveType type);
     // 一撃 strike の値。strike が範囲外なら最後の一撃。
     static const BossStrikeData& Strike(const BossMove& move, int strike);

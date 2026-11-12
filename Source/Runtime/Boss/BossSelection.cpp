@@ -144,6 +144,9 @@ void BossSelection::NoteStarted(BossComponent& boss, int row, int chain) {
         boss.brain.lastStarted = row;
     if (IsRushType(move->type))
         boss.brain.moveHits = 0;
+    // 分身を撃たれた後の本体の突進（瞬間突進の型）が始まった。
+    if (move->type == BossMoveType::Dash)
+        boss.brain.cloneStruck = false;
 }
 
 } // namespace Project_TD2_2

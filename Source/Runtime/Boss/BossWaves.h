@@ -23,6 +23,9 @@ public:
     static void SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch);
     static void SpawnKnives(BossFrame& frame, int moveIndex, HIKARI::GameProjectFloat3 from,
                             HIKARI::GameProjectFloat3 aim);
+    // 回し蹴りの霞の輪：ボスの足元から、表の判定サイズ（最大半径）まで斬撃速度で広がる。
+    static void SpawnRing(BossFrame& frame, int moveIndex);
+    // 飛ばす・当てる・吸い込みの扇に入ったものを吸わせる（吸った煙は boss.absorbedSmoke に足す）。
     static void Step(BossFrame& frame);
     // 刃や斬撃がプレイヤーの体の軸に触れたか（触れたら true）。
     static bool Touches(const BossFrame& frame, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,

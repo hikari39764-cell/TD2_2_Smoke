@@ -64,6 +64,9 @@ void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
         player.lockedOn = !player.lockedOn && target.IsValid();
         player.lockTarget = player.lockedOn ? target.GetHandle() : HIKARI::GameProjectObjectHandle{};
     }
+    // 対象の候補（ボスと分身）はプレイヤーは知らないので、押されたことだけを覚えておく。
+    if (ReadAction(input, "Gameplay.LockSwitch").pressed && player.lockedOn)
+        player.lockSwitchRequested = true;
 }
 
 int StateDuration(const PlayerComponent& player) {
@@ -315,7 +318,7 @@ bool SubmitLockFraming(HIKARI::WorldView& world, HIKARI::ObjectView camera, cons
     request.targetObjectHandle = player.lockTarget.value;
     request.sourceId = kCameraSource;
     request.priority = kPlayerPriority;
-    request.targetPivotOffset = {};
+    request.targetPivotOffset = player.lockPivotOffset;
     request.targetWeight = player.lockTargetWeight;
     request.yawTrackingSpeedDegreesPerSecond = player.lockYawSpeed;
     request.preferredPitchDegrees = player.lockPitch;

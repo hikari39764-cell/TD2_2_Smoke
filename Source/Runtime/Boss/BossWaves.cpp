@@ -21,6 +21,9 @@ constexpr float kResidueStep = 2.0f;
 constexpr float kOwedSmokeShare = 0.25f;
 // F は 1/60 秒の固定 tick。1 tick の量を 1 秒あたりの量へ直す。
 constexpr float kFramesPerSecond = 60.0f;
+// 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
+constexpr int kRingResiduePoints = 6;
+constexpr float kTau = 6.28318530718f;
 
 const BossMove* MoveOf(const BossComponent& boss, int index) {
     const auto& moves = boss.table.GetMoves();
@@ -53,6 +56,56 @@ void LogWave(const BossComponent& boss, const BossWave& wave, const char* event)
                   static_cast<double>(wave.across.x), static_cast<double>(wave.across.y),
                   static_cast<double>(wave.across.z));
     BossLog::Write(message);
+}
+
+// 吸い込みの扇（プレイヤーの向きの前、片側 absorbCatchAngle 度、absorbCatchRange m 以内）に斬撃・ナイフの刃が
+// 入ったか（試作の inhaleCatch：刃の線分のうちプレイヤーに一番近い点で測る。近ければ向きを問わない）。
+bool InCatch(const BossFrame& frame, Vec3 a, Vec3 b) {
+    if (!frame.absorbing || frame.player == nullptr)
+        return false;
+    const BossComponent& boss = frame.boss;
+    const Vec3 ab = Sub(b, a);
+    const float t = std::clamp(Dot(Sub(frame.playerCenter, a), ab) / std::max(1e-6f, Dot(ab, ab)), 0.0f, 1.0f);
+    const Vec3 offset = Sub(Add(a, Mul(ab, t)), frame.playerCenter);
+    const float distance = FlatLength(offset);
+    if (distance > boss.absorbCatchRange)
+        return false;
+    if (distance < boss.absorbCatchNear)
+        return true;
+    const Vec3 facing = FlatNormalize(PlayerRules::GetFacing(*frame.player));
+    return Dot(FlatNormalize(offset), facing) >= std::cos(boss.absorbCatchAngle * kRadiansPerDegree);
+}
+
+// 霞の輪：広がりながら、輪の線がプレイヤーの体を通った時に当てる（高さは見ない。試作と同じ）。
+void StepRing(BossFrame& frame, BossWave& wave) {
+    BossComponent& boss = frame.boss;
+    for (int s = 0; s < kHitSubsteps; ++s) {
+        wave.radius = std::min(wave.maxRadius, wave.radius + wave.speed * frame.dt / static_cast<float>(kHitSubsteps));
+        wave.travelled = wave.radius;
+        if (wave.done || frame.player == nullptr)
+            continue;
+        const Vec3 offset = Sub(frame.playerCenter, wave.position);
+        if (std::abs(FlatLength(offset) - wave.radius) < wave.thickness * 0.5f + boss.playerHitRadius) {
+            bool dodged = false;
+            wave.struck =
+                BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring", dodged);
+            wave.done = true;
+            wave.dodged = dodged;
+        }
+    }
+    if (wave.radius < wave.maxRadius)
+        return;
+    // 消えた所に残り煙（最大半径の kickResidueRadiusShare 倍の円に 6 か所、斬撃 2 m ぶんの kickResidueScale 倍ずつ）。
+    for (int k = 0; k < kRingResiduePoints; ++k) {
+        const float angle = kTau * static_cast<float>(k) / static_cast<float>(kRingResiduePoints);
+        const Vec3 at = Add(wave.position, Mul(Vec3{std::sin(angle), 0.0f, std::cos(angle)},
+                                               wave.maxRadius * boss.kickResidueRadiusShare));
+        BossWaves::AddDeposit(boss, {at.x, boss.ground.y + boss.depositHeight, at.z},
+                              boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius);
+    }
+    if (boss.traceEveryFrames > 0)
+        LogWave(boss, wave, "RingEnd");
+    wave.active = false;
 }
 
 } // namespace
@@ -165,6 +218,37 @@ void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim
     }
 }
 
+void BossWaves::SpawnRing(BossFrame& frame, int moveIndex) {
+    BossComponent& boss = frame.boss;
+    const BossMove* move = MoveOf(boss, moveIndex);
+    if (move == nullptr)
+        return;
+    const BossStrikeData& strike = BossMoveTable::Strike(*move, 0);
+    BossWave& wave = *FreeWave(boss);
+    wave = {};
+    wave.active = true;
+    wave.ring = true;
+    wave.id = boss.nextWaveId++;
+    wave.move = moveIndex;
+    wave.position = boss.ground;
+    // 判定サイズ＝輪の最大半径。
+    wave.maxRadius = std::max(strike.size, boss.kickRingStartRadius);
+    wave.radius = wave.travelled = std::min(boss.kickRingStartRadius, wave.maxRadius);
+    wave.width = wave.fullWidth = wave.maxRadius;
+    wave.thickness = boss.thickness;
+    wave.speed = strike.speed;
+    wave.damage = strike.damage;
+    wave.blow = strike.blow;
+    char message[256]{};
+    std::snprintf(message, sizeof(message),
+                  "RingRelease tick=%llu move=%s id=%llu damage=%d blow=%d startRadius=%.3f maxRadius=%.3f speed=%.3f",
+                  static_cast<unsigned long long>(boss.tick), move->name.c_str(),
+                  static_cast<unsigned long long>(wave.id), wave.damage, static_cast<int>(wave.blow),
+                  static_cast<double>(wave.radius), static_cast<double>(wave.maxRadius),
+                  static_cast<double>(wave.speed));
+    BossLog::Write(message);
+}
+
 void BossWaves::Step(BossFrame& frame) {
     BossComponent& boss = frame.boss;
     const float growPerFrame = 1.0f / static_cast<float>(std::max(1, boss.waveGrowFrames));
@@ -172,6 +256,19 @@ void BossWaves::Step(BossFrame& frame) {
         wave.smokeRate = 0.0f;
         if (!wave.active)
             continue;
+        if (wave.ring) {
+            StepRing(frame, wave);
+            continue;
+        }
+        // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに吸われて消える（振っている剣そのものは吸えない）。
+        const Vec3 edge = Mul(wave.across, wave.width * 0.5f);
+        if (!wave.done && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
+            boss.absorbedSmoke += wave.absorbSmoke;
+            ++boss.wavesAbsorbed;
+            LogWave(boss, wave, "WaveAbsorbed");
+            wave.active = false;
+            continue;
+        }
         // 放った直後の数 F で判定サイズまで伸びる。
         if (wave.grow < 1.0f) {
             wave.grow = std::min(1.0f, wave.grow + (1.0f - wave.growStart) * growPerFrame);

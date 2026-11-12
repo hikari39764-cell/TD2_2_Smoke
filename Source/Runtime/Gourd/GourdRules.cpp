@@ -31,6 +31,15 @@ bool GourdRules::TryConsumeSmoke(GourdComponent& gourd, float amount) {
     return true;
 }
 
+float GourdRules::AddSmoke(GourdComponent& gourd, float amount) {
+    Initialize(gourd);
+    if (!std::isfinite(amount) || amount <= 0.0f)
+        return 0.0f;
+    const float before = GetSmoke(gourd);
+    gourd.storedSmoke = std::min(GetCapacity(gourd), before + amount);
+    return gourd.storedSmoke - before;
+}
+
 bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbing; }
 bool GourdRules::IsAbsorbBusy(const GourdComponent& gourd) { return gourd.absorbPhase != GourdAbsorbPhase::Idle; }
 HIKARI::GameProjectFloat3 GourdRules::GetMouthPosition(const GourdComponent& gourd) { return gourd.mouthPosition; }

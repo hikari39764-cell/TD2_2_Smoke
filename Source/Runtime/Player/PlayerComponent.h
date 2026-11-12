@@ -91,6 +91,10 @@ public:
     HIKARI::GameProjectFloat3 actionDirection{};
     HIKARI::GameProjectObjectHandle lockTarget{};
     bool lockedOn = false;
+    // ロック対象を変える入力（Q）が押された。対象の候補を知っている側（ボスの分身）が使ったら消す。
+    bool lockSwitchRequested = false;
+    // ロック中のカメラが見る点を、対象の原点からずらす量（世界 m）。霧へ沈んだボスを見続ける時など、外部が毎 tick 入れる。
+    HIKARI::GameProjectFloat3 lockPivotOffset{};
     bool rollFogPending = false;
     bool healApplied = false;
     bool motionAccepted = true;

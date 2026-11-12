@@ -1,0 +1,14 @@
+{
+  "displayName": "BossKickRing",
+  "guid": "cbffd59dc133951894e126d8243b0fd2",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossKickRing.hvfx",
+  "type": "VfxEffect"
+}

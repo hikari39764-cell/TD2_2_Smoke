@@ -24,6 +24,9 @@ constexpr BossSwordPose kVerticalEnd{80.0f, 0.0f};
 constexpr BossSwordPose kStunned{105.0f, -25.0f};
 constexpr BossSwordPose kKnifeStart{-30.0f, -120.0f};
 constexpr BossSwordPose kKnifeEnd{30.0f, 40.0f};
+// 回し蹴りの間、剣を横に構えたまま回る。分身を出す間は剣をまっすぐ前へ（試作の held と [0, 0]）。
+constexpr BossSwordPose kHeld{20.0f, -80.0f};
+constexpr BossSwordPose kForward{0.0f, 0.0f};
 // 振り上げた構えの引き（反対へ 22% 引く）、振り出しの割合、フェイントで引き戻す長さ (F)。
 constexpr float kCockedPull = 0.22f;
 constexpr float kSwingInShare = 0.16f;
@@ -172,6 +175,32 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     case BossMoveType::SlashH: return sw(kBack, kSide);
     case BossMoveType::Overhead:
     case BossMoveType::SlashV: return sw(kUp, kVerticalEnd);
+    case BossMoveType::Jump: {
+        // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
+        if (phase == BossActPhase::Pre)
+            return Windup(boss, kRest, kUpLeft, kDownRight, t, move.pre, false);
+        if (phase == BossActPhase::Post)
+            return kRest;
+        const auto g = Progress(boss, move);
+        if (g.hitIndex % 2 == 0)
+            return g.hit ? Swing(boss, kUpLeft, kDownRight, g.tIn, g.swingLength)
+                         : Sweep(kDownRight, Cocked(kUpRight, kDownLeft), g.progress);
+        return Swing(boss, kUpRight, kDownLeft, g.tIn, g.swingLength);
+    }
+    case BossMoveType::Kick: return kHeld;
+    case BossMoveType::Clone: return kForward;
+    case BossMoveType::Ambush: {
+        if (phase != BossActPhase::Act)
+            return kRest;
+        const auto g = Progress(boss, move);
+        const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
+        if (g.hit)
+            return Swing(boss, kBack, kSide, g.tIn, g.swingLength);
+        if (segment.kind != BossSegmentKind::Appear)
+            return kRest;
+        // 現れて振り上げ→構え（最後の 1 回はフェイント）。
+        return Windup(boss, kRest, kBack, kSide, g.tIn, segment.length, segment.feint);
+    }
     case BossMoveType::Knife:
         if (phase == BossActPhase::Pre)
             return kKnifeStart;
@@ -197,7 +226,7 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     }
 }
 
-float BossPose::RootHeight(const BossComponent& boss) { return boss.height + boss.floatHeight; }
+float BossPose::RootHeight(const BossComponent& boss) { return boss.height + boss.floatHeight - boss.sink; }
 
 BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, BossSwordPose pose) {
     const float px = pose.x * kRadiansPerDegree, py = pose.y * kRadiansPerDegree;

@@ -7,6 +7,7 @@
 
 #include "HIKARI/Project/ProjectDataView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "BossClones.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossPose.h"
@@ -41,6 +42,8 @@ constexpr float kStunWobbleRate = 1.7f;
 constexpr float kStunWobble = 0.05f;
 // 煙の量の換算が取れないとき（ヒョウタンがいない）の値。ヒョウタンの既定値と同じ。
 constexpr float kFallbackSmokePerVolume = 4.0f;
+// ヒョウタンの空きがこれより少なければ、斬撃・ナイフは吸えない（試作の 0.01）。
+constexpr float kAbsorbRoomEpsilon = 0.01f;
 
 bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     return world.GetGameSession() != nullptr && !frame.paused;
@@ -78,7 +81,11 @@ void LogMoves(const BossComponent& boss) {
         const BossMove& move = moves[i];
         std::string segments, strikes;
         for (const auto& segment : move.segments)
-            segments += std::to_string(segment.length) + (segment.hit ? "h" : "") + (segment.feint ? "f" : "") + "/";
+            segments += std::to_string(segment.length) + (segment.hit ? "h" : "") + (segment.feint ? "f" : "") +
+                        (segment.kind == BossSegmentKind::Hide     ? "H"
+                         : segment.kind == BossSegmentKind::Appear ? "A"
+                                                                   : "") +
+                        "/";
         for (const auto& strike : move.strikes) {
             char text[96]{};
             std::snprintf(text, sizeof(text), "[d%d s%.2f v%.2f h%.0f st%.2f %s r%d]", strike.damage,
@@ -169,6 +176,8 @@ void AddStun(BossComponent& boss, float amount) {
     boss.stun = 0.0f;
     BossMoveExecutor::Interrupt(boss);
     BossRules::CancelRequest(boss);
+    // 気絶すると、分身を撃たれた後の突進も取りやめる（試作と同じ）。
+    boss.brain.cloneStruck = false;
     boss.state = BossState::Stunned;
     boss.stateFrame = 0;
     std::snprintf(message, sizeof(message), "Stunned tick=%llu count=%d frames=%d",
@@ -226,6 +235,11 @@ void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent
         BossLog::Write(message);
     }
     DamageableRules::SetIncomingDamageScale(health, boss.state == BossState::Stunned ? boss.stunDamageScale : 1.0f);
+    // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。
+    if (boss.hidden != boss.hiddenApplied) {
+        health.invulnerable = boss.hidden;
+        boss.hiddenApplied = boss.hidden;
+    }
 }
 
 void StartRequested(BossFrame& frame, int chain) {
@@ -313,7 +327,7 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     const float bob = std::sin(boss.floatClock * kBobRate) * boss.floatBob;
     const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss) + bob, boss.ground.z};
     HIKARI::GameProjectTransform transform{};
-    transform.rotation = YawLeanSway(boss.yaw, lean, sway);
+    transform.rotation = YawLeanSway(boss.yaw + boss.spin, lean, sway);
     // 足元を支点に傾ける（中心で回すと足が反対へ流れる）。
     transform.position = Add(root, Rotate(transform.rotation, {0.0f, boss.bodyHalfHeight * squash, 0.0f}));
     transform.scale = {1.0f, squash, 1.0f};
@@ -323,17 +337,19 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
 void Trace(const BossComponent& boss, const DamageableComponent* health) {
     if (boss.traceEveryFrames <= 0 || boss.tick % static_cast<uint64_t>(boss.traceEveryFrames) != 0)
         return;
-    char message[384]{};
+    char message[448]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu state=%d phase=%d move=%d stateFrame=%d ground=(%.3f,%.3f,%.3f) yaw=%.3f "
-                  "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d",
+                  "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d sink=%.3f hidden=%d "
+                  "clones=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.state),
                   static_cast<int>(boss.phase), boss.move, boss.stateFrame, static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.y), static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw),
                   static_cast<double>(boss.height), static_cast<double>(boss.floatHeight),
                   static_cast<double>(boss.crouch), static_cast<double>(boss.stun), boss.stunCount,
                   health ? static_cast<double>(DamageableRules::GetHealth(*health)) : -1.0,
-                  static_cast<int>(boss.fluidAccepted));
+                  static_cast<int>(boss.fluidAccepted), static_cast<double>(boss.sink), static_cast<int>(boss.hidden),
+                  boss.activeClones);
     BossLog::Write(message);
 }
 
@@ -344,6 +360,14 @@ void BossSystem::OnWorldAttached(HIKARI::WorldView&) { treeBrain_.Attach(); }
 void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
+    // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。煙がもう入らなければ吸えずに当たる（試作と同じ）。
+    bool absorbing = false;
+    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView,
+                                                                                        GourdComponent& gourd) {
+        absorbing = absorbing || (GourdRules::IsAbsorbing(gourd) &&
+                                  GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd) > kAbsorbRoomEpsilon);
+    });
+    float absorbed = 0.0f;
     world.ForEachComponent<BossComponent>(
         HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
             if (!boss.initialized)
@@ -356,7 +380,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             boss.glintFrames = std::max(0, boss.glintFrames - 1);
             // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
-                BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt};
+                BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing};
                 BossMoveExecutor::StepFloat(boss);
                 BossBrainContext context{boss, object.GetHandle()};
                 if (player != nullptr)
@@ -404,9 +428,27 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                                                             return;
                                                         ran = true;
                                                         withHealth(&player, transform.position);
+                                                        BossClones::Step(world, object, boss, &player,
+                                                                         transform.position);
                                                     });
-            if (!ran)
+            if (!ran) {
                 withHealth(nullptr, {});
+                BossClones::Step(world, object, boss, nullptr, {});
+            }
+            absorbed += boss.absorbedSmoke;
+            boss.absorbedSmoke = 0.0f;
+        });
+    if (absorbed <= 0.0f)
+        return;
+    world.ForEachComponent<GourdComponent>(
+        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+            const float added = GourdRules::AddSmoke(gourd, absorbed);
+            char message[160]{};
+            std::snprintf(message, sizeof(message), "AbsorbSmoke amount=%.3f added=%.3f smoke=%.3f",
+                          static_cast<double>(absorbed), static_cast<double>(added),
+                          static_cast<double>(GourdRules::GetSmoke(gourd)));
+            BossLog::Write(message);
+            absorbed = 0.0f;
         });
 }
 

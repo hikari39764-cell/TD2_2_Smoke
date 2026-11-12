@@ -5,6 +5,7 @@
 
 #include "BossMath.h"
 #include "BossPose.h"
+#include "BossSpecialMoves.h"
 #include "BossWaves.h"
 
 namespace Project_TD2_2 {
@@ -159,7 +160,7 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
         if (distance > boss.stringApproachStop && !inKamae)
             boss.ground = Add(boss.ground, Mul(forward, boss.stringApproachSpeed * frame.dt));
         break;
-    default: break;
+    default: BossSpecialMoves::Pre(frame, move, progress); break;
     }
 }
 
@@ -194,7 +195,8 @@ void ActMotion(BossFrame& frame, const BossMove& move, float progress) {
 // 踏み込み：振っている間にプレイヤーへ近づく（距離は表の「踏み込み m」）。近すぎるときは止まる。
 void StepIn(BossFrame& frame, const BossStrikeData& strike, const BossSegmentProgress& g) {
     BossComponent& boss = frame.boss;
-    if (!(strike.step > 0.0f) || g.tIn > g.swingLength || g.tIn < 1)
+    // 霞隠れは踏み込まない（現れてから突っ込む動きは BossSpecialMoves）。
+    if (!(strike.step > 0.0f) || g.tIn > g.swingLength || g.tIn < 1 || CurrentMove(boss).type == BossMoveType::Ambush)
         return;
     float d = strike.step * (Smooth(static_cast<float>(g.tIn) / g.swingLength) -
                              Smooth(static_cast<float>(g.tIn - 1) / g.swingLength));
@@ -327,6 +329,8 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.lastSegment = -1;
     boss.dashStarted = false;
     boss.glintFrames = 0;
+    boss.spin = 0.0f;
+    boss.hidden = false;
     boss.sideSign = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
     boss.actFrames = move.act;
     if (BossMoveTable::IsMoveType(move.type) && !move.segments.empty()) {
@@ -369,6 +373,7 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     } else if (boss.phase == BossActPhase::Act) {
         SideMove(frame, move);
         const auto g = BossPose::Progress(boss, move);
+        const bool entered = boss.lastSegment != g.segment;
         boss.lastSegment = g.segment;
         const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
         if (!g.hit && swingType && static_cast<size_t>(g.segment + 1) < move.segments.size() &&
@@ -385,6 +390,8 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
                         Vec3 from = Add(boss.ground, Mul(forward, boss.knifeForward));
                         from.y = boss.ground.y + BossPose::RootHeight(boss) + boss.knifeHeight;
                         BossWaves::SpawnKnives(frame, boss.move, from, AimDirection(frame, from));
+                    } else {
+                        BossSpecialMoves::Trigger(frame, move);
                     }
                 }
             } else {
@@ -397,6 +404,7 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
         }
         const float progress = static_cast<float>(boss.stateFrame) / static_cast<float>(std::max(1, boss.actFrames));
         ActMotion(frame, move, progress);
+        BossSpecialMoves::Act(frame, move, g, entered, progress);
         if (boss.stateFrame >= boss.actFrames) {
             Log(boss, "ActEnd");
             result = StepResult::ActFinished;
@@ -404,6 +412,8 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     } else {
         if (move.type == BossMoveType::Backstep)
             boss.height = 0.0f;
+        BossSpecialMoves::Post(boss, move,
+                               static_cast<float>(boss.stateFrame) / static_cast<float>(std::max(1, move.post)));
         if (boss.stateFrame >= move.post) {
             Log(boss, "MoveEnd");
             result = StepResult::Finished;
@@ -424,6 +434,9 @@ void BossMoveExecutor::EnterIdle(BossComponent& boss) {
     boss.stateFrame = 0;
     boss.idleFrames = 0;
     boss.chain = 0;
+    boss.sink = 0.0f;
+    boss.spin = 0.0f;
+    boss.hidden = false;
     boss.strafe = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
 }
 
@@ -455,6 +468,9 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     boss.chain = 0;
     boss.dashStarted = false;
     boss.height = 0.0f;
+    boss.sink = 0.0f;
+    boss.spin = 0.0f;
+    boss.hidden = false;
     boss.swordSmoke = false;
     boss.glintFrames = 0;
     boss.velocity = {};

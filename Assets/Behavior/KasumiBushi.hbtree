@@ -7,11 +7,12 @@
       "id": 1,
       "type": "Selector",
       "name": "霞武士",
-      "note": "上の枝が先。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。",
+      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。",
       "params": {
         "reactive": true
       },
       "children": [
+        22,
         2,
         7
       ]
@@ -71,7 +72,7 @@
       "name": "中立",
       "children": [
         8,
-        9
+        25
       ]
     },
     {
@@ -199,6 +200,61 @@
       "name": "後ろへ下がる",
       "params": {
         "move": "後ろへ下がる"
+      }
+    },
+    {
+      "id": 22,
+      "type": "Sequence",
+      "name": "分身を撃たれた",
+      "note": "プレイヤーが分身を撃ったら、本体が突進横なぎで来る（試作の forced）。",
+      "children": [
+        23,
+        24
+      ]
+    },
+    {
+      "id": 23,
+      "type": "Project_TD2_2.BossCloneStruck"
+    },
+    {
+      "id": 24,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横なぎ",
+      "params": {
+        "move": "突進横なぎ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 25,
+      "type": "Selector",
+      "name": "次の技",
+      "note": "左から順に試す。分身を出せる時（HP の条件は表）は分身が先、出せなければ技を選ぶ。",
+      "children": [
+        26,
+        9
+      ]
+    },
+    {
+      "id": 26,
+      "type": "Sequence",
+      "name": "霞分身",
+      "children": [
+        27,
+        28
+      ]
+    },
+    {
+      "id": 27,
+      "type": "Project_TD2_2.BossCloneReady"
+    },
+    {
+      "id": 28,
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞分身",
+      "params": {
+        "move": "霞分身",
+        "pick": "always"
       }
     }
   ]

@@ -68,8 +68,13 @@ Vec3 Aim(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdCo
     const auto fallback = PlayerRules::FlatNormalize(PlayerRules::GetFacing(player));
     const auto target = world.FindObject(PlayerRules::GetLockTarget(player));
     HIKARI::GameProjectTransform transform{};
-    if (target.IsValid() && target.GetWorldTransform(transform))
-        return Normalize(Difference(transform.position, gourd.position), fallback);
+    // ロック中のカメラと同じ点を狙う（霧へ沈んだボスなど、対象の原点からずらした点）。
+    if (target.IsValid() && target.GetWorldTransform(transform)) {
+        const Vec3 offset = PlayerRules::GetLockPivotOffset(player);
+        const Vec3 aimed{transform.position.x + offset.x, transform.position.y + offset.y,
+                         transform.position.z + offset.z};
+        return Normalize(Difference(aimed, gourd.position), fallback);
+    }
     HIKARI::GameProjectCameraPose pose{};
     if (!world.GetCamera().GetControlPose(pose))
         return fallback;

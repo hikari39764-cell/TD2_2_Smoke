@@ -14,6 +14,8 @@ class GourdRules final {
     static float GetSmokePerVolume(const GourdComponent& gourd);
     static bool IsFull(const GourdComponent& gourd);
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
+    // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
+    static float AddSmoke(GourdComponent& gourd, float amount);
     static bool IsAbsorbing(const GourdComponent& gourd);
     // 構え・吸い込み・後隙のどれかの最中。この間は砲撃を始めない。
     static bool IsAbsorbBusy(const GourdComponent& gourd);

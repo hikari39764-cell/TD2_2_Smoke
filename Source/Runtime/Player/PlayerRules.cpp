@@ -133,6 +133,26 @@ void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 d
 
 HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) { return player.facing; }
 HIKARI::GameProjectObjectHandle PlayerRules::GetLockTarget(const PlayerComponent& player) { return player.lockTarget; }
+
+void PlayerRules::SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target) {
+    if (player.lockedOn && target.value != 0)
+        player.lockTarget = target;
+}
+
+HIKARI::GameProjectFloat3 PlayerRules::GetLockPivotOffset(const PlayerComponent& player) {
+    return player.lockPivotOffset;
+}
+
+bool PlayerRules::TakeLockSwitch(PlayerComponent& player) {
+    const bool requested = player.lockSwitchRequested;
+    player.lockSwitchRequested = false;
+    return requested;
+}
+
+void PlayerRules::SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset) {
+    if (std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z))
+        player.lockPivotOffset = offset;
+}
 float PlayerRules::GetHealth(const PlayerComponent& player) {
     return player.initialized ? player.health : player.maxHealth;
 }

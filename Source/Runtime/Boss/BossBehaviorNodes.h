@@ -30,7 +30,7 @@ struct BossThought {
 };
 
 // 行動ツリー（HIKARI.BehaviorKit）へ登録する、ボスの節：
-//   待ち（横歩き）／技を実行／連続攻撃された／フェーズ・HP
+//   待ち（横歩き）／技を実行／連続攻撃された／フェーズ・HP／分身を出せる／分身を撃たれた
 // 節の名前はプロセスで 1 つなので、登録は 1 つを分け合う（Acquire）。最後の持ち主が消えると登録も外れる。
 class BossBehaviorNodes final {
 public:

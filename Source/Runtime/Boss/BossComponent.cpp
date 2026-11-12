@@ -93,6 +93,42 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("walkInSpeedScale", "間合いを詰める：歩く速さの倍率", walkInSpeedScale, 0.0f, 10.0f);
         fields.Float("backstepDistance", "後ろへ下がる：距離 (m)", backstepDistance, 0.0f, 30.0f);
         fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", backstepHeight, 0.0f, 10.0f);
+        fields.Float("jumpHeight", "跳躍：跳ぶ高さ (m)", jumpHeight, 0.0f, 20.0f);
+        fields.Float("jumpCrouchShare", "跳躍：前隙のうち屈む割合（残りで跳ぶ）", jumpCrouchShare, 0.0f, 0.95f, 0.01f);
+        fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
+                     kickRingStartRadius, 0.0f, 20.0f);
+        fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",
+                     kickResidueScale, 0.0f, 10.0f);
+        fields.Float("kickResidueRadiusShare", "回し蹴り：残り煙を置く円（最大半径の何倍）", kickResidueRadiusShare,
+                     0.0f, 2.0f);
+        fields.Float("ambushAppearDistance", "霞隠れ：プレイヤーから現れる距離 (m)", ambushAppearDistance, 0.0f, 30.0f);
+        fields.Float("ambushAppearSpreadDegrees", "霞隠れ：真後ろから左右へ散らす角度 (度)", ambushAppearSpreadDegrees,
+                     0.0f, 180.0f);
+        fields.Float("ambushLungeDistance", "霞隠れ：振りの間に突っ込む距離 (m)", ambushLungeDistance, 0.0f, 20.0f);
+        fields.Float("ambushAppearTurnRate", "霞隠れ：現れてから振り向く速さ (度/秒)", ambushAppearTurnRate, 0.0f,
+                     3600.0f);
+        fields.Float("hidePreSinkDepth", "霞隠れ・分身：前隙の間に霧へ沈む深さ (m)", hidePreSinkDepth, 0.0f, 10.0f);
+        fields.Float("hideSinkDepth", "霞隠れ・分身：隠れている間に沈める深さ (m。体が地面の下に隠れる深さ)",
+                     hideSinkDepth, 0.0f, 100.0f);
+        fields.Int("hideSinkFrames", "霞隠れ：隠れる時に沈みきる長さ (F)", hideSinkFrames, 1, 120);
+        fields.Int("appearRiseFrames", "霞隠れ・分身：現れる時に浮かび上がる長さ (F)", appearRiseFrames, 1, 120);
+        fields.Note("霞隠れの「隠れ F／現れ F／斬り F × 回数、最後遅」と分身の数（判定サイズ）は技の表で変えます。"
+                    "隠れている間はボスの体を地面の下へ沈めるので、砲撃は当たらずに抜けます。");
+    }
+    if (fields.Section("霞分身と吸い込み")) {
+        fields.Float("cloneCooldownSeconds", "分身の再使用 (秒)", cloneCooldownSeconds, 0.0f, 600.0f);
+        fields.Float("cloneLifeSeconds", "分身が消えるまで (秒)", cloneLifeSeconds, 0.1f, 600.0f);
+        fields.Float("cloneMinDistance", "分身を並べる距離 最小 (m、プレイヤーから)", cloneMinDistance, 0.0f, 50.0f);
+        fields.Float("cloneMaxDistance", "分身を並べる距離 最大 (m)", cloneMaxDistance, 0.0f, 50.0f);
+        fields.Float("cloneSpreadRadians", "分身どうしの間隔 (rad)", cloneSpreadRadians, 0.0f, 3.2f, 0.01f);
+        fields.Float("cloneSpreadJitter", "…間隔に足すばらつき (rad)", cloneSpreadJitter, 0.0f, 3.2f, 0.01f);
+        fields.Float("puffResidue", "霞隠れ・分身の霞が残す煙（吸える）", puffResidue, 0.0f, 1000.0f);
+        fields.Float("puffRadius", "…その半径 (m)", puffRadius, 0.05f, 10.0f);
+        fields.Note("分身はシーンに置いた「ボスの分身」の物体を使います（数は表の判定サイズ。物体が足りなければ"
+                    "ある分だけ）。分身を撃つと、本体が行動ツリーの「分身を撃たれた」の枝で突進横なぎを出します。");
+        fields.Float("absorbCatchRange", "吸い込み：斬撃・ナイフを吸える距離 (m)", absorbCatchRange, 0.0f, 50.0f);
+        fields.Float("absorbCatchAngle", "吸い込み：吸える角度（片側、度）", absorbCatchAngle, 0.0f, 180.0f);
+        fields.Float("absorbCatchNear", "吸い込み：向きを問わず吸える近さ (m)", absorbCatchNear, 0.0f, 10.0f);
     }
     if (fields.Section("剣と斬撃の出方")) {
         fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", swordShoulder);
@@ -134,9 +170,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("depositHeight", "残す煙の高さ（地面から m）", depositHeight, 0.0f, 5.0f);
         fields.Int("depositFrames", "消えた所の煙を出し切る長さ (F)", depositFrames, 1, 600);
         fields.Float("bodySmokeRadius", "ボスの通った跡の煙の半径 (m)", bodySmokeRadius, 0.05f, 10.0f);
-        fields.Float("waveAbsorbSmoke", "吸い込み：斬撃 1 つの煙（吸い込みのカードが使う）", waveAbsorbSmoke, 0.0f,
+        fields.Float("waveAbsorbSmoke", "吸い込み：斬撃 1 つを吸った時にヒョウタンへ入る煙", waveAbsorbSmoke, 0.0f,
                      1000.0f);
-        fields.Float("knifeAbsorbSmoke", "吸い込み：ナイフ 1 本の煙（吸い込みのカードが使う）", knifeAbsorbSmoke, 0.0f,
+        fields.Float("knifeAbsorbSmoke", "吸い込み：ナイフ 1 本を吸った時にヒョウタンへ入る煙", knifeAbsorbSmoke, 0.0f,
                      1000.0f);
         fields.Note("煙の単位はヒョウタンの煙と同じ。場の霧の量への換算はヒョウタンの「霧の量の換算」を使います。"
                     "残った煙は場の霧に混ざるので、ヒョウタンの吸い込みでそのまま吸えます。");
@@ -178,6 +214,15 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
         fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", knifeEffectAmount, 0.0f, 20.0f);
         fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", knifeEffect);
+        fields.Vfx("ringEffect", "回し蹴りの霞の輪の炎の筋のエフェクト（輪に並べて外へ飛ばす）", ringEffect);
+        fields.Float("ringStreakScale", "…炎の筋の大きさ (倍)", ringStreakScale, 0.0f, 20.0f);
+        fields.Float("ringHeight", "…炎の筋の高さ（地面から m）", ringHeight, 0.0f, 10.0f);
+        fields.Float("ringBurstScale", "回し蹴りの足元の爆ぜの大きさ（当たった所の爆発の倍率）", ringBurstScale, 0.0f,
+                     5.0f);
+        fields.Float("ringPush", "霞の輪が足元の霧を外へ押す速さ (m/秒、0 は押さない)", ringPush, 0.0f, 100.0f);
+        fields.Float("ringPushRadius", "…押す 1 点の半径 (m)", ringPushRadius, 0.1f, 20.0f);
+        fields.Float("puffEffectScale", "霞隠れ・分身が消える／現れる所の爆ぜの大きさ（当たった所の爆発の倍率）",
+                     puffEffectScale, 0.0f, 5.0f);
         fields.Note("飛ぶ斬撃の霞はエフェクトではなく、場の霧の域へ直接入れます（Emit）。域は増やしません。");
     }
     if (fields.Section("確かめ用（正式シーンでは使わない）")) {

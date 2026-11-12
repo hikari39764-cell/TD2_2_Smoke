@@ -16,6 +16,7 @@
 #include "Gourd/GourdShotSystem.h"
 #include "Gourd/GourdFeedbackSystem.h"
 #include "Boss/BossBehaviorNodes.h"
+#include "Boss/BossCloneComponent.h"
 #include "Boss/BossComponent.h"
 #include "Boss/BossSystem.h"
 
@@ -106,6 +107,8 @@ public:
                context.BindComponentSystem(
                    {.componentType = kGourdShotType, .systemId = kGourdFeedbackSystem, .defaultExecutionOrder = 115}) &&
                context.RegisterComponent<BossComponent>({.typeName = kBossType, .displayName = "ボス 霞武士"}) &&
+               context.RegisterComponent<BossCloneComponent>(
+                   {.typeName = kBossCloneType, .displayName = "ボス 霞武士の分身"}) &&
                context.RegisterSystem<BossSystem>({.systemId = kBossSystem, .displayName = "ボス 霞武士"}) &&
                context.BindComponentSystem(
                    {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125});

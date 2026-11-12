@@ -333,15 +333,7 @@ bool BossMoveTable::IsSwingType(BossMoveType type) {
     }
 }
 
-bool BossMoveTable::IsExecutable(BossMoveType type) {
-    switch (type) {
-    case BossMoveType::Jump:
-    case BossMoveType::Kick:
-    case BossMoveType::Ambush:
-    case BossMoveType::Clone: return false;
-    default: return type != BossMoveType::Count;
-    }
-}
+bool BossMoveTable::IsExecutable(BossMoveType type) { return type != BossMoveType::Count; }
 
 const BossStrikeData& BossMoveTable::Strike(const BossMove& move, int strike) {
     static const BossStrikeData kNone{};
@@ -584,7 +576,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             const int a = std::min(low, high), b = std::max(low, high);
             move.segments.push_back({std::max(1, RoundHalfUp((a + b) / 2.0)), false, 0, false, a, b});
         } else if (move.type == BossMoveType::Ambush) {
-            // 霞隠れは c-54ab2d。長さだけ試作どおりに読む（隠れF/現れF/斬りF×回数）。
+            // 霞隠れ：試作どおり「隠れF/現れF/斬りF×回数」。数が 1 つだけなら 1 回の長さとして 4:3:3 で割る。
             int count = 3;
             const size_t times = actText.find("×");
             if (times != std::string::npos)
@@ -608,8 +600,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             }
             hit = std::max(hit, timing.swingInFrames + timing.swingFrames + 2);
             for (int k = 0; k < count; ++k) {
-                move.segments.push_back({hide, false, k, false, 0, 0});
-                move.segments.push_back({appear, false, k, false, 0, 0});
+                move.segments.push_back({hide, false, k, false, 0, 0, BossSegmentKind::Hide});
+                move.segments.push_back({appear, false, k, false, 0, 0, BossSegmentKind::Appear});
                 move.segments.push_back({hit, true, k, false, 0, 0});
             }
             if (Contains(actText, "遅") && move.segments.size() >= 2) {
