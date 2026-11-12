@@ -237,7 +237,7 @@
           "id": "module.emitterTransform.9af182afa1b8cbef3590fc9f71a3115e",
           "transform": {
             "position": [
-              2.6,
+              1.5,
               0.0,
               0.0
             ],
@@ -262,13 +262,13 @@
           "castShadows": false,
           "cellColor": false,
           "combustion": false,
-          "densityDissipation": 2.6,
+          "densityDissipation": 3.0,
           "detailScale": 0.1,
-          "detailStrength": 0.3,
+          "detailStrength": 0.8,
           "domainSize": [
-            6.2,
-            4.6,
-            4.6
+            4.0,
+            3.2,
+            3.2
           ],
           "emissionColor": [
             0.0,
@@ -276,15 +276,15 @@
             1.0
           ],
           "emissionHotColor": [
-            0.42,
-            0.98,
-            1.0
+            0.6,
+            1.0,
+            0.96
           ],
-          "emissionHotTemperature": 4.0,
-          "emissionIntensity": 430000.0,
-          "emissionTemperature": 0.08,
+          "emissionHotTemperature": 0.9,
+          "emissionIntensity": 0.0,
+          "emissionTemperature": 0.05,
           "expansionPerBurn": 0.5,
-          "extinction": 12.0,
+          "extinction": 70.0,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 3.0,
           "id": "module.fluidDomain.9c63e30a11222d6442807e0cc2ae6ea2",
@@ -295,7 +295,7 @@
           "prewarmSeconds": 0.0,
           "priority": 78,
           "relativeWind": 0.0,
-          "resolution": 104,
+          "resolution": 88,
           "scatteringColor": [
             0.92,
             0.93,
@@ -303,8 +303,8 @@
           ],
           "smokePerBurn": 0.6000000238418579,
           "substepRate": 60.0,
-          "temperatureDissipation": 1.0,
-          "vorticity": 4.0,
+          "temperatureDissipation": 2.5,
+          "vorticity": 6.0,
           "weight": 0.0
         },
         "forces": {
@@ -327,7 +327,7 @@
             "evolution": 2.0,
             "frequency": 3.0,
             "radius": 0.0,
-            "turbulence": 1.8,
+            "turbulence": 3.0,
             "vortex": 0.0
           },
           "fluidCoupling": 0.0,
@@ -866,85 +866,7 @@
       "order": 0,
       "parameterTracks": [],
       "parentEmitterId": "",
-      "specialOutputs": [
-        {
-          "enabled": true,
-          "id": "emitter.4d43676bba3bd0739ed616f254ffcc50.light",
-          "light": {
-            "castsShadows": false,
-            "color": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "flickerAmplitude": 0.0,
-            "flickerFrequency": 0.0,
-            "luminousFlux": 60000.0,
-            "priority": 1,
-            "range": 6.5,
-            "sourceRadius": 0.1,
-            "followFluidGlow": true,
-            "glowShare": 0.3
-          },
-          "screenImpulse": {
-            "chromaticAberration": 0.0,
-            "color": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "distortion": 0.10000000149011612,
-            "durationSeconds": 0.18000000715255737,
-            "flash": 0.0,
-            "intensity": 1.0,
-            "maxRadius": 1.0,
-            "ringThickness": 0.15000000596046448,
-            "waveAmplitude": 1.0,
-            "waveCount": 1,
-            "waveDamping": 1.0,
-            "waveFrequency": 1.0
-          },
-          "skinnedAfterimage": {
-            "color": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "dissolve": 0.10000000149011612,
-            "fresnel": 0.5,
-            "intensity": 1.0,
-            "lifetimeSeconds": 0.23999999463558197,
-            "opacity": 1.0,
-            "sampleCount": 4,
-            "shellOffset": 0.0
-          },
-          "type": "Light",
-          "weaponPathDistortion": {
-            "blur": 0.05000000074505806,
-            "bodyColor": [
-              1.0,
-              1.0,
-              1.0,
-              1.0
-            ],
-            "distortion": 1.0,
-            "edgeColor": [
-              1.0,
-              1.0,
-              1.0,
-              0.0
-            ],
-            "emissive": 1.0,
-            "flow": 1.0,
-            "lifetimeSeconds": 0.11999999731779099,
-            "opacity": 1.0,
-            "width": 0.15000000596046448
-          }
-        }
-      ],
+      "specialOutputs": [],
       "startDelay": 0.0
     },
     {
@@ -1195,8 +1117,8 @@
           "id": "module.emitterTransform.0d674b3ca8c339b3471ce48b9a96e5b3",
           "transform": {
             "position": [
-              1.9,
-              1.9,
+              1.0,
+              1.15,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -1213,8 +1135,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -1222,11 +1144,11 @@
           "id": "module.fluidSource.50bf670159e66d571f55ffd9ada38114",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.2,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
+            -6.5,
             -0.0,
-            7.5
+            5.175
           ]
         },
         "forces": {
@@ -1764,8 +1686,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.aa8d9bd6fe7df716f80dfabfea4a917b",
           "radius": {
-            "maximum": 0.13,
-            "minimum": 0.13,
+            "maximum": 0.1,
+            "minimum": 0.1,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -1781,7 +1703,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 40.0
+          "ratePerSecond": 11.0
         }
       },
       "name": "Wisp 0",
@@ -2039,9 +1961,9 @@
           "id": "module.emitterTransform.d4efde1407b239c5711cec12fe549f79",
           "transform": {
             "position": [
-              1.9,
-              0.5871322893124001,
-              1.8070073809607916
+              1.0,
+              0.8131727983645296,
+              0.8131727983645296
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -2057,8 +1979,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -2066,11 +1988,11 @@
           "id": "module.fluidSource.69bee07e67af9895568abf1ac46b9a71",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.2,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            -7.132923872213651,
-            2.317627457812106
+            -6.5,
+            -3.6592775926403833,
+            3.6592775926403833
           ]
         },
         "forces": {
@@ -2608,8 +2530,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.625f4245ac7776976a78503d18113c97",
           "radius": {
-            "maximum": 0.13,
-            "minimum": 0.13,
+            "maximum": 0.1,
+            "minimum": 0.1,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -2625,7 +2547,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 40.0
+          "ratePerSecond": 11.0
         }
       },
       "name": "Wisp 1",
@@ -2883,9 +2805,9 @@
           "id": "module.emitterTransform.40f6016396666ad2119525e745204341",
           "transform": {
             "position": [
-              1.9,
-              -1.5371322893124,
-              1.116791979355699
+              1.0,
+              7.04171909509728e-17,
+              1.15
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -2901,8 +2823,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -2910,11 +2832,11 @@
           "id": "module.fluidSource.215302ccc587bc891c0ac85ec8f74c0b",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.2,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            -4.408389392193549,
-            -6.067627457812105
+            -6.5,
+            -5.175,
+            3.168773592793776e-16
           ]
         },
         "forces": {
@@ -3452,8 +3374,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.96cbd3898f928dc98c96dacf63603dfe",
           "radius": {
-            "maximum": 0.13,
-            "minimum": 0.13,
+            "maximum": 0.1,
+            "minimum": 0.1,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -3469,7 +3391,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 40.0
+          "ratePerSecond": 11.0
         }
       },
       "name": "Wisp 2",
@@ -3727,9 +3649,9 @@
           "id": "module.emitterTransform.505a2e1942ae573476886c66c4a43499",
           "transform": {
             "position": [
-              1.9,
-              -1.5371322893124,
-              -1.1167919793556986
+              1.0,
+              -0.8131727983645295,
+              0.8131727983645296
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -3745,8 +3667,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -3754,11 +3676,11 @@
           "id": "module.fluidSource.4b70620a7d88c3d7ada3addd3bcae71f",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.2,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            4.4083893921935475,
-            -6.067627457812105
+            -6.5,
+            -3.6592775926403833,
+            -3.659277592640383
           ]
         },
         "forces": {
@@ -4296,8 +4218,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.f8ba0101037310a6272ac5cf612187ae",
           "radius": {
-            "maximum": 0.13,
-            "minimum": 0.13,
+            "maximum": 0.1,
+            "minimum": 0.1,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -4313,7 +4235,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 40.0
+          "ratePerSecond": 11.0
         }
       },
       "name": "Wisp 3",
@@ -4571,9 +4493,9 @@
           "id": "module.emitterTransform.6f77b192e194ad7fe510d7fb630571e9",
           "transform": {
             "position": [
-              1.9,
-              0.5871322893123997,
-              -1.8070073809607918
+              1.0,
+              -1.15,
+              1.408343819019456e-16
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -4589,8 +4511,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -4598,11 +4520,11 @@
           "id": "module.fluidSource.b1e6d3d458ee9baf64ad9393b5c48156",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.2,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            7.132923872213652,
-            2.317627457812104
+            -6.5,
+            -6.337547185587552e-16,
+            -5.175
           ]
         },
         "forces": {
@@ -5140,8 +5062,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.50ba343b541b0e0b47f2de5cc85ab99f",
           "radius": {
-            "maximum": 0.13,
-            "minimum": 0.13,
+            "maximum": 0.1,
+            "minimum": 0.1,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -5157,7 +5079,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 40.0
+          "ratePerSecond": 11.0
         }
       },
       "name": "Wisp 4",
@@ -5209,16 +5131,16 @@
         ],
         "tailWidth": 1.0
       },
-      "id": "emitter.da7f0bb13cd2d8f1e853b2f7363a5d82",
+      "id": "emitter.50931affdeba9503292eae4c5c4d6b4e",
       "inputLinks": [
         {
           "bias": 0.0,
-          "id": "emitter.da7f0bb13cd2d8f1e853b2f7363a5d82.link.input.on.rateMultiplier",
+          "id": "emitter.50931affdeba9503292eae4c5c4d6b4e.link.input.on.rateMultiplier",
           "inputId": "input.on",
           "scale": 1.0,
           "target": {
-            "emitterId": "emitter.da7f0bb13cd2d8f1e853b2f7363a5d82",
-            "moduleId": "module.spawn.511404508db8dfafddc354a0b35017f2",
+            "emitterId": "emitter.50931affdeba9503292eae4c5c4d6b4e",
+            "moduleId": "module.spawn.5da0f89665642648463041d42b8ecf5f",
             "propertyId": "rateMultiplier"
           }
         }
@@ -5239,7 +5161,7 @@
       "modules": {
         "attachment": {
           "follow": "None",
-          "id": "module.attachment.46703cdb929875d13bb0da75ea7660c5",
+          "id": "module.attachment.5d778165dc0d07bd7e43ee45fbfb7a9a",
           "mode": "World",
           "offset": {
             "position": [
@@ -5262,7 +5184,7 @@
         },
         "basic": {
           "enabled": true,
-          "id": "module.basic.ebab53b06d23a0c761ab80f3f5894d33",
+          "id": "module.basic.1fe7100c76257e9e8b5273129ed7eeaa",
           "lifetime": {
             "maximum": 1.0,
             "minimum": 1.0,
@@ -5272,7 +5194,7 @@
           "localSimulation": false
         },
         "color": {
-          "id": "module.color.4f163fa45131439dc83a95f89587bd57",
+          "id": "module.color.18857ba49ff1b1440e5bfcef2fc53afe",
           "value": {
             "curve": {
               "a": {
@@ -5412,12 +5334,12 @@
           }
         },
         "emitterTransform": {
-          "id": "module.emitterTransform.8668fcd2be9bfdf7299d1b5378bb6058",
+          "id": "module.emitterTransform.454ca16bfd7b9d9235b26239aade1dd1",
           "transform": {
             "position": [
-              0.2999999999999998,
-              0.9303695435311895,
-              0.675953040136344
+              1.0,
+              -0.8131727983645298,
+              -0.8131727983645295
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -5433,20 +5355,20 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
           "guideThickness": 0.25,
-          "id": "module.fluidSource.89c99c2c0bc4bbd7744432a04a980dc0",
+          "id": "module.fluidSource.df879dd930ea282d932a04bd0a58c77d",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 2.0,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            -5.877852522924732,
-            8.090169943749475
+            -6.5,
+            3.659277592640383,
+            -3.659277592640384
           ]
         },
         "forces": {
@@ -5483,12 +5405,12 @@
             0.0,
             0.0
           ],
-          "id": "module.forces.9f96f6519fd8ecf195c7a0f3cc2917f0",
+          "id": "module.forces.546a8a5d698aa552e903ecb87c54f112",
           "restitution": 0.3499999940395355,
           "sceneDepthCollision": false
         },
         "position": {
-          "id": "module.position.bd43ce1ce9b28910b29d3e3730ddfb2a",
+          "id": "module.position.9d95f4d1297ffa47a68669998c38eb8e",
           "orientAlongPath": false,
           "radialSpeed": {
             "maximum": 1.0,
@@ -5649,7 +5571,7 @@
           "flipbookRandomStart": false,
           "flipbookRows": 1,
           "flowMapTextureAssetGuid": "",
-          "id": "module.renderCommon.d6b3b12ff66c1ac9c51d79d4d31e2447",
+          "id": "module.renderCommon.5a7ea2fc1cdbefbc47e0c551c0b3bdd8",
           "maskTextureAssetGuid": "",
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
@@ -5665,7 +5587,7 @@
           "coneBaseRadius": 0.5,
           "cylinderBottomRadius": 0.5,
           "cylinderTopRadius": 0.5,
-          "id": "module.renderShape.51efa4de7336655a99dbdc498c765803",
+          "id": "module.renderShape.32af2eba51054afc8e2cb2d5bc48100e",
           "ribbonSegmentCount": 16,
           "ribbonWidth": 0.10000000149011612,
           "ringEndAngleDegrees": 360.0,
@@ -5826,10 +5748,10 @@
               }
             }
           },
-          "id": "module.rotation.5b24d3f5a64ff26e1feefed81705474a"
+          "id": "module.rotation.5bbf1bec56501f1097349ccfc7522ca7"
         },
         "scale": {
-          "id": "module.scale.16cf76623874299aec9b747bdbf3b988",
+          "id": "module.scale.56d4d1bd4136d59c7841261ee51cd3be",
           "value": {
             "curve": {
               "x": {
@@ -5982,7 +5904,7 @@
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
-          "id": "module.shape.c0133155c40c42a3d349c55cb3b6fffb",
+          "id": "module.shape.cb1658702147edfd07da4b47fcc15fe7",
           "radius": {
             "maximum": 0.1,
             "minimum": 0.1,
@@ -5996,15 +5918,15 @@
           "capacityMode": "Automatic",
           "eventKind": "Collision",
           "eventSourceLayerId": "",
-          "id": "module.spawn.511404508db8dfafddc354a0b35017f2",
+          "id": "module.spawn.5da0f89665642648463041d42b8ecf5f",
           "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 42.0
+          "ratePerSecond": 11.0
         }
       },
-      "name": "Mid 0",
+      "name": "Wisp 5",
       "order": 6,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
@@ -6053,16 +5975,16 @@
         ],
         "tailWidth": 1.0
       },
-      "id": "emitter.1303a6206e54683a1140e0c38f1eade9",
+      "id": "emitter.e69a91d8c1ce814ce9f891e93630b7dd",
       "inputLinks": [
         {
           "bias": 0.0,
-          "id": "emitter.1303a6206e54683a1140e0c38f1eade9.link.input.on.rateMultiplier",
+          "id": "emitter.e69a91d8c1ce814ce9f891e93630b7dd.link.input.on.rateMultiplier",
           "inputId": "input.on",
           "scale": 1.0,
           "target": {
-            "emitterId": "emitter.1303a6206e54683a1140e0c38f1eade9",
-            "moduleId": "module.spawn.28d06c80ea553c2a474d1cc9d4ab5883",
+            "emitterId": "emitter.e69a91d8c1ce814ce9f891e93630b7dd",
+            "moduleId": "module.spawn.dd6e0595b5f3caf9436c45f819ac39f7",
             "propertyId": "rateMultiplier"
           }
         }
@@ -6083,7 +6005,7 @@
       "modules": {
         "attachment": {
           "follow": "None",
-          "id": "module.attachment.bde3e1f5e3fe9a812f116756f1b4d90a",
+          "id": "module.attachment.255df42df6b2a602dfdca526cfd79655",
           "mode": "World",
           "offset": {
             "position": [
@@ -6106,7 +6028,7 @@
         },
         "basic": {
           "enabled": true,
-          "id": "module.basic.621f7195f7caab6cdae82405279760f0",
+          "id": "module.basic.b97805be093fdd2115d2bcc356b940ce",
           "lifetime": {
             "maximum": 1.0,
             "minimum": 1.0,
@@ -6116,7 +6038,7 @@
           "localSimulation": false
         },
         "color": {
-          "id": "module.color.ea051affa44873694d15af943be32c29",
+          "id": "module.color.b53979a537f9c6ad762feb338920f80a",
           "value": {
             "curve": {
               "a": {
@@ -6256,12 +6178,12 @@
           }
         },
         "emitterTransform": {
-          "id": "module.emitterTransform.906eac33a11e797eef8a8464cb7ff541",
+          "id": "module.emitterTransform.fb9345028f1ef3bf7132ff3d35211888",
           "transform": {
             "position": [
-              0.2999999999999998,
-              -0.35536954353118944,
-              1.0937149937394266
+              1.0,
+              -2.112515728529184e-16,
+              -1.15
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -6277,20 +6199,20 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
           "guideThickness": 0.25,
-          "id": "module.fluidSource.786e7da58940f5638ef1dc46478240cb",
+          "id": "module.fluidSource.dce7cb8262ef41b87098a5b75b3ce0fe",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 2.0,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            -9.510565162951536,
-            -3.0901699437494736
+            -6.5,
+            5.175,
+            -9.506320778381328e-16
           ]
         },
         "forces": {
@@ -6327,12 +6249,12 @@
             0.0,
             0.0
           ],
-          "id": "module.forces.ddbedf532baa54f15fa8473a97901460",
+          "id": "module.forces.642a393fa55d2040b9b56fc02be1ad87",
           "restitution": 0.3499999940395355,
           "sceneDepthCollision": false
         },
         "position": {
-          "id": "module.position.eb37ab9cdb0902fdee774de6ab4d9843",
+          "id": "module.position.c4fef293cee4ce5dcf7a624898626965",
           "orientAlongPath": false,
           "radialSpeed": {
             "maximum": 1.0,
@@ -6493,7 +6415,7 @@
           "flipbookRandomStart": false,
           "flipbookRows": 1,
           "flowMapTextureAssetGuid": "",
-          "id": "module.renderCommon.20695b9cf94b1a2a83beba6c80bab8c1",
+          "id": "module.renderCommon.4aa1a1cc3e276f31443696412ab784b5",
           "maskTextureAssetGuid": "",
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
@@ -6509,7 +6431,7 @@
           "coneBaseRadius": 0.5,
           "cylinderBottomRadius": 0.5,
           "cylinderTopRadius": 0.5,
-          "id": "module.renderShape.d7ab2a41b4516f6a14e813b06b89806e",
+          "id": "module.renderShape.bef8682b9310c12db898010e4a851807",
           "ribbonSegmentCount": 16,
           "ribbonWidth": 0.10000000149011612,
           "ringEndAngleDegrees": 360.0,
@@ -6670,10 +6592,10 @@
               }
             }
           },
-          "id": "module.rotation.9b06b6560ea13730c3185029587f4da6"
+          "id": "module.rotation.3937c80401fd5f02ca7a98b078fc1798"
         },
         "scale": {
-          "id": "module.scale.b3b1901acde8706fafd77bfc4b19a2e4",
+          "id": "module.scale.5ae4c87beccca00ccf366241db81e09f",
           "value": {
             "curve": {
               "x": {
@@ -6826,7 +6748,7 @@
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
-          "id": "module.shape.0c46d0957981ea3cab2a46445cda3460",
+          "id": "module.shape.e4e134a524a59e457a4805850302acc9",
           "radius": {
             "maximum": 0.1,
             "minimum": 0.1,
@@ -6840,15 +6762,15 @@
           "capacityMode": "Automatic",
           "eventKind": "Collision",
           "eventSourceLayerId": "",
-          "id": "module.spawn.28d06c80ea553c2a474d1cc9d4ab5883",
+          "id": "module.spawn.dd6e0595b5f3caf9436c45f819ac39f7",
           "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 42.0
+          "ratePerSecond": 11.0
         }
       },
-      "name": "Mid 1",
+      "name": "Wisp 6",
       "order": 7,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
@@ -6897,16 +6819,16 @@
         ],
         "tailWidth": 1.0
       },
-      "id": "emitter.579697d46ca49fb8a64cb0de9cb20f96",
+      "id": "emitter.bc4c68d71e5780b35fbf3e05fa3883a0",
       "inputLinks": [
         {
           "bias": 0.0,
-          "id": "emitter.579697d46ca49fb8a64cb0de9cb20f96.link.input.on.rateMultiplier",
+          "id": "emitter.bc4c68d71e5780b35fbf3e05fa3883a0.link.input.on.rateMultiplier",
           "inputId": "input.on",
           "scale": 1.0,
           "target": {
-            "emitterId": "emitter.579697d46ca49fb8a64cb0de9cb20f96",
-            "moduleId": "module.spawn.7499b448c2f7027a4117d64eaa1f09f4",
+            "emitterId": "emitter.bc4c68d71e5780b35fbf3e05fa3883a0",
+            "moduleId": "module.spawn.ef220e935fa2c0b499f7c2ba85b4bbe3",
             "propertyId": "rateMultiplier"
           }
         }
@@ -6927,7 +6849,7 @@
       "modules": {
         "attachment": {
           "follow": "None",
-          "id": "module.attachment.85a9cde049a4894a9c983672279cfba1",
+          "id": "module.attachment.8270e36451456bed85d5cc4ee7f9957b",
           "mode": "World",
           "offset": {
             "position": [
@@ -6950,7 +6872,7 @@
         },
         "basic": {
           "enabled": true,
-          "id": "module.basic.4baac47d137fcca0c2f68d422bb7bb8b",
+          "id": "module.basic.1ee841002d050504970da15c590e80fe",
           "lifetime": {
             "maximum": 1.0,
             "minimum": 1.0,
@@ -6960,7 +6882,7 @@
           "localSimulation": false
         },
         "color": {
-          "id": "module.color.69be42ad8cd9102d31dbe51e91d19121",
+          "id": "module.color.6b24dd543aa0ad431a4536f894619d85",
           "value": {
             "curve": {
               "a": {
@@ -7100,12 +7022,12 @@
           }
         },
         "emitterTransform": {
-          "id": "module.emitterTransform.aa8b66434346e669fc4363f72e00847f",
+          "id": "module.emitterTransform.dde84b44327e78c4f5bf2395e8c76e4f",
           "transform": {
             "position": [
-              0.2999999999999998,
-              -1.15,
-              1.408343819019456e-16
+              1.0,
+              0.8131727983645294,
+              -0.8131727983645298
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -7121,20 +7043,20 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.7,
+          "emissionNoiseScale": 0.1,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
           "guideThickness": 0.25,
-          "id": "module.fluidSource.342a4e0965b45972c89eeb9da403069b",
+          "id": "module.fluidSource.f4141f5188dbf43deb3b15b5302d4dca",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 2.0,
+          "temperature": 0.45,
           "velocity": [
-            -10.0,
-            -1.2246467991473533e-15,
-            -10.0
+            -6.5,
+            3.659277592640384,
+            3.6592775926403824
           ]
         },
         "forces": {
@@ -7171,12 +7093,12 @@
             0.0,
             0.0
           ],
-          "id": "module.forces.77e108b14d58c2faa04db808e8ad9ae2",
+          "id": "module.forces.bcb203fec50a473682685ab117a7785f",
           "restitution": 0.3499999940395355,
           "sceneDepthCollision": false
         },
         "position": {
-          "id": "module.position.d386524f2e4ce1c7aff4eea2c4031cf4",
+          "id": "module.position.ad9ab2a874e58c62f87c4e67d71b62ce",
           "orientAlongPath": false,
           "radialSpeed": {
             "maximum": 1.0,
@@ -7337,7 +7259,7 @@
           "flipbookRandomStart": false,
           "flipbookRows": 1,
           "flowMapTextureAssetGuid": "",
-          "id": "module.renderCommon.f5f26745bae92e79c393a276443c984a",
+          "id": "module.renderCommon.3709c927c8fdc73ab104ac27f1d31ba7",
           "maskTextureAssetGuid": "",
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
@@ -7353,7 +7275,7 @@
           "coneBaseRadius": 0.5,
           "cylinderBottomRadius": 0.5,
           "cylinderTopRadius": 0.5,
-          "id": "module.renderShape.c764ddea32c5962449950f1cf81c40f1",
+          "id": "module.renderShape.d35594c47a1f3c0b71847caf5bf660c6",
           "ribbonSegmentCount": 16,
           "ribbonWidth": 0.10000000149011612,
           "ringEndAngleDegrees": 360.0,
@@ -7514,10 +7436,10 @@
               }
             }
           },
-          "id": "module.rotation.c1b9bf356b3d3303865b2cbc3a9e824f"
+          "id": "module.rotation.7a57f16f9aad04b72dd6e120b2559d8d"
         },
         "scale": {
-          "id": "module.scale.44803f52ab9eb18ed701be926f032d81",
+          "id": "module.scale.56457f917a85c91bd76b043ecec2148a",
           "value": {
             "curve": {
               "x": {
@@ -7670,7 +7592,7 @@
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
-          "id": "module.shape.e922ad2ae3d110d8abae06276a29a313",
+          "id": "module.shape.e11ce9349921310b8686f139f468242e",
           "radius": {
             "maximum": 0.1,
             "minimum": 0.1,
@@ -7684,1704 +7606,16 @@
           "capacityMode": "Automatic",
           "eventKind": "Collision",
           "eventSourceLayerId": "",
-          "id": "module.spawn.7499b448c2f7027a4117d64eaa1f09f4",
+          "id": "module.spawn.ef220e935fa2c0b499f7c2ba85b4bbe3",
           "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 42.0
+          "ratePerSecond": 11.0
         }
       },
-      "name": "Mid 2",
+      "name": "Wisp 7",
       "order": 8,
-      "parameterTracks": [],
-      "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
-      "specialOutputs": [],
-      "startDelay": 0.0
-    },
-    {
-      "activeDuration": 0.0,
-      "anchor": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "animationTiming": {
-        "offset": 0.0,
-        "rate": 1.0,
-        "sourceDuration": 0.0
-      },
-      "connectTarget": {
-        "endOffset": 0.0,
-        "lengthScale": 1.0,
-        "localPosition": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "mode": "None",
-        "orient": true,
-        "pivot": 0.5,
-        "startOffset": 0.0,
-        "stretch": true,
-        "targetLayerId": ""
-      },
-      "effects": [],
-      "history": {
-        "breakDistance": 2.5,
-        "duration": 0.20000000298023224,
-        "fadePower": 1.0,
-        "mode": "None",
-        "samples": 12,
-        "tailColor": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "tailWidth": 1.0
-      },
-      "id": "emitter.889b192d9cfc9d7547ff44d2372e3653",
-      "inputLinks": [
-        {
-          "bias": 0.0,
-          "id": "emitter.889b192d9cfc9d7547ff44d2372e3653.link.input.on.rateMultiplier",
-          "inputId": "input.on",
-          "scale": 1.0,
-          "target": {
-            "emitterId": "emitter.889b192d9cfc9d7547ff44d2372e3653",
-            "moduleId": "module.spawn.16036e8bbd5608e5e5b3117c19bac0b7",
-            "propertyId": "rateMultiplier"
-          }
-        }
-      ],
-      "kind": "FluidSource",
-      "matte": {
-        "inverted": false,
-        "luminance": false,
-        "sourceLayerId": "",
-        "sourceOnly": false
-      },
-      "meshOutput": {
-        "castShadows": false,
-        "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
-      },
-      "modules": {
-        "attachment": {
-          "follow": "None",
-          "id": "module.attachment.1df54080f7b06deb254e306f6b234b6a",
-          "mode": "World",
-          "offset": {
-            "position": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "rotationEulerDegrees": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "scale": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          },
-          "socketName": ""
-        },
-        "basic": {
-          "enabled": true,
-          "id": "module.basic.07cc3ba96a12c85c7844bf1f6b93f1bb",
-          "lifetime": {
-            "maximum": 1.0,
-            "minimum": 1.0,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "localSimulation": false
-        },
-        "color": {
-          "id": "module.color.c4e962f7c43a317a09ac6cd45fcedda5",
-          "value": {
-            "curve": {
-              "a": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "b": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "g": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "r": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "minimum": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "gradient": {
-              "stops": [
-                {
-                  "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                  ],
-                  "id": "color.start.fluid_sword_qi.edge",
-                  "time": 0.0
-                },
-                {
-                  "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0
-                  ],
-                  "id": "color.end.fluid_sword_qi.edge",
-                  "time": 1.0
-                }
-              ]
-            },
-            "mode": "Fixed"
-          }
-        },
-        "emitterTransform": {
-          "id": "module.emitterTransform.261e6dd14c60888bc210db1907750da2",
-          "transform": {
-            "position": [
-              0.2999999999999998,
-              -0.35536954353118966,
-              -1.0937149937394264
-            ],
-            "rotationEulerDegrees": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "scale": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          }
-        },
-        "fluidSource": {
-          "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
-          "forceMode": "Acceleration",
-          "fuelFraction": 0.0,
-          "guideStrength": 0.0,
-          "guideThickness": 0.25,
-          "id": "module.fluidSource.969e094ae2332ff06198c382018feb69",
-          "outflow": 0.0,
-          "radialSpeed": 0.0,
-          "temperature": 2.0,
-          "velocity": [
-            -10.0,
-            9.510565162951535,
-            -3.0901699437494754
-          ]
-        },
-        "forces": {
-          "collisionPlaneEnabled": false,
-          "collisionPlaneHeight": 0.0,
-          "collisionThickness": 0.5,
-          "drag": 0.0,
-          "field": {
-            "attraction": 0.0,
-            "axis": [
-              0.0,
-              1.0,
-              0.0
-            ],
-            "center": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "evolution": 0.3,
-            "frequency": 1.0,
-            "radius": 0.0,
-            "turbulence": 0.0,
-            "vortex": 0.0
-          },
-          "fluidCoupling": 0.0,
-          "fluidFollow": 0.0,
-          "fluidRadius": 0.15000000596046448,
-          "fluidSmoke": 0.0,
-          "fluidTemperature": 0.0,
-          "friction": 0.20000000298023224,
-          "gravity": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "id": "module.forces.c1a360a1f2dbe5dbcdcf496ebb5fda9a",
-          "restitution": 0.3499999940395355,
-          "sceneDepthCollision": false
-        },
-        "position": {
-          "id": "module.position.4b9196d0982a767f42d168c8b62e4253",
-          "orientAlongPath": false,
-          "radialSpeed": {
-            "maximum": 1.0,
-            "minimum": 1.0,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "value": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "minimum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          }
-        },
-        "renderCommon": {
-          "blendMode": "Alpha",
-          "colorTextureAssetGuid": "",
-          "depthBias": 0.0003499999875202775,
-          "depthMode": "WorldOccluded",
-          "detailNoiseTextureAssetGuid": "",
-          "flipbookColumns": 1,
-          "flipbookFrameCount": 1,
-          "flipbookFramesPerSecond": 0.0,
-          "flipbookLoop": true,
-          "flipbookRandomStart": false,
-          "flipbookRows": 1,
-          "flowMapTextureAssetGuid": "",
-          "id": "module.renderCommon.cfb62319e84cfade86f3b5c77761e47a",
-          "maskTextureAssetGuid": "",
-          "materialAssetGuid": "",
-          "materialMode": "StandardUnlit",
-          "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
-          "softIntersectionDistance": 0.15000000596046448
-        },
-        "renderShape": {
-          "bendAmount": 0.0,
-          "billboardAxis": "LocalX",
-          "billboardMode": "Fixed",
-          "capsuleRadius": 0.3499999940395355,
-          "coneBaseRadius": 0.5,
-          "cylinderBottomRadius": 0.5,
-          "cylinderTopRadius": 0.5,
-          "id": "module.renderShape.31d11e8659d110fb148884f87a91723f",
-          "ribbonSegmentCount": 16,
-          "ribbonWidth": 0.10000000149011612,
-          "ringEndAngleDegrees": 360.0,
-          "ringInnerRadius": 0.5,
-          "ringOuterRadius": 1.0,
-          "ringSegmentCount": 32,
-          "ringStartAngleDegrees": 0.0,
-          "taperEnd": 1.0,
-          "taperStart": 1.0,
-          "torusMajorRadius": 0.4000000059604645,
-          "torusMinorRadius": 0.11999999731779099,
-          "twistDegrees": 0.0,
-          "type": "Sprite",
-          "uvMode": "Parameter",
-          "uvRotationDegrees": 0.0,
-          "uvSwapAxes": false,
-          "uvTileLength": 1.0,
-          "uvTilingU": 1.0,
-          "uvTilingV": 1.0
-        },
-        "rotation": {
-          "eulerDegrees": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "minimum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          },
-          "id": "module.rotation.1c0049fd94483f9ba33855344231c371"
-        },
-        "scale": {
-          "id": "module.scale.11b7551969d4111b95e424cd23968556",
-          "value": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                1.0,
-                1.0,
-                1.0
-              ],
-              "minimum": [
-                1.0,
-                1.0,
-                1.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          }
-        },
-        "shape": {
-          "boxHalfExtents": [
-            0.5,
-            0.5,
-            0.5
-          ],
-          "circleArcDegrees": 360.0,
-          "circleEmitOnEdge": false,
-          "circleInnerRadius": 0.0,
-          "coneAngleDegrees": 30.0,
-          "cylinderHeight": 1.0,
-          "edgeLength": 1.0,
-          "id": "module.shape.4ed893db0d66373b6477db0ea5d19a62",
-          "radius": {
-            "maximum": 0.1,
-            "minimum": 0.1,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "type": "Sphere"
-        },
-        "spawn": {
-          "burstTimeline": [],
-          "capacityMode": "Automatic",
-          "eventKind": "Collision",
-          "eventSourceLayerId": "",
-          "id": "module.spawn.16036e8bbd5608e5e5b3117c19bac0b7",
-          "inheritVelocity": 0.30000001192092896,
-          "maximumParticles": 1024,
-          "minimumImpactSpeed": 1.0,
-          "particlesPerEvent": 4,
-          "ratePerSecond": 42.0
-        }
-      },
-      "name": "Mid 3",
-      "order": 9,
-      "parameterTracks": [],
-      "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
-      "specialOutputs": [],
-      "startDelay": 0.0
-    },
-    {
-      "activeDuration": 0.0,
-      "anchor": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "animationTiming": {
-        "offset": 0.0,
-        "rate": 1.0,
-        "sourceDuration": 0.0
-      },
-      "connectTarget": {
-        "endOffset": 0.0,
-        "lengthScale": 1.0,
-        "localPosition": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "mode": "None",
-        "orient": true,
-        "pivot": 0.5,
-        "startOffset": 0.0,
-        "stretch": true,
-        "targetLayerId": ""
-      },
-      "effects": [],
-      "history": {
-        "breakDistance": 2.5,
-        "duration": 0.20000000298023224,
-        "fadePower": 1.0,
-        "mode": "None",
-        "samples": 12,
-        "tailColor": [
-          1.0,
-          1.0,
-          1.0,
-          1.0
-        ],
-        "tailWidth": 1.0
-      },
-      "id": "emitter.29f23ede8d16ab5ebbdafcdb660033d9",
-      "inputLinks": [
-        {
-          "bias": 0.0,
-          "id": "emitter.29f23ede8d16ab5ebbdafcdb660033d9.link.input.on.rateMultiplier",
-          "inputId": "input.on",
-          "scale": 1.0,
-          "target": {
-            "emitterId": "emitter.29f23ede8d16ab5ebbdafcdb660033d9",
-            "moduleId": "module.spawn.4df6587b57f94a0d25aa3aff954bcd6f",
-            "propertyId": "rateMultiplier"
-          }
-        }
-      ],
-      "kind": "FluidSource",
-      "matte": {
-        "inverted": false,
-        "luminance": false,
-        "sourceLayerId": "",
-        "sourceOnly": false
-      },
-      "meshOutput": {
-        "castShadows": false,
-        "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
-      },
-      "modules": {
-        "attachment": {
-          "follow": "None",
-          "id": "module.attachment.a58339d2ef02758dcc44a719d5e7d1f0",
-          "mode": "World",
-          "offset": {
-            "position": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "rotationEulerDegrees": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "scale": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          },
-          "socketName": ""
-        },
-        "basic": {
-          "enabled": true,
-          "id": "module.basic.d13610e0f9de4a0ede27d16c2b8a7e69",
-          "lifetime": {
-            "maximum": 1.0,
-            "minimum": 1.0,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "localSimulation": false
-        },
-        "color": {
-          "id": "module.color.2c8e6812988c511715b2b79600e96216",
-          "value": {
-            "curve": {
-              "a": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "b": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "g": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "r": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0,
-                  1.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "minimum": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "gradient": {
-              "stops": [
-                {
-                  "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    1.0
-                  ],
-                  "id": "color.start.fluid_sword_qi.edge",
-                  "time": 0.0
-                },
-                {
-                  "color": [
-                    1.0,
-                    1.0,
-                    1.0,
-                    0.0
-                  ],
-                  "id": "color.end.fluid_sword_qi.edge",
-                  "time": 1.0
-                }
-              ]
-            },
-            "mode": "Fixed"
-          }
-        },
-        "emitterTransform": {
-          "id": "module.emitterTransform.94695d07125690f9c5288297a20d655e",
-          "transform": {
-            "position": [
-              0.2999999999999998,
-              0.9303695435311894,
-              -0.6759530401363443
-            ],
-            "rotationEulerDegrees": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "scale": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          }
-        },
-        "fluidSource": {
-          "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
-          "forceMode": "Acceleration",
-          "fuelFraction": 0.0,
-          "guideStrength": 0.0,
-          "guideThickness": 0.25,
-          "id": "module.fluidSource.bc7f27f9915c5b1e2f6f0132279cceec",
-          "outflow": 0.0,
-          "radialSpeed": 0.0,
-          "temperature": 2.0,
-          "velocity": [
-            -10.0,
-            5.877852522924734,
-            8.090169943749473
-          ]
-        },
-        "forces": {
-          "collisionPlaneEnabled": false,
-          "collisionPlaneHeight": 0.0,
-          "collisionThickness": 0.5,
-          "drag": 0.0,
-          "field": {
-            "attraction": 0.0,
-            "axis": [
-              0.0,
-              1.0,
-              0.0
-            ],
-            "center": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "evolution": 0.3,
-            "frequency": 1.0,
-            "radius": 0.0,
-            "turbulence": 0.0,
-            "vortex": 0.0
-          },
-          "fluidCoupling": 0.0,
-          "fluidFollow": 0.0,
-          "fluidRadius": 0.15000000596046448,
-          "fluidSmoke": 0.0,
-          "fluidTemperature": 0.0,
-          "friction": 0.20000000298023224,
-          "gravity": [
-            0.0,
-            0.0,
-            0.0
-          ],
-          "id": "module.forces.0a89868627491bc44bac3c368508587c",
-          "restitution": 0.3499999940395355,
-          "sceneDepthCollision": false
-        },
-        "position": {
-          "id": "module.position.15e5ebb5fb54e13472c85a8c7fcb81bd",
-          "orientAlongPath": false,
-          "radialSpeed": {
-            "maximum": 1.0,
-            "minimum": 1.0,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "value": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "minimum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          }
-        },
-        "renderCommon": {
-          "blendMode": "Alpha",
-          "colorTextureAssetGuid": "",
-          "depthBias": 0.0003499999875202775,
-          "depthMode": "WorldOccluded",
-          "detailNoiseTextureAssetGuid": "",
-          "flipbookColumns": 1,
-          "flipbookFrameCount": 1,
-          "flipbookFramesPerSecond": 0.0,
-          "flipbookLoop": true,
-          "flipbookRandomStart": false,
-          "flipbookRows": 1,
-          "flowMapTextureAssetGuid": "",
-          "id": "module.renderCommon.777377d7979e88e89fd4ecdf3002752a",
-          "maskTextureAssetGuid": "",
-          "materialAssetGuid": "",
-          "materialMode": "StandardUnlit",
-          "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
-          "softIntersectionDistance": 0.15000000596046448
-        },
-        "renderShape": {
-          "bendAmount": 0.0,
-          "billboardAxis": "LocalX",
-          "billboardMode": "Fixed",
-          "capsuleRadius": 0.3499999940395355,
-          "coneBaseRadius": 0.5,
-          "cylinderBottomRadius": 0.5,
-          "cylinderTopRadius": 0.5,
-          "id": "module.renderShape.c514f36fc63b3232162a1f7ae615e307",
-          "ribbonSegmentCount": 16,
-          "ribbonWidth": 0.10000000149011612,
-          "ringEndAngleDegrees": 360.0,
-          "ringInnerRadius": 0.5,
-          "ringOuterRadius": 1.0,
-          "ringSegmentCount": 32,
-          "ringStartAngleDegrees": 0.0,
-          "taperEnd": 1.0,
-          "taperStart": 1.0,
-          "torusMajorRadius": 0.4000000059604645,
-          "torusMinorRadius": 0.11999999731779099,
-          "twistDegrees": 0.0,
-          "type": "Sprite",
-          "uvMode": "Parameter",
-          "uvRotationDegrees": 0.0,
-          "uvSwapAxes": false,
-          "uvTileLength": 1.0,
-          "uvTilingU": 1.0,
-          "uvTilingV": 1.0
-        },
-        "rotation": {
-          "eulerDegrees": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "minimum": [
-                0.0,
-                0.0,
-                0.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          },
-          "id": "module.rotation.5709714aab4e9f55b59d54e24c824490"
-        },
-        "scale": {
-          "id": "module.scale.eadfb1c5737b590ac61aa520b1dd9ecb",
-          "value": {
-            "curve": {
-              "x": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "y": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              },
-              "z": {
-                "interpolation": "Linear",
-                "keys": [],
-                "randomOffset": {
-                  "maximum": 0.0,
-                  "minimum": 0.0,
-                  "mode": "Constant",
-                  "randomGroup": 0
-                }
-              }
-            },
-            "easing": {
-              "end": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "function": "EaseInOut",
-              "middle": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "start": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "useMiddle": false
-            },
-            "fixed": {
-              "maximum": [
-                1.0,
-                1.0,
-                1.0
-              ],
-              "minimum": [
-                1.0,
-                1.0,
-                1.0
-              ],
-              "mode": "Constant",
-              "randomGroup": 0
-            },
-            "mode": "Fixed",
-            "pva": {
-              "acceleration": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "initial": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              },
-              "velocity": {
-                "maximum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "minimum": [
-                  0.0,
-                  0.0,
-                  0.0
-                ],
-                "mode": "Constant",
-                "randomGroup": 0
-              }
-            }
-          }
-        },
-        "shape": {
-          "boxHalfExtents": [
-            0.5,
-            0.5,
-            0.5
-          ],
-          "circleArcDegrees": 360.0,
-          "circleEmitOnEdge": false,
-          "circleInnerRadius": 0.0,
-          "coneAngleDegrees": 30.0,
-          "cylinderHeight": 1.0,
-          "edgeLength": 1.0,
-          "id": "module.shape.642dfd0150828981cd6b28e42cd5bc55",
-          "radius": {
-            "maximum": 0.1,
-            "minimum": 0.1,
-            "mode": "Constant",
-            "randomGroup": 0
-          },
-          "type": "Sphere"
-        },
-        "spawn": {
-          "burstTimeline": [],
-          "capacityMode": "Automatic",
-          "eventKind": "Collision",
-          "eventSourceLayerId": "",
-          "id": "module.spawn.4df6587b57f94a0d25aa3aff954bcd6f",
-          "inheritVelocity": 0.30000001192092896,
-          "maximumParticles": 1024,
-          "minimumImpactSpeed": 1.0,
-          "particlesPerEvent": 4,
-          "ratePerSecond": 42.0
-        }
-      },
-      "name": "Mid 4",
-      "order": 10,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -9635,9 +7869,9 @@
           "id": "module.emitterTransform.a96d520dc83bfbd0035983fbed47110b",
           "transform": {
             "position": [
-              -1.3,
-              0.4698463103929542,
-              0.17101007166283436
+              -0.30000000000000004,
+              0.43301270189221935,
+              0.24999999999999997
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -9653,8 +7887,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.6,
+          "emissionNoiseScale": 0.08,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -9662,11 +7896,11 @@
           "id": "module.fluidSource.133a342798d9f326fed1c4ee7b2173d1",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 3.5,
+          "temperature": 1.0,
           "velocity": [
-            -8.0,
-            -4.104241719908025,
-            11.276311449430901
+            -5.0,
+            -2.2499999999999996,
+            3.897114317029974
           ]
         },
         "forces": {
@@ -10204,8 +8438,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.cc46eabd1ce4999e07e43c3155156613",
           "radius": {
-            "maximum": 0.075,
-            "minimum": 0.075,
+            "maximum": 0.07,
+            "minimum": 0.07,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -10221,11 +8455,11 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 44.0
+          "ratePerSecond": 12.0
         }
       },
       "name": "Inner 0",
-      "order": 11,
+      "order": 9,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -10479,9 +8713,9 @@
           "id": "module.emitterTransform.40f40da7e603a118ae3df49f5875ea01",
           "transform": {
             "position": [
-              -1.3,
-              -0.38302222155948895,
-              0.32139380484326974
+              -0.30000000000000004,
+              -0.2499999999999999,
+              0.43301270189221935
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -10497,8 +8731,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.6,
+          "emissionNoiseScale": 0.08,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -10506,11 +8740,11 @@
           "id": "module.fluidSource.352b78447b1105d409771ab580d95eb8",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 3.5,
+          "temperature": 1.0,
           "velocity": [
-            -8.0,
-            -7.713451316238474,
-            -9.192533317427735
+            -5.0,
+            -3.897114317029974,
+            -2.249999999999999
           ]
         },
         "forces": {
@@ -11048,8 +9282,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.7c10781079f5e4facf8231efde111f51",
           "radius": {
-            "maximum": 0.075,
-            "minimum": 0.075,
+            "maximum": 0.07,
+            "minimum": 0.07,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -11065,11 +9299,11 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 44.0
+          "ratePerSecond": 12.0
         }
       },
       "name": "Inner 1",
-      "order": 12,
+      "order": 10,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -11323,9 +9557,9 @@
           "id": "module.emitterTransform.d8dc3a0c910ee269538cd292649d8925",
           "transform": {
             "position": [
-              -1.3,
-              -0.08682408883346517,
-              -0.492403876506104
+              -0.30000000000000004,
+              -0.4330127018922193,
+              -0.25000000000000006
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -11341,8 +9575,8 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.3,
-          "emissionNoiseScale": 0.12,
+          "emissionNoise": 0.6,
+          "emissionNoiseScale": 0.08,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -11350,11 +9584,11 @@
           "id": "module.fluidSource.eb7dd2b815afd9dd0456d520c60023da",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 3.5,
+          "temperature": 1.0,
           "velocity": [
-            -8.0,
-            11.817693036146496,
-            -2.083778132003164
+            -5.0,
+            2.2500000000000004,
+            -3.8971143170299736
           ]
         },
         "forces": {
@@ -11892,8 +10126,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.670b869cdc084cd0bebba85e682f3cee",
           "radius": {
-            "maximum": 0.075,
-            "minimum": 0.075,
+            "maximum": 0.07,
+            "minimum": 0.07,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -11909,11 +10143,855 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 44.0
+          "ratePerSecond": 12.0
         }
       },
       "name": "Inner 2",
-      "order": 13,
+      "order": 11,
+      "parameterTracks": [],
+      "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    },
+    {
+      "activeDuration": 0.0,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.2fb9d6db7e5c3319f500b22f29f76890",
+      "inputLinks": [
+        {
+          "bias": 0.0,
+          "id": "emitter.2fb9d6db7e5c3319f500b22f29f76890.link.input.on.rateMultiplier",
+          "inputId": "input.on",
+          "scale": 1.0,
+          "target": {
+            "emitterId": "emitter.2fb9d6db7e5c3319f500b22f29f76890",
+            "moduleId": "module.spawn.4b3111a7b20b06206180c5ff7e4cffd2",
+            "propertyId": "rateMultiplier"
+          }
+        }
+      ],
+      "kind": "FluidSource",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.attachment.fa43b80cae00f4249cb6e1a93b80e118",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.basic.3835147d548ba7c9e69269c3eba1d7a5",
+          "lifetime": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.color.82b3890de82620e168334507a4ecae41",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                  ],
+                  "id": "color.start.fluid_sword_qi.edge",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    0.0
+                  ],
+                  "id": "color.end.fluid_sword_qi.edge",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Fixed"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.emitterTransform.642896a0f2f66559ec53867ac21d6605",
+          "transform": {
+            "position": [
+              -0.30000000000000004,
+              0.25000000000000006,
+              -0.4330127018922193
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "fluidSource": {
+          "absorption": 0.0,
+          "emissionNoise": 0.6,
+          "emissionNoiseScale": 0.08,
+          "forceMode": "Acceleration",
+          "fuelFraction": 0.0,
+          "guideStrength": 0.0,
+          "guideThickness": 0.25,
+          "id": "module.fluidSource.ec74e6dad969285142e8883384bdbf5e",
+          "outflow": 0.0,
+          "radialSpeed": 0.0,
+          "temperature": 1.0,
+          "velocity": [
+            -5.0,
+            3.8971143170299736,
+            2.2500000000000004
+          ]
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "collisionThickness": 0.5,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.3,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "fluidCoupling": 0.0,
+          "fluidFollow": 0.0,
+          "fluidRadius": 0.15000000596046448,
+          "fluidSmoke": 0.0,
+          "fluidTemperature": 0.0,
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.forces.3c8377c269b22d826197e7af56bd693e",
+          "restitution": 0.3499999940395355,
+          "sceneDepthCollision": false
+        },
+        "position": {
+          "id": "module.position.51e1b87eefcad4dd3a8104f0fc7e9d57",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Alpha",
+          "colorTextureAssetGuid": "",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.renderCommon.cd33d4592e30981ca685f81910c73b8a",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.15000000596046448
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "Fixed",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.renderShape.8f3b864b58b0bedd40070c4dba48d452",
+          "ribbonSegmentCount": 16,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 32,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.rotation.8620beb9fc0b7f49ccfd046df812951f"
+        },
+        "scale": {
+          "id": "module.scale.7a82b3014fa3d38de994fd4df0efd645",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.shape.61dbf2e71167b63ee9446e070940eb38",
+          "radius": {
+            "maximum": 0.07,
+            "minimum": 0.07,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Sphere"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "eventKind": "Collision",
+          "eventSourceLayerId": "",
+          "id": "module.spawn.4b3111a7b20b06206180c5ff7e4cffd2",
+          "inheritVelocity": 0.30000001192092896,
+          "maximumParticles": 1024,
+          "minimumImpactSpeed": 1.0,
+          "particlesPerEvent": 4,
+          "ratePerSecond": 12.0
+        }
+      },
+      "name": "Inner 3",
+      "order": 12,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -12155,7 +11233,7 @@
           "id": "module.emitterTransform.06ed17c3c2726cba6818032999d0b47e",
           "transform": {
             "position": [
-              -2.6,
+              -1.5,
               0.0,
               0.0
             ],
@@ -12195,7 +11273,7 @@
           "collisionThickness": 0.5,
           "drag": 0.0,
           "field": {
-            "attraction": 17.0,
+            "attraction": 18.0,
             "axis": [
               1,
               0,
@@ -12208,9 +11286,9 @@
             ],
             "evolution": 0.3,
             "frequency": 1.0,
-            "radius": 5.6,
+            "radius": 3.2,
             "turbulence": 0.0,
-            "vortex": 17.0
+            "vortex": 16.0
           },
           "fluidCoupling": 0.0,
           "fluidFollow": 0.0,
@@ -12745,7 +11823,7 @@
         }
       },
       "name": "Pull",
-      "order": 14,
+      "order": 13,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -12987,7 +12065,7 @@
           "id": "module.emitterTransform.a5313559fb7f8dfbafb2e811c4da4b11",
           "transform": {
             "position": [
-              -2.6,
+              -1.5,
               0.0,
               0.0
             ],
@@ -13004,7 +12082,7 @@
           }
         },
         "fluidSource": {
-          "absorption": 26.0,
+          "absorption": 18.0,
           "emissionNoise": 0.0,
           "emissionNoiseScale": 1.0,
           "forceMode": "Acceleration",
@@ -13556,8 +12634,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.ea3247f7501c3e856476952806e1bef8",
           "radius": {
-            "maximum": 0.36,
-            "minimum": 0.36,
+            "maximum": 0.3,
+            "minimum": 0.3,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -13577,7 +12655,7 @@
         }
       },
       "name": "Mouth",
-      "order": 15,
+      "order": 14,
       "parameterTracks": [],
       "parentEmitterId": "emitter.4d43676bba3bd0739ed616f254ffcc50",
       "specialOutputs": [],
@@ -13819,7 +12897,7 @@
           "id": "module.emitterTransform.809d243db8dd217d3372bfae10705009",
           "transform": {
             "position": [
-              2.2,
+              1.7,
               0.0,
               0.0
             ],
@@ -13859,7 +12937,7 @@
           "collisionThickness": 0.5,
           "drag": 0.0,
           "field": {
-            "attraction": 7.0,
+            "attraction": 8.0,
             "axis": [
               1.0,
               0.0,
@@ -13872,9 +12950,9 @@
             ],
             "evolution": 0.6,
             "frequency": 1.0,
-            "radius": 3.6,
+            "radius": 3.2,
             "turbulence": 0.0,
-            "vortex": 16.0
+            "vortex": 18.0
           },
           "fluidCoupling": 0.0,
           "fluidFollow": 0.0,
@@ -14409,7 +13487,7 @@
         }
       },
       "name": "Fog Swirl",
-      "order": 16,
+      "order": 15,
       "parameterTracks": [],
       "parentEmitterId": "",
       "specialOutputs": [],
@@ -14745,7 +13823,7 @@
               "stops": [
                 {
                   "color": [
-                    0.11,
+                    0.12,
                     0.0,
                     1.0,
                     0.0
@@ -14755,7 +13833,7 @@
                 },
                 {
                   "color": [
-                    0.11,
+                    0.12,
                     0.0,
                     1.0,
                     1.0
@@ -14765,7 +13843,7 @@
                 },
                 {
                   "color": [
-                    0.11,
+                    0.12,
                     0.0,
                     1.0,
                     1.0
@@ -14775,7 +13853,7 @@
                 },
                 {
                   "color": [
-                    0.11,
+                    0.12,
                     0.0,
                     1.0,
                     0.0
@@ -14792,7 +13870,7 @@
           "id": "module.emitterTransform.186dc3e558af7cc37aac860fd0a90be1",
           "transform": {
             "position": [
-              2.6,
+              1.9,
               0.0,
               0.0
             ],
@@ -14976,14 +14054,14 @@
               },
               "velocity": {
                 "maximum": [
-                  -7.5,
-                  0.4,
-                  0.4
+                  -5.0,
+                  0.3,
+                  0.3
                 ],
                 "minimum": [
-                  -9.5,
-                  -0.4,
-                  -0.4
+                  -6.2,
+                  -0.3,
+                  -0.3
                 ],
                 "mode": "RandomRange",
                 "randomGroup": 0
@@ -15195,14 +14273,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 1.5
+                    "value": 1.1
                   },
                   {
                     "id": "emitter.3a1e930a484a7f73f042dc89bbfbe6ba.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.28
+                    "value": 0.2
                   }
                 ],
                 "randomOffset": {
@@ -15220,14 +14298,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 1.5
+                    "value": 1.1
                   },
                   {
                     "id": "emitter.3a1e930a484a7f73f042dc89bbfbe6ba.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.28
+                    "value": 0.2
                   }
                 ],
                 "randomOffset": {
@@ -15245,14 +14323,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 1.5
+                    "value": 1.1
                   },
                   {
                     "id": "emitter.3a1e930a484a7f73f042dc89bbfbe6ba.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.28
+                    "value": 0.2
                   }
                 ],
                 "randomOffset": {
@@ -15384,8 +14462,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.7a4268ce672f1ec652a9c8796b95c989",
           "radius": {
-            "maximum": 1.6,
-            "minimum": 0.4,
+            "maximum": 1.25,
+            "minimum": 0.3,
             "mode": "RandomRange",
             "randomGroup": 0
           },
@@ -15396,11 +14474,11 @@
           "capacityMode": "Fixed",
           "id": "module.spawn.b97df7d54b2a40cd142b8aec3d5e268e",
           "maximumParticles": 64,
-          "ratePerSecond": 30.0
+          "ratePerSecond": 34.0
         }
       },
       "name": "Suction Haze",
-      "order": 17,
+      "order": 16,
       "parameterTracks": [],
       "parentEmitterId": "",
       "specialOutputs": [],
@@ -15736,7 +14814,7 @@
               "stops": [
                 {
                   "color": [
-                    0.16,
+                    0.14,
                     0.0,
                     1.0,
                     0.0
@@ -15746,7 +14824,7 @@
                 },
                 {
                   "color": [
-                    0.16,
+                    0.14,
                     0.0,
                     1.0,
                     1.0
@@ -15756,7 +14834,7 @@
                 },
                 {
                   "color": [
-                    0.16,
+                    0.14,
                     0.0,
                     1.0,
                     0.0
@@ -16176,14 +15254,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.9
+                    "value": 0.8
                   },
                   {
                     "id": "emitter.a3dc6a66b9dad0e94ba3df207ac479cf.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.45
+                    "value": 0.42
                   }
                 ],
                 "randomOffset": {
@@ -16201,14 +15279,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.9
+                    "value": 0.8
                   },
                   {
                     "id": "emitter.a3dc6a66b9dad0e94ba3df207ac479cf.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.45
+                    "value": 0.42
                   }
                 ],
                 "randomOffset": {
@@ -16226,14 +15304,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.9
+                    "value": 0.8
                   },
                   {
                     "id": "emitter.a3dc6a66b9dad0e94ba3df207ac479cf.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.45
+                    "value": 0.42
                   }
                 ],
                 "randomOffset": {
@@ -16381,14 +15459,14 @@
         }
       },
       "name": "Mouth Lens",
-      "order": 18,
+      "order": 17,
       "parameterTracks": [],
       "parentEmitterId": "",
       "specialOutputs": [],
       "startDelay": 0.0
     },
     {
-      "activeDuration": 0.34,
+      "activeDuration": 0.32,
       "anchor": [
         0.0,
         0.0,
@@ -16472,8 +15550,8 @@
           "enabled": true,
           "id": "module.basic.a52c8798a1aa222ff02777bb6831cc57",
           "lifetime": {
-            "maximum": 0.34,
-            "minimum": 0.34,
+            "maximum": 0.32,
+            "minimum": 0.32,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -19181,14 +18259,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 5.2
+                    "value": 3.8
                   },
                   {
                     "id": "emitter.5adf3bf2e49e51e379474c7ea1bdf4eb.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.4
+                    "value": 0.35
                   }
                 ],
                 "randomOffset": {
@@ -19206,14 +18284,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 5.2
+                    "value": 3.8
                   },
                   {
                     "id": "emitter.5adf3bf2e49e51e379474c7ea1bdf4eb.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.4
+                    "value": 0.35
                   }
                 ],
                 "randomOffset": {
@@ -19231,14 +18309,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 5.2
+                    "value": 3.8
                   },
                   {
                     "id": "emitter.5adf3bf2e49e51e379474c7ea1bdf4eb.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 0.4
+                    "value": 0.35
                   }
                 ],
                 "randomOffset": {
@@ -19386,7 +18464,7 @@
         }
       },
       "name": "Start Ring",
-      "order": 19,
+      "order": 18,
       "parameterTracks": [],
       "parentEmitterId": "",
       "specialOutputs": [],

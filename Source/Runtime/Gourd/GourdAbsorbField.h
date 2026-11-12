@@ -12,6 +12,8 @@ public:
     static void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float seconds);
     // 口元で回収した量の読み出し先（GetRemovedSmoke の instanceId）。
     static uint64_t SinkInstance();
+    // 口の上へ抜けた霧を回収した量の読み出し先。口元の分と足して煙に数える。
+    static uint64_t CatchInstance();
 };
 
 } // namespace Project_TD2_2

@@ -111,8 +111,12 @@ bool GourdShotFogReturn::FindGround(HIKARI::WorldView& world, Vec3 from, float r
     query.filter.ignoredObjectHandle = ignoredObject;
     query.filter.includeTriggers = 0;
     HIKARI::GameProjectPhysicsHit hit{};
-    if (!world.GetPhysicsQueries().Raycast(query, hit))
-        return false;
+    if (!world.GetPhysicsQueries().Raycast(query, hit)) {
+        // 当たった相手が地面そのもの（地形）だった時は、その相手を除くと地面が見つからない。除かずに探し直す。
+        query.filter.ignoredObjectHandle = 0;
+        if (ignoredObject == 0 || !world.GetPhysicsQueries().Raycast(query, hit))
+            return false;
+    }
     ground = hit.position;
     return true;
 }

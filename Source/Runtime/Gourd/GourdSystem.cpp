@@ -171,11 +171,8 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
         gourd.sinkPosition = {gourd.position.x + horizontal.x * gourd.absorbForwardDistance,
                               playerTransform.position.y + gourd.absorbHeightOffset,
                               gourd.position.z + horizontal.z * gourd.absorbForwardDistance};
-        // 吸っている間の口は、前方 gatherRange 先の足元へ向ける。口のエフェクト（渦の円錐）の軸になる。
-        const Vec3 coneEnd{gourd.position.x + horizontal.x * gourd.gatherRange, gourd.sinkPosition.y,
-                           gourd.position.z + horizontal.z * gourd.gatherRange};
-        gourd.aimDirection = gourd.absorbing            ? Normalize(Difference(coneEnd, gourd.position), horizontal)
-                             : absorbPose               ? horizontal
+        gourd.aimDirection = gourd.absorbing ? Normalize(Difference(gourd.sinkPosition, gourd.position), horizontal)
+                             : absorbPose    ? horizontal
                              : gourd.aimOverridePending ? gourd.aimOverrideDirection
                              : hasLock ? Normalize(Difference(targetTransform.position, gourd.position), horizontal)
                                        : horizontal;
@@ -268,8 +265,12 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                                         GourdComponent& gourd) {
         const auto fluid = world.GetFluid();
         double total = 0.0;
+        // 口元の吸入と、口の上の回収の両方が消した霧を足して、煙に数える（どちらも累計値）。
+        double caught = 0.0;
         gourd.readAccepted =
             fluid.GetRemovedSmoke(object.GetHandle(), GourdAbsorbField::SinkInstance(), total).Succeeded();
+        if (fluid.GetRemovedSmoke(object.GetHandle(), GourdAbsorbField::CatchInstance(), caught).Succeeded())
+            total += caught;
         // 松開後の遅れた回読も回収する。容量超過時も累計の基準は必ず更新する。
         if (gourd.readAccepted)
             GourdRules::ReceiveRemovedSmoke(gourd, total);

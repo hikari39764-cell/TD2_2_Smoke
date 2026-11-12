@@ -35,6 +35,8 @@ constexpr float kNearStrengthShare = 0.6f;
 constexpr float kFullFlowScale = 0.15f;
 // 渦を温める注入の ID（力は 2 から数える。重ならない番号にする）と、奥の 1 か所の半径・温度の割合。
 constexpr uint64_t kGlowInstanceBase = 60;
+// 口の上で霧を回収する力の ID（回読の対象）。
+constexpr uint64_t kCatchInstance = 50;
 // 地面に沿って温める場所の数。口から遠いほど広く、ぬるくする（1 か所ごとの半径の増し分と、温度の減り分）。
 constexpr int kGlowGroundSpots = 3;
 constexpr float kGlowRadiusGrowth = 0.5f;
@@ -64,6 +66,7 @@ struct Field {
 } // namespace
 
 uint64_t GourdAbsorbField::SinkInstance() { return kSinkInstance; }
+uint64_t GourdAbsorbField::CatchInstance() { return kCatchInstance; }
 
 void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
                               float seconds) {
@@ -133,6 +136,18 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
                                   gourd.fluidAccepted;
             ++gourd.fluidSubmissions;
         }
+    }
+    // 口を通り過ぎて上へ抜ける霧は、口の少し上で消して回収する（流れは作らない）。
+    if (gourd.absorbCatchRadius > 0.0f && gourd.absorbCatchRate > 0.0f && !blocked) {
+        HIKARI::GameProjectFluidInteraction above{};
+        above.kind = Kind::Force;
+        above.position = {gourd.mouthPosition.x, gourd.mouthPosition.y + gourd.absorbCatchHeight,
+                          gourd.mouthPosition.z};
+        above.extents = {gourd.absorbCatchRadius, 0.0f, 0.0f};
+        above.absorption = gourd.absorbCatchRate;
+        gourd.fluidAccepted =
+            world.GetFluid().Submit(object.GetHandle(), kCatchInstance, above).Accepted() && gourd.fluidAccepted;
+        ++gourd.fluidSubmissions;
     }
     HIKARI::GameProjectFluidInteraction sink{};
     sink.kind = Kind::Force;

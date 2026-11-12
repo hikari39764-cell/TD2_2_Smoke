@@ -20,8 +20,7 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbStrength", "口元の吸入速度 (m/s。周りの霧を口へ引き寄せる主役)", absorbStrength, 0.0f,
                      100.0f);
         fields.Float("absorption", "口元で煙を消す率 (/s)", absorption, 0.0f, 1000.0f);
-        fields.Float("gatherRange", "霧を吸い寄せる前方の距離 (m。口の渦の円錐もこの先の足元へ向く)", gatherRange, 0.5f,
-                     20.0f);
+        fields.Float("gatherRange", "霧を吸い寄せる前方の距離 (m)", gatherRange, 0.5f, 20.0f);
         fields.Float("gatherFanDegrees", "霧を集める扇の片側の角度 (度)", gatherFanDegrees, 0.0f, 80.0f);
         fields.Float("gatherNearRadius", "足元の全周から霧を寄せる半径 (m、0 は無効)", gatherNearRadius, 0.0f, 10.0f);
         fields.Float("gatherRadius", "霧を口へ運ぶ流れ 1 本の半径 (m)", gatherRadius, 0.01f, 10.0f);
@@ -35,6 +34,15 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbForwardDistance", "霧を集める中心の前方距離 (m)", absorbForwardDistance, 0.0f, 10.0f);
         fields.Float("absorbHeightOffset", "霧を集める中心の高さ（プレイヤー原点から m）", absorbHeightOffset, -10.0f,
                      10.0f);
+        fields.Note(
+            "近くの霧は口元の吸入が引き寄せます（流れが口で終わるので行き過ぎない）。扇の流れは 3 m より奥の霧を"
+            "軽く押すだけにします。扇の流れ・持ち上げ・足元の全周の力を強くすると、霧がプレイヤーを通り過ぎて空へ噴き上がります。");
+        fields.Float("absorbCatchRadius", "口の上へ抜けた霧を回収する半径 (m、0 は無効)", absorbCatchRadius, 0.0f,
+                     10.0f);
+        fields.Float("absorbCatchHeight", "回収する中心の、口からの高さ (m)", absorbCatchHeight, 0.0f, 5.0f);
+        fields.Float("absorbCatchRate", "口の上で霧を消す率 (/s)", absorbCatchRate, 0.0f, 1000.0f);
+        fields.Note("持ち上げた霧が口を通り過ぎて空へ噴き上がらないように、口の少し上で消して煙に数えます。"
+                    "霧が口の上まで噴き上がる時は、この半径か率を上げるか、持ち上げる力の倍率を下げます。");
         fields.Bool("absorbWhenFull", "満杯でも霧を吸い続ける（切ると満杯の間は霧を消さない）", absorbWhenFull);
         fields.Note("口元の吸入が周り全体の霧を口へ引き寄せ、前方の扇の流れが遠"
                     "くの霧を渦を巻かせて運びます。"
@@ -72,6 +80,8 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbIdleEffect", "吸える霧が無い時の口の演出の強さ (0〜1)", absorbIdleEffect, 0.0f, 1.0f);
         fields.Float("absorbFullEffect", "満杯で吸えない時の口の演出の強さ (0〜1、0 は何も出さない)", absorbFullEffect,
                      0.0f, 1.0f);
+        fields.Note("既定では霧を光らせません（抑えた見た目）。光らせる時は、下の温度を上げ、場の霧（ArenaGroundFog）と"
+                    "口のエフェクトの域の emissionIntensity も 0 より大きくします。");
         fields.Float("absorbGlowHeat", "吸われていく霧を温める温度（高いほど霧が明るく光る。0 は無効）", absorbGlowHeat,
                      0.0f, 20.0f);
         fields.Float("absorbGlowRadius", "口元で煙を温める半径 (m)", absorbGlowRadius, 0.1f, 10.0f);
