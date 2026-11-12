@@ -23,13 +23,21 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float teleportDistance = 10.0f;
     float height = 0.5f;
     float radius = 0.18f;
-    float absorbRadius = 0.65f;
-    float absorbStrength = 4.0f;
-    float absorption = 120.0f;
+    float absorbRadius = 0.9f;
+    float absorbStrength = 12.0f;
+    float absorption = 60.0f;
     float gatherRadius = 1.8f;
-    float gatherStrength = 28.0f;
+    float gatherStrength = 7.0f;
     int gatherRings = 3;
-    float gatherFanDegrees = 35.0f;
+    float gatherFanDegrees = 60.0f;
+    float gatherRange = 5.0f;
+    float gatherFarScale = 0.8f;
+    float gatherSwirl = 1.0f;
+    float gatherPulse = 0.5f;
+    float gatherPulseFrequency = 1.4f;
+    float gatherLift = 0.4f;
+    float gatherNearRadius = 1.5f;
+    bool absorbWhenFull = false;
     float absorbForwardDistance = 1.3f;
     float absorbHeightOffset = -0.45f;
     int absorbWindupFrames = 24;
@@ -38,10 +46,16 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbTurnSpeed = 720.0f;
     float capacity = 100.0f;
     float initialSmoke = 0.0f;
-    float smokePerVolume = 16.0f;
+    float smokePerVolume = 8.0f;
     HIKARI::GameProjectVfxAssetReference absorbEffect{"5f8903664eb0a5691bcc566b125bc81e",
                                                       "Assets/Vfx/GourdAbsorb.hvfx"};
     float absorbEffectScale = 1.0f;
+    float absorbFullIntake = 40.0f;
+    float absorbIdleEffect = 0.7f;
+    float absorbFullEffect = 0.3f;
+    float absorbGlowHeat = 3.0f;
+    float absorbGlowRadius = 1.3f;
+    float absorbGlowReach = 1.4f;
     int absorbRetireFrames = 12;
     float absorbFovDegrees = 4.5f;
     int absorbFovEaseFrames = 10;
@@ -89,6 +103,8 @@ class GourdComponent final : public HIKARI::IGameComponent {
     bool vfxAccepted = true;
     bool wasFull = false;
     float absorbBlend = 0.0f;
+    // 実際に吸えている速さ（煙／秒、ならした値）。口の演出の強さに使う。
+    float intakeRate = 0.0f;
     float absorbSeconds = 0.0f;
     float mouthIdleSeconds = 0.0f;
 };

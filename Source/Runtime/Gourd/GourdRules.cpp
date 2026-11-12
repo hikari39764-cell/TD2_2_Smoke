@@ -17,6 +17,11 @@ float GourdRules::GetSmoke(const GourdComponent& gourd) {
 }
 
 float GourdRules::GetCapacity(const GourdComponent& gourd) { return std::max(0.0f, gourd.capacity); }
+float GourdRules::GetSmokePerVolume(const GourdComponent& gourd) { return std::max(0.0f, gourd.smokePerVolume); }
+
+bool GourdRules::IsFull(const GourdComponent& gourd) {
+    return GetCapacity(gourd) > 0.0f && GetSmoke(gourd) >= GetCapacity(gourd);
+}
 
 bool GourdRules::TryConsumeSmoke(GourdComponent& gourd, float amount) {
     Initialize(gourd);

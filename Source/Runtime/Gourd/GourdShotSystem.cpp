@@ -8,6 +8,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "GourdShotFogReturn.h"
 #include "GourdShotRules.h"
 #include "GourdShotVisuals.h"
 #include "GourdRules.h"
@@ -48,6 +49,16 @@ bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callba
                                                     });
         });
     return found;
+}
+
+float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
+    float value = 0.0f;
+    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
+                                           [&](HIKARI::ObjectView object, GourdComponent& gourd) {
+                                               if (object.GetHandle().value == shotObject.GetHandle().value)
+                                                   value = GourdRules::GetSmokePerVolume(gourd);
+                                           });
+    return value;
 }
 
 Vec3 Aim(HIKARI::WorldView& world, const GourdComponent& gourd, const PlayerComponent& player) {
@@ -118,6 +129,7 @@ void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle play
         projectile.active = true;
         projectile.id = shot.nextProjectileId++;
         projectile.spawnedTick = shot.processedTick;
+        projectile.origin = origin;
         projectile.position = origin;
         projectile.direction = {direction.x * cosine + direction.z * sine, direction.y,
                                 direction.z * cosine - direction.x * sine};
@@ -142,6 +154,7 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     const Vec3 origin = Add(gourd.position, Scale(direction, gourd.height * 0.5f));
     SpawnPellets(shot, playerObject.GetHandle(), origin, direction);
     GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
+    GourdShotFogReturn::MarkFire(shot, origin, shot.muzzleFireFrames);
     PlayerRules::LockActions(player, shot.recoveryFrames);
     PlayerRules::AddRecoil(player, Scale(direction, -1.0f), shot.recoilDistance, shot.recoilFrames);
     GourdRules::AddRecoil(gourd, Scale(direction, -1.0f), shot.gourdRecoilDistance, shot.gourdRecoilFrames);
@@ -221,18 +234,14 @@ void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 positio
     residue.active = true;
     // 霧を押す力は重なる流体の域すべてに効く。爆ぜた点で押すと炎の域の中身まで壁へ吹き飛ぶので、
     // 真下の地面を探して、足元の霧だけを押す（高い所ほど弱く、届かなければ押さない）。
-    HIKARI::GameProjectPhysicsRaycastQuery query{};
-    query.origin = position;
-    query.direction = {0.0f, -1.0f, 0.0f};
-    query.maxDistance = shot.impactGroundReach;
-    query.filter.ignoredObjectHandle = ignoredObject;
-    query.filter.includeTriggers = 0;
-    HIKARI::GameProjectPhysicsHit ground{};
-    const bool grounded = world.GetPhysicsQueries().Raycast(query, ground);
+    Vec3 ground{};
+    const bool grounded =
+        GourdShotFogReturn::FindGround(world, position, shot.impactGroundReach, ignoredObject, ground);
     residue.burstPending = grounded;
-    residue.burstScale = grounded ? std::clamp(1.0f - ground.distance / shot.impactGroundReach, 0.0f, 1.0f) : 0.0f;
+    residue.burstScale =
+        grounded ? std::clamp(1.0f - (position.y - ground.y) / shot.impactGroundReach, 0.0f, 1.0f) : 0.0f;
     if (grounded)
-        position = {ground.position.x, ground.position.y + shot.impactGroundOffset, ground.position.z};
+        position = {ground.x, ground.y + shot.impactGroundOffset, ground.z};
     residue.framesLeft = std::max(0, shot.residueFrames);
     residue.position = position;
 }
@@ -305,18 +314,21 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
         const float farBlend = GourdShotRules::GetFalloffFraction(shot, projectile.distance);
         // 体に重なる所で爆ぜると隠れて小さく暗く見えるので、飛んで来た距離を超えない範囲で手前へ戻す。
         const float standoff = std::min(shot.impactStandoff, projectile.distance);
-        GourdShotVisuals::QueueBurst(shot, false, Add(projectile.position, Scale(projectile.direction, -standoff)),
-                                     projectile.direction,
+        const Vec3 burst = Add(projectile.position, Scale(projectile.direction, -standoff));
+        GourdShotVisuals::QueueBurst(shot, false, burst, projectile.direction,
                                      shot.impactScale * (1.0f - (1.0f - shot.impactFarScale) * farBlend));
+        GourdShotFogReturn::MarkFire(shot, burst, shot.impactFireFrames);
         projectile.flashFramesLeft = shot.shellFlashFrames;
         projectile.fadeFramesLeft = std::max(shot.shellFadeFrames, shot.shellFlashFrames);
         AddResidue(world, shot, projectile.position, hit.objectHandle);
+        GourdShotFogReturn::Queue(world, shot, projectile, hit.objectHandle);
     } else if (projectile.distance >= shot.range) {
         LogProjectile(shot, projectile, "Dissipate");
         projectile.active = false;
         projectile.finishTrailPending = true;
         projectile.fadeFramesLeft = shot.shellFadeFrames;
         AddResidue(world, shot, projectile.position, 0);
+        GourdShotFogReturn::Queue(world, shot, projectile, 0);
     } else if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
         LogProjectile(shot, projectile, "ProjectileStep");
     }
@@ -361,6 +373,7 @@ void GourdShotSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
         return;
     world.ForEachComponent<GourdShotComponent>(
         HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
+            GourdShotFogReturn::Step(shot);
             for (auto& residue : shot.residues) {
                 if (residue.active) {
                     residue.framesLeft = std::max(0, residue.framesLeft - 1);
@@ -399,13 +412,17 @@ void GourdShotSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameCon
     world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
                                                [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
                                                    GourdShotVisuals::Render(world, object, shot, submitted);
+                                                   GourdShotFogReturn::Render(world, object, shot, submitted,
+                                                                              SmokePerVolume(world, object));
                                                });
 }
 
 void GourdShotSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType),
-        [&](HIKARI::ObjectView, GourdShotComponent& shot) { GourdShotVisuals::Stop(world, shot); });
+    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
+                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
+                                                   GourdShotVisuals::Stop(world, shot);
+                                                   GourdShotFogReturn::Clear(shot);
+                                               });
 }
 
 } // namespace Project_TD2_2

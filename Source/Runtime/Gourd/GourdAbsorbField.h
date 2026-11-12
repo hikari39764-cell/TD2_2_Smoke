@@ -1,0 +1,17 @@
+#pragma once
+
+#include "HIKARI/Project/FrameContext.h"
+#include "GourdComponent.h"
+
+namespace Project_TD2_2 {
+
+// 吸い込み中に場の霧を動かす力の並び。前方の扇の奥から口の前へ霧を運び、口元で回収する。
+class GourdAbsorbField final {
+public:
+    // 描画フレームごとに、吸い込み中だけ呼ぶ。seconds は吸い込みの経過（脈動の位相）。
+    static void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float seconds);
+    // 口元で回収した量の読み出し先（GetRemovedSmoke の instanceId）。
+    static uint64_t SinkInstance();
+};
+
+} // namespace Project_TD2_2

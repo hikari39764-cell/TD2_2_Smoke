@@ -13,6 +13,8 @@ inline constexpr std::string_view kGourdShotSystem = "Project_TD2_2.GourdShotSys
 inline constexpr size_t kGourdProjectileCapacity = 8;
 inline constexpr size_t kGourdResidueCapacity = 8;
 inline constexpr size_t kGourdBurstCapacity = 8;
+inline constexpr size_t kGourdFogDepositCapacity = 12;
+inline constexpr size_t kGourdFireZoneCapacity = 12;
 
 enum class GourdShotPhase { Idle, Windup, Recovery };
 
@@ -21,6 +23,7 @@ struct GourdProjectile {
     bool finishTrailPending = false;
     uint64_t id = 0;
     uint64_t spawnedTick = 0;
+    HIKARI::GameProjectFloat3 origin{};
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 direction{0.0f, 0.0f, 1.0f};
     HIKARI::GameProjectObjectHandle ignoredPlayer{};
@@ -52,6 +55,26 @@ struct GourdShotBurst {
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 direction{0.0f, 1.0f, 0.0f};
     float scale = 1.0f;
+};
+
+// 撃った煙を場の霧へ戻す予約。近くに炎の域がある間は待ち、消えてから地面へ落とす。
+struct GourdFogDeposit {
+    bool active = false;
+    HIKARI::GameProjectFloat3 ground{};
+    // 落とし始めの高さ（地面から）。終点の煙は爆ぜた高さから地面へ降ろす。
+    float dropHeight = 0.0f;
+    float smokeLeft = 0.0f;
+    float smokePerFrame = 0.0f;
+    // この固定 tick の間に戻す速さ（煙／秒）。0 は待機中。描画側が読む。
+    float rate = 0.0f;
+    int delayFrames = 0;
+    int age = 0;
+};
+
+// 炎の域（砲口・命中）が残っている場所。戻す煙はこの近くを避ける。
+struct GourdFireZone {
+    int framesLeft = 0;
+    HIKARI::GameProjectFloat3 position{};
 };
 
 class GourdShotComponent final : public HIKARI::IGameComponent {
@@ -94,6 +117,20 @@ public:
     HIKARI::GameProjectFloat3 smokeColor{0.86f, 0.88f, 0.92f};
     float trailSmokeScale = 0.0f;
     float fallbackTrailRate = 6.0f;
+    float fogReturnSmoke = 20.0f;
+    float fogReturnTrailShare = 0.3f;
+    float fogReturnTrailSpacing = 2.5f;
+    float fogReturnRadius = 1.4f;
+    float fogReturnHeight = 0.35f;
+    int fogReturnFrames = 40;
+    int fogReturnDelayFrames = 6;
+    int fogReturnFallFrames = 14;
+    float fogReturnSink = 1.5f;
+    float fogReturnWander = 0.5f;
+    float fogReturnSwirl = 1.2f;
+    float fogReturnClearance = 3.4f;
+    int impactFireFrames = 48;
+    int muzzleFireFrames = 18;
     HIKARI::GameProjectVfxAssetReference trailEffect{};
     HIKARI::GameProjectVfxAssetReference shellEffect{"80ac20536e6b4989b654e6ba7b223c24",
                                                      "Assets/Vfx/GourdShotFlame.hvfx"};
@@ -134,9 +171,14 @@ public:
     uint32_t residueCursor = 0;
     uint32_t burstCursor = 0;
     uint64_t burstsPlayed = 0;
+    uint32_t fireZoneCursor = 0;
+    float fogReturned = 0.0f;
+    float fogReturnQueued = 0.0f;
     std::array<GourdProjectile, kGourdProjectileCapacity> projectiles{};
     std::array<GourdShotResidue, kGourdResidueCapacity> residues{};
     std::array<GourdShotBurst, kGourdBurstCapacity> bursts{};
+    std::array<GourdFogDeposit, kGourdFogDepositCapacity> fogDeposits{};
+    std::array<GourdFireZone, kGourdFireZoneCapacity> fireZones{};
 };
 
 } // namespace Project_TD2_2

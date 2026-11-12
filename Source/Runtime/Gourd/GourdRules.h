@@ -10,6 +10,9 @@ class GourdRules final {
     static void Initialize(GourdComponent& gourd);
     static float GetSmoke(const GourdComponent& gourd);
     static float GetCapacity(const GourdComponent& gourd);
+    // 煙の量 ÷ 吸った霧の量（密度 × m³）。霧へ戻す煙の量を、同じ換算で霧の量へ直すために使う。
+    static float GetSmokePerVolume(const GourdComponent& gourd);
+    static bool IsFull(const GourdComponent& gourd);
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
     static bool IsAbsorbing(const GourdComponent& gourd);
     // 構え・吸い込み・後隙のどれかの最中。この間は砲撃を始めない。

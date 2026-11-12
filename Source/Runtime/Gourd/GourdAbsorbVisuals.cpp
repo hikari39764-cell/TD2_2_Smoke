@@ -42,7 +42,11 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     transform.rotation = VectorMath::RotationFromXAxis(gourd.aimDirection);
     transform.scale = {gourd.absorbEffectScale, gourd.absorbEffectScale, gourd.absorbEffectScale};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
-    VfxParameters::SetFloat(parameters, "input.on", absorbing ? 1.0f : 0.0f);
+    // 口の演出は、実際に吸えている速さで強める。霧の無い所では弱く、満杯で吸えない間は出さない。
+    const bool blocked = GourdRules::IsFull(gourd) && !gourd.absorbWhenFull;
+    const float intake = std::clamp(gourd.intakeRate / std::max(0.1f, gourd.absorbFullIntake), 0.0f, 1.0f);
+    const float level = gourd.absorbIdleEffect + (1.0f - gourd.absorbIdleEffect) * intake;
+    VfxParameters::SetFloat(parameters, "input.on", !absorbing ? 0.0f : blocked ? gourd.absorbFullEffect : level);
     if (gourd.absorbVfx.IsValid() && !vfx.IsActive(gourd.absorbVfx))
         gourd.absorbVfx = {};
     if (!gourd.absorbVfx.IsValid()) {

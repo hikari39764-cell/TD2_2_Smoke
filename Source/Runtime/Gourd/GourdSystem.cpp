@@ -8,6 +8,7 @@
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "GourdAbsorbField.h"
 #include "GourdAbsorbVisuals.h"
 #include "GourdRules.h"
 #include "../Common/VectorMath.h"
@@ -19,16 +20,12 @@ namespace {
 using VectorMath::Difference;
 using VectorMath::Normalize;
 using Vec3 = HIKARI::GameProjectFloat3;
-// 同じ所有者の吸入口を識別する。外形の基準は正式シーンのメッシュ契約。
-constexpr uint64_t kAbsorbInstance = 1;
-constexpr uint64_t kGatherInstanceBase = 2;
+// 外形の基準は正式シーンのメッシュ契約。
 constexpr float kMeshHeight = 0.5f;
 constexpr float kMeshRadius = 0.18f;
 constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
-// 霧を運ぶ輪の並べ方。輪は「口の前の一点」から奥へ、手前の輪の距離のこの倍ずつ離して置き、奥ほど少し大きくする。
-constexpr float kGatherRingSpacing = 1.15f;
-constexpr float kGatherRingGrowth = 0.15f;
+// 吸えている速さをならす時間 (秒)。回読は 1〜3 フレーム遅れて塊で届くので、そのままでは演出がちらつく。
+constexpr float kIntakeSmoothSeconds = 0.2f;
 
 bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     return world.GetGameSession() != nullptr && !frame.paused;
@@ -174,8 +171,11 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
         gourd.sinkPosition = {gourd.position.x + horizontal.x * gourd.absorbForwardDistance,
                               playerTransform.position.y + gourd.absorbHeightOffset,
                               gourd.position.z + horizontal.z * gourd.absorbForwardDistance};
-        gourd.aimDirection = gourd.absorbing ? Normalize(Difference(gourd.sinkPosition, gourd.position), horizontal)
-                             : absorbPose ? horizontal
+        // 吸っている間の口は、前方 gatherRange 先の足元へ向ける。口のエフェクト（渦の円錐）の軸になる。
+        const Vec3 coneEnd{gourd.position.x + horizontal.x * gourd.gatherRange, gourd.sinkPosition.y,
+                           gourd.position.z + horizontal.z * gourd.gatherRange};
+        gourd.aimDirection = gourd.absorbing            ? Normalize(Difference(coneEnd, gourd.position), horizontal)
+                             : absorbPose               ? horizontal
                              : gourd.aimOverridePending ? gourd.aimOverrideDirection
                              : hasLock ? Normalize(Difference(targetTransform.position, gourd.position), horizontal)
                                        : horizontal;
@@ -199,10 +199,14 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
     char message[768]{};
     std::snprintf(
         message, sizeof(message),
-        "Trace tick=%llu frame=%llu object=%llu smoke=%.6f capacity=%.3f removedTotal=%.9f delta=%.9f "
-        "absorbing=%d playerValid=%d position=(%.6f,%.6f,%.6f) sinkPosition=(%.6f,%.6f,%.6f) "
-        "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d readAccepted=%d "
-        "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u gatherStrength=%.3f",
+        "Trace tick=%llu frame=%llu object=%llu smoke=%.6f capacity=%.3f "
+        "removedTotal=%.9f delta=%.9f "
+        "absorbing=%d playerValid=%d position=(%.6f,%.6f,%.6f) "
+        "sinkPosition=(%.6f,%.6f,%.6f) "
+        "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d "
+        "readAccepted=%d "
+        "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u "
+        "gatherStrength=%.3f intake=%.3f",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -214,7 +218,7 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         static_cast<int>(gourd.transformAccepted), static_cast<int>(gourd.fluidAccepted),
         static_cast<int>(gourd.readAccepted), static_cast<double>(gourd.recoilOffset.x),
         static_cast<double>(gourd.recoilOffset.y), static_cast<double>(gourd.recoilOffset.z), gourd.recoilFramesLeft,
-        gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength));
+        gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -264,55 +268,22 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                                         GourdComponent& gourd) {
         const auto fluid = world.GetFluid();
         double total = 0.0;
-        gourd.readAccepted = fluid.GetRemovedSmoke(object.GetHandle(), kAbsorbInstance, total).Succeeded();
+        gourd.readAccepted =
+            fluid.GetRemovedSmoke(object.GetHandle(), GourdAbsorbField::SinkInstance(), total).Succeeded();
         // 松開後の遅れた回読も回収する。容量超過時も累計の基準は必ず更新する。
         if (gourd.readAccepted)
             GourdRules::ReceiveRemovedSmoke(gourd, total);
         else
             gourd.removedDelta = 0.0;
+        if (frame.gameDt > 0.0f) {
+            const float rate =
+                static_cast<float>(gourd.removedDelta) * GourdRules::GetSmokePerVolume(gourd) / frame.gameDt;
+            gourd.intakeRate += (rate - gourd.intakeRate) * (1.0f - std::exp(-frame.gameDt / kIntakeSmoothSeconds));
+        }
         gourd.fluidAccepted = true;
         gourd.fluidSubmissions = 0;
-        if (gourd.absorbing && gourd.poseInitialized) {
-            // 場の霧そのものを、前方の扇の奥から口へ運ぶ（煙は消さない）。奥の輪は一つ手前の輪へ、
-            // いちばん手前の輪は口へ送るので、霧は地面を伝って集まり、口の前で持ち上がる。
-            if (gourd.gatherStrength > 0.0f) {
-                const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
-                const Vec3 right{forward.z, 0.0f, -forward.x};
-                const float fan = std::tan(gourd.gatherFanDegrees * kRadiansPerDegree);
-                uint64_t instance = kGatherInstanceBase;
-                Vec3 target = gourd.mouthPosition;
-                for (int ring = 0; ring < gourd.gatherRings; ++ring) {
-                    const float ahead = gourd.absorbForwardDistance * kGatherRingSpacing * static_cast<float>(ring);
-                    const Vec3 center{gourd.sinkPosition.x + forward.x * ahead, gourd.sinkPosition.y,
-                                      gourd.sinkPosition.z + forward.z * ahead};
-                    const float spread = fan * (gourd.absorbForwardDistance + ahead);
-                    const int lanes = ring == 0 ? 0 : 1;
-                    for (int lane = -lanes; lane <= lanes; ++lane) {
-                        const float offset = static_cast<float>(lane) * spread;
-                        HIKARI::GameProjectFluidInteraction gather{};
-                        gather.kind = HIKARI::GameProjectFluidInteractionKind::Force;
-                        gather.position = {center.x + right.x * offset, center.y, center.z + right.z * offset};
-                        gather.extents = {gourd.gatherRadius * (1.0f + kGatherRingGrowth * static_cast<float>(ring)),
-                                          0.0f, 0.0f};
-                        gather.direction = Normalize(Difference(target, gather.position), {0.0f, 1.0f, 0.0f});
-                        gather.strength = gourd.gatherStrength;
-                        gourd.fluidAccepted =
-                            fluid.Submit(object.GetHandle(), instance++, gather).Accepted() && gourd.fluidAccepted;
-                        ++gourd.fluidSubmissions;
-                    }
-                    target = center;
-                }
-            }
-            HIKARI::GameProjectFluidInteraction sink{};
-            sink.kind = HIKARI::GameProjectFluidInteractionKind::Force;
-            sink.position = gourd.mouthPosition;
-            sink.extents = {gourd.absorbRadius, 0.0f, 0.0f};
-            sink.strength = -gourd.absorbStrength;
-            sink.absorption = gourd.absorption;
-            gourd.fluidAccepted =
-                fluid.Submit(object.GetHandle(), kAbsorbInstance, sink).Accepted() && gourd.fluidAccepted;
-            ++gourd.fluidSubmissions;
-        }
+        if (gourd.absorbing && gourd.poseInitialized)
+            GourdAbsorbField::Submit(world, object, gourd, gourd.absorbSeconds);
         ++gourd.renderFrameCount;
         if (gourd.traceEveryFrames > 0 && gourd.renderFrameCount % static_cast<uint64_t>(gourd.traceEveryFrames) == 0)
             Trace(object, gourd);

@@ -71,6 +71,33 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("砲口の煙・残り煙・尾煙は既定で 0（切）です。場の霧へ入れる煙は炎の域にも入り、炎を暗い煙で"
                     "包んでしまうので、煙は炎の域が出す煤に任せています。");
     }
+    if (fields.Section("撃った煙を場の霧へ戻す")) {
+        fields.Float("fogReturnSmoke", "1 発が場の霧へ戻す煙の量（0 は戻さない）", fogReturnSmoke, 0.0f, 1000.0f);
+        fields.Float("fogReturnTrailShare", "そのうち通り道に落とす割合（残りは終点）", fogReturnTrailShare, 0.0f,
+                     1.0f);
+        fields.Float("fogReturnTrailSpacing", "通り道に落とす間隔 (m)", fogReturnTrailSpacing, 0.5f, 20.0f);
+        fields.Float("fogReturnRadius", "落とす煙の半径 (m)", fogReturnRadius, 0.2f, 10.0f);
+        fields.Float("fogReturnHeight", "落とす煙の中心の地面からの高さ (m)", fogReturnHeight, 0.0f, 5.0f);
+        fields.Int("fogReturnFrames", "1 か所の煙を出し切る時間 (F)", fogReturnFrames, 1, 600);
+        fields.Int("fogReturnDelayFrames", "弾が終わってから落とし始めるまで (F)", fogReturnDelayFrames, 0, 600);
+        fields.Int("fogReturnFallFrames", "終点の煙が爆ぜた高さから地面へ降りる時間 (F、0 は最初から地面)",
+                   fogReturnFallFrames, 0, 600);
+        fields.Float("fogReturnSink", "落とす煙を下へ押す速さ (m/s)", fogReturnSink, 0.0f, 20.0f);
+        fields.Float("fogReturnWander", "落とす中心を回す半径 (m、0 は丸い塊のまま)", fogReturnWander, 0.0f, 5.0f);
+        fields.Float("fogReturnSwirl", "落とす煙を横へ流す速さ (m/s、渦を巻いて広がる)", fogReturnSwirl, 0.0f, 20.0f);
+        fields.Float("fogReturnClearance", "炎の域からこの距離 (m) 以内には落とさず、炎が消えるまで待つ",
+                     fogReturnClearance, 0.0f, 20.0f);
+        fields.Int("impactFireFrames", "命中の爆発の域が残る時間 (F、資産の長さに合わせる)", impactFireFrames, 0, 600);
+        fields.Int("muzzleFireFrames", "砲口の炎の域が残る時間 (F、資産の長さに合わせる)", muzzleFireFrames, 0, 600);
+        fields.Note("吸って撃った煙は、弾の通り道と終点（命中・射程切れ）の地面へ"
+                    "冷たい煙として戻り、また吸えます。"
+                    "戻す量は一発の煙消費とは別の値です（消費を 0 "
+                    "にして試し撃ちしても戻ります）。");
+        fields.Note("場の霧へ入れる煙は重なっている炎の域にも入るので、炎が消える"
+                    "まで待ってから落とします。"
+                    "同じ場所へ撃ち続けると、撃ち終えた後にまとめて湧きます。地面"
+                    "に届かない高さで終わった弾の煙は戻りません。");
+    }
     feedback.DescribeProperties(fields);
     if (fields.Section("検証"))
         fields.Int("traceEveryFrames", "弾道ログ間隔（0 はログ無効）", traceEveryFrames, 0, 7200);
