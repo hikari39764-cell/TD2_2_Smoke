@@ -1,0 +1,390 @@
+{
+    "camera":  {
+                   "defaultCameraObjectId":  null
+               },
+    "cinematics":  {
+                       "defaultSequenceId":  1,
+                       "sequences":  [
+                                         {
+                                             "bindings":  [
+
+                                                          ],
+                                             "durationSeconds":  10.0,
+                                             "id":  1,
+                                             "name":  "Main Sequence",
+                                             "screenEffects":  [
+
+                                                               ],
+                                             "tracks":  [
+                                                            {
+                                                                "clips":  [
+
+                                                                          ],
+                                                                "enabled":  true,
+                                                                "id":  1,
+                                                                "type":  "cameraCut"
+                                                            }
+                                                        ]
+                                         }
+                                     ]
+                   },
+    "environment":  {
+                        "location":  {
+                                         "latitudeDegrees":  35.68,
+                                         "longitudeDegrees":  139.69,
+                                         "northYawDegrees":  0.0,
+                                         "utcOffsetHours":  9.0
+                                     },
+                        "profile":  "engine.environment.default",
+                        "renderStyle":  "engine.style.realistic",
+                        "time":  {
+                                     "day":  21,
+                                     "localHours":  16.4,
+                                     "month":  10,
+                                     "year":  2026
+                                 },
+                        "timeScale":  0.0,
+                        "weather":  "engine.weather.overcast"
+                    },
+    "lightingBake":  {
+                         "bounceCount":  8,
+                         "sampleCount":  256
+                     },
+    "objects":  [
+                    {
+                        "components":  [
+                                           {
+                                               "id":  1,
+                                               "properties":  {
+                                                                  "assetId":  "",
+                                                                  "castShadow":  false,
+                                                                  "receiveShadow":  true,
+                                                                  "renderStatic":  true,
+                                                                  "visible":  true
+                                                              },
+                                               "type":  "ModelComponent"
+                                           },
+                                           {
+                                               "id":  2,
+                                               "properties":  {
+                                                                  "depth":  60,
+                                                                  "doubleSided":  true,
+                                                                  "generateTangents":  true,
+                                                                  "height":  1,
+                                                                  "kind":  "GridPlane",
+                                                                  "materialSelection":  "generated://checker/bfbfbfff/8a8a8aff",
+                                                                  "segmentsX":  60,
+                                                                  "segmentsY":  60,
+                                                                  "segmentsZ":  1,
+                                                                  "width":  60
+                                                              },
+                                               "type":  "ProceduralMeshComponent"
+                                           },
+                                           {
+                                               "id":  3,
+                                               "properties":  {
+                                                                  "center":  [
+                                                                                 0,
+                                                                                 0,
+                                                                                 0
+                                                                             ],
+                                                                  "enabled":  true,
+                                                                  "fitMode":  "Geometry",
+                                                                  "rotation":  [
+                                                                                   0,
+                                                                                   0,
+                                                                                   0
+                                                                               ],
+                                                                  "shape":  "Box",
+                                                                  "size":  [
+                                                                               60,
+                                                                               0.02,
+                                                                               60
+                                                                           ],
+                                                                  "trigger":  false
+                                                              },
+                                               "type":  "ColliderComponent"
+                                           }
+                                       ],
+                        "editorLocked":  false,
+                        "editorVisible":  true,
+                        "enabled":  true,
+                        "id":  1,
+                        "name":  "Floor",
+                        "parent":  null,
+                        "sourcePrefabId":  "",
+                        "transform":  {
+                                          "position":  [
+                                                           0,
+                                                           0,
+                                                           0
+                                                       ],
+                                          "rotationEulerDeg":  [
+                                                                   0.0,
+                                                                   0.0,
+                                                                   0.0
+                                                               ],
+                                          "scale":  [
+                                                        1.0,
+                                                        1.0,
+                                                        1.0
+                                                    ]
+                                      }
+                    },
+                    {
+                        "components":  [
+                                           {
+                                               "id":  1,
+                                               "properties":  {
+                                                                  "assetId":  "",
+                                                                  "castShadow":  true,
+                                                                  "receiveShadow":  true,
+                                                                  "renderStatic":  false,
+                                                                  "visible":  true
+                                                              },
+                                               "type":  "ModelComponent"
+                                           },
+                                           {
+                                               "id":  2,
+                                               "properties":  {
+                                                                  "depth":  0.68,
+                                                                  "doubleSided":  false,
+                                                                  "generateTangents":  true,
+                                                                  "height":  1.7,
+                                                                  "kind":  "Capsule",
+                                                                  "materialSelection":  "generated://checker/bfbfbfff/8a8a8aff",
+                                                                  "width":  0.68
+                                                              },
+                                               "type":  "ProceduralMeshComponent"
+                                           },
+                                           {
+                                               "id":  3,
+                                               "properties":  {
+                                                                  "center":  [
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 0.0
+                                                                             ],
+                                                                  "enabled":  true,
+                                                                  "fitMode":  "Manual",
+                                                                  "height":  1.7,
+                                                                  "radius":  0.34,
+                                                                  "rotation":  [
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   0.0
+                                                                               ],
+                                                                  "shape":  "Capsule",
+                                                                  "trigger":  false
+                                                              },
+                                               "type":  "ColliderComponent"
+                                           },
+                                           {
+                                               "id":  4,
+                                               "properties":  {
+                                                                  "enabled":  true,
+                                                                  "gravityScale":  1.0,
+                                                                  "mass":  70.0,
+                                                                  "motionType":  "Kinematic"
+                                                              },
+                                               "type":  "PhysicsBodyComponent"
+                                           },
+                                           {
+                                               "id":  5,
+                                               "properties":  {
+                                                                  "edgeGuardEnabled":  false,
+                                                                  "enabled":  true,
+                                                                  "maximumSpeed":  5.2,
+                                                                  "movementSpace":  "Camera"
+                                                              },
+                                               "type":  "CharacterLocomotionComponent"
+                                           },
+                                           {
+                                               "id":  6,
+                                               "properties":  {
+                                                                  "enabled":  true,
+                                                                  "jumpAction":  "Gameplay.Jump",
+                                                                  "lookAction":  "Gameplay.Look",
+                                                                  "moveAction":  "Gameplay.Move",
+                                                                  "sprintAction":  "Gameplay.Sprint"
+                                                              },
+                                               "type":  "CharacterInputComponent"
+                                           }
+                                       ],
+                        "editorLocked":  false,
+                        "editorVisible":  true,
+                        "enabled":  true,
+                        "id":  2,
+                        "name":  "Player",
+                        "parent":  null,
+                        "sourcePrefabId":  "",
+                        "transform":  {
+                                          "position":  [
+                                                           0,
+                                                           0.9,
+                                                           -7
+                                                       ],
+                                          "rotationEulerDeg":  [
+                                                                   0,
+                                                                   0,
+                                                                   0
+                                                               ],
+                                          "scale":  [
+                                                        1.0,
+                                                        1.0,
+                                                        1.0
+                                                    ]
+                                      }
+                    },
+                    {
+                        "components":  [
+                                           {
+                                               "id":  1,
+                                               "properties":  {
+                                                                  "assetId":  "",
+                                                                  "castShadow":  true,
+                                                                  "receiveShadow":  true,
+                                                                  "renderStatic":  false,
+                                                                  "visible":  true
+                                                              },
+                                               "type":  "ModelComponent"
+                                           },
+                                           {
+                                               "id":  2,
+                                               "properties":  {
+                                                                  "depth":  1.36,
+                                                                  "doubleSided":  false,
+                                                                  "generateTangents":  true,
+                                                                  "height":  3.4,
+                                                                  "kind":  "Capsule",
+                                                                  "materialSelection":  "generated://checker/bfbfbfff/8a8a8aff",
+                                                                  "width":  1.36
+                                                              },
+                                               "type":  "ProceduralMeshComponent"
+                                           },
+                                           {
+                                               "id":  3,
+                                               "properties":  {
+                                                                  "center":  [
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 0.0
+                                                                             ],
+                                                                  "enabled":  true,
+                                                                  "fitMode":  "Manual",
+                                                                  "height":  3.4,
+                                                                  "radius":  0.68,
+                                                                  "rotation":  [
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   0.0
+                                                                               ],
+                                                                  "shape":  "Capsule",
+                                                                  "trigger":  false
+                                                              },
+                                               "type":  "ColliderComponent"
+                                           }
+                                       ],
+                        "editorLocked":  false,
+                        "editorVisible":  true,
+                        "enabled":  true,
+                        "id":  3,
+                        "name":  "Boss",
+                        "parent":  null,
+                        "sourcePrefabId":  "",
+                        "transform":  {
+                                          "position":  [
+                                                           0,
+                                                           1.7,
+                                                           7
+                                                       ],
+                                          "rotationEulerDeg":  [
+                                                                   0,
+                                                                   180,
+                                                                   0
+                                                               ],
+                                          "scale":  [
+                                                        1.0,
+                                                        1.0,
+                                                        1.0
+                                                    ]
+                                      }
+                    },
+                    {
+                        "components":  [
+                                           {
+                                               "id":  1,
+                                               "properties":  {
+                                                                  "enabled":  true,
+                                                                  "verticalFovDegrees":  60.0
+                                                              },
+                                               "type":  "CameraComponent"
+                                           },
+                                           {
+                                               "id":  2,
+                                               "properties":  {
+                                                                  "enabled":  true,
+                                                                  "initialDistance":  6.0,
+                                                                  "initialPitchDegrees":  16.0,
+                                                                  "initialYawDegrees":  0.0,
+                                                                  "pivotOffset":  [
+                                                                                      0.0,
+                                                                                      0.6,
+                                                                                      0.0
+                                                                                  ],
+                                                                  "targetObjectId":  {
+                                                                                         "$hikariRef":  "SceneObject",
+                                                                                         "id":  2
+                                                                                     },
+                                                                  "verticalDeadZone":  0.6
+                                                              },
+                                               "type":  "CameraFollowComponent"
+                                           }
+                                       ],
+                        "editorLocked":  false,
+                        "editorVisible":  true,
+                        "enabled":  true,
+                        "id":  4,
+                        "name":  "Gameplay Camera",
+                        "parent":  null,
+                        "sourcePrefabId":  "",
+                        "transform":  {
+                                          "position":  [
+                                                           0,
+                                                           3,
+                                                           -13
+                                                       ],
+                                          "rotationEulerDeg":  [
+                                                                   16.0,
+                                                                   0.0,
+                                                                   0.0
+                                                               ],
+                                          "scale":  [
+                                                        1.0,
+                                                        1.0,
+                                                        1.0
+                                                    ]
+                                      }
+                    }
+                ],
+    "sceneName":  "BossSandBox",
+    "systems":  [
+                    {
+                        "enabled":  true,
+                        "executionOrder":  100,
+                        "settings":  {
+
+                                     },
+                        "systemId":  "ModelRenderSystem"
+                    },
+                    {
+                        "enabled":  true,
+                        "executionOrder":  100,
+                        "settings":  {
+
+                                     },
+                        "systemId":  "Project_TD2_2.Game"
+                    }
+                ],
+    "version":  10
+}
