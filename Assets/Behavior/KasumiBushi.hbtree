@@ -82,8 +82,8 @@
       "id": 8,
       "type": "Project_TD2_2.BossWait",
       "params": {
-        "maxFrames": 110,
-        "minFrames": 20
+        "maxFrames": 120,
+        "minFrames": 30
       }
     },
     {
@@ -107,7 +107,8 @@
         19,
         20,
         21,
-        60
+        60,
+        61
       ]
     },
     {
@@ -212,6 +213,14 @@
       "name": "天降り斬り",
       "params": {
         "move": "天降り斬り"
+      }
+    },
+    {
+      "id": 61,
+      "type": "Project_TD2_2.BossMove",
+      "name": "退き溜め",
+      "params": {
+        "move": "退き溜め"
       }
     },
     {

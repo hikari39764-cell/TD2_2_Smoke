@@ -189,6 +189,15 @@ struct BossSkyfallState {
     bool dodged = false;
 };
 
+// 退き溜めの溜め（退き終えてから斬撃を放つまで）。技を始めた tick に消す。
+struct BossRetreatState {
+    // 溜めている（溜め始めた tick に立て、放った・打ち切られた tick に下ろす）。崩せる被弾数はこの間だけ数える。
+    bool charging = false;
+    // 溜めの長さ（前隙の残り＋溜めの揺らぎ）と、溜めた tick の数。
+    int chargeFrames = 0;
+    int chargeElapsed = 0;
+};
+
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
 inline constexpr size_t kBossReactionMemory = 16;
 
@@ -360,13 +369,17 @@ public:
     float skyfallMaxTravel = 16.0f;
     int skyfallLandCrouchFrames = 30;
     float skyfallBlastScale = 1.8f;
+    // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
+    // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
+    int retreatStepFrames = 20;
     // ── 天降り斬りの見た目（規則は変えない） ──
-    // 空中で溜める間、剣へ集まって来る光の粒（フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
+    // 溜める間（天降り斬りの空中・退き溜め。規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
+    // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
     HIKARI::GameProjectVfxAssetReference gatherEffect{"b84f0c6d2e9a4f17a35d6c1e0f7b92d4", "Assets/Vfx/BossChargeGather.hvfx"};
-    float skyfallGatherScale = 1.3f;
+    float chargeGatherScale = 1.3f;
     // 溜め切った時の、剣の光の大きさと霞の量（構えの時に対する倍）。
-    float skyfallGlowScale = 3.0f;
-    float skyfallHazeScale = 3.0f;
+    float chargeGlowScale = 3.0f;
+    float chargeHazeScale = 3.0f;
     // 落ちる所を決めた瞬間に剣がひときわ光る（落ちて来る合図。光の倍率と、戻るまでの秒）。
     float skyfallLockFlare = 2.5f;
     float skyfallLockFlareSeconds = 0.25f;
@@ -582,6 +595,10 @@ public:
     int activeClones = 0;
     BossDetonation detonation;
     BossSkyfallState skyfall;
+    BossRetreatState retreat;
+    // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに
+    // 書き、それ以外の tick は 0（BossSystem が tick の始めに戻す）。規則は読まず、見た目（BossVisuals）が読む。
+    float chargeVisual = 0.0f;
     // いまの技のどれかの一撃が、いまのフェーズで火を残す＝この技の間は剣が燃えている。技を始めた tick に決め、
     // 待機へ戻る・打ち切られる（気絶・崩れ・撃破）まで保つ。規則は読まず、見た目（BossVisuals）が読む。
     bool bladeLit = false;

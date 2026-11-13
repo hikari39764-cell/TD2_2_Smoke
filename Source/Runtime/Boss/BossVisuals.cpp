@@ -246,7 +246,8 @@ constexpr float kSkyfallPuffLift = 0.5f;
 // 炎の輪の出始めの大きさ（広がり切った時に対する割合）。
 constexpr float kSkyfallRingStart = 0.2f;
 
-// 天降り斬りの見た目：跳ぶ所の霞、空中の溜め（剣へ集まる光の粒）、一緒に落ちる刃、着地の周りの塊と炎の輪。
+// 天降り斬りの見た目：跳ぶ所の霞、一緒に落ちる刃、着地の周りの塊と炎の輪。溜めの間の、剣へ集まる光の粒もここで出す
+// （退き溜めの溜めにも出る）。
 // 規則が書く boss.skyfall を読むだけ（当たりや落ちる所は変えない）。地面には何も予告しない。
 void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
     const auto vfx = world.GetVfx();
@@ -263,14 +264,14 @@ void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
         blast.scale = boss.skyfallTakeoffBlastScale;
         blast.position = {sky.takeoff.x, sky.takeoff.y + kSkyfallPuffLift, sky.takeoff.z};
     }
-    // 空中で溜める間：剣へ集まって来る光の粒。落ち始めたら止める。
-    if (sky.phase == BossSkyfallPhase::Hang && !boss.gatherEffect.IsEmpty()) {
+    // 溜める間（天降り斬りの空中・退き溜め）：剣へ集まって来る光の粒。溜め終わったら止める。
+    if (boss.chargeVisual > 0.0f && !boss.gatherEffect.IsEmpty()) {
         HIKARI::GameProjectTransform transform{};
         // 剣の真ん中へ集める（頭上に掲げた剣先だと、見上げるカメラの上の縁から外れやすい）。
         const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
         transform.position = Lerp(sword.inner, sword.outer, 0.5f);
         transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-        transform.scale = {boss.skyfallGatherScale, boss.skyfallGatherScale, boss.skyfallGatherScale};
+        transform.scale = {boss.chargeGatherScale, boss.chargeGatherScale, boss.chargeGatherScale};
         HIKARI::GameProjectVfxParameterOverrides parameters{};
         VfxParameters::SetFloat(parameters, kMistInput, fire ? 0.0f : 1.0f);
         VfxParameters::SetFloat(parameters, kEmberInput, fire ? 1.0f : 0.0f);
@@ -496,29 +497,30 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     const bool lit = (boss.bladeLit && acting) ||
                      (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
     UpdateBladeFire(world, object, boss, lit);
-    // 天降り斬りの空中の溜めと落ちる間も、剣先の霞と光を出す。
-    const bool charging =
-        boss.skyfall.phase == BossSkyfallPhase::Hang || boss.skyfall.phase == BossSkyfallPhase::Dive;
+    // 溜める間（天降り斬りの空中・退き溜め）と、天降り斬りで落ちる間も、剣先の霞と光を出す。
+    const bool diving = boss.skyfall.phase == BossSkyfallPhase::Dive;
+    const bool charging = boss.chargeVisual > 0.0f || diving;
     if (!swinging && !kamae && !lit && !charging) {
         StopHandle(world, boss.swordVfx);
         return;
     }
     HIKARI::GameProjectTransform transform{};
     const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
-    // 天降り斬りの溜めの光は剣の真ん中に出す（集まる光の粒と同じ所）。
-    transform.position = swinging                                        ? boss.swordOuter
-                         : boss.skyfall.phase == BossSkyfallPhase::Hang ? Lerp(sword.inner, sword.outer, 0.5f)
-                                                                        : sword.outer;
+    // 溜めの光は剣の真ん中に出す（集まる光の粒と同じ所）。
+    transform.position = swinging                   ? boss.swordOuter
+                         : boss.chargeVisual > 0.0f ? Lerp(sword.inner, sword.outer, 0.5f)
+                                                    : sword.outer;
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
     float amount = swinging ? boss.swordEffectAmount : boss.kamaeEffectAmount;
     float ember = lit        ? std::max(boss.bladeLitEmber, boss.swordEmberScale)
                   : swinging ? boss.swordEmberScale
                              : boss.kamaeEmberScale;
     if (charging) {
-        // 溜めるにつれて剣の光と霞が大きくなり、落ちる所を決めた瞬間にひときわ光る（落ちて来る合図は剣の光だけ）。
-        amount *= Lerp(1.0f, boss.skyfallHazeScale, boss.skyfall.charge);
-        ember *= Lerp(1.0f, boss.skyfallGlowScale, boss.skyfall.charge) *
-                 (1.0f + (boss.skyfallLockFlare - 1.0f) * boss.skyfallFlare);
+        // 溜めるにつれて剣の光と霞が大きくなる。天降り斬りは、落ちる所を決めた瞬間にひときわ光る
+        // （落ちて来る合図は剣の光だけ）。落ちる間は溜め切った大きさのまま。
+        const float charge = diving ? 1.0f : boss.chargeVisual;
+        amount *= Lerp(1.0f, boss.chargeHazeScale, charge);
+        ember *= Lerp(1.0f, boss.chargeGlowScale, charge) * (1.0f + (boss.skyfallLockFlare - 1.0f) * boss.skyfallFlare);
     }
     if (!boss.swordVfx.IsValid()) {
         boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount, ember, lit);

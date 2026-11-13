@@ -220,6 +220,9 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
     const BossMove* move = BossRules::GetMove(boss, boss.move);
     if (move == nullptr || move->breakHits <= 0)
         return;
+    // 退き溜めは、退いている間（溜める前）の被弾は数えない。
+    if (move->type == BossMoveType::Retreat && !boss.retreat.charging)
+        return;
     boss.windupHits += static_cast<int>(std::min<uint64_t>(freshHits, kBossHitMemory));
     if (boss.windupHits < move->breakHits)
         return;
@@ -389,7 +392,7 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu state=%d phase=%d move=%d stateFrame=%d ground=(%.3f,%.3f,%.3f) yaw=%.3f "
                   "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d sink=%.3f hidden=%d "
-                  "clones=%d",
+                  "clones=%d chargeVisual=%.3f",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.state),
                   static_cast<int>(boss.phase), boss.move, boss.stateFrame, static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.y), static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw),
@@ -397,7 +400,7 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
                   static_cast<double>(boss.crouch), static_cast<double>(boss.stun), boss.stunCount,
                   health ? static_cast<double>(DamageableRules::GetHealth(*health)) : -1.0,
                   static_cast<int>(boss.fluidAccepted), static_cast<double>(boss.sink), static_cast<int>(boss.hidden),
-                  boss.activeClones);
+                  boss.activeClones, static_cast<double>(boss.chargeVisual));
     BossLog::Write(message);
 }
 
@@ -431,6 +434,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             boss.clockSeconds += frame.fixedDt;
             boss.floatClock += frame.fixedDt;
             boss.swordSmoke = false;
+            boss.chargeVisual = 0.0f;
             boss.bodySmokeRate = 0.0f;
             boss.glintFrames = std::max(0, boss.glintFrames - 1);
             // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。

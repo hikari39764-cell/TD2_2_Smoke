@@ -24,6 +24,9 @@ public:
     static void StepFloat(BossComponent& boss);
     // プレイヤーの方へ毎秒 degreesPerSecond まで向く。
     static void FaceRate(BossFrame& frame, float degreesPerSecond);
+    // 後ろへ跳ぶ（後ろへ下がる・退き溜めの退く所）。progress は跳ぶ間の進み（0〜1）。boss.stepFrom から、
+    // プレイヤーと反対へ backstepDistance、高さ backstepHeight の弧で跳ぶ。
+    static void StepBack(BossFrame& frame, float progress);
     // 動ける範囲（戦場の円）に収める。
     static void ClampToArena(const BossComponent& boss, HIKARI::GameProjectFloat3& point);
 };

@@ -245,10 +245,7 @@ void ActMotion(BossFrame& frame, const BossMove& move, float progress) {
             boss.velocity = Lerp(boss.velocity, want, kVelocityBlend);
             boss.ground = Add(boss.ground, Mul(boss.velocity, frame.dt));
         } else if (move.type == BossMoveType::Backstep) {
-            const float u = std::clamp(progress, 0.0f, 1.0f);
-            const float e = 1.0f - (1.0f - u) * (1.0f - u);
-            boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * e));
-            boss.height = boss.backstepHeight * std::sin(u * kPi);
+            BossMoveExecutor::StepBack(frame, progress);
         }
     }
     if (move.type == BossMoveType::Dash)
@@ -337,6 +334,15 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
 
 } // namespace
 
+void BossMoveExecutor::StepBack(BossFrame& frame, float progress) {
+    BossComponent& boss = frame.boss;
+    const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
+    const float u = std::clamp(progress, 0.0f, 1.0f);
+    const float e = 1.0f - (1.0f - u) * (1.0f - u);
+    boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * e));
+    boss.height = boss.backstepHeight * std::sin(u * kPi);
+}
+
 void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
     const Vec3 offset = Sub(point, boss.arenaCenter);
     const float distance = FlatLength(offset);
@@ -407,8 +413,10 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
                                                          static_cast<float>(segment.rangeMax), BossRandom(boss)) +
                                                     0.5f)));
         boss.strafe = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
-        boss.stepFrom = boss.ground;
     }
+    // 後ろへ跳ぶ型（後ろへ下がる・退き溜め）の跳び始め。
+    boss.stepFrom = boss.ground;
+    boss.retreat = {};
     boss.aimFrozen = false;
     boss.windupHits = 0;
     boss.windupHold = 0;
@@ -569,6 +577,7 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     boss.dashStarted = false;
     boss.dashLanded = false;
     boss.bladeLit = false;
+    BossSpecialMoves::EndRetreatCharge(boss, "broken");
     // 空中（天降り斬り・跳躍）で打ち切られたら、その場で地面へ戻す。様子のログは落とす前の高さを残す。
     BossSkyfall::Reset(boss, "interrupted");
     boss.height = 0.0f;

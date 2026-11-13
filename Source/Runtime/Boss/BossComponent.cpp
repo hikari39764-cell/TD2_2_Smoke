@@ -132,10 +132,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("skyfallBlastScale", "天降り斬り：着地の爆発の大きさ（当たった所の爆発に対する倍。0 で出さない）",
                      skyfallBlastScale, 0.0f, 8.0f);
         fields.Vfx("gatherEffect", "溜めの間、剣へ集まって来る光の粒のエフェクト（空なら出さない）", gatherEffect);
-        fields.Float("skyfallGatherScale", "天降り斬り：集まる光の粒の大きさ (倍)", skyfallGatherScale, 0.0f, 10.0f);
-        fields.Float("skyfallGlowScale", "天降り斬り：溜め切った時の剣の光の大きさ（構えに対する倍）", skyfallGlowScale, 0.0f,
+        fields.Float("chargeGatherScale", "溜める技：集まる光の粒の大きさ (倍)", chargeGatherScale, 0.0f, 10.0f);
+        fields.Float("chargeGlowScale", "溜める技：溜め切った時の剣の光の大きさ（構えに対する倍）", chargeGlowScale, 0.0f,
                      20.0f);
-        fields.Float("skyfallHazeScale", "天降り斬り：溜め切った時の剣の霞の量（構えに対する倍）", skyfallHazeScale, 0.0f,
+        fields.Float("chargeHazeScale", "溜める技：溜め切った時の剣の霞の量（構えに対する倍）", chargeHazeScale, 0.0f,
                      20.0f);
         fields.Float("skyfallLockFlare", "天降り斬り：落ちる所を決めた瞬間の剣の光 (倍。1 で無効)", skyfallLockFlare, 1.0f,
                      10.0f);
@@ -153,6 +153,11 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "天降り斬りの落ちる先は、技の表の「追尾を止める F」の時のプレイヤーの手前です（空欄なら落ち始めの時）。"
             "それより後に動けば外れます。落ちる長さを変えた時は、表を読み直す（Play し直す）と効きます。"
             "地面や画面の予告は出しません（ボスの向きと構えで読ませる）。");
+        fields.Int("retreatStepFrames", "退き溜め：前隙の始めに後ろへ跳ぶ長さ (F。前隙の残りが溜め)", retreatStepFrames, 1,
+                   120);
+        fields.Note("退き溜めの跳ぶ距離・高さは「後ろへ下がる」と同じ値です。溜めの間は前へ出ず、プレイヤーの方を向き続けます"
+                    "（表の「追尾を止める F」で止まる）。溜めの間に表の「崩せる被弾数」だけ当てると崩れます（跳んでいる間の"
+                    "被弾は数えない）。");
         fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
                      kickRingStartRadius, 0.0f, 20.0f);
         fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",

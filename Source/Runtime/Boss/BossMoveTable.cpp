@@ -15,7 +15,7 @@ constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
 constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",   "overhead", "kick",
                                                "knife",    "string", "ambush",   "clone",    "slashH",   "slashV",
-                                               "walkSide", "walkIn", "backstep", "detonate", "skyfall"};
+                                               "walkSide", "walkIn", "backstep", "detonate", "skyfall",  "retreat"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -167,7 +167,8 @@ std::optional<BossStrikeDirection> DefaultDirection(BossMoveType type) {
     case BossMoveType::Dash:
     case BossMoveType::Ambush: return BossStrikeDirection::Horizontal;
     case BossMoveType::SlashV:
-    case BossMoveType::Overhead: return BossStrikeDirection::Vertical;
+    case BossMoveType::Overhead:
+    case BossMoveType::Retreat: return BossStrikeDirection::Vertical;
     case BossMoveType::SlashR:
     case BossMoveType::Jump: return BossStrikeDirection::Kesa;
     case BossMoveType::SlashL: return BossStrikeDirection::ReverseKesa;
@@ -284,7 +285,8 @@ bool BossMoveTable::IsSwingType(BossMoveType type) {
     case BossMoveType::SlashV:
     case BossMoveType::Overhead:
     case BossMoveType::String:
-    case BossMoveType::Ambush: return true;
+    case BossMoveType::Ambush:
+    case BossMoveType::Retreat: return true;
     default: return false;
     }
 }
@@ -599,6 +601,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         case BossMoveType::SlashH:
         case BossMoveType::SlashV:
         case BossMoveType::Overhead:
+        case BossMoveType::Retreat:
             // 前隙は最低「振り上げ＋構え」。
             pre = std::max(pre, static_cast<double>(timing.kamaeFrames + timing.raiseFrames));
             break;

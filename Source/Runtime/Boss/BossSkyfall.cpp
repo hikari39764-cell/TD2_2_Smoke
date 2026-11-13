@@ -146,6 +146,7 @@ void BossSkyfall::Pre(BossFrame& frame) {
         boss.height = boss.skyfallHeight;
         state.charge = std::clamp(
             static_cast<float>(state.hangElapsed) / static_cast<float>(std::max(1, state.hangFrames)), 0.0f, 1.0f);
+        boss.chargeVisual = state.charge;
     }
     if (state.locked)
         return;

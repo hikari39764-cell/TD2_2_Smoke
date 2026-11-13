@@ -95,6 +95,32 @@ void AmbushAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     }
 }
 
+// 退き溜めの前隙：始めの retreatStepFrames で後ろへ跳び、残り（と溜めの揺らぎ）はその場で溜める。
+// 向き直りは実行器の前隙の共通の流れ（追尾を止める F で止まる）。溜めの間は前へ出ない。
+void RetreatPre(BossFrame& frame, const BossMove& move) {
+    BossComponent& boss = frame.boss;
+    BossRetreatState& retreat = boss.retreat;
+    const int step = std::clamp(boss.retreatStepFrames, 1, std::max(1, move.pre - 1));
+    if (boss.stateFrame <= step) {
+        BossMoveExecutor::StepBack(frame, Share(boss.stateFrame, step));
+        return;
+    }
+    boss.height = 0.0f;
+    if (!retreat.charging) {
+        retreat.charging = true;
+        // 溜めの揺らぎは溜めの最後の構えで止まって足される（実行器の windupHold）。まだ減り始める前なので全部足せる。
+        retreat.chargeFrames = move.pre - step + boss.windupHold;
+        char extra[160]{};
+        std::snprintf(extra, sizeof(extra), "state=begin frames=%d extra=%d stepped=%.3f pos=(%.3f,%.3f)",
+                      retreat.chargeFrames, boss.windupHold,
+                      static_cast<double>(FlatLength(Sub(boss.ground, boss.stepFrom))),
+                      static_cast<double>(boss.ground.x), static_cast<double>(boss.ground.z));
+        Log(boss, "RetreatCharge", extra);
+    }
+    ++retreat.chargeElapsed;
+    boss.chargeVisual = Share(retreat.chargeElapsed, retreat.chargeFrames);
+}
+
 } // namespace
 
 void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progress) {
@@ -113,6 +139,7 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     case BossMoveType::Clone: boss.sink = boss.hidePreSinkDepth * std::clamp(progress, 0.0f, 1.0f); break;
     case BossMoveType::Detonate: BossDetonate::Charge(frame, std::clamp(progress, 0.0f, 1.0f)); break;
     case BossMoveType::Skyfall: BossSkyfall::Pre(frame); break;
+    case BossMoveType::Retreat: RetreatPre(frame, move); break;
     default: break;
     }
 }
@@ -128,6 +155,11 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
     case BossMoveType::Ambush: AmbushAct(frame, move, g, entered); break;
     case BossMoveType::Detonate: BossDetonate::Step(frame, move); break;
     case BossMoveType::Skyfall: BossSkyfall::Act(frame, move, g); break;
+    case BossMoveType::Retreat:
+        // 振り抜いて斬撃を放った tick（実行器の SwingStep がこの tick に放つ）。
+        if (g.hit && g.tIn == g.swingLength)
+            EndRetreatCharge(boss, "release");
+        break;
     case BossMoveType::Clone:
         // 新しい場所で、霧から浮かび上がる。
         boss.sink = boss.hidePreSinkDepth * (1.0f - Share(boss.stateFrame, boss.appearRiseFrames));
@@ -165,6 +197,16 @@ void BossSpecialMoves::Post(BossComponent& boss, const BossMove& move, float pro
     case BossMoveType::Skyfall: BossSkyfall::Post(boss); break;
     default: break;
     }
+}
+
+void BossSpecialMoves::EndRetreatCharge(BossComponent& boss, const char* state) {
+    if (!boss.retreat.charging)
+        return;
+    boss.retreat.charging = false;
+    char extra[128]{};
+    std::snprintf(extra, sizeof(extra), "state=%s charged=%d frames=%d hits=%d", state, boss.retreat.chargeElapsed,
+                  boss.retreat.chargeFrames, boss.windupHits);
+    Log(boss, "RetreatCharge", extra);
 }
 
 void BossSpecialMoves::Puff(BossComponent& boss, Vec3 ground, bool residue) {

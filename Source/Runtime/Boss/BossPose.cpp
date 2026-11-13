@@ -178,6 +178,16 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     case BossMoveType::SlashH: return sw(kBack, kSide);
     case BossMoveType::Overhead:
     case BossMoveType::SlashV: return sw(kUp, kVerticalEnd);
+    case BossMoveType::Retreat:
+        // 退く間は剣を下げたまま。降りたら振り上げて、溜めの間ずっと振りかぶったまま構える（長い溜めを剣で見せる）。
+        if (phase == BossActPhase::Pre) {
+            if (!boss.retreat.charging)
+                return kRest;
+            return Sweep(kRest, Cocked(kUp, kVerticalEnd),
+                         static_cast<float>(boss.retreat.chargeElapsed) /
+                             static_cast<float>(std::max(1, boss.raiseFrames)));
+        }
+        return sw(kUp, kVerticalEnd);
     case BossMoveType::Jump: {
         // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
         if (phase == BossActPhase::Pre)
