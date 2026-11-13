@@ -1,0 +1,14 @@
+{
+  "displayName": "BossGreatswordFire",
+  "guid": "d93a7b15e0c24f8ab46d2e9c7a01f5b3",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossGreatswordFire.hvfx",
+  "type": "VfxEffect"
+}

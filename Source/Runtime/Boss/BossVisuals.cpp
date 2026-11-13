@@ -30,6 +30,8 @@ constexpr const char* kImpactInput = "input.impact";
 constexpr const char* kGlowInput = "input.glow";
 // 炎の輪のシェーダーの層の明るさ（Color。輪が消える時に 0 へ下げる）。
 constexpr const char* kFadeInput = "input.fade";
+// 霞の大剣のエフェクトの入力：柄から剣先へ満たす割合（0〜1）。出す量は amount。
+constexpr const char* kFillInput = "input.fill";
 // 剣に沿って場の火の域へ入れる燃料の番号（BossSmoke の注入・押しの番号と重ならない所）。
 constexpr uint64_t kBladeFuelBase = 900;
 
@@ -405,6 +407,86 @@ void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
     }
 }
 
+// 場の霧を押す所を、地面からこの高さに置く。
+constexpr float kGreatswordPushLift = 0.5f;
+
+// 霞の大剣の見た目：大剣の模型の輪郭へ流体を流し込むエフェクトを、握りの位置と剣の向きに合わせて持って行く。
+// 満ちる割合（柄から剣先へ）は規則が書く boss.greatsword.fill をそのまま送る。規則は変えない。
+void UpdateGreatsword(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
+    const auto vfx = world.GetVfx();
+    const BossGreatswordState& sword = boss.greatsword;
+    const BossGreatswordPhase seen = boss.greatswordSeenPhase;
+    boss.greatswordSeenPhase = sword.phase;
+    if (boss.greatswordVfx.IsValid() && !vfx.IsActive(boss.greatswordVfx))
+        boss.greatswordVfx = {};
+    const bool held = sword.phase != BossGreatswordPhase::None;
+    if (held && seen == BossGreatswordPhase::None && boss.greatswordVfx.IsValid()) {
+        // 前の大剣がまだ消えかけている：止めて、次のフレームに出す（止めた域もそのフレームの間は流体域の数に入る）。
+        StopHandle(world, boss.greatswordVfx);
+        boss.greatswordSeenPhase = BossGreatswordPhase::None;
+        return;
+    }
+    if (held) {
+        // 剣の平らな面：作る間はボスの正面へ向け（プレイヤーから剣の形が見える）、薙ぐ時は上へ向ける（刃が進む向きに立つ）。
+        // 薙ぐ時の面は真上から少しボスの正面へ傾け、前にいるプレイヤーからも面が見えるようにする。
+        const Vec3 front = Forward(boss.yaw);
+        const Vec3 swing = Normalize(Add(Vec3{0.0f, 1.0f, 0.0f}, Mul(front, boss.greatswordSweepFaceTilt)), {0.0f, 1.0f, 0.0f});
+        const Vec3 normal = Normalize(Lerp(front, swing, sword.wind), {0.0f, 1.0f, 0.0f});
+        boss.greatswordTransform.position = sword.hilt;
+        boss.greatswordTransform.rotation = BasisRotation(Cross(sword.direction, normal), sword.direction);
+        boss.greatswordTransform.scale = {1.0f, 1.0f, 1.0f};
+        boss.greatswordFade = boss.greatswordFadeSeconds;
+    } else if (boss.greatswordVfx.IsValid()) {
+        // 技が終わった・崩された：出すのをやめ、残った霞が消えるまで待ってから止める（域ごと急に消さない）。
+        boss.greatswordFade -= seconds;
+        if (boss.greatswordFade <= 0.0f) {
+            StopHandle(world, boss.greatswordVfx);
+            return;
+        }
+    } else {
+        return;
+    }
+    HIKARI::GameProjectVfxParameterOverrides parameters{};
+    VfxParameters::SetFloat(parameters, kFillInput, held ? sword.fill : 1.0f);
+    // 薙ぐ間は多めに流し込む。ほどける間と終わった後は、もう出さない（残った霞が自分で消える）。
+    const float amount = sword.phase == BossGreatswordPhase::Conjure ? 1.0f
+                         : sword.phase == BossGreatswordPhase::Sweep ? boss.greatswordSweepAmount
+                                                                     : 0.0f;
+    VfxParameters::SetFloat(parameters, kAmountInput, amount);
+    if (!boss.greatswordVfx.IsValid()) {
+        const auto& asset = sword.fire ? boss.greatswordFireEffect : boss.greatswordMistEffect;
+        if (!held || asset.IsEmpty())
+            return;
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = asset;
+        play.transform = boss.greatswordTransform;
+        play.parameters = parameters;
+        boss.greatswordVfx = vfx.Play(play);
+        boss.vfxAccepted = boss.greatswordVfx.IsValid() && boss.vfxAccepted;
+    } else {
+        HIKARI::GameProjectVfxUpdateRequest update{};
+        update.updateTransform = 1u;
+        update.updateParameters = 1u;
+        update.transform = boss.greatswordTransform;
+        update.parameters = parameters;
+        boss.vfxAccepted = vfx.Update(boss.greatswordVfx, update) && boss.vfxAccepted;
+    }
+    // 薙ぎ終わった瞬間：剣が通った扇に沿って、場の霧を外へ押す（爆発の枠の「押し」だけを使う。光は出さない）。
+    if (sword.phase == BossGreatswordPhase::Dissolve && seen == BossGreatswordPhase::Sweep &&
+        boss.greatswordSweepPushes > 0 && boss.greatswordSweepPushDistance > 0.0f) {
+        const float yawEnd = YawOf(sword.direction);
+        const float swept = boss.greatswordSweepDegrees * kRadiansPerDegree;
+        for (int i = 0; i < boss.greatswordSweepPushes; ++i) {
+            const float back = swept * (static_cast<float>(i) + 0.5f) / static_cast<float>(boss.greatswordSweepPushes);
+            const Vec3 at = Add(boss.ground, Mul(Forward(yawEnd - back), boss.greatswordSweepPushDistance));
+            BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
+            blast = {};
+            blast.pushPending = true;
+            blast.position = {at.x, boss.ground.y + kGreatswordPushLift, at.z};
+        }
+    }
+}
+
 } // namespace
 
 // 火を残す技の間、剣を燃やす：剣に沿って場の火の域へ燃料を入れ（振ると炎が弧を引く）、火が付いた瞬間に小さな火球を出す。
@@ -433,6 +515,7 @@ void UpdateBladeFire(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
     // 天降り斬りは爆発の枠へ塊を入れるので、枠を出す所より前に進める。
     UpdateSkyfall(world, object, boss, seconds);
+    UpdateGreatsword(world, boss, seconds);
     UpdateSlashes(world, boss, seconds);
     UpdateRing(world, boss, seconds);
     // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
@@ -500,7 +583,11 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     // 溜める間（天降り斬りの空中・退き溜め）と、天降り斬りで落ちる間も、剣先の霞と光を出す。
     const bool diving = boss.skyfall.phase == BossSkyfallPhase::Dive;
     const bool charging = boss.chargeVisual > 0.0f || diving;
-    if (!swinging && !kamae && !lit && !charging) {
+    // 霞の大剣を持っている間は、ふだんの見えない剣の霞と光は出さない（大剣のエフェクトが剣そのもの）。
+    // 薙ぐ間だけ、剣先の霞のエフェクトを大剣の上に置いて一緒に動かし、通った所に霞の跡を残す。
+    const bool conjured = boss.greatsword.phase != BossGreatswordPhase::None;
+    const bool trailing = boss.greatsword.phase == BossGreatswordPhase::Sweep && boss.greatswordTrailAmount > 0.0f;
+    if ((conjured && !trailing) || (!swinging && !kamae && !lit && !charging && !trailing)) {
         StopHandle(world, boss.swordVfx);
         return;
     }
@@ -515,6 +602,12 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     float ember = lit        ? std::max(boss.bladeLitEmber, boss.swordEmberScale)
                   : swinging ? boss.swordEmberScale
                              : boss.kamaeEmberScale;
+    if (trailing) {
+        const BossGreatswordState& great = boss.greatsword;
+        transform.position = Add(great.hilt, Mul(great.direction, great.length * boss.greatswordTrailAlong));
+        amount = boss.swordEffectAmount * boss.greatswordTrailAmount;
+        ember = boss.swordEmberScale * boss.greatswordTrailGlow;
+    }
     if (charging) {
         // 溜めるにつれて剣の光と霞が大きくなる。天降り斬りは、落ちる所を決めた瞬間にひときわ光る
         // （落ちて来る合図は剣の光だけ）。落ちる間は溜め切った大きさのまま。
@@ -550,6 +643,7 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     StopHandle(world, boss.skyfallBlade.handle);
     boss.skyfallBlade = {};
     StopHandle(world, boss.skyfallRingVfx);
+    StopHandle(world, boss.greatswordVfx);
 }
 
 } // namespace Project_TD2_2

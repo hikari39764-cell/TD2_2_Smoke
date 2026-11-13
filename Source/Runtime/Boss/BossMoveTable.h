@@ -35,6 +35,9 @@ enum class BossMoveType {
     // 退き溜め：後ろへ跳んで（後ろへ下がると同じ動き）その場で長く溜め、縦の一振りで大きな斬撃を飛ばす。
     // 前隙＝退く F（ボスの retreatStepFrames）＋残りが溜め。溜めの間は前へ出ない（縦斬りのように歩き寄らない）。
     Retreat,
+    // 霞の大剣：前隙で頭上に大剣を作り出し（柄から剣先へ霞で満ちる）、攻撃中にボスを中心に大きく横へ薙ぐ。
+    // 剣の長さ・角度・高さはボスの項目、薙ぐ長さは表の攻撃中（全部が当たりの区間）。剣を振る型ではない（斬撃は飛ばない）。
+    Greatsword,
     Count
 };
 
@@ -60,8 +63,9 @@ enum class BossMoveUse {
 enum class BossSegmentKind { Normal, Hide, Appear };
 
 // 技が地面に残す火の形（表の「残す火」列の 1 項目：線／跡／交差／池／輪）。どこへいつ塗るかは BossBurnMarks。
-// 線＝飛ぶ斬撃が通った地面、跡＝瞬間突進でボスが通った床、交差＝一撃の狙った所の X、池＝円、輪＝回し蹴りの輪の終わり。
-enum class BossBurnShape { None, Line, Trail, Cross, Pool, Ring };
+// 線＝飛ぶ斬撃が通った地面、跡＝瞬間突進でボスが通った床、交差＝一撃の狙った所の X、池＝円、輪＝回し蹴りの輪の終わり、
+// 弧＝霞の大剣が薙いだ扇（ボスを中心に、剣が通った角度に小さな円を並べる）。
+enum class BossBurnShape { None, Line, Trail, Cross, Pool, Ring, Arc };
 
 // 1 行に書ける火の数。表の 1 行に 2〜3 個あれば足りる（増やすと BossMove が大きくなるだけ）。
 inline constexpr size_t kBossBurnMarkCapacity = 4;

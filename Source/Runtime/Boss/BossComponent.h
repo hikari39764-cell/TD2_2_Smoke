@@ -198,6 +198,39 @@ struct BossRetreatState {
     int chargeElapsed = 0;
 };
 
+// 霞の大剣の段階。作り出す（前隙。最後の greatswordWindFrames で薙ぎ始めの構えへ下ろす）→ 薙ぐ（攻撃中）→
+// ほどける（後隙の始めの greatswordDissolveFrames）。それ以外は None。
+enum class BossGreatswordPhase { None, Conjure, Sweep, Dissolve };
+
+// 霞の大剣のいまの形。規則（BossGreatsword）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
+struct BossGreatswordState {
+    BossGreatswordPhase phase = BossGreatswordPhase::None;
+    // 柄から剣先へ満ちた割合（作り出す間に 0→1。薙ぐ・ほどける間は 1）。
+    float fill = 0.0f;
+    // 薙ぎ始めの構えへ下ろす進み（作り出す間の最後の greatswordWindFrames で 0→1。薙ぐ・ほどける間は 1）。
+    float wind = 0.0f;
+    // 薙ぐ進み（薙ぐ間に 0→1。ほどける間は 1）と、ほどける進み（ほどける間に 0→1）。
+    float sweep = 0.0f;
+    float dissolve = 0.0f;
+    // 柄（握り）の世界の位置と、柄から剣先への向き（単位ベクトル）、剣の長さ (m)。
+    HIKARI::GameProjectFloat3 hilt{};
+    HIKARI::GameProjectFloat3 direction{0.0f, 1.0f, 0.0f};
+    float length = 0.0f;
+    // 炎の大剣か（技を始めた tick の bladeLit。フェーズ 2 で「残す火」が付く時）。
+    bool fire = false;
+    // ここから下は規則の内側の覚え（見た目は読まない）。
+    // 薙ぐ向きの基準（薙ぎ始めの tick のボスの向き。rad）と、いまと 1 tick 前の剣の角度（基準からの度。右が負）。
+    float yaw = 0.0f;
+    float angle = 0.0f;
+    float previousAngle = 0.0f;
+    // 当たり（1 回の薙ぎで 1 回だけ）：判定に入った・当てた・無敵でよけられた。
+    bool caught = false;
+    bool hit = false;
+    bool dodged = false;
+    // 「弧」の火を塗り終えた所の数。
+    int firePainted = 0;
+};
+
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
 inline constexpr size_t kBossReactionMemory = 16;
 
@@ -372,6 +405,44 @@ public:
     // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
     int retreatStepFrames = 20;
+    // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
+    float greatswordLength = 6.5f;
+    float greatswordHiltOffset = 0.8f;
+    int greatswordFillFrames = 80;
+    float greatswordRaiseTilt = 15.0f;
+    float greatswordRaiseHeight = 2.6f;
+    int greatswordWindFrames = 14;
+    float greatswordSweepDegrees = 200.0f;
+    float greatswordSweepHeight = 1.3f;
+    float greatswordHitMarginDegrees = 4.0f;
+    float greatswordInnerRadius = 1.0f;
+    int greatswordDissolveFrames = 24;
+    // ── 霞の大剣の見た目（規則は変えない） ──
+    // 大剣のエフェクト：大剣の模型（Assets/Models/KasumiGreatsword.obj。握りから剣先まで 6.5 m）の輪郭へ流体を流し込む。
+    // フェーズ 1 は霞、フェーズ 2（炎の大剣）は火。剣の長さ greatswordLength は、この模型の長さに合わせてある。
+    HIKARI::GameProjectVfxAssetReference greatswordMistEffect{"c2e6f08a4b1d47c39a5e7d103f8b6a42",
+                                                              "Assets/Vfx/BossGreatswordMist.hvfx"};
+    HIKARI::GameProjectVfxAssetReference greatswordFireEffect{"d93a7b15e0c24f8ab46d2e9c7a01f5b3",
+                                                              "Assets/Vfx/BossGreatswordFire.hvfx"};
+    // 技が終わった・崩された後、残った霞が消えるまでエフェクトを止めずに待つ秒。
+    float greatswordFadeSeconds = 0.6f;
+    // 薙ぐ間に流し込む量（作る間に対する倍）。速く回る域の中で霞が薄まるのを補い、刃を明るく保つ。
+    float greatswordSweepAmount = 2.5f;
+    // 薙ぐ間の剣の平らな面の傾き（0＝真上を向く＝横から見ると線、1＝ボスの正面へ 45 度傾いて、前のプレイヤーから面が見える）。
+    float greatswordSweepFaceTilt = 1.0f;
+    // 薙ぐ間、剣が通った所に霞（フェーズ 2 は火の粉の光）を残す：剣先の霞のエフェクトを、握りから剣の長さのこの割合の所に
+    // 置いて一緒に動かす。量と光は、ふだんの振りに対する倍（0 で出さない）。
+    float greatswordTrailAlong = 0.6f;
+    float greatswordTrailAmount = 4.0f;
+    float greatswordTrailGlow = 2.0f;
+    // 薙ぎ終わった時、剣が通った所の場の霧を外へ押す所の数と、ボスからの距離 m（0 で押さない）。
+    int greatswordSweepPushes = 4;
+    float greatswordSweepPushDistance = 4.5f;
+    // 「弧」の火：ボスからこの距離の間に rows 本、薙いだ角度の step 度ごとに小さな円を塗る（円の直径は表の火の幅）。
+    float greatswordFireNear = 3.0f;
+    float greatswordFireFar = 7.0f;
+    int greatswordFireRows = 3;
+    float greatswordFireStepDegrees = 20.0f;
     // ── 天降り斬りの見た目（規則は変えない） ──
     // 溜める間（天降り斬りの空中・退き溜め。規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
     // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
@@ -596,6 +667,7 @@ public:
     BossDetonation detonation;
     BossSkyfallState skyfall;
     BossRetreatState retreat;
+    BossGreatswordState greatsword;
     // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに
     // 書き、それ以外の tick は 0（BossSystem が tick の始めに戻す）。規則は読まず、見た目（BossVisuals）が読む。
     float chargeVisual = 0.0f;
@@ -663,6 +735,11 @@ public:
     BossSkyfallPhase skyfallSeenPhase = BossSkyfallPhase::None;
     bool skyfallSeenLock = false;
     float skyfallFlare = 0.0f;
+    // 霞の大剣の見た目の状態：エフェクト、最後に送った変換（消える間もそこに置く）、消えるまでの残り秒、前のフレームに見た段階。
+    HIKARI::GameProjectVfxPlaybackHandle greatswordVfx{};
+    HIKARI::GameProjectTransform greatswordTransform{};
+    float greatswordFade = 0.0f;
+    BossGreatswordPhase greatswordSeenPhase = BossGreatswordPhase::None;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
     int playerHits = 0;

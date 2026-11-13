@@ -29,6 +29,10 @@ public:
     static void DashLanded(BossFrame& frame, const BossMove& move);
     // 回し蹴りの輪が広がりきった：その半径に帯を塗る（wave.burnWidth が 0 なら塗らない）。
     static void RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave);
+    // 霞の大剣が薙いでいる 1 tick：ボスの中心 center・薙ぐ向きの基準 yaw (rad) から見て、薙ぎ始めの startDegrees から
+    // toDegrees まで剣が通った所に「弧」を塗る（greatswordFireStepDegrees 度ごと。painted は塗り終えた所の数で、呼ぶ側が持つ）。
+    static void SweptArc(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 center, float yaw,
+                         float startDegrees, float toDegrees, int& painted);
     // 「交差」を待っている斬撃が、狙った所へ届いた・当たった・飛びきった時：そこで爆ぜて、X の火を塗る。
     static void WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave);
 };

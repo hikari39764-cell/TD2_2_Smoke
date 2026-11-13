@@ -158,6 +158,49 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("退き溜めの跳ぶ距離・高さは「後ろへ下がる」と同じ値です。溜めの間は前へ出ず、プレイヤーの方を向き続けます"
                     "（表の「追尾を止める F」で止まる）。溜めの間に表の「崩せる被弾数」だけ当てると崩れます（跳んでいる間の"
                     "被弾は数えない）。");
+        fields.Float("greatswordLength", "霞の大剣：剣の長さ (m)", greatswordLength, 0.5f, 30.0f);
+        fields.Float("greatswordHiltOffset", "霞の大剣：薙ぐ時の柄の位置（ボスの中心から剣の向きへ m）",
+                     greatswordHiltOffset, 0.0f, 10.0f);
+        fields.Int("greatswordFillFrames", "霞の大剣：剣が柄から剣先まで満ちる長さ (F。前隙の始めから)",
+                   greatswordFillFrames, 1, 600);
+        fields.Float("greatswordRaiseTilt", "霞の大剣：作り出す間、剣を真上から後ろへ倒す角度 (度)",
+                     greatswordRaiseTilt, 0.0f, 90.0f);
+        fields.Float("greatswordRaiseHeight", "霞の大剣：作り出す間の柄の高さ（足元から m。右肩の上）",
+                     greatswordRaiseHeight, 0.0f, 10.0f);
+        fields.Int("greatswordWindFrames", "霞の大剣：前隙の最後に、薙ぎ始めの構えへ下ろす長さ (F)",
+                   greatswordWindFrames, 1, 120);
+        fields.Float("greatswordSweepDegrees", "霞の大剣：薙ぐ角度 (度。右後ろから正面を通って左後ろへ)",
+                     greatswordSweepDegrees, 10.0f, 360.0f);
+        fields.Float("greatswordSweepHeight", "霞の大剣：薙ぐ高さ（足元から m）", greatswordSweepHeight, 0.0f, 10.0f);
+        fields.Float("greatswordHitMarginDegrees", "霞の大剣：当たりの角度のゆとり（1 tick に通った角度の両側へ、度）",
+                     greatswordHitMarginDegrees, 0.0f, 45.0f);
+        fields.Float("greatswordInnerRadius", "霞の大剣：これより内側（ボスの懐）には当たらない (m)",
+                     greatswordInnerRadius, 0.0f, 10.0f);
+        fields.Int("greatswordDissolveFrames", "霞の大剣：薙いだ後、剣がほどける長さ (F。後隙の始めから)",
+                   greatswordDissolveFrames, 1, 300);
+        fields.Vfx("greatswordMistEffect", "霞の大剣：フェーズ 1 のエフェクト（大剣の模型へ霞を流し込む）", greatswordMistEffect);
+        fields.Vfx("greatswordFireEffect", "霞の大剣：フェーズ 2 のエフェクト（炎の大剣）", greatswordFireEffect);
+        fields.Float("greatswordFadeSeconds", "霞の大剣：終わった後、残った霞が消えるまで待つ (秒)", greatswordFadeSeconds, 0.0f,
+                     5.0f);
+        fields.Float("greatswordSweepAmount", "霞の大剣：薙ぐ間に流し込む量（作る間に対する倍）", greatswordSweepAmount, 0.0f,
+                     10.0f);
+        fields.Float("greatswordSweepFaceTilt", "霞の大剣：薙ぐ間の剣の面の傾き（0 は真上、1 は正面へ 45 度）", greatswordSweepFaceTilt,
+                     0.0f, 4.0f);
+        fields.Float("greatswordTrailAlong", "霞の大剣：通った跡の霞を出す所（握りから剣の長さの割合）", greatswordTrailAlong, 0.0f,
+                     1.0f);
+        fields.Float("greatswordTrailAmount", "…跡の霞の量（ふだんの振りに対する倍。0 で出さない）", greatswordTrailAmount, 0.0f,
+                     20.0f);
+        fields.Float("greatswordTrailGlow", "…跡の光の大きさ（ふだんの振りに対する倍）", greatswordTrailGlow, 0.0f, 20.0f);
+        fields.Int("greatswordSweepPushes", "霞の大剣：薙いだ後に場の霧を押す所の数 (0 で押さない)", greatswordSweepPushes, 0, 8);
+        fields.Float("greatswordSweepPushDistance", "…押す所の、ボスからの距離 (m)", greatswordSweepPushDistance, 0.0f, 20.0f);
+        fields.Float("greatswordFireNear", "霞の大剣：残す火「弧」の内側の半径 (m)", greatswordFireNear, 0.0f, 30.0f);
+        fields.Float("greatswordFireFar", "…外側の半径 (m)", greatswordFireFar, 0.0f, 30.0f);
+        fields.Int("greatswordFireRows", "…内側から外側へ並べる本数", greatswordFireRows, 1, 12);
+        fields.Float("greatswordFireStepDegrees", "…薙いだ角度の何度ごとに塗るか (度)", greatswordFireStepDegrees, 1.0f,
+                     90.0f);
+        fields.Note("霞の大剣の薙ぐ長さは技の表の攻撃中（全部が当たり）。当たるのは、その 1 tick に剣が通った角度の中で、"
+                    "ボスの中心から「懐」〜「柄の位置＋剣の長さ＋プレイヤーの体の半径」の距離にいる時です（高さは見ない）。"
+                    "薙ぐ向きは表の「追尾を止める F」の時のボスの向きで決まります。");
         fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
                      kickRingStartRadius, 0.0f, 20.0f);
         fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",

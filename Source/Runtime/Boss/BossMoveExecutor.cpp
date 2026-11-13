@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "BossBurnMarks.h"
+#include "BossGreatsword.h"
 #include "BossMath.h"
 #include "BossPose.h"
 #include "BossSkyfall.h"
@@ -441,6 +442,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     Log(boss, "MoveStart", extra);
     BossBurnMarks::LightBlade(boss, move);
     BossSkyfall::Begin(frame, move);
+    BossGreatsword::Begin(frame, move);
 }
 
 BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
@@ -536,6 +538,7 @@ void BossMoveExecutor::EnterIdle(BossComponent& boss) {
     boss.aimFrozen = false;
     boss.windupHold = 0;
     BossSkyfall::Reset(boss, "end");
+    BossGreatsword::Reset(boss, "end");
     boss.move = -1;
     boss.stateFrame = 0;
     boss.idleFrames = 0;
@@ -580,6 +583,7 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     BossSpecialMoves::EndRetreatCharge(boss, "broken");
     // 空中（天降り斬り・跳躍）で打ち切られたら、その場で地面へ戻す。様子のログは落とす前の高さを残す。
     BossSkyfall::Reset(boss, "interrupted");
+    BossGreatsword::Reset(boss, "interrupted");
     boss.height = 0.0f;
     boss.sink = 0.0f;
     boss.spin = 0.0f;

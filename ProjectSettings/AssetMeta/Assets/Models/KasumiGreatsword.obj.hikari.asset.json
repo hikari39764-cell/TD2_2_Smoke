@@ -1,0 +1,24 @@
+{
+  "displayName": "KasumiGreatsword",
+  "guid": "5d0c1f7a9b3e4c62a8f4e1d27b6903aa",
+  "importSettings": {
+    "sourceFormat": ".obj",
+    "outputFormat": "HMODEL",
+    "meshFormat": "HCMESH",
+    "lightmapUv": {
+      "mode": "GenerateIfMissingOrInvalid",
+      "resolution": 64,
+      "padding": 8
+    },
+    "clusterGeometry": {
+      "enabled": true,
+      "profile": "Scene",
+      "maxLodCount": 5
+    }
+  },
+  "importerId": "ModelImporter",
+  "importerVersion": 50,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiGreatsword.obj",
+  "type": "Model"
+}

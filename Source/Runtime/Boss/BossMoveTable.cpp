@@ -13,9 +13,9 @@ namespace {
 
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
-constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",   "overhead", "kick",
-                                               "knife",    "string", "ambush",   "clone",    "slashH",   "slashV",
-                                               "walkSide", "walkIn", "backstep", "detonate", "skyfall",  "retreat"};
+constexpr const char* kTypeKeys[kTypeCount] = {
+    "dash",   "jump",   "slashR",   "slashL", "overhead", "kick",     "knife",   "string",  "ambush",    "clone",
+    "slashH", "slashV", "walkSide", "walkIn", "backstep", "detonate", "skyfall", "retreat", "greatsword"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -267,6 +267,7 @@ const char* BossMoveTable::BurnKey(BossBurnShape shape) {
     case BossBurnShape::Cross: return "cross";
     case BossBurnShape::Pool: return "pool";
     case BossBurnShape::Ring: return "ring";
+    case BossBurnShape::Arc: return "arc";
     default: return "none";
     }
 }
