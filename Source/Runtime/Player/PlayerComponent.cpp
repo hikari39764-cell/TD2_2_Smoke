@@ -24,6 +24,9 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      5.0f);
         fields.Note("方向入力が無いとき、ロックオン中は対象から離れる向き、そうでなければ今の向きの後ろへ転がります。");
         fields.Int("rollInvincibleFrames", "無敵 (F)", rollInvincibleFrames, 0, 600);
+        fields.Int("rollActionCancelFrame", "砲撃・吸い込みで打ち切れる最初の経過 F", rollActionCancelFrame, 0, 600);
+        fields.Note("打ち切れる F より前に押した砲撃・吸い込みは、それぞれの先行入力の長さだけ覚えておき、"
+                    "打ち切れる F に始まります。");
         fields.Float("rollStamina", "スタミナ消費", rollStamina, 0.0f, 1000.0f);
         fields.Float("rollFogRadius", "霧を押す半径 (m)", rollFogRadius, 0.01f, 10.0f);
         fields.Float("rollFogStrength", "霧を押す強さ (m/s)", rollFogStrength, 0.0f, 100.0f);

@@ -131,6 +131,23 @@ void PlayerRules::SetTurnOverride(PlayerComponent& player, float degreesPerSecon
 
 void PlayerRules::BlockHeal(PlayerComponent& player) { player.externalHealBlock = true; }
 
+void PlayerRules::AllowWalkDuringAction(PlayerComponent& player, float scale) {
+    SetMovementSpeedScale(player, scale);
+    player.externalWalkAllowed = true;
+}
+
+void PlayerRules::HoldRollInput(PlayerComponent& player) { player.externalRollGate = PlayerRollGate::Hold; }
+
+void PlayerRules::AllowRollCancel(PlayerComponent& player) { player.externalRollGate = PlayerRollGate::Cancel; }
+
+bool PlayerRules::TryEndRollForAction(PlayerComponent& player) {
+    if (!IsAlive(player) || player.state != PlayerState::Roll || player.actionLockFrames > 0 ||
+        player.stateFrame < player.rollActionCancelFrame)
+        return false;
+    EnterState(player, PlayerState::Normal);
+    return true;
+}
+
 void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames,
                             float easePower) {
     Initialize(player);
@@ -147,6 +164,7 @@ void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 d
 
 HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) { return player.facing; }
 HIKARI::GameProjectObjectHandle PlayerRules::GetLockTarget(const PlayerComponent& player) { return player.lockTarget; }
+uint64_t PlayerRules::GetLockCandidateId(const PlayerComponent& player) { return player.lockTargetId; }
 
 void PlayerRules::SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target) {
     if (player.lockedOn && target.value != 0)

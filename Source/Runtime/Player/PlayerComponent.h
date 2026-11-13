@@ -9,6 +9,9 @@ inline constexpr std::string_view kPlayerSystem = "Project_TD2_2.PlayerSystem";
 
 enum class PlayerState { Normal, Roll, Heal, Stagger, Knockback, Down, GetUp, Dead };
 enum class PlayerDamageKind { Stagger, Knockback };
+// 外部の動作（砲撃）が、その固定 tick のローリングをどう扱うか。
+// Hold は押されたローリングを消さずに待たせ、Cancel は動作ロック中でもローリングで打ち切らせる。
+enum class PlayerRollGate { None, Hold, Cancel };
 
 class PlayerComponent final : public HIKARI::IGameComponent {
 public:
@@ -21,8 +24,11 @@ public:
     float maxStamina = 100.0f;
     int staminaDelayFrames = 40;
     float staminaPerSecond = 45.0f;
-    int rollFrames = 30;
+    // 終わり際の硬直を短くして次の行動へ早く移れるようにする（c-a0a892。元の値は調整ガイド）。
+    int rollFrames = 26;
     int rollMoveFrames = 22;
+    // この経過 F 以降（移動の後）は、砲撃・吸い込みでローリングの残りを打ち切れる。
+    int rollActionCancelFrame = 22;
     float rollDistance = 4.2f;
     // 進んだ距離 = rollDistance × (1 − (1 − 進み)^rollEasePower)。1 で等速、大きいほど出だしが速い。
     float rollEasePower = 1.6f;
@@ -121,6 +127,9 @@ public:
     float externalMoveScale = 1.0f;
     float externalTurnSpeed = 0.0f;
     bool externalHealBlock = false;
+    // その固定 tick だけ、動作ロック中でも externalMoveScale で歩ける（砲撃の構え・後隙の後半）。
+    bool externalWalkAllowed = false;
+    PlayerRollGate externalRollGate = PlayerRollGate::None;
     // 射撃の構え中に向く方向。毎 tick 外部が要求し、PlayerSystem が使ったら消す。
     bool aimTurnPending = false;
     float aimTurnSpeed = 0.0f;

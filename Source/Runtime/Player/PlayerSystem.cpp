@@ -115,10 +115,13 @@ bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, 
 void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player) {
     // ローリングは外部の動作（吸い込み）の最中でも出せて、吸い込みの方が打ち切られる。
     // 回復だけは外部の要求で止める。先行入力は残り、明けた時に通る。
+    // 砲撃の動作ロック中でも、打ち切れる F からはローリングで抜けられる。
     const bool canRoll =
         PlayerRules::CanStartAction(player) ||
         (player.state == PlayerState::Down && player.stateFrame >= std::min(player.downRollFrame, player.downFrames) &&
-         player.actionLockFrames == 0);
+         player.actionLockFrames == 0) ||
+        (player.externalRollGate == PlayerRollGate::Cancel && PlayerRules::IsAlive(player) &&
+         player.state == PlayerState::Normal);
     if (player.rollBuffer > 0 && canRoll) {
         const bool moving = std::hypot(player.moveInput.x, player.moveInput.z) > 0.0f;
         // 入力が無ければ、ロックオン中は対象から離れる向き、そうでなければ今の向きの後ろへ下がる。
@@ -134,6 +137,8 @@ void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Pl
         player.staminaAge = 0;
         player.rollBuffer = 0;
         player.rollFogPending = true;
+        // 打ち切った動作のロックを、ローリングの後へ持ち越さない。
+        player.actionLockFrames = 0;
         PlayerRules::EnterState(player, PlayerState::Roll);
     } else if (player.healBuffer > 0 && !player.externalHealBlock && PlayerRules::CanStartAction(player) &&
                player.healCharges > 0 && player.health < player.maxHealth) {
@@ -175,7 +180,7 @@ Vec3 WalkVelocity(PlayerComponent& player, float speed, float dt) {
 }
 
 Vec3 StateVelocity(PlayerComponent& player, float dt) {
-    if (player.state == PlayerState::Normal && player.actionLockFrames == 0) {
+    if (player.state == PlayerState::Normal && (player.actionLockFrames == 0 || player.externalWalkAllowed)) {
         return WalkVelocity(player, player.moveSpeed * std::clamp(player.externalMoveScale, 0.0f, 1.0f), dt);
     }
     if (player.state == PlayerState::Heal) {
@@ -320,7 +325,9 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         player.staminaAge = std::min(player.staminaAge + 1, player.staminaDelayFrames);
     }
     player.advanceStateNextTick = StateDuration(player) > 0;
-    player.rollBuffer = std::max(0, player.rollBuffer - 1);
+    // まだ打ち切れない動作（砲撃の構え・後隙の前半）の間に押したローリングは、打ち切れる F まで減らさない。
+    if (player.externalRollGate != PlayerRollGate::Hold)
+        player.rollBuffer = std::max(0, player.rollBuffer - 1);
     player.healBuffer = std::max(0, player.healBuffer - 1);
     player.actionLockFrames = std::max(0, player.actionLockFrames - 1);
 }
@@ -346,6 +353,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 // 毎 tick 失効させ、外部システムが消えても減速を残さない。
                                                 PlayerRules::SetMovementSpeedScale(player, 1.0f);
                                                 PlayerRules::SetTurnOverride(player, 0.0f);
+                                                player.externalWalkAllowed = false;
                                                 // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
                                                 // ずれないようにする。
                                                 if (player.advanceStateNextTick)
@@ -356,6 +364,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 // 行動の停止は前の tick の要求。使ったら消し、
                                                 // 要求が途切れた次の tick から動けるようにする。
                                                 player.externalHealBlock = false;
+                                                player.externalRollGate = PlayerRollGate::None;
                                             });
 }
 

@@ -61,24 +61,57 @@ float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
     return value;
 }
 
-// ロックオン中は対象へ。ロックしていない時はカメラの正面（画面の中央）へ撃つ。
-// カメラは上から見下ろすので、下向きは aimMinVertical までにして足元へ撃ち込まないようにする。
+// ロック中のカメラと同じ点（霧へ沈んだボスなど、対象の原点からずらした点）。
+Vec3 LockPoint(const HIKARI::GameProjectTransform& target, const PlayerComponent& player) {
+    return Add(target.position, PlayerRules::GetLockPivotOffset(player));
+}
+
+// ロックしていない時の照準補助。カメラの正面（水平）から aimAssistDegrees 以内・aimAssistRange 以内の
+// ロック候補のうち、いちばん正面に近い相手の LockPoint を返す。候補が無ければ false。
+bool AssistPoint(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdComponent& gourd,
+                 const PlayerComponent& player, Vec3 cameraForward, Vec3& outPoint) {
+    const float flat = std::hypot(cameraForward.x, cameraForward.z);
+    if (shot.aimAssistDegrees <= 0.0f || shot.aimAssistRange <= 0.0f || flat <= 0.0f)
+        return false;
+    const Vec3 forward{cameraForward.x / flat, 0.0f, cameraForward.z / flat};
+    float bestDot = std::cos(std::min(shot.aimAssistDegrees, 90.0f) * kPi / 180.0f);
+    bool found = false;
+    auto consider = [&](HIKARI::ObjectView candidate) {
+        HIKARI::GameProjectTransform transform{};
+        if (!candidate.IsValid() || !candidate.GetWorldTransform(transform))
+            return;
+        const Vec3 offset{transform.position.x - gourd.position.x, 0.0f, transform.position.z - gourd.position.z};
+        const float distance = std::hypot(offset.x, offset.z);
+        if (distance <= 0.0f || distance > shot.aimAssistRange)
+            return;
+        const float dot = (offset.x * forward.x + offset.z * forward.z) / distance;
+        if (dot < bestDot)
+            return;
+        bestDot = dot;
+        outPoint = LockPoint(transform, player);
+        found = true;
+    };
+    // ロックオンできる相手。分身はボスの側だけが知っているので、今はロック対象の設定（ボス）だけを見る。
+    consider(world.FindSceneObject(PlayerRules::GetLockCandidateId(player)));
+    return found;
+}
+
+// ロックオン中は対象へ。ロックしていない時は照準補助の相手へ、いなければカメラの正面（画面の中央）へ撃つ。
+// カメラは上から見下ろすので、正面へ撃つ時の下向きは aimMinVertical までにして足元へ撃ち込まないようにする。
 Vec3 Aim(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdComponent& gourd,
          const PlayerComponent& player) {
     const auto fallback = PlayerRules::FlatNormalize(PlayerRules::GetFacing(player));
     const auto target = world.FindObject(PlayerRules::GetLockTarget(player));
     HIKARI::GameProjectTransform transform{};
-    // ロック中のカメラと同じ点を狙う（霧へ沈んだボスなど、対象の原点からずらした点）。
-    if (target.IsValid() && target.GetWorldTransform(transform)) {
-        const Vec3 offset = PlayerRules::GetLockPivotOffset(player);
-        const Vec3 aimed{transform.position.x + offset.x, transform.position.y + offset.y,
-                         transform.position.z + offset.z};
-        return Normalize(Difference(aimed, gourd.position), fallback);
-    }
+    if (target.IsValid() && target.GetWorldTransform(transform))
+        return Normalize(Difference(LockPoint(transform, player), gourd.position), fallback);
     HIKARI::GameProjectCameraPose pose{};
     if (!world.GetCamera().GetControlPose(pose))
         return fallback;
     Vec3 forward = Normalize(Difference(pose.target, pose.eye), fallback);
+    Vec3 assisted{};
+    if (AssistPoint(world, shot, gourd, player, forward, assisted))
+        return Normalize(Difference(assisted, gourd.position), fallback);
     forward.y = std::max(forward.y, std::clamp(shot.aimMinVertical, -1.0f, 1.0f));
     return Normalize(forward, fallback);
 }
@@ -208,8 +241,46 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     return true;
 }
 
+// 構え・後隙の間に、プレイヤーへ歩きとローリングの扱いを毎 tick 伝える（PlayerSystem が使ったら消す）。
+void RequestPlayerAllowances(const GourdShotComponent& shot, PlayerComponent& player) {
+    if (shot.phase == GourdShotPhase::Windup) {
+        PlayerRules::AllowWalkDuringAction(player, shot.shotMoveScale);
+        PlayerRules::HoldRollInput(player);
+        return;
+    }
+    if (shot.phase != GourdShotPhase::Recovery)
+        return;
+    const uint64_t since = shot.processedTick - shot.lastShotTick;
+    if (since >= static_cast<uint64_t>(std::max(0, shot.moveCancelFrames)))
+        PlayerRules::AllowWalkDuringAction(player, shot.shotMoveScale);
+    // ローリングを始めるかは次の tick の PlayerSystem（実行順が前）が決めるので、1 F 先の経過で判断する。
+    if (since + 1 >= static_cast<uint64_t>(std::max(0, shot.rollCancelFrames)))
+        PlayerRules::AllowRollCancel(player);
+    else
+        PlayerRules::HoldRollInput(player);
+}
+
+// 後隙が明けていれば終える。ただし押し続けている（先行入力を含む）間は、次の発射まで連射を続ける
+// （連射の間隔は 24 F からで後隙より長いことがあり、ここで止めると連射の表がずれる）。連射を待っているなら true。
+bool EndRecovery(GourdShotComponent& shot, PlayerComponent& player, bool wantsAttack) {
+    const bool chaining =
+        shot.phase == GourdShotPhase::Recovery && wantsAttack && shot.processedTick <= shot.nextFireTick;
+    if (shot.phase == GourdShotPhase::Recovery && shot.processedTick >= shot.recoveryEndTick && !chaining) {
+        shot.phase = GourdShotPhase::Idle;
+        // 連射を待つ間に延ばしたロックを、離した所で解く。
+        PlayerRules::ReleaseActionLock(player);
+        LogPhase(shot, "End");
+    }
+    return chaining;
+}
+
 void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& gourd,
                HIKARI::ObjectView playerObject, PlayerComponent& player) {
+    const bool wantsAttack = shot.attackHeld || shot.attackBuffer > 0;
+    // ローリングの移動が終わった後なら、攻撃（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
+    if (shot.phase == GourdShotPhase::Idle && shot.enabled && gourd.enabled && wantsAttack &&
+        BlockedReason(shot, gourd, player) == 0)
+        PlayerRules::TryEndRollForAction(player);
     // 自分の動作ロック中は CanStartAction が false になるので、継続は通常状態と生存を確認する。
     if (!shot.enabled || !gourd.enabled || !PlayerRules::IsAlive(player) || player.state != PlayerState::Normal) {
         if (shot.phase != GourdShotPhase::Idle)
@@ -217,10 +288,7 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         shot.phase = GourdShotPhase::Idle;
         return;
     }
-    if (shot.phase == GourdShotPhase::Recovery && shot.processedTick >= shot.recoveryEndTick) {
-        shot.phase = GourdShotPhase::Idle;
-        LogPhase(shot, "End");
-    }
+    const bool chaining = EndRecovery(shot, player, wantsAttack);
     if (!shot.attackHeld)
         shot.chainHeld = false;
     // 後隙の途中でも、攻撃を離して吸い込みを押していれば（先行入力を含む）、反動の後から吸い込みの構えへ移れる。
@@ -233,6 +301,10 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         LogPhase(shot, "AbsorbCancel");
         return;
     }
+    // 連射を待つ間は、次の発射 tick の PlayerSystem（実行順が前）が回復などを始めないように、
+    // その境界までロックを延ばす。
+    if (chaining)
+        PlayerRules::LockActions(player, static_cast<int>(shot.nextFireTick - shot.processedTick) + 1);
     // 押したのに撃てない時（煙・スタミナ不足）は、無反応にせず空撃ちの手応えを返す。
     if (shot.phase == GourdShotPhase::Idle && shot.attackPressed && PlayerRules::CanStartAction(player) &&
         !GourdRules::IsAbsorbCommitted(gourd) && BlockedReason(shot, gourd, player) != 0) {
@@ -263,11 +335,15 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
                (shot.attackHeld || shot.attackBuffer > 0)) {
         Fire(world, shot, gourd, playerObject, player);
     }
-    // 構えの間と押し続けている間は撃つ向きへ振り向く。離した後の後隙は向きを変えない。
+    // 構えの間と押し続けている間は撃つ向きへ振り向く。離した後の後隙は、歩き出せるまで向きを変えない
+    // （歩き出せたら、歩く向き・ロック対象へ普段どおり振り向く）。
+    const bool walkable =
+        shot.processedTick - shot.lastShotTick >= static_cast<uint64_t>(std::max(0, shot.moveCancelFrames));
     if (shot.phase == GourdShotPhase::Windup || (shot.phase == GourdShotPhase::Recovery && shot.attackHeld))
         PlayerRules::SetAimTurn(player, Aim(world, shot, gourd, player), shot.aimTurnSpeed);
-    else if (shot.phase == GourdShotPhase::Recovery)
+    else if (shot.phase == GourdShotPhase::Recovery && !walkable)
         PlayerRules::SetAimTurn(player, PlayerRules::GetFacing(player), 0.0f);
+    RequestPlayerAllowances(shot, player);
 }
 
 void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 position, uint64_t ignoredObject) {

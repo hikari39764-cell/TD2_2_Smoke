@@ -74,6 +74,9 @@ void FinishAbsorb(GourdComponent& gourd) {
 // （ロックするとローリングで打ち切れない）。ローリング・被弾などで通常の姿勢でなくなったら、後隙なしで打ち切る。
 void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
     gourd.playerValid = WithPlayer(world, gourd, [&](HIKARI::ObjectView, PlayerComponent& player) {
+        // ローリングの移動が終わった後なら、吸い込み（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
+        if (gourd.enabled && gourd.absorbPhase == GourdAbsorbPhase::Idle && GourdRules::WantsAbsorb(gourd))
+            PlayerRules::TryEndRollForAction(player);
         const bool usable = gourd.enabled && PlayerRules::IsAlive(player) && player.state == PlayerState::Normal;
         if (!usable)
             EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);

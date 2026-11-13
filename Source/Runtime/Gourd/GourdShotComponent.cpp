@@ -12,7 +12,12 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("rapidMinFrames", "連射の間隔の下限 (F)", rapidMinFrames, 1, 7200);
         fields.Note("既定は 24・16・12・10・8・8… F。攻撃を離すと次の長押しは最初の間隔に戻ります。");
         fields.Int("recoveryFrames", "最後の発射からの後隙 (F)", recoveryFrames, 0, 7200);
+        fields.Int("rollCancelFrames", "後隙をローリングで打ち切れる最初の F（発射から）", rollCancelFrames, 0, 7200);
+        fields.Int("moveCancelFrames", "後隙の間に歩き出せる最初の F（発射から）", moveCancelFrames, 0, 7200);
+        fields.Float("shotMoveScale", "構えと後隙の後半の歩行倍率", shotMoveScale, 0.0f, 1.0f);
         fields.Int("absorbCancelFrames", "後隙を吸い込みで取り消せる最初の F", absorbCancelFrames, 0, 7200);
+        fields.Note("構えの間と、打ち切れる F より前の後隙に押したローリングは消えずに、打ち切れる F に出ます。"
+                    "押し続けている間は、後隙が明けても次の発射まで連射が続きます（ローリングでは打ち切れます）。");
         fields.Int("inputBufferFrames", "先行入力 (F)", inputBufferFrames, 1, 60);
         fields.Float("staminaCost", "一発のスタミナ消費（0 は制限なし）", staminaCost, 0.0f, 100000.0f);
         fields.Float("smokeCost", "一発の煙消費（0 は制限なし）", smokeCost, 0.0f, 100000.0f);
@@ -22,7 +27,11 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      1.0f, 5.0f);
         fields.Float("aimTurnSpeed", "構えの間に撃つ向きへ振り向く速さ (度/s)", aimTurnSpeed, 0.0f, 5000.0f);
         fields.Float("aimMinVertical", "ロックなしで撃つ向きの下向きの限界（方向の y）", aimMinVertical, -1.0f, 1.0f);
-        fields.Note("ロックオン中は対象へ、ロックしていない時はカメラの正面へ撃ちます。");
+        fields.Float("aimAssistDegrees", "ロックなしの照準補助：カメラ正面から左右の角度 (度、0 は無効)",
+                     aimAssistDegrees, 0.0f, 90.0f);
+        fields.Float("aimAssistRange", "ロックなしの照準補助：届く距離 (m)", aimAssistRange, 0.0f, 200.0f);
+        fields.Note("ロックオン中は対象へ撃ちます。ロックしていない時は、照準補助の範囲にロックできる相手がいれば"
+                    "いちばん正面に近い相手へ、いなければカメラの正面へ撃ちます。");
         fields.Float("gourdRecoilDistance", "ヒョウタン反動距離 (m)", gourdRecoilDistance, 0.0f, 10.0f);
         fields.Int("gourdRecoilFrames", "ヒョウタン反動時間 (F)", gourdRecoilFrames, 1, 600);
         fields.Float("gourdWindupPull", "構え中にヒョウタンを引く距離 (m、0 は無効)", gourdWindupPull, 0.0f, 2.0f);

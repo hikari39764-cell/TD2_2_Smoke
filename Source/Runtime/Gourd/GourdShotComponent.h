@@ -90,14 +90,20 @@ public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
 
     bool enabled = true;
-    int windupFrames = 12;
+    // 撃ってすぐ動けるように、構えと後隙は短く、構えと後隙の後半は歩ける（c-a0a892。元の値は調整ガイド）。
+    int windupFrames = 6;
     // 長押し連射の最初の間隔。n 発目の後の間隔は
     // max(rapidMinFrames, round(repeatFrames / min(rapidMax, 1 + rapidAccel × (n − 1))))。
     int repeatFrames = 24;
     float rapidAccel = 0.5f;
     float rapidMax = 3.0f;
     int rapidMinFrames = 4;
-    int recoveryFrames = 56;
+    int recoveryFrames = 20;
+    // 最後の発射からこの F 以降は、ローリングで後隙を打ち切れる。それより前に押したローリングは、この F まで待つ。
+    int rollCancelFrames = 6;
+    // 最後の発射からこの F 以降は、後隙の間も shotMoveScale 倍で歩ける。構えの間も同じ倍率で歩ける。
+    int moveCancelFrames = 12;
+    float shotMoveScale = 0.6f;
     // 最後の発射からこの F 以降は、攻撃を離して吸い込みを押すと後隙を取り消して吸い込みの構えへ移れる。
     int absorbCancelFrames = 6;
     int inputBufferFrames = 12;
@@ -111,6 +117,10 @@ public:
     float aimTurnSpeed = 573.0f;
     // ロックしていない時はカメラの正面へ撃つ。下向きはこの値（方向の y 成分）までにして、足元へ撃ち込まない。
     float aimMinVertical = -0.05f;
+    // ロックしていない時の照準の補助。カメラの正面（水平）から左右この角度・この距離以内のロック候補を狙う。
+    // 0 度で無効。
+    float aimAssistDegrees = 35.0f;
+    float aimAssistRange = 25.0f;
     float gourdRecoilDistance = 0.48f;
     int gourdRecoilFrames = 8;
     float gourdWindupPull = 0.14f;

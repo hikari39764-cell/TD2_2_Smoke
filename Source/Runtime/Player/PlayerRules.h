@@ -30,6 +30,15 @@ public:
     static void SetTurnOverride(PlayerComponent& player, float degreesPerSecond);
     // 次の固定 tick の開始まで、回復の開始を止める（ローリングは止めない）。続ける間は毎 tick 要求し直す。
     static void BlockHeal(PlayerComponent& player);
+    // その固定 tick だけ、動作ロック中でも scale 倍で歩けるようにする。PlayerSystem が毎 tick 消す。
+    static void AllowWalkDuringAction(PlayerComponent& player, float scale);
+    // 次の固定 tick の開始まで、押されたローリングを消さずに待たせる（まだ打ち切れない動作の間）。
+    static void HoldRollInput(PlayerComponent& player);
+    // 次の固定 tick の開始で、動作ロック中でもローリングを出せる（動作を打ち切る）。
+    static void AllowRollCancel(PlayerComponent& player);
+    // ローリングの移動が終わった後（rollActionCancelFrame 以降）なら、残りを打ち切って通常に戻し true を返す。
+    // 砲撃・吸い込みを始めたい側が、始める前に呼ぶ。
+    static bool TryEndRollForAction(PlayerComponent& player);
     // その固定 tick だけ、向きを direction（水平）へ毎秒この角度まで回す。ロックオンや入力の向きより優先する。
     // PlayerSystem が使ったら消すので、続ける間は毎 tick 要求する。
     static void SetAimTurn(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float degreesPerSecond);
@@ -43,6 +52,8 @@ public:
     static float EaseOutFraction(int elapsedFrames, int frames, float easePower);
     static HIKARI::GameProjectFloat3 GetFacing(const PlayerComponent& player);
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);
+    // ロックオンを押した時に狙う相手（シーン物体 id）。ロックしていない時の照準補助も同じ相手を見る。
+    static uint64_t GetLockCandidateId(const PlayerComponent& player);
     // ロックオン中なら、ロック対象を target に変える（ボスと分身の切り替え）。ロックしていなければ何もしない。
     static void SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target);
     // 「ロック対象を変える」が押されていたら true を返して消す（対象の候補を知っている側が呼ぶ）。
