@@ -24,6 +24,8 @@ constexpr float kBlastPushHeight = 0.3f;
 constexpr float kTau = 6.28318530718f;
 // 回し蹴りの霞の輪が足元の霧を外へ押す力の提出 ID と、輪に並べる向きの数（爆発と同じ、向きのある押しを輪に並べる）。
 constexpr uint64_t kRingPushBase = 160;
+// 飛ぶ斬撃が、真下の場の霧を左右へ割る押しの提出 ID（斬撃 1 つにつき左右 2 つ）。
+constexpr uint64_t kWavePartBase = 200;
 constexpr int kRingPushCount = 6;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
@@ -141,6 +143,26 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
                                      .Submit(object.GetHandle(), kRingPushBase + static_cast<uint64_t>(k), push)
                                      .Accepted() &&
                                  boss.fluidAccepted;
+        }
+    }
+    // 斬撃が場の霧を割る：刃の真下の霧を、飛ぶ向きの左右へ毎フレーム 1 回ずつ押す（通った跡に溝が残り、霧が戻って埋まる）。
+    for (size_t i = 0; i < boss.waves.size() && boss.wavePartPush > 0.0f && boss.wavePartRadius > 0.0f; ++i) {
+        const auto& wave = boss.waves[i];
+        if (!wave.active || wave.knife || wave.ring)
+            continue;
+        const Vec3 forward = FlatNormalize(wave.direction, {0.0f, 0.0f, 1.0f});
+        const Vec3 side{forward.z, 0.0f, -forward.x};
+        for (int k = 0; k < 2; ++k) {
+            const Vec3 outward = Mul(side, k == 0 ? 1.0f : -1.0f);
+            HIKARI::GameProjectFluidInteraction push{};
+            push.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
+            push.direction = outward;
+            push.position = Add({wave.position.x, boss.ground.y + kBlastPushHeight, wave.position.z},
+                                Mul(outward, boss.wavePartRadius * 0.6f));
+            push.extents = {boss.wavePartRadius, 0.0f, 0.0f};
+            push.strength = boss.wavePartPush;
+            const uint64_t id = kWavePartBase + i * 2 + static_cast<uint64_t>(k);
+            boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, push).Accepted() && boss.fluidAccepted;
         }
     }
     for (size_t i = 0; i < boss.waves.size(); ++i) {

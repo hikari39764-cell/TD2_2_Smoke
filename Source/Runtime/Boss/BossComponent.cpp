@@ -204,6 +204,11 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note(
             "斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
             "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。");
+        fields.Vfx("mistBlastEffect", "霞の刃が当たった所のエフェクト（青白い光と火花。空なら炎の刃と同じ）",
+                   mistBlastEffect);
+        fields.Float("wavePartPush", "飛ぶ斬撃が、真下の場の霧を左右へ割る速さ (m/s。0 で割らない)", wavePartPush, 0.0f,
+                     40.0f);
+        fields.Float("wavePartRadius", "…割る押しの半径 (m)", wavePartRadius, 0.1f, 6.0f);
         fields.Vfx("slashSmokeEffect", "火を残さない斬撃のエフェクト（煙の刃。空なら炎の刃で出す）", slashSmokeEffect);
         fields.Float("bladeLitEmber", "火を残す技の間の、剣先の熾火の強さ (倍)", bladeLitEmber, 0.0f, 20.0f);
         fields.Color3("bladeLitColor", "…剣先の霞の色", bladeLitColor);
@@ -229,7 +234,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "（場の霧はほとんど消えないので、足すとプレイヤーの周りに溜まって画面を塞ぎます）。"
             "光・火花・爆炎の形は BossSlashBurst で調整します。");
         fields.Vfx("swordEffect", "剣先の霞・ナイフの尾のエフェクト（流体注入）", swordEffect);
-        fields.Color3("hazeColor", "剣先の霞・ナイフの尾の色（光らない霧色）", hazeColor);
+        fields.Color3("hazeColor", "剣先の霞・ナイフの尾の色（霞の刃と同じ青白。火を残す技の間は bladeLitColor）",
+                      hazeColor);
         fields.Float("swordEffectAmount", "振っている剣の霞の濃さ（倍）", swordEffectAmount, 0.0f, 20.0f);
         fields.Float("kamaeEffectAmount", "構えで剣先に集まる霞の濃さ（倍）", kamaeEffectAmount, 0.0f, 20.0f);
         fields.Float("swordEmberScale", "振っている剣先の火の粉の光の大きさ（倍、0 は出さない）", swordEmberScale, 0.0f,

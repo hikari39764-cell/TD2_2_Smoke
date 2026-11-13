@@ -21,6 +21,8 @@ constexpr const char* kAmountInput = "input.amount";
 constexpr const char* kColorInput = "input.color";
 // 剣先の火の粉の光の大きさ（0 で出さない。ナイフの尾は出さない）。
 constexpr const char* kEmberInput = "input.ember";
+// 同じ光を青白で出す入力（霞の技の構え。火を残す技の間は ember の橙で出す）。
+constexpr const char* kMistInput = "input.mist";
 // 斬撃のエフェクトの入力：fly＝刃を出す量、impact＝当たって砕ける量。
 constexpr const char* kFlyInput = "input.fly";
 constexpr const char* kImpactInput = "input.impact";
@@ -36,7 +38,8 @@ HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, f
                                                     bool lit = false) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
-    VfxParameters::SetFloat(parameters, kEmberInput, ember);
+    VfxParameters::SetFloat(parameters, kEmberInput, lit ? ember : 0.0f);
+    VfxParameters::SetFloat(parameters, kMistInput, lit ? 0.0f : ember);
     VfxParameters::SetColor(parameters, kColorInput, lit ? boss.bladeLitColor : boss.hazeColor);
     return parameters;
 }
@@ -271,12 +274,14 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
         if (!blast.effectPending)
             continue;
         blast.effectPending = false;
-        // 塊そのものは、場の火の域の流体で出す：剣が燃えている技で当てた所は火球、ほかは暗い煙の塊。
+        // 塊そのものは流体で出す：剣が燃えている技で当てた所は場の火の域の火球、ほかは場の霧へ弾ける霞の塊。
         BurnFieldRules::AddBlast(world, blast.position,
                                  (blast.puff ? boss.puffRadius : boss.hitBlastRadius) * blast.scale,
                                  blast.fire && !blast.puff ? BurnBlastKind::Hit : BurnBlastKind::Smoke);
         // その上に重ねるエフェクト（当たった所は光・衝撃の輪・火花）。
-        const auto& asset = blast.puff ? boss.puffEffect : boss.blastEffect;
+        const auto& asset = blast.puff                                       ? boss.puffEffect
+                            : !blast.fire && !boss.mistBlastEffect.IsEmpty() ? boss.mistBlastEffect
+                                                                             : boss.blastEffect;
         if (asset.IsEmpty())
             continue;
         HIKARI::GameProjectVfxPlayRequest play{};

@@ -1,0 +1,14 @@
+{
+  "displayName": "BossMistBurst",
+  "guid": "c7a41d6be2f0483a9d15b0e36f7a2c18",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossMistBurst.hvfx",
+  "type": "VfxEffect"
+}

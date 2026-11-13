@@ -93,8 +93,8 @@ public:
     float blastRise = 2.0f;
     float blastPush = 8.0f;
     float hitFuelScale = 0.3f;
-    float smokeBlastStrength = 40.0f;
-    float smokeBlastFuelShare = 0.12f;
+    float smokeBlastStrength = 150.0f;
+    float smokeBlastFuelShare = 0.0f;
     float smokeBlastPush = 4.0f;
     float blastBlockSize = 2.0f;
     int traceEveryFrames = 0;

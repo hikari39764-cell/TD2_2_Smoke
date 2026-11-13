@@ -167,14 +167,14 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastFuelBase + slot, fuel).Accepted() && field.fluidAccepted;
         if (smoke && field.smokeBlastStrength > 0.0f) {
-            // 冷たい煙：火の域の暗い散乱色で、濃い煙の塊になる。
+            // 霞の塊：場の霧の域へ冷たい霧を 1 回入れる（霞の刃が当たって弾け、場の霧へ溶ける。火の域へ入れると暗い煤の塊になる）。
             HIKARI::GameProjectFluidInteraction puff{};
             puff.kind = Kind::Emit;
             puff.position = center;
             puff.extents = {radius, 0.0f, 0.0f};
             puff.direction = {0.0f, field.blastRise * 0.5f, 0.0f};
             puff.strength = std::min(kMaximumStrength, field.smokeBlastStrength);
-            puff.channels = FluidChannels::kFire;
+            puff.channels = FluidChannels::kFog;
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastSmokeBase + slot, puff).Accepted() && field.fluidAccepted;
         }
@@ -186,7 +186,9 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
             push.position = center;
             push.extents = {radius * 1.5f, 0.0f, 0.0f};
             push.strength = pushSpeed;
-            push.channels = detonation ? (FluidChannels::kFire | FluidChannels::kFog) : FluidChannels::kFire;
+            push.channels = detonation ? (FluidChannels::kFire | FluidChannels::kFog)
+                            : smoke    ? FluidChannels::kFog
+                                       : FluidChannels::kFire;
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastPushBase + slot, push).Accepted() && field.fluidAccepted;
         }

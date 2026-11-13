@@ -376,6 +376,9 @@ public:
     HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
                                                      "Assets/Vfx/BossSlashWave.hvfx"};
     // 火を残さない斬撃の見た目（煙の刃）。空なら、どの斬撃も slashEffect（炎の刃）で出す。
+    // 霞の刃（火を残さない斬撃）が当たった所に重ねるエフェクト（青白い光と火花。空なら blastEffect）。
+    HIKARI::GameProjectVfxAssetReference mistBlastEffect{"c7a41d6be2f0483a9d15b0e36f7a2c18",
+                                                         "Assets/Vfx/BossMistBurst.hvfx"};
     HIKARI::GameProjectVfxAssetReference slashSmokeEffect{"a86e3e830ef54289e4dd42a4ef0a6100",
                                                           "Assets/Vfx/BossSlashSmoke.hvfx"};
     float slashEffectWidth = 11.0f;
@@ -388,13 +391,15 @@ public:
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
     // 当たった斬撃の炎を消すまでの時間。爆発の光に隠して、ほぼすぐ消す（残すと、薄い域の炎が板のように広がって画面を塞ぐ）。
     float slashHitFadeSeconds = 0.07f;
+    float wavePartPush = 8.0f;
+    float wavePartRadius = 1.5f;
     float blastPush = 9.0f;
     float blastPushRadius = 3.0f;
     float knifeBlastScale = 0.4f;
     // 見た目（流体注入のエフェクト。場の霧の域へ色の付いた霞を入れる）
     HIKARI::GameProjectVfxAssetReference swordEffect{"353886750fe7c2c7f8939f18e5df6b31",
                                                      "Assets/Vfx/BossSwordHaze.hvfx"};
-    HIKARI::GameProjectFloat3 hazeColor{0.86f, 0.87f, 0.9f};
+    HIKARI::GameProjectFloat3 hazeColor{0.62f, 0.82f, 1.0f};
     float swordEffectAmount = 0.3f;
     float kamaeEffectAmount = 0.15f;
     // 剣先の火の粉の光の大きさ（倍）。構えの合図。煙と違って場に残らない。
