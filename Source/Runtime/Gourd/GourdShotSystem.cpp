@@ -223,9 +223,9 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
     }
     if (!shot.attackHeld)
         shot.chainHeld = false;
-    // 後隙の途中でも、攻撃を離して吸い込みを押していれば、反動の後から吸い込みの構えへ移れる。
+    // 後隙の途中でも、攻撃を離して吸い込みを押していれば（先行入力を含む）、反動の後から吸い込みの構えへ移れる。
     // 同じ tick の GourdSystem（実行順が後）が、解いたロックを見て吸い込みを始める。
-    if (shot.phase == GourdShotPhase::Recovery && !shot.attackHeld && gourd.enabled && gourd.absorbHeld &&
+    if (shot.phase == GourdShotPhase::Recovery && !shot.attackHeld && gourd.enabled && GourdRules::WantsAbsorb(gourd) &&
         shot.processedTick >= shot.lastShotTick + static_cast<uint64_t>(std::max(0, shot.absorbCancelFrames))) {
         shot.phase = GourdShotPhase::Idle;
         shot.attackBuffer = 0;
@@ -235,13 +235,15 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
     }
     // 押したのに撃てない時（煙・スタミナ不足）は、無反応にせず空撃ちの手応えを返す。
     if (shot.phase == GourdShotPhase::Idle && shot.attackPressed && PlayerRules::CanStartAction(player) &&
-        !GourdRules::IsAbsorbBusy(gourd) && BlockedReason(shot, gourd, player) != 0) {
+        !GourdRules::IsAbsorbCommitted(gourd) && BlockedReason(shot, gourd, player) != 0) {
         ++shot.dryFires;
         GourdRules::AddRecoil(gourd, Scale(Aim(world, shot, gourd, player), -1.0f), shot.feedback.dryFireKickDistance,
                               shot.feedback.dryFireKickFrames);
     }
     if (shot.phase == GourdShotPhase::Idle && (shot.attackHeld || shot.attackBuffer > 0) &&
-        PlayerRules::CanStartAction(player) && !GourdRules::IsAbsorbBusy(gourd) && CanPay(shot, gourd, player)) {
+        PlayerRules::CanStartAction(player) && !GourdRules::IsAbsorbCommitted(gourd) && CanPay(shot, gourd, player)) {
+        // 吸い込みの後隙からは撃てる。後で走る GourdSystem が後隙を続けないように、ここで打ち切る。
+        GourdRules::CancelAbsorbRecovery(gourd);
         shot.phase = GourdShotPhase::Windup;
         shot.beginTick = shot.processedTick;
         shot.nextFireTick = shot.beginTick + static_cast<uint64_t>(shot.windupFrames);

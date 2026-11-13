@@ -113,9 +113,8 @@ bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, 
 }
 
 void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player) {
-    // 外部の動作（吸い込み）の最中は、ローリングも回復も始められない。先行入力は残り、明けた時に通る。
-    if (player.externalActionBlock)
-        return;
+    // ローリングは外部の動作（吸い込み）の最中でも出せて、吸い込みの方が打ち切られる。
+    // 回復だけは外部の要求で止める。先行入力は残り、明けた時に通る。
     const bool canRoll =
         PlayerRules::CanStartAction(player) ||
         (player.state == PlayerState::Down && player.stateFrame >= std::min(player.downRollFrame, player.downFrames) &&
@@ -136,8 +135,8 @@ void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Pl
         player.rollBuffer = 0;
         player.rollFogPending = true;
         PlayerRules::EnterState(player, PlayerState::Roll);
-    } else if (player.healBuffer > 0 && PlayerRules::CanStartAction(player) && player.healCharges > 0 &&
-               player.health < player.maxHealth) {
+    } else if (player.healBuffer > 0 && !player.externalHealBlock && PlayerRules::CanStartAction(player) &&
+               player.healCharges > 0 && player.health < player.maxHealth) {
         --player.healCharges;
         player.healApplied = false;
         player.healBuffer = 0;
@@ -356,7 +355,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 StartBufferedAction(world, object, player);
                                                 // 行動の停止は前の tick の要求。使ったら消し、
                                                 // 要求が途切れた次の tick から動けるようにする。
-                                                player.externalActionBlock = false;
+                                                player.externalHealBlock = false;
                                             });
 }
 

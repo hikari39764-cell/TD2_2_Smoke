@@ -129,7 +129,7 @@ void PlayerRules::SetTurnOverride(PlayerComponent& player, float degreesPerSecon
     player.externalTurnSpeed = std::isfinite(degreesPerSecond) ? std::max(0.0f, degreesPerSecond) : 0.0f;
 }
 
-void PlayerRules::BlockActions(PlayerComponent& player) { player.externalActionBlock = true; }
+void PlayerRules::BlockHeal(PlayerComponent& player) { player.externalHealBlock = true; }
 
 void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float distance, int frames,
                             float easePower) {

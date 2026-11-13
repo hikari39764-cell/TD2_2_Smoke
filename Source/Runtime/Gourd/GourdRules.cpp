@@ -41,7 +41,19 @@ float GourdRules::AddSmoke(GourdComponent& gourd, float amount) {
 }
 
 bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbing; }
-bool GourdRules::IsAbsorbBusy(const GourdComponent& gourd) { return gourd.absorbPhase != GourdAbsorbPhase::Idle; }
+bool GourdRules::IsAbsorbCommitted(const GourdComponent& gourd) {
+    return gourd.absorbPhase == GourdAbsorbPhase::Windup || gourd.absorbPhase == GourdAbsorbPhase::Absorbing;
+}
+
+bool GourdRules::WantsAbsorb(const GourdComponent& gourd) { return gourd.absorbHeld || gourd.absorbBuffer > 0; }
+
+void GourdRules::CancelAbsorbRecovery(GourdComponent& gourd) {
+    if (gourd.absorbPhase != GourdAbsorbPhase::Recovery)
+        return;
+    gourd.absorbPhase = GourdAbsorbPhase::Idle;
+    gourd.absorbPhaseFrames = 0;
+}
+
 HIKARI::GameProjectFloat3 GourdRules::GetMouthPosition(const GourdComponent& gourd) { return gourd.mouthPosition; }
 HIKARI::GameProjectFloat3 GourdRules::GetAimDirection(const GourdComponent& gourd) { return gourd.aimDirection; }
 

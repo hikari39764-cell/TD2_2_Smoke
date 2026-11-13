@@ -65,7 +65,13 @@ void EnterAbsorbPhase(GourdComponent& gourd, GourdAbsorbPhase phase) {
     gourd.absorbPhaseFrames = 0;
 }
 
-// 固定 tick ごとに一度だけ進める。構え → 吸う → 後隙。被弾などで通常の姿勢でなくなったら、後隙なしで打ち切る。
+// 後隙が 0 F なら、吸い終わった F から動ける（後隙の段階を 1 F も挟まない）。
+void FinishAbsorb(GourdComponent& gourd) {
+    EnterAbsorbPhase(gourd, gourd.absorbRecoveryFrames > 0 ? GourdAbsorbPhase::Recovery : GourdAbsorbPhase::Idle);
+}
+
+// 固定 tick ごとに一度だけ進める。構え → 吸う → 後隙。どの段階も動作ロックは掛けず、歩きを遅くするだけにする
+// （ロックするとローリングで打ち切れない）。ローリング・被弾などで通常の姿勢でなくなったら、後隙なしで打ち切る。
 void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
     gourd.playerValid = WithPlayer(world, gourd, [&](HIKARI::ObjectView, PlayerComponent& player) {
         const bool usable = gourd.enabled && PlayerRules::IsAlive(player) && player.state == PlayerState::Normal;
@@ -73,42 +79,46 @@ void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
             EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);
         switch (gourd.absorbPhase) {
         case GourdAbsorbPhase::Idle:
-            if (usable && gourd.absorbHeld && PlayerRules::CanStartAction(player)) {
+            // 砲撃の後隙などの動作ロック中は始めない。先行入力が残っていれば、ロックが明けた F に始まる。
+            if (usable && GourdRules::WantsAbsorb(gourd) && PlayerRules::CanStartAction(player)) {
+                gourd.absorbBuffer = 0;
                 EnterAbsorbPhase(gourd, gourd.absorbWindupFrames > 0 ? GourdAbsorbPhase::Windup
                                                                       : GourdAbsorbPhase::Absorbing);
-                // 構えが明ける tick の Player::PreFixedUpdate が先に走るので、その境界までロックをつなぐ。
-                if (gourd.absorbWindupFrames > 0)
-                    PlayerRules::LockActions(player, gourd.absorbWindupFrames + 1);
             }
             break;
         case GourdAbsorbPhase::Windup:
+            // 軽く押しただけでも最低の長さは吸うので、離していても吸う段階へ進む。
             if (++gourd.absorbPhaseFrames >= gourd.absorbWindupFrames) {
-                EnterAbsorbPhase(gourd, gourd.absorbHeld ? GourdAbsorbPhase::Absorbing : GourdAbsorbPhase::Recovery);
-                if (gourd.absorbPhase == GourdAbsorbPhase::Recovery)
-                    PlayerRules::LockActions(player, gourd.absorbRecoveryFrames);
+                if (gourd.absorbHeld || gourd.absorbMinFrames > 0)
+                    EnterAbsorbPhase(gourd, GourdAbsorbPhase::Absorbing);
+                else
+                    FinishAbsorb(gourd);
             }
             break;
         case GourdAbsorbPhase::Absorbing:
-            if (!gourd.absorbHeld) {
-                EnterAbsorbPhase(gourd, GourdAbsorbPhase::Recovery);
-                PlayerRules::LockActions(player, gourd.absorbRecoveryFrames);
-            }
+            // 増やした後の値は、前の F までに吸った F 数（入った F から数える）。
+            // 最低の長さを吸い終えて、離していれば止める。
+            if (++gourd.absorbPhaseFrames >= gourd.absorbMinFrames && !gourd.absorbHeld)
+                FinishAbsorb(gourd);
             break;
         case GourdAbsorbPhase::Recovery:
             if (++gourd.absorbPhaseFrames >= gourd.absorbRecoveryFrames)
                 EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);
             break;
         }
-        if (gourd.absorbPhase == GourdAbsorbPhase::Absorbing) {
-            // ほぼ動けないが、入力した方向へ向きは変えられる。吸う向きはこの向きについて行く。
+        if (gourd.absorbPhase != GourdAbsorbPhase::Idle) {
+            // 歩きは遅くなるが、入力した方向へ向きは変えられる。吸う向きはこの向きについて行く。
             PlayerRules::SetMovementSpeedScale(player, gourd.absorbMoveScale);
             PlayerRules::SetTurnOverride(player, gourd.absorbTurnSpeed);
-            PlayerRules::BlockActions(player);
         }
+        if (GourdRules::IsAbsorbCommitted(gourd))
+            PlayerRules::BlockHeal(player);
     });
     if (!gourd.playerValid)
         EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);
     gourd.absorbing = gourd.absorbPhase == GourdAbsorbPhase::Absorbing;
+    // 砲撃（実行順が前）も同じ tick に先行入力を見るので、使い終わってから減らす。
+    gourd.absorbBuffer = std::max(0, gourd.absorbBuffer - 1);
 }
 
 void SpringAxis(float& value, float& velocity, float target, float frequency, float dt) {
@@ -203,7 +213,7 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d "
         "readAccepted=%d "
         "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u "
-        "gatherStrength=%.3f intake=%.3f",
+        "gatherStrength=%.3f intake=%.3f phase=%d phaseFrames=%d buffer=%d",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -215,7 +225,8 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         static_cast<int>(gourd.transformAccepted), static_cast<int>(gourd.fluidAccepted),
         static_cast<int>(gourd.readAccepted), static_cast<double>(gourd.recoilOffset.x),
         static_cast<double>(gourd.recoilOffset.y), static_cast<double>(gourd.recoilOffset.z), gourd.recoilFramesLeft,
-        gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate));
+        gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate),
+        static_cast<int>(gourd.absorbPhase), gourd.absorbPhaseFrames, gourd.absorbBuffer);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -225,11 +236,14 @@ void GourdSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& f
     if (!IsPlaying(world, frame))
         return;
     HIKARI::GameProjectInputActionState input{};
-    const bool held = world.GetInput().GetAction("Gameplay.Absorb", input) && input.down;
+    const bool valid = world.GetInput().GetAction("Gameplay.Absorb", input);
+    // 先行入力は押した F の終わりにも 1 減るので、1 足して「押した後に覚えておく F 数」にする。
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
                                            [&](HIKARI::ObjectView, GourdComponent& gourd) {
                                                GourdRules::Initialize(gourd);
-                                               gourd.absorbHeld = held;
+                                               gourd.absorbHeld = valid && input.down;
+                                               if (valid && input.pressed)
+                                                   gourd.absorbBuffer = std::max(0, gourd.absorbBufferFrames) + 1;
                                            });
 }
 

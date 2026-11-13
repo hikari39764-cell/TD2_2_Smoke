@@ -60,12 +60,22 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "本、いちばん手前の輪は 3 本の流れです。");
     }
     if (fields.Section("吸い込みの操作", true)) {
-        fields.Int("absorbWindupFrames", "構えの前隙 (F。動けない)", absorbWindupFrames, 0, 600);
-        fields.Int("absorbRecoveryFrames", "離した後の後隙 (F。動けない)", absorbRecoveryFrames, 0, 600);
-        fields.Float("absorbMoveScale", "吸い込み中の歩行倍率（0.06 で約 0.3 m/秒）", absorbMoveScale, 0.0f, 1.0f);
-        fields.Float("absorbTurnSpeed", "吸い込み中に向きを変えられる速さ (度/秒)", absorbTurnSpeed, 0.0f, 3600.0f);
-        fields.Note("吸っている間は入力した方向へ向きを変えられます（ロックオン中でも）。吸う向きはプレイヤーの向きです。"
-                    "構え・吸い込み・後隙の間は、ローリング・回復・砲撃を始められません。");
+        fields.Int("absorbWindupFrames", "構えの前隙 (F。吸う力はまだ出ない)", absorbWindupFrames, 0, 600);
+        fields.Int("absorbMinFrames", "1 回押したら少なくとも吸う長さ (F。構えの後から。0 は離した所で止める)",
+                   absorbMinFrames, 0, 600);
+        fields.Int("absorbRecoveryFrames", "吸い終わった後の後隙 (F)", absorbRecoveryFrames, 0, 600);
+        fields.Int("absorbBufferFrames", "先行入力を覚えておく長さ (押した F の後の F 数。0 は無し)",
+                   absorbBufferFrames, 0, 120);
+        fields.Float("absorbMoveScale", "構え・吸い込み・後隙の間の歩行倍率（0.5 で約 2.6 m/秒）", absorbMoveScale,
+                     0.0f, 1.0f);
+        fields.Float("absorbTurnSpeed", "構え・吸い込み・後隙の間に向きを変えられる速さ (度/秒)", absorbTurnSpeed, 0.0f,
+                     3600.0f);
+        fields.Note("構え・吸い込み・後隙の間は歩けて、入力した方向へ向きを変えられます（ロックオン中でも）。"
+                    "吸う向きはプレイヤーの向きです。ローリングはいつでも出せて、吸い込みを後隙なしで打ち切ります。"
+                    "構えと吸っている間は回復と砲撃を始められません（先行入力は残り、後隙に入った所で出ます）。"
+                    "後隙は砲撃と回復でも打ち切れます。");
+        fields.Note("ローリング・砲撃の後隙・起き上がりなどの間に押した吸い込みは、先行入力の長さだけ覚えておき、"
+                    "動けるようになった最初の F に構えます。軽く押しただけでも、最低の長さは吸います。");
     }
     if (fields.Section("煙の残量", true)) {
         fields.Float("capacity", "煙の容量", capacity, 0.0f, 100000.0f);

@@ -17,8 +17,12 @@ class GourdRules final {
     // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
     static float AddSmoke(GourdComponent& gourd, float amount);
     static bool IsAbsorbing(const GourdComponent& gourd);
-    // 構え・吸い込み・後隙のどれかの最中。この間は砲撃を始めない。
-    static bool IsAbsorbBusy(const GourdComponent& gourd);
+    // 構えか吸い込みの最中。この間は砲撃と回復を始めない（後隙は他の行動で打ち切れるので含まない）。
+    static bool IsAbsorbCommitted(const GourdComponent& gourd);
+    // 吸い込みを押し続けているか、先行入力が残っている。
+    static bool WantsAbsorb(const GourdComponent& gourd);
+    // 吸い込みの後隙を打ち切る（砲撃を後隙から始める時）。後隙でなければ何もしない。
+    static void CancelAbsorbRecovery(GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetMouthPosition(const GourdComponent& gourd);
     static HIKARI::GameProjectFloat3 GetAimDirection(const GourdComponent& gourd);
     // 射撃側の PreFixedUpdate から呼び、同じ tick の GourdSystem が一歩目を進める。

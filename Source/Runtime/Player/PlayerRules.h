@@ -28,8 +28,8 @@ public:
     // その固定 tick だけ、向きを入力の方向へ毎秒この角度まで回す（ロックオン中でも）。0 は通常の向き。
     // PlayerSystem が毎 tick 0 に戻してから外部が要求する。
     static void SetTurnOverride(PlayerComponent& player, float degreesPerSecond);
-    // 次の固定 tick の開始まで、ローリングと回復の開始を止める。続ける間は毎 tick 要求し直す。
-    static void BlockActions(PlayerComponent& player);
+    // 次の固定 tick の開始まで、回復の開始を止める（ローリングは止めない）。続ける間は毎 tick 要求し直す。
+    static void BlockHeal(PlayerComponent& player);
     // その固定 tick だけ、向きを direction（水平）へ毎秒この角度まで回す。ロックオンや入力の向きより優先する。
     // PlayerSystem が使ったら消すので、続ける間は毎 tick 要求する。
     static void SetAimTurn(PlayerComponent& player, HIKARI::GameProjectFloat3 direction, float degreesPerSecond);

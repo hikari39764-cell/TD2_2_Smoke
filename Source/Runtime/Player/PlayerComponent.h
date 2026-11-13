@@ -120,7 +120,7 @@ public:
     int pendingHitStopFrames = 0;
     float externalMoveScale = 1.0f;
     float externalTurnSpeed = 0.0f;
-    bool externalActionBlock = false;
+    bool externalHealBlock = false;
     // 射撃の構え中に向く方向。毎 tick 外部が要求し、PlayerSystem が使ったら消す。
     bool aimTurnPending = false;
     float aimTurnSpeed = 0.0f;

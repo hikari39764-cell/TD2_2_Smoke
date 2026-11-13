@@ -10,7 +10,8 @@ namespace Project_TD2_2 {
 inline constexpr std::string_view kGourdType = "Project_TD2_2.Gourd";
 inline constexpr std::string_view kGourdSystem = "Project_TD2_2.GourdSystem";
 
-// 吸い込みの段階：構え（動けない）→ 吸う（ほぼ動けない・向きは変えられる）→ 後隙（動けない）。
+// 吸い込みの段階：構え（吸う力はまだ出ない）→ 吸う → 後隙。どの段階でもゆっくり歩けて、向きも変えられる。
+// ローリングはどの段階でも出せて、吸い込みを後隙なしで打ち切る。
 enum class GourdAbsorbPhase { Idle, Windup, Absorbing, Recovery };
 
 class GourdComponent final : public HIKARI::IGameComponent {
@@ -47,9 +48,12 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbCatchRate = 30.0f;
     float absorbForwardDistance = 1.3f;
     float absorbHeightOffset = -0.45f;
-    int absorbWindupFrames = 24;
-    int absorbRecoveryFrames = 30;
-    float absorbMoveScale = 0.06f;
+    // 吸ってすぐ次の行動へ移れるように、構えと後隙は短く、その間も歩ける（c-28900b。元の値は調整ガイド）。
+    int absorbWindupFrames = 5;
+    int absorbMinFrames = 10;
+    int absorbRecoveryFrames = 8;
+    int absorbBufferFrames = 12;
+    float absorbMoveScale = 0.5f;
     float absorbTurnSpeed = 720.0f;
     float capacity = 100.0f;
     float initialSmoke = 100.0f;
@@ -79,6 +83,9 @@ class GourdComponent final : public HIKARI::IGameComponent {
     bool initialized = false;
     bool poseInitialized = false;
     bool absorbHeld = false;
+    // 動けない間に押された吸い込みを覚えておく残り F（押した F を含む。0 で無し）。
+    // 動けるようになった最初の F に構える。
+    int absorbBuffer = 0;
     bool absorbing = false;
     GourdAbsorbPhase absorbPhase = GourdAbsorbPhase::Idle;
     int absorbPhaseFrames = 0;
