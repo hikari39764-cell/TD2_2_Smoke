@@ -1,0 +1,14 @@
+{
+  "displayName": "BossChargeGather",
+  "guid": "b84f0c6d2e9a4f17a35d6c1e0f7b92d4",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossChargeGather.hvfx",
+  "type": "VfxEffect"
+}

@@ -29,6 +29,9 @@ enum class BossMoveType {
     // 引爆：溜めてから、燃えている地面を足元から外へ順に爆ぜさせる（判定サイズ＝爆ぜたセルから当たる距離、
     // 斬撃速度＝前線の広がる速さ）。燃えている所が無ければ出せない。
     Detonate,
+    // 天降り斬り：屈んで高く跳び、空中で溜めてから、プレイヤーのいた所へ落ちて着地の周りに当てる
+    // （判定サイズ＝着地点からの半径。攻撃中＝落ちる F（ボスの skyfallDiveFrames）＋着地の当たりの F）。
+    Skyfall,
     Count
 };
 
@@ -156,6 +159,8 @@ struct BossTiming {
     int kamaeFrames = 20;
     int raiseFrames = 12;
     int swingInFrames = 6;
+    // 天降り斬りの攻撃中のうち、落ちる F（残りが着地の当たり）。
+    int skyfallDiveFrames = 10;
     float damageBase = 6.0f;
     float damagePerFrame = 0.15f;
 };

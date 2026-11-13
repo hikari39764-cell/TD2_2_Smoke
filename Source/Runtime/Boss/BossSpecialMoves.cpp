@@ -9,6 +9,7 @@
 #include "BossDetonate.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
+#include "BossSkyfall.h"
 #include "BossWaves.h"
 #include "../Player/PlayerRules.h"
 
@@ -111,6 +112,7 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     case BossMoveType::Ambush:
     case BossMoveType::Clone: boss.sink = boss.hidePreSinkDepth * std::clamp(progress, 0.0f, 1.0f); break;
     case BossMoveType::Detonate: BossDetonate::Charge(frame, std::clamp(progress, 0.0f, 1.0f)); break;
+    case BossMoveType::Skyfall: BossSkyfall::Pre(frame); break;
     default: break;
     }
 }
@@ -125,6 +127,7 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
         break;
     case BossMoveType::Ambush: AmbushAct(frame, move, g, entered); break;
     case BossMoveType::Detonate: BossDetonate::Step(frame, move); break;
+    case BossMoveType::Skyfall: BossSkyfall::Act(frame, move, g); break;
     case BossMoveType::Clone:
         // 新しい場所で、霧から浮かび上がる。
         boss.sink = boss.hidePreSinkDepth * (1.0f - Share(boss.stateFrame, boss.appearRiseFrames));
@@ -147,6 +150,8 @@ void BossSpecialMoves::Trigger(BossFrame& frame, const BossMove& move) {
         BossClones::Place(frame, move);
     } else if (move.type == BossMoveType::Detonate) {
         BossDetonate::Begin(frame);
+    } else if (move.type == BossMoveType::Skyfall) {
+        BossSkyfall::Land(frame);
     }
 }
 
@@ -157,6 +162,7 @@ void BossSpecialMoves::Post(BossComponent& boss, const BossMove& move, float pro
     case BossMoveType::Jump: boss.height = boss.jumpHeight * std::max(0.0f, 1.0f - progress * kJumpLandSpeed); break;
     case BossMoveType::Ambush:
     case BossMoveType::Clone: boss.sink = 0.0f; break;
+    case BossMoveType::Skyfall: BossSkyfall::Post(boss); break;
     default: break;
     }
 }

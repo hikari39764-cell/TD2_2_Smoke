@@ -115,6 +115,44 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", backstepHeight, 0.0f, 10.0f);
         fields.Float("jumpHeight", "跳躍：跳ぶ高さ (m)", jumpHeight, 0.0f, 20.0f);
         fields.Float("jumpCrouchShare", "跳躍：前隙のうち屈む割合（残りで跳ぶ）", jumpCrouchShare, 0.0f, 0.95f, 0.01f);
+        fields.Float("skyfallHeight", "天降り斬り：跳ぶ高さ (m)", skyfallHeight, 0.0f, 40.0f);
+        fields.Float("skyfallBackDrift", "天降り斬り：跳ぶ間に後ろへ流れる距離 (m)", skyfallBackDrift, 0.0f, 10.0f);
+        fields.Int("skyfallCrouchFrames", "天降り斬り：前隙の始めに屈む長さ (F)", skyfallCrouchFrames, 0, 120);
+        fields.Int("skyfallRiseFrames", "天降り斬り：跳び上がる長さ (F。前隙の残りが空中の溜め)", skyfallRiseFrames, 1,
+                   120);
+        fields.Int("skyfallDiveFrames", "天降り斬り：落ちる長さ (F。表の攻撃中の残りが着地の当たり)", skyfallDiveFrames,
+                   1, 120);
+        fields.Float("skyfallDiveEasePower", "天降り斬り：落ち方（1＝等速。大きいほど初めゆっくり、最後に速い）",
+                     skyfallDiveEasePower, 1.0f, 6.0f, 0.1f);
+        fields.Float("skyfallStopDistance", "天降り斬り：プレイヤーの手前に降りる距離 (m)", skyfallStopDistance, 0.0f,
+                     10.0f);
+        fields.Float("skyfallMaxTravel", "天降り斬り：空中から進める最大の距離 (m)", skyfallMaxTravel, 0.0f, 60.0f);
+        fields.Int("skyfallLandCrouchFrames", "天降り斬り：着地で屈んだ体を起こす長さ (F。後隙の始めから)",
+                   skyfallLandCrouchFrames, 1, 300);
+        fields.Float("skyfallBlastScale", "天降り斬り：着地の爆発の大きさ（当たった所の爆発に対する倍。0 で出さない）",
+                     skyfallBlastScale, 0.0f, 8.0f);
+        fields.Vfx("gatherEffect", "溜めの間、剣へ集まって来る光の粒のエフェクト（空なら出さない）", gatherEffect);
+        fields.Float("skyfallGatherScale", "天降り斬り：集まる光の粒の大きさ (倍)", skyfallGatherScale, 0.0f, 10.0f);
+        fields.Float("skyfallGlowScale", "天降り斬り：溜め切った時の剣の光の大きさ（構えに対する倍）", skyfallGlowScale, 0.0f,
+                     20.0f);
+        fields.Float("skyfallHazeScale", "天降り斬り：溜め切った時の剣の霞の量（構えに対する倍）", skyfallHazeScale, 0.0f,
+                     20.0f);
+        fields.Float("skyfallLockFlare", "天降り斬り：落ちる所を決めた瞬間の剣の光 (倍。1 で無効)", skyfallLockFlare, 1.0f,
+                     10.0f);
+        fields.Float("skyfallLockFlareSeconds", "…その光が戻るまで (秒)", skyfallLockFlareSeconds, 0.0f, 2.0f);
+        fields.Float("skyfallTakeoffBlastScale", "天降り斬り：跳び上がる時の足元の霞の塊（倍。0 で出さない）",
+                     skyfallTakeoffBlastScale, 0.0f, 8.0f);
+        fields.Float("skyfallBladeWidth", "天降り斬り：一緒に落ちる刃の幅 (m。0 で出さない)", skyfallBladeWidth, 0.0f, 30.0f);
+        fields.Int("skyfallLandPuffs", "天降り斬り：着地の周りに立つ塊の数", skyfallLandPuffs, 0, 12);
+        fields.Float("skyfallLandPuffDistance", "…着地点からの距離 (m)", skyfallLandPuffDistance, 0.0f, 20.0f);
+        fields.Float("skyfallLandPuffRadius", "…塊の大きさ (m)", skyfallLandPuffRadius, 0.0f, 10.0f);
+        fields.Float("skyfallRingRadius", "天降り斬り：フェーズ 2 の着地の炎の輪の半径 (m。0 で出さない)", skyfallRingRadius,
+                     0.0f, 30.0f);
+        fields.Float("skyfallRingSeconds", "…輪が広がり切るまで (秒)", skyfallRingSeconds, 0.0f, 5.0f);
+        fields.Note(
+            "天降り斬りの落ちる先は、技の表の「追尾を止める F」の時のプレイヤーの手前です（空欄なら落ち始めの時）。"
+            "それより後に動けば外れます。落ちる長さを変えた時は、表を読み直す（Play し直す）と効きます。"
+            "地面や画面の予告は出しません（ボスの向きと構えで読ませる）。");
         fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
                      kickRingStartRadius, 0.0f, 20.0f);
         fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",

@@ -27,6 +27,9 @@ constexpr BossSwordPose kKnifeEnd{30.0f, 40.0f};
 // 回し蹴りの間、剣を横に構えたまま回る。分身を出す間は剣をまっすぐ前へ（試作の held と [0, 0]）。
 constexpr BossSwordPose kHeld{20.0f, -80.0f};
 constexpr BossSwordPose kForward{0.0f, 0.0f};
+// 天降り斬りで落ちる・着地した剣：切っ先を真下へ向けて突き立てる。落ちる進みのこの倍で向け終える（落ちる前半で下を向く）。
+constexpr BossSwordPose kPlunge{90.0f, 0.0f};
+constexpr float kPlungeTurnSpeed = 2.0f;
 // 振り上げた構えの引き（反対へ 22% 引く）、振り出しの割合、フェイントで引き戻す長さ (F)。
 constexpr float kCockedPull = 0.22f;
 constexpr float kSwingInShare = 0.16f;
@@ -189,6 +192,19 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     }
     case BossMoveType::Kick: return kHeld;
     case BossMoveType::Clone: return kForward;
+    case BossMoveType::Skyfall:
+        // 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
+        switch (boss.skyfall.phase) {
+        case BossSkyfallPhase::Crouch: return Sweep(kRest, kUp, boss.crouch);
+        case BossSkyfallPhase::Rise:
+        case BossSkyfallPhase::Hang: return kUp;
+        case BossSkyfallPhase::Dive: return Sweep(kUp, kPlunge, boss.skyfall.dive * kPlungeTurnSpeed);
+        case BossSkyfallPhase::Landed:
+            return phase == BossActPhase::Post
+                       ? Sweep(kPlunge, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)))
+                       : kPlunge;
+        default: return kRest;
+        }
     case BossMoveType::Ambush: {
         if (phase != BossActPhase::Act)
             return kRest;

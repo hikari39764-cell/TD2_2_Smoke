@@ -241,6 +241,169 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
     boss.vfxAccepted = vfx.Update(boss.ringVfx, update) && boss.vfxAccepted;
 }
 
+// 着地・跳ぶ所の塊を、地面からこの高さに出す。
+constexpr float kSkyfallPuffLift = 0.5f;
+// 炎の輪の出始めの大きさ（広がり切った時に対する割合）。
+constexpr float kSkyfallRingStart = 0.2f;
+
+// 天降り斬りの見た目：跳ぶ所の霞、空中の溜め（剣へ集まる光の粒）、一緒に落ちる刃、着地の周りの塊と炎の輪。
+// 規則が書く boss.skyfall を読むだけ（当たりや落ちる所は変えない）。地面には何も予告しない。
+void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
+    const auto vfx = world.GetVfx();
+    const BossSkyfallState& sky = boss.skyfall;
+    const BossSkyfallPhase seen = boss.skyfallSeenPhase;
+    boss.skyfallSeenPhase = sky.phase;
+    const bool fire = boss.lastPhaseNumber >= 2;
+    // 跳び上がる瞬間：足元の霧を押しのけ、霞の塊を巻き上げる（爆発の枠へ入れて、同じフレームの後ろで出す）。
+    if (sky.phase == BossSkyfallPhase::Rise && seen != BossSkyfallPhase::Rise && boss.skyfallTakeoffBlastScale > 0.0f) {
+        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
+        blast = {};
+        blast.pushPending = blast.effectPending = true;
+        blast.puff = true;
+        blast.scale = boss.skyfallTakeoffBlastScale;
+        blast.position = {sky.takeoff.x, sky.takeoff.y + kSkyfallPuffLift, sky.takeoff.z};
+    }
+    // 空中で溜める間：剣へ集まって来る光の粒。落ち始めたら止める。
+    if (sky.phase == BossSkyfallPhase::Hang && !boss.gatherEffect.IsEmpty()) {
+        HIKARI::GameProjectTransform transform{};
+        // 剣の真ん中へ集める（頭上に掲げた剣先だと、見上げるカメラの上の縁から外れやすい）。
+        const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
+        transform.position = Lerp(sword.inner, sword.outer, 0.5f);
+        transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        transform.scale = {boss.skyfallGatherScale, boss.skyfallGatherScale, boss.skyfallGatherScale};
+        HIKARI::GameProjectVfxParameterOverrides parameters{};
+        VfxParameters::SetFloat(parameters, kMistInput, fire ? 0.0f : 1.0f);
+        VfxParameters::SetFloat(parameters, kEmberInput, fire ? 1.0f : 0.0f);
+        if (!boss.gatherVfx.IsValid()) {
+            HIKARI::GameProjectVfxPlayRequest play{};
+            play.asset = boss.gatherEffect;
+            play.transform = transform;
+            play.parameters = parameters;
+            boss.gatherVfx = vfx.Play(play);
+            boss.vfxAccepted = boss.gatherVfx.IsValid() && boss.vfxAccepted;
+        } else {
+            HIKARI::GameProjectVfxUpdateRequest update{};
+            update.updateTransform = 1u;
+            update.updateParameters = 1u;
+            update.transform = transform;
+            update.parameters = parameters;
+            boss.vfxAccepted = vfx.Update(boss.gatherVfx, update) && boss.vfxAccepted;
+        }
+    } else {
+        StopHandle(world, boss.gatherVfx);
+    }
+    // 落ちる所を決めた瞬間：剣がひときわ光る（光そのものは剣先の霞のエフェクトが出す。ここは強さだけ）。
+    if (sky.locked && !boss.skyfallSeenLock)
+        boss.skyfallFlare = 1.0f;
+    boss.skyfallSeenLock = sky.locked;
+    boss.skyfallFlare =
+        std::max(0.0f, boss.skyfallFlare - seconds / std::max(0.001f, boss.skyfallLockFlareSeconds));
+    // 落ちる間：体と一緒に落ちる刃（斬撃のエフェクトを 1 つ、落ちる向きに向けて持って行く）。着地で砕けさせる。
+    BossSlashEffect& blade = boss.skyfallBlade;
+    if (blade.handle.IsValid() && !vfx.IsActive(blade.handle))
+        blade = {};
+    HIKARI::GameProjectTransform body{};
+    if (sky.phase == BossSkyfallPhase::Dive && boss.skyfallBladeWidth > 0.0f && !boss.slashEffect.IsEmpty() &&
+        object.GetWorldTransform(body)) {
+        if (!blade.handle.IsValid()) {
+            const Vec3 direction = Normalize(Sub(sky.target, body.position), {0.0f, -1.0f, 0.0f});
+            const Vec3 across = Normalize(Cross({0.0f, 1.0f, 0.0f}, direction), {1.0f, 0.0f, 0.0f});
+            blade = {};
+            blade.flying = true;
+            blade.position = body.position;
+            blade.rotation = BasisRotation(direction, across);
+            blade.scale = boss.skyfallBladeWidth / std::max(0.01f, boss.slashEffectWidth);
+            HIKARI::GameProjectVfxPlayRequest play{};
+            play.asset = fire || boss.slashSmokeEffect.IsEmpty() ? boss.slashEffect : boss.slashSmokeEffect;
+            play.transform.position = blade.position;
+            play.transform.rotation = blade.rotation;
+            play.transform.scale = {blade.scale, blade.scale, blade.scale};
+            VfxParameters::SetFloat(play.parameters, kFlyInput, 1.0f);
+            VfxParameters::SetFloat(play.parameters, kImpactInput, 0.0f);
+            VfxParameters::SetFloat(play.parameters, kGlowInput, 1.0f);
+            blade.handle = vfx.Play(play);
+            boss.vfxAccepted = blade.handle.IsValid() && boss.vfxAccepted;
+            // 位置は毎フレーム送る。エフェクト側の速度で二重に動かさない。
+            if (blade.handle.IsValid())
+                boss.vfxAccepted = vfx.SetVelocity(blade.handle, {}) && boss.vfxAccepted;
+        } else {
+            if (seconds > 0.0f)
+                blade.velocity = Mul(Sub(body.position, blade.position), 1.0f / seconds);
+            blade.position = body.position;
+        }
+    } else if (blade.handle.IsValid() && blade.flying) {
+        // 着地した（か、打ち切られた）：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
+        // （砕けた霞が、着地の上に大きく立ちのぼる）。
+        blade.flying = false;
+        blade.impactSeconds = boss.slashImpactSeconds;
+        blade.fadeSeconds = boss.slashFadeSeconds;
+        blade.velocity = Mul(blade.velocity, boss.slashHitSpeedScale);
+    }
+    if (blade.handle.IsValid() && !blade.flying) {
+        blade.fadeSeconds -= seconds;
+        blade.glow = std::max(0.0f, blade.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
+        blade.impactSeconds = std::max(0.0f, blade.impactSeconds - seconds);
+        blade.position = Add(blade.position, Mul(blade.velocity, seconds));
+        if (blade.fadeSeconds <= 0.0f) {
+            StopHandle(world, blade.handle);
+            blade = {};
+        }
+    }
+    if (blade.handle.IsValid())
+        SendSlash(world, boss, blade);
+    // 着地した瞬間：着地点の周りに霞（フェーズ 2 は火球）の塊を立て、フェーズ 2 は炎の輪を広げる。
+    // 真ん中の爆発と場の霧の押しは、規則が入れた爆発の枠（skyfallBlastScale）が出す。
+    if (sky.phase == BossSkyfallPhase::Landed && seen != BossSkyfallPhase::Landed) {
+        for (int i = 0; i < boss.skyfallLandPuffs; ++i) {
+            const float angle =
+                2.0f * kPi * (static_cast<float>(i) + 0.5f) / static_cast<float>(boss.skyfallLandPuffs);
+            const Vec3 at{sky.target.x + std::cos(angle) * boss.skyfallLandPuffDistance,
+                          sky.target.y + kSkyfallPuffLift,
+                          sky.target.z + std::sin(angle) * boss.skyfallLandPuffDistance};
+            BurnFieldRules::AddBlast(world, at, boss.skyfallLandPuffRadius,
+                                     fire ? BurnBlastKind::Hit : BurnBlastKind::Smoke);
+        }
+        if (fire && !boss.ringEffect.IsEmpty() && boss.skyfallRingRadius > 0.0f && !boss.skyfallRingVfx.IsValid()) {
+            boss.skyfallRingAge = 0.0f;
+            boss.skyfallRingCenter = {sky.target.x, boss.ground.y + boss.ringHeight, sky.target.z};
+            const float scale = kSkyfallRingStart * boss.skyfallRingRadius / std::max(0.01f, boss.ringEffectRadius);
+            HIKARI::GameProjectVfxPlayRequest play{};
+            play.asset = boss.ringEffect;
+            play.transform.position = boss.skyfallRingCenter;
+            play.transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+            play.transform.scale = {scale, scale, scale};
+            VfxParameters::SetFloat(play.parameters, kFlyInput, 1.0f);
+            VfxParameters::SetColor(play.parameters, kFadeInput, {1.0f, 1.0f, 1.0f});
+            boss.skyfallRingVfx = vfx.Play(play);
+            boss.vfxAccepted = boss.skyfallRingVfx.IsValid() && boss.vfxAccepted;
+        }
+    }
+    // 炎の輪：広がり切るまで燃料を出し、その後は光を下げて消す（流体の炎は自分で燃え尽きる）。
+    if (boss.skyfallRingVfx.IsValid() && !vfx.IsActive(boss.skyfallRingVfx))
+        boss.skyfallRingVfx = {};
+    if (boss.skyfallRingVfx.IsValid()) {
+        boss.skyfallRingAge += seconds;
+        const float fade = boss.skyfallRingAge - boss.skyfallRingSeconds;
+        if (fade >= boss.ringFadeSeconds) {
+            StopHandle(world, boss.skyfallRingVfx);
+            return;
+        }
+        const float grow = std::clamp(boss.skyfallRingAge / std::max(0.001f, boss.skyfallRingSeconds), 0.0f, 1.0f);
+        const float glow = fade <= 0.0f ? 1.0f : 1.0f - fade / std::max(0.001f, boss.ringFadeSeconds);
+        const float scale =
+            Lerp(kSkyfallRingStart, 1.0f, grow) * boss.skyfallRingRadius / std::max(0.01f, boss.ringEffectRadius);
+        HIKARI::GameProjectVfxUpdateRequest update{};
+        update.updateTransform = 1u;
+        update.updateParameters = 1u;
+        update.transform.position = boss.skyfallRingCenter;
+        update.transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+        update.transform.scale = {scale, scale, scale};
+        VfxParameters::SetFloat(update.parameters, kFlyInput, fade <= 0.0f ? 1.0f : 0.0f);
+        VfxParameters::SetColor(update.parameters, kFadeInput, {glow, glow, glow});
+        boss.vfxAccepted = vfx.Update(boss.skyfallRingVfx, update) && boss.vfxAccepted;
+    }
+}
+
 } // namespace
 
 // 火を残す技の間、剣を燃やす：剣に沿って場の火の域へ燃料を入れ（振ると炎が弧を引く）、火が付いた瞬間に小さな火球を出す。
@@ -267,6 +430,8 @@ void UpdateBladeFire(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
 }
 
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
+    // 天降り斬りは爆発の枠へ塊を入れるので、枠を出す所より前に進める。
+    UpdateSkyfall(world, object, boss, seconds);
     UpdateSlashes(world, boss, seconds);
     UpdateRing(world, boss, seconds);
     // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
@@ -331,17 +496,30 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     const bool lit = (boss.bladeLit && acting) ||
                      (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
     UpdateBladeFire(world, object, boss, lit);
-    if (!swinging && !kamae && !lit) {
+    // 天降り斬りの空中の溜めと落ちる間も、剣先の霞と光を出す。
+    const bool charging =
+        boss.skyfall.phase == BossSkyfallPhase::Hang || boss.skyfall.phase == BossSkyfallPhase::Dive;
+    if (!swinging && !kamae && !lit && !charging) {
         StopHandle(world, boss.swordVfx);
         return;
     }
     HIKARI::GameProjectTransform transform{};
-    transform.position = swinging ? boss.swordOuter : BossPose::SwordPoints(boss, BossPose::Target(boss)).outer;
+    const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
+    // 天降り斬りの溜めの光は剣の真ん中に出す（集まる光の粒と同じ所）。
+    transform.position = swinging                                        ? boss.swordOuter
+                         : boss.skyfall.phase == BossSkyfallPhase::Hang ? Lerp(sword.inner, sword.outer, 0.5f)
+                                                                        : sword.outer;
     transform.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
-    const float amount = swinging ? boss.swordEffectAmount : boss.kamaeEffectAmount;
-    const float ember = lit        ? std::max(boss.bladeLitEmber, boss.swordEmberScale)
-                        : swinging ? boss.swordEmberScale
-                                   : boss.kamaeEmberScale;
+    float amount = swinging ? boss.swordEffectAmount : boss.kamaeEffectAmount;
+    float ember = lit        ? std::max(boss.bladeLitEmber, boss.swordEmberScale)
+                  : swinging ? boss.swordEmberScale
+                             : boss.kamaeEmberScale;
+    if (charging) {
+        // 溜めるにつれて剣の光と霞が大きくなり、落ちる所を決めた瞬間にひときわ光る（落ちて来る合図は剣の光だけ）。
+        amount *= Lerp(1.0f, boss.skyfallHazeScale, boss.skyfall.charge);
+        ember *= Lerp(1.0f, boss.skyfallGlowScale, boss.skyfall.charge) *
+                 (1.0f + (boss.skyfallLockFlare - 1.0f) * boss.skyfallFlare);
+    }
     if (!boss.swordVfx.IsValid()) {
         boss.swordVfx = Play(world, boss, boss.swordEffect, transform, amount, ember, lit);
         return;
@@ -366,6 +544,10 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
         effect = {};
     }
     StopHandle(world, boss.swordVfx);
+    StopHandle(world, boss.gatherVfx);
+    StopHandle(world, boss.skyfallBlade.handle);
+    boss.skyfallBlade = {};
+    StopHandle(world, boss.skyfallRingVfx);
 }
 
 } // namespace Project_TD2_2

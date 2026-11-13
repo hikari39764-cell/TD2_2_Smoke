@@ -13,9 +13,9 @@ namespace {
 
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
-constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",  "overhead", "kick",
-                                               "knife",    "string", "ambush",   "clone",   "slashH",   "slashV",
-                                               "walkSide", "walkIn", "backstep", "detonate"};
+constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",   "overhead", "kick",
+                                               "knife",    "string", "ambush",   "clone",    "slashH",   "slashV",
+                                               "walkSide", "walkIn", "backstep", "detonate", "skyfall"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -137,6 +137,9 @@ BossMoveType GuessType(std::string_view name) {
         return BossMoveType::Knife;
     if (Contains(name, "隠れ"))
         return BossMoveType::Ambush;
+    // 「天降り」は「跳」より先に見る（跳んで落ちる技を、跳躍→X字と取り違えないように）。
+    if (Contains(name, "天降"))
+        return BossMoveType::Skyfall;
     int strokes = 0;
     for (size_t at = 0; at + 3 <= name.size(); at += 1) {
         const std::string_view piece = name.substr(at, 3);
@@ -561,6 +564,18 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                 move.segments[move.segments.size() - 2].length += timing.feintFrames;
                 move.segments[move.segments.size() - 2].feint = true;
             }
+        } else if (move.type == BossMoveType::Skyfall) {
+            // 天降り斬り：攻撃中の全体を表に書き、そのうち落ちる F はボスの項目で分ける（前隙を屈む・跳ぶ・溜めに分けるのと
+            // 同じ）。落ちる区間は当たらず、残りの区間が着地の当たり（着地した tick から）。
+            int total = static_cast<int>(NumberOf(actText).value_or(0.0));
+            if (total < 2) {
+                move.warnings.push_back("攻撃中「" + actText +
+                                        "」が読めないので型の既定値にしました（落ちる F ＋着地の当たりの F。2F 以上）");
+                total = std::max(2, static_cast<int>(NumberOf(T.act).value_or(0.0)));
+            }
+            const int dive = std::clamp(timing.skyfallDiveFrames, 1, total - 1);
+            move.segments.push_back({dive, false, 0, false, 0, 0});
+            move.segments.push_back({total - dive, true, 0, false, 0, 0});
         } else {
             std::vector<double> parts;
             for (const auto& part : Split(actText, false)) {

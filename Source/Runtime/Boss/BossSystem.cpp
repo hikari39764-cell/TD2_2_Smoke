@@ -47,6 +47,8 @@ constexpr float kStunWobble = 0.05f;
 constexpr float kFallbackSmokePerVolume = 4.0f;
 // ヒョウタンの空きがこれより少なければ、斬撃・ナイフは吸えない（試作の 0.01）。
 constexpr float kAbsorbRoomEpsilon = 0.01f;
+// 体がこの高さ（m）より上にある間は、通った跡の煙を地面に残さない。
+constexpr float kTrailMaxHeight = 0.5f;
 
 bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     return world.GetGameSession() != nullptr && !frame.paused;
@@ -73,6 +75,7 @@ BossTiming TimingOf(const BossComponent& boss) {
     timing.kamaeFrames = boss.kamaeFrames;
     timing.raiseFrames = boss.raiseFrames;
     timing.swingInFrames = boss.swingInFrames;
+    timing.skyfallDiveFrames = boss.skyfallDiveFrames;
     timing.damageBase = boss.damageBase;
     timing.damagePerFrame = boss.damagePerFrame;
     return timing;
@@ -450,7 +453,9 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 // 崩れ・気絶・撃破で引爆が打ち切られたら、溜めを燃える地面から下ろす。
                 BossDetonate::Sync(bossFrame);
                 // ボスが動いた跡にも煙が残る（bossResidueStep ごとに 1 回ぶん。吸い込める）。
-                boss.bodyTrail += FlatLength(Sub(boss.ground, boss.lastBodyPosition));
+                // 空中を動いた分は数えない（天降り斬りで落ちる先の地面に、落ちる前から煙が出てしまう）。
+                if (boss.height < kTrailMaxHeight)
+                    boss.bodyTrail += FlatLength(Sub(boss.ground, boss.lastBodyPosition));
                 boss.lastBodyPosition = boss.ground;
                 if (boss.bodyTrail >= boss.bossResidueStep) {
                     boss.bodyTrail = 0.0f;

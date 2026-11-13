@@ -157,6 +157,38 @@ struct BossDetonation {
     bool dodged = false;
 };
 
+// 天降り斬りの段階。屈む → 跳び上がる → 空中で溜める → 落ちる → 着地した（技が終わるまで）。技の外は None。
+enum class BossSkyfallPhase { None, Crouch, Rise, Hang, Dive, Landed };
+
+// 天降り斬りのいまの様子。規則（BossSkyfall）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
+struct BossSkyfallState {
+    BossSkyfallPhase phase = BossSkyfallPhase::None;
+    // 空中の溜めの進み（溜め始めの tick で 0 から、落ち始める tick で 1）。溜めの揺らぎで延びた分も含めて進む。
+    float charge = 0.0f;
+    // 落ちる進み（落ち始めで 0 から、着地の tick で 1）。高さと水平の進みはこれに落ち方の曲線を掛けたもの。
+    float dive = 0.0f;
+    // 跳んだ所と落ちる所（どちらも地面の高さ）。落ちる所は、locked までは毎 tick の見込み、locked の後は決まった所。
+    HIKARI::GameProjectFloat3 takeoff{};
+    HIKARI::GameProjectFloat3 target{};
+    bool locked = false;
+    // 着地した tick（boss.tick と同じ数え方。着地前は 0）。
+    uint64_t landedTick = 0;
+    // ここから下は規則の内側の覚え（見た目は読まない）。
+    // 跳ぶ間に流れる向き（跳んだ時のプレイヤーから離れる向き）と、落ち始めた所・高さ。
+    HIKARI::GameProjectFloat3 away{};
+    HIKARI::GameProjectFloat3 diveFrom{};
+    float diveHeight = 0.0f;
+    // 前隙の分け方（技を始めた時のボスの項目と前隙で決める）と、空中で溜めた tick の数。
+    int crouchFrames = 0;
+    int riseFrames = 1;
+    int hangFrames = 0;
+    int hangElapsed = 0;
+    // 着地の当たり（1 回の着地で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
+    bool caught = false;
+    bool hit = false;
+    bool dodged = false;
+};
+
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
 inline constexpr size_t kBossReactionMemory = 16;
 
@@ -316,6 +348,39 @@ public:
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
     float jumpHeight = 3.6f;
     float jumpCrouchShare = 0.28f;
+    // 天降り斬り（前隙＝屈む F ＋跳び上がる F ＋残りが空中の溜め。攻撃中＝落ちる F ＋残りが着地の当たり。
+    // 前隙・攻撃中・後隙・当たりの半径・威力・落ちる先を決める F（追尾を止める F）は技の表）
+    float skyfallHeight = 6.0f;
+    float skyfallBackDrift = 1.5f;
+    int skyfallCrouchFrames = 8;
+    int skyfallRiseFrames = 16;
+    int skyfallDiveFrames = 14;
+    float skyfallDiveEasePower = 2.0f;
+    float skyfallStopDistance = 1.2f;
+    float skyfallMaxTravel = 16.0f;
+    int skyfallLandCrouchFrames = 30;
+    float skyfallBlastScale = 1.8f;
+    // ── 天降り斬りの見た目（規則は変えない） ──
+    // 空中で溜める間、剣へ集まって来る光の粒（フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
+    HIKARI::GameProjectVfxAssetReference gatherEffect{"b84f0c6d2e9a4f17a35d6c1e0f7b92d4", "Assets/Vfx/BossChargeGather.hvfx"};
+    float skyfallGatherScale = 1.3f;
+    // 溜め切った時の、剣の光の大きさと霞の量（構えの時に対する倍）。
+    float skyfallGlowScale = 3.0f;
+    float skyfallHazeScale = 3.0f;
+    // 落ちる所を決めた瞬間に剣がひときわ光る（落ちて来る合図。光の倍率と、戻るまでの秒）。
+    float skyfallLockFlare = 2.5f;
+    float skyfallLockFlareSeconds = 0.25f;
+    // 跳び上がる時に足元から巻き上がる霞の塊の大きさ（消える所の煙の塊に対する倍。0 で出さない）。
+    float skyfallTakeoffBlastScale = 1.4f;
+    // 落ちる間、体と一緒に落ちる刃（斬撃のエフェクト）の幅 m（0 で出さない）。
+    float skyfallBladeWidth = 6.0f;
+    // 着地の周りに立つ霞（フェーズ 2 は火球）の塊：数・着地点からの距離 m・大きさ m。
+    int skyfallLandPuffs = 5;
+    float skyfallLandPuffDistance = 2.4f;
+    float skyfallLandPuffRadius = 1.3f;
+    // フェーズ 2 の着地で広がる炎の輪（回し蹴りの輪のエフェクト）：広がり切る半径 m と、広がる秒。
+    float skyfallRingRadius = 4.5f;
+    float skyfallRingSeconds = 0.22f;
     // 回転→霞の輪（試作：半径 0.8 m から判定サイズまで、斬撃速度で広がる。消えた所の 0.7 倍の円に残り煙 6 か所）
     float kickRingStartRadius = 0.8f;
     float kickResidueScale = 0.6f;
@@ -516,6 +581,7 @@ public:
     bool cloneSpawnPending = false;
     int activeClones = 0;
     BossDetonation detonation;
+    BossSkyfallState skyfall;
     // いまの技のどれかの一撃が、いまのフェーズで火を残す＝この技の間は剣が燃えている。技を始めた tick に決め、
     // 待機へ戻る・打ち切られる（気絶・崩れ・撃破）まで保つ。規則は読まず、見た目（BossVisuals）が読む。
     bool bladeLit = false;
@@ -571,6 +637,15 @@ public:
     HIKARI::GameProjectFloat3 ringCenter{};
     std::array<BossSlashEffect, kBossSlashEffectCapacity> slashEffects{};
     HIKARI::GameProjectVfxPlaybackHandle swordVfx{};
+    // 天降り斬りの見た目の状態：集まる光の粒、落ちる刃、着地の炎の輪、前のフレームに見た段階。
+    HIKARI::GameProjectVfxPlaybackHandle gatherVfx{};
+    BossSlashEffect skyfallBlade{};
+    HIKARI::GameProjectVfxPlaybackHandle skyfallRingVfx{};
+    float skyfallRingAge = 0.0f;
+    HIKARI::GameProjectFloat3 skyfallRingCenter{};
+    BossSkyfallPhase skyfallSeenPhase = BossSkyfallPhase::None;
+    bool skyfallSeenLock = false;
+    float skyfallFlare = 0.0f;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
     int playerHits = 0;
