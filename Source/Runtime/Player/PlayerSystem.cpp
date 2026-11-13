@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
+#include "../Common/FireObstacle.h"
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
@@ -18,6 +19,8 @@ constexpr uint64_t kMotionSource = 0x5444325001ull;
 constexpr uint64_t kHitStopSource = 0x5444325003ull;
 constexpr uint64_t kHitCameraSource = 0x5444325004ull;
 constexpr uint64_t kRollFogInstance = 1;
+constexpr uint64_t kRollFireInstance = 2;
+constexpr uint64_t kFireObstacleInstance = 3;
 constexpr int kPlayerPriority = 300;
 constexpr float kFramesPerSecond = 60.0f;
 constexpr float kTau = 6.28318530718f;
@@ -439,23 +442,33 @@ void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameConte
 void PlayerSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
-            if (!player.rollFogPending)
-                return;
-            player.rollFogPending = false;
-            HIKARI::GameProjectTransform transform{};
-            if (!object.GetWorldTransform(transform))
-                return;
-            HIKARI::GameProjectFluidInteraction impulse{};
-            impulse.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
-            impulse.position = transform.position;
-            impulse.position.y += player.rollFogHeightOffset;
-            impulse.extents = {player.rollFogRadius, 0.0f, 0.0f};
-            impulse.direction = player.actionDirection;
-            impulse.strength = player.rollFogStrength;
-            player.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), kRollFogInstance, impulse).Accepted();
-        });
+    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object,
+                                                                                          PlayerComponent& player) {
+        player.fluidAccepted = FireObstacle::Submit(world, object, kFireObstacleInstance, player.fireObstacleRadius,
+                                                    player.fireObstacleHeight);
+        if (!player.rollFogPending)
+            return;
+        player.rollFogPending = false;
+        HIKARI::GameProjectTransform transform{};
+        if (!object.GetWorldTransform(transform))
+            return;
+        HIKARI::GameProjectFluidInteraction impulse{};
+        impulse.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
+        impulse.position = transform.position;
+        impulse.position.y += player.rollFogHeightOffset;
+        impulse.extents = {player.rollFogRadius, 0.0f, 0.0f};
+        impulse.direction = player.actionDirection;
+        impulse.strength = player.rollFogStrength;
+        player.fluidAccepted =
+            world.GetFluid().Submit(object.GetHandle(), kRollFogInstance, impulse).Accepted() && player.fluidAccepted;
+        // ローリングの風は、場の火も弱めに押す（火のそばを転がると炎がなびく）。
+        if (player.rollFireShare > 0.0f) {
+            impulse.strength = player.rollFogStrength * player.rollFireShare;
+            impulse.channels = FluidChannels::kFire;
+            player.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), kRollFireInstance, impulse).Accepted() &&
+                                   player.fluidAccepted;
+        }
+    });
 }
 
 } // namespace Project_TD2_2

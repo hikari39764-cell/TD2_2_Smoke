@@ -88,6 +88,11 @@ public:
     float rollFogRadius = 1.0f;
     float rollFogStrength = 3.0f;
     float rollFogHeightOffset = -0.45f;
+    // ローリングの風が場の火を押す強さ（霧を押す強さに対する割合。0 で押さない）。
+    float rollFireShare = 0.6f;
+    // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
+    float fireObstacleRadius = 0.4f;
+    float fireObstacleHeight = 1.7f;
     // 歩き出し・止まる時に速さを変える時間（0 で一瞬）。回避・被弾などの動作には掛からない。
     float moveAccelSeconds = 0.08f;
     float moveDecelSeconds = 0.06f;

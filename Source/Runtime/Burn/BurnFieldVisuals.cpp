@@ -331,14 +331,21 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
         field.fluidAccepted =
             fluid.Submit(object.GetHandle(), kFuelInstanceBase + index, fuel).Accepted() && field.fluidAccepted;
 
-        // 火の下の霧を焼く：場の霧（Default）だけに届く、吸収だけの力。注入の数を抑えるため、点を 1 つおきに交代で出す。
-        if (field.fogBurnAbsorption > 0.0f && field.fogBurnRadiusScale > 0.0f &&
+        // 火のそばの霧：場の霧（Default）だけに届く力で、火の熱で上へ持ち上げながら焼いて薄くする（閉じた域なので、
+        // 持ち上がった分の霧が横から火へ流れ込む）。注入の数を抑えるため、点を 1 つおきに交代で出す。
+        if ((field.fogBurnAbsorption > 0.0f || field.fogUpdraft > 0.0f) && field.fogBurnRadiusScale > 0.0f &&
             (index + field.renderFrame) % 2u == 0u) {
             HIKARI::GameProjectFluidInteraction burn{};
             burn.kind = Kind::Force;
             burn.position = {emitter.x, map.FloorY() + field.fuelHeight, emitter.z};
             burn.extents = {0.5f * std::max(emitter.along, emitter.across) * field.fogBurnRadiusScale, 0.0f, 0.0f};
             burn.absorption = field.fogBurnAbsorption * 2.0f;
+            // 交代で出す分、加速度も 2 倍にして平均を項目の値に合わせる。向きの無い Force は湧き出しになるので、
+            // 上昇が 0 の時は向きも強さも入れない（吸収だけ）。
+            if (field.fogUpdraft > 0.0f) {
+                burn.direction = {0.0f, 1.0f, 0.0f};
+                burn.strength = std::min(kMaximumStrength, field.fogUpdraft * 2.0f * fade);
+            }
             burn.channels = FluidChannels::kFog;
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kFogInstanceBase + index, burn).Accepted() && field.fluidAccepted;

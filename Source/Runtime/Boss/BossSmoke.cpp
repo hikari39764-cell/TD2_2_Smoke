@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "HIKARI/Project/FluidView.h"
+#include "../Common/FireObstacle.h"
 #include "BossMath.h"
 #include "BossPose.h"
 
@@ -19,6 +20,7 @@ constexpr uint64_t kSwordOuterId = 1, kSwordInnerId = 2, kKamaeId = 3, kBodyId =
 // 爆発が足元の霧を押す力の提出 ID と、押す向きの数、地面からの高さ (m)。
 // 向きのある押しを輪に並べる（向きの無い膨張は霧を上へも持ち上げ、連撃でカメラが霧の中に入った）。
 constexpr uint64_t kBlastPushBase = 110;
+constexpr uint64_t kFireObstacleId = 5;
 constexpr int kBlastPushCount = 6;
 constexpr float kBlastPushHeight = 0.3f;
 constexpr float kTau = 6.28318530718f;
@@ -82,6 +84,9 @@ struct Emitter {
 
 void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float smokePerVolume) {
     Emitter emitter{world, object, boss, smokePerVolume};
+    boss.fluidAccepted =
+        FireObstacle::Submit(world, object, kFireObstacleId, boss.fireObstacleRadius, boss.fireObstacleHeight) &&
+        boss.fluidAccepted;
     if (boss.swordSmoke) {
         emitter.Emit(kSwordOuterId, boss.swordOuter, boss.swordSmokeRadius, boss.swordSmokeRate * kSwordOuterShare, {});
         emitter.Emit(kSwordInnerId, boss.swordInner, boss.swordSmokeRadius,

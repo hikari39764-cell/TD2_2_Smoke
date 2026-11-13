@@ -262,7 +262,7 @@
           "anisotropy": 0.30000001192092896,
           "boundary": "ClosedFloor",
           "buoyancy": 4.0,
-          "burnRate": 5.0,
+          "burnRate": 8.0,
           "castShadows": false,
           "cellColor": false,
           "combustion": true,
@@ -307,8 +307,8 @@
           ],
           "smokePerBurn": 0.3,
           "substepRate": 60.0,
-          "temperatureDissipation": 4.0,
-          "vorticity": 8.0,
+          "temperatureDissipation": 5.0,
+          "vorticity": 6.0,
           "weight": 0.0,
           "channel": "Channel1"
         },
@@ -316,7 +316,7 @@
           "collisionPlaneEnabled": false,
           "collisionPlaneHeight": 0.0,
           "collisionThickness": 0.5,
-          "drag": 1.5,
+          "drag": 2.0,
           "field": {
             "attraction": 0.0,
             "axis": [
@@ -330,9 +330,9 @@
               0.0
             ],
             "evolution": 3.0,
-            "frequency": 4.0,
+            "frequency": 2.5,
             "radius": 0.0,
-            "turbulence": 20.0,
+            "turbulence": 12.0,
             "vortex": 0.0
           },
           "fluidCoupling": 0.0,

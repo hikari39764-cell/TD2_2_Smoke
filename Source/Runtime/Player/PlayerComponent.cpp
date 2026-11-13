@@ -35,6 +35,14 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("rollFogRadius", "霧を押す半径 (m)", rollFogRadius, 0.01f, 10.0f);
         fields.Float("rollFogStrength", "霧を押す強さ (m/s)", rollFogStrength, 0.0f, 100.0f);
         fields.Float("rollFogHeightOffset", "霧の中心高さ補正 (m)", rollFogHeightOffset, -5.0f, 5.0f);
+        fields.Float("rollFireShare", "場の火を押す強さ (霧を押す強さに対する割合。0 で押さない)", rollFireShare, 0.0f,
+                     4.0f);
+    }
+    if (fields.Section("場の火")) {
+        fields.Note(
+            "場の火（燃える地面）が体をよけて割れ、体の動きに引かれます。霧の側は FluidObstacleComponent が受け持ちます。");
+        fields.Float("fireObstacleRadius", "火が体をよける半径 (m。0 でよけない)", fireObstacleRadius, 0.0f, 5.0f);
+        fields.Float("fireObstacleHeight", "火が体をよける高さ (m)", fireObstacleHeight, 0.0f, 10.0f);
     }
     if (fields.Section("被弾")) {
         fields.Note("三歩の時間は全体 F の中に収めます。三歩目は残りの F 数です。");

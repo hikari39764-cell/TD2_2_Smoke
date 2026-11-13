@@ -49,6 +49,8 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("fogBurnAbsorption", "火の下の霧を焼く率 (/s。0 は焼かない)", fogBurnAbsorption, 0.0f, 1000.0f);
         fields.Float("fogBurnRadiusScale", "霧を焼く半径 (燃料の点が受け持つ火の長さの半分に対する倍)",
                      fogBurnRadiusScale, 0.0f, 6.0f);
+        fields.Float("fogUpdraft", "火のそばの霧を上へ持ち上げる加速度 (m/s²。0 は持ち上げない)", fogUpdraft, 0.0f,
+                     60.0f);
         fields.Note(
             "炎そのものの色・明るさ・揺れ・煙の量は、エフェクト資産 ArenaFireField の流体域の層で決めます。"
             "ここは、燃えている所へ燃料をどう入れるかだけです。燃料の点は、燃えているセルのかたまりの上に居続けて、"

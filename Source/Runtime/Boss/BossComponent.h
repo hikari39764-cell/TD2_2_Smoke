@@ -562,6 +562,9 @@ public:
     float depositHeight = 0.6f;
     int depositFrames = 24;
     float bodySmokeRadius = 1.3f;
+    // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
+    float fireObstacleRadius = 0.7f;
+    float fireObstacleHeight = 3.4f;
     // 見た目：飛ぶ斬撃（自前の流体域を持つ三日月の霧。局所 +X が飛ぶ向き、刃は局所 XY 面）
     HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
                                                      "Assets/Vfx/BossSlashWave.hvfx"};

@@ -284,6 +284,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("depositHeight", "残す煙の高さ（地面から m）", depositHeight, 0.0f, 5.0f);
         fields.Int("depositFrames", "消えた所の煙を出し切る長さ (F)", depositFrames, 1, 600);
         fields.Float("bodySmokeRadius", "ボスの通った跡の煙の半径 (m)", bodySmokeRadius, 0.05f, 10.0f);
+        fields.Float("fireObstacleRadius", "場の火が体をよける半径 (m。0 でよけない)", fireObstacleRadius, 0.0f, 10.0f);
+        fields.Float("fireObstacleHeight", "場の火が体をよける高さ (m)", fireObstacleHeight, 0.0f, 20.0f);
         fields.Float("waveAbsorbSmoke", "吸い込み：斬撃 1 つを吸った時にヒョウタンへ入る煙", waveAbsorbSmoke, 0.0f,
                      1000.0f);
         fields.Float("knifeAbsorbSmoke", "吸い込み：ナイフ 1 本を吸った時にヒョウタンへ入る煙", knifeAbsorbSmoke, 0.0f,
