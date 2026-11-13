@@ -18,6 +18,8 @@ public:
     static float GetLastDamage(const DamageableComponent& target);
     static HIKARI::GameProjectFloat3 GetLastDirection(const DamageableComponent& target);
     static uint64_t GetHitCount(const DamageableComponent& target);
+    // 光りだけを frames F 出す（命中ではない場面。ボスの崩し・気絶）。長い方が残り、手応えのほかの動きは起こさない。
+    static void RequestFlash(DamageableComponent& target, int frames);
     // 次に受けるダメージにかける倍率（0 以上）。ApplyDamage は amount × 倍率を HP から引く。
     static void SetIncomingDamageScale(DamageableComponent& target, float scale);
     // 倍率をかける前の量で数えた、受け付けたダメージの累計。

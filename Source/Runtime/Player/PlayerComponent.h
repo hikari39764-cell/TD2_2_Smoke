@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HIKARI/Project/GameComponent.h"
+#include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -47,6 +48,15 @@ public:
     // 吹っ飛びの放物線の頂点の高さ。knockbackFrames の半分で頂点に届き、終わりに着地する。
     float knockbackHeight = 1.3f;
     int knockbackHitStopFrames = 8;
+    // 食らった時のカメラの揺れと振動（c-d330c0。止めは上の値のまま）。のけぞりは小さく短く、吹っ飛びは大きく長く。
+    float hitCameraAmplitudeStagger = 0.05f;
+    int hitCameraFramesStagger = 8;
+    float hitCameraAmplitudeKnockback = 0.12f;
+    int hitCameraFramesKnockback = 14;
+    float hitCameraFrequency = 22.0f;
+    float hitRumbleStagger = 0.5f;
+    float hitRumbleKnockback = 0.9f;
+    int hitRumbleFrames = 10;
     int downFrames = 40;
     int downRollFrame = 14;
     int getUpFrames = 22;
@@ -124,6 +134,10 @@ public:
     bool fluidAccepted = true;
     bool hitStopAccepted = true;
     int pendingHitStopFrames = 0;
+    // 食らった tick に立て、描画フレームの手応え（カメラ・振動）が使ったら消す。
+    bool pendingHitFeedback = false;
+    bool pendingHitFeedbackKnockback = false;
+    Feedback::CameraShake hitShake{};
     float externalMoveScale = 1.0f;
     float externalTurnSpeed = 0.0f;
     bool externalHealBlock = false;

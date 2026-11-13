@@ -58,6 +58,8 @@ bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::Gam
     player.recoilFramesLeft = 0;
     player.pendingHitStopFrames =
         kind == PlayerDamageKind::Knockback ? player.knockbackHitStopFrames : player.staggerHitStopFrames;
+    player.pendingHitFeedback = true;
+    player.pendingHitFeedbackKnockback = kind == PlayerDamageKind::Knockback;
     if (player.health <= 0.0f) {
         EnterDeath(player);
     } else {

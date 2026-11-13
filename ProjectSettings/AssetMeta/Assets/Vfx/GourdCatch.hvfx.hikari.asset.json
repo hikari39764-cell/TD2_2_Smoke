@@ -1,0 +1,14 @@
+{
+  "displayName": "GourdCatch",
+  "guid": "a3d5c1e09b7f4e28b6140f2d8c9e7a51",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdCatch.hvfx",
+  "type": "VfxEffect"
+}

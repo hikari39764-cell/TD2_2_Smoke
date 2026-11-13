@@ -16,6 +16,8 @@ class GourdRules final {
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
     // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
     static float AddSmoke(GourdComponent& gourd, float amount);
+    // ボスの斬撃・ナイフを count 個吸い取った。手応え（止め・振動・視野角・エフェクト）はヒョウタンが次の描画フレームで出す。
+    static void NotifyCatch(GourdComponent& gourd, int count);
     static bool IsAbsorbing(const GourdComponent& gourd);
     // 構えか吸い込みの最中。この間は砲撃と回復を始めない（後隙は他の行動で打ち切れるので含まない）。
     static bool IsAbsorbCommitted(const GourdComponent& gourd);

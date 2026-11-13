@@ -8,6 +8,7 @@
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossMoveTable.h"
+#include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -250,6 +251,19 @@ public:
     float stunMax = 110.0f;
     int stunLimit = 0;
     int stunFrames = 180;
+    // 溜めを崩した時・気絶した時の手応え（c-d330c0）。止め・カメラの揺れ・手柄の振動・本体の光り。
+    int breakHitStopFrames = 6;
+    float breakHitStopScale = 0.05f;
+    float breakCameraAmplitude = 0.08f;
+    int breakCameraFrames = 10;
+    float breakCameraFrequency = 24.0f;
+    float breakRumbleLow = 0.9f;
+    float breakRumbleHigh = 0.7f;
+    int breakRumbleFrames = 12;
+    int breakFlashFrames = 12;
+    // 崩した・気絶した瞬間に体の中心から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で出さない）。
+    // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
+    float breakBlastScale = 1.8f;
     float stunDamageScale = 1.5f;
     float stunDecayDelaySeconds = 6.0f;
     float stunDecayPerSecond = 10.0f;
@@ -508,9 +522,14 @@ public:
     // 吸い込みで吸われた斬撃・ナイフの煙（この tick にヒョウタンへ渡す）。
     float absorbedSmoke = 0.0f;
     int wavesAbsorbed = 0;
+    // この tick に吸われた斬撃・ナイフの数。BossSystem がヒョウタンへ知らせたら消す。
+    int absorbedWavesPending = 0;
     // 気絶
     float stun = 0.0f;
     int stunCount = 0;
+    // 崩れ・気絶に入った tick に立て、描画フレームの手応え（BossFeedback）が使ったら消す。
+    bool breakFeedbackPending = false;
+    Feedback::CameraShake breakShake{};
     float stunHitSeconds = -1000.0f;
     double seenBaseDamage = 0.0;
     float clockSeconds = 0.0f;

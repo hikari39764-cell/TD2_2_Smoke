@@ -276,6 +276,7 @@ void BossWaves::Step(BossFrame& frame) {
         if (!wave.done && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
             boss.absorbedSmoke += wave.absorbSmoke;
             ++boss.wavesAbsorbed;
+            ++boss.absorbedWavesPending;
             LogWave(boss, wave, "WaveAbsorbed");
             wave.active = false;
             continue;

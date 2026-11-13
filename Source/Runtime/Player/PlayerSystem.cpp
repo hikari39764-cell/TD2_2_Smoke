@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/FluidView.h"
+#include "HIKARI/Project/ProjectLog.h"
 #include "PlayerCamera.h"
 #include "PlayerRules.h"
 
@@ -14,6 +16,7 @@ namespace {
 // 競合の優先順位と識別子はゲームの規則であり、見た目の調整値ではない。
 constexpr uint64_t kMotionSource = 0x5444325001ull;
 constexpr uint64_t kHitStopSource = 0x5444325003ull;
+constexpr uint64_t kHitCameraSource = 0x5444325004ull;
 constexpr uint64_t kRollFogInstance = 1;
 constexpr int kPlayerPriority = 300;
 constexpr float kFramesPerSecond = 60.0f;
@@ -291,16 +294,42 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
     player.motionAccepted = world.GetMotion().SubmitKinematicMoveWithOptions(move, options);
 }
 
+// 食らった瞬間のカメラの揺れと手柄の振動。止めは固定 tick 側（StepPlayer）が出す。
+// 揺れは実時間で進めるので、止めの間も揺れが続いて止まらない。
+void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HIKARI::FrameContext& frame) {
+    if (player.pendingHitFeedback) {
+        player.pendingHitFeedback = false;
+        const bool knockback = player.pendingHitFeedbackKnockback;
+        Feedback::CameraShakeParams shake{};
+        shake.sourceId = kHitCameraSource;
+        shake.priority = kPlayerPriority;
+        shake.frames = knockback ? player.hitCameraFramesKnockback : player.hitCameraFramesStagger;
+        shake.amplitude = knockback ? player.hitCameraAmplitudeKnockback : player.hitCameraAmplitudeStagger;
+        shake.frequency = player.hitCameraFrequency;
+        Feedback::StartCameraShake(player.hitShake, shake);
+        const float rumble = knockback ? player.hitRumbleKnockback : player.hitRumbleStagger;
+        Feedback::Rumble(world, rumble, rumble, player.hitRumbleFrames);
+    }
+    HIKARI::GameProjectFloat3 offset{};
+    const bool wasActive = player.hitShake.active;
+    const bool accepted =
+        Feedback::SubmitCameraShake(world, player.hitShake, player.cameraId, frame.unscaledDt, &offset);
+    if (wasActive && player.cameraTrace) {
+        char message[192]{};
+        std::snprintf(message, sizeof(message), "HitShake tick=%llu offset=(%.6f,%.6f) length=%.6f accepted=%d",
+                      static_cast<unsigned long long>(frame.fixedTickIndex), static_cast<double>(offset.x),
+                      static_cast<double>(offset.y), static_cast<double>(std::hypot(offset.x, offset.y)),
+                      static_cast<int>(accepted));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerFeedback", message);
+    }
+}
+
 void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
                 const HIKARI::FrameContext& frame) {
     PlayerRules::Initialize(player);
     if (player.pendingHitStopFrames > 0) {
-        HIKARI::GameProjectTimeDilationRequest request{};
-        request.sourceId = kHitStopSource;
-        request.priority = kPlayerPriority;
-        request.scale = 0.0f;
-        request.durationUnscaledSeconds = static_cast<float>(player.pendingHitStopFrames) / kFramesPerSecond;
-        player.hitStopAccepted = world.GetTimeDilation().Request(request) != 0;
+        player.hitStopAccepted =
+            Feedback::RequestHitStop(world, kHitStopSource, kPlayerPriority, player.pendingHitStopFrames, 0.0f) != 0;
         player.pendingHitStopFrames = 0;
         // ヒットストップを出す tick は止まるだけにし、吹っ飛びの跳ね上げは止まった後の最初の F に回す。
         SubmitMovement(world, object, player, frame, {}, true);
@@ -382,6 +411,7 @@ void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameConte
     world.ForEachComponent<PlayerComponent>(
         HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
             PlayerCamera::Update(world, object, player, std::max(0.0f, frame.unscaledDt));
+            StepHitFeedback(world, player, frame);
         });
 }
 

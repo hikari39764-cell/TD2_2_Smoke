@@ -45,6 +45,16 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("knockbackFrames", "吹っ飛び (F)", knockbackFrames, 1, 600);
         fields.Float("knockbackHeight", "吹っ飛びの放物線の高さ (m、0 は地面を滑る)", knockbackHeight, 0.0f, 10.0f);
         fields.Int("knockbackHitStopFrames", "吹っ飛びヒットストップ (F)", knockbackHitStopFrames, 0, 60);
+        fields.Float("hitCameraAmplitudeStagger", "のけぞりのカメラ揺れ幅 (m、0 は無効)", hitCameraAmplitudeStagger, 0.0f,
+                     1.0f);
+        fields.Int("hitCameraFramesStagger", "のけぞりのカメラ揺れ時間 (F)", hitCameraFramesStagger, 0, 120);
+        fields.Float("hitCameraAmplitudeKnockback", "吹っ飛びのカメラ揺れ幅 (m、0 は無効)", hitCameraAmplitudeKnockback,
+                     0.0f, 1.0f);
+        fields.Int("hitCameraFramesKnockback", "吹っ飛びのカメラ揺れ時間 (F)", hitCameraFramesKnockback, 0, 120);
+        fields.Float("hitCameraFrequency", "被弾のカメラ揺れ周波数 (Hz)", hitCameraFrequency, 0.0f, 60.0f);
+        fields.Float("hitRumbleStagger", "のけぞりの振動の強さ (0〜1、0 は無効)", hitRumbleStagger, 0.0f, 1.0f);
+        fields.Float("hitRumbleKnockback", "吹っ飛びの振動の強さ (0〜1、0 は無効)", hitRumbleKnockback, 0.0f, 1.0f);
+        fields.Int("hitRumbleFrames", "被弾の振動時間 (F、0 は無効)", hitRumbleFrames, 0, 120);
         fields.Int("downFrames", "ダウン (F)", downFrames, 1, 600);
         fields.Int("downRollFrame", "ダウン回避開始 (F)", downRollFrame, 0, 600);
         fields.Int("getUpFrames", "起き上がり (F)", getUpFrames, 1, 600);

@@ -4,6 +4,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -77,6 +78,20 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbRumble = 0.16f;
     int fullRumbleFrames = 8;
     float fullRumble = 0.7f;
+    // ボスの斬撃・ナイフを吸い取った瞬間の手応え（c-d330c0）。止め・手柄の振動・視野角の引き。
+    int catchHitStopFrames = 3;
+    float catchHitStopScale = 0.05f;
+    float catchRumbleLow = 0.5f;
+    float catchRumbleHigh = 0.8f;
+    int catchRumbleFrames = 6;
+    float catchFovDegrees = 1.5f;
+    int catchFovFrames = 8;
+    // 吸い取った瞬間に口の位置で一度だけ出すエフェクト（口へ縮む歪みの輪・冷たい白の閃き・口へ飛び込む光の粒）。
+    // 空なら何も出さない。
+    HIKARI::GameProjectVfxAssetReference catchEffect{"a3d5c1e09b7f4e28b6140f2d8c9e7a51", "Assets/Vfx/GourdCatch.hvfx"};
+    // 吸い取った時、飲み込んだようにヒョウタンが一度膨らんで戻る（膨らむ割合と、戻るまでの秒）。
+    float catchPulseScale = 0.4f;
+    float catchPulseSeconds = 0.18f;
     int traceEveryFrames = 0;
 
     // 累積回読値と所持量は別々に持ち、消費や容量超過を次の回読で戻さない。
@@ -116,6 +131,13 @@ class GourdComponent final : public HIKARI::IGameComponent {
     HIKARI::GameProjectVfxPlaybackHandle absorbVfx{};
     bool vfxAccepted = true;
     bool wasFull = false;
+    // 吸い取った数の累計（ボスの規則が増やす）と、手応えを出し終えた分。差が出たら次の描画フレームで見せる。
+    uint64_t catchCount = 0;
+    uint64_t catchObservedCount = 0;
+    // 膨らみを出し終えた分と、膨らみの残り秒。
+    uint64_t catchPulseObserved = 0;
+    float catchPulseLeft = 0.0f;
+    Feedback::CameraShake catchShake{};
     float absorbBlend = 0.0f;
     // 実際に吸えている速さ（煙／秒、ならした値）。口の演出の強さに使う。
     float intakeRate = 0.0f;

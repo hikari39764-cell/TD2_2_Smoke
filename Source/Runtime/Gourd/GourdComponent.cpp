@@ -120,6 +120,18 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "えない間は 0 です。使っていない間は"
                     "域を消して、同時に描ける流体の域の枠を空けます。");
     }
+    if (fields.Section("吸い取りの手応え")) {
+        fields.Int("catchHitStopFrames", "ボスの斬撃を吸い取った時の止め (F、0 は無効)", catchHitStopFrames, 0, 30);
+        fields.Float("catchHitStopScale", "…止め中の時間倍率", catchHitStopScale, 0.0f, 1.0f);
+        fields.Float("catchRumbleLow", "…振動：重いモーター (0〜1)", catchRumbleLow, 0.0f, 1.0f);
+        fields.Float("catchRumbleHigh", "…振動：軽いモーター (0〜1)", catchRumbleHigh, 0.0f, 1.0f);
+        fields.Int("catchRumbleFrames", "…振動時間 (F、0 は無効)", catchRumbleFrames, 0, 120);
+        fields.Float("catchFovDegrees", "…視野角の引き (度。正で広がり、0 は無効)", catchFovDegrees, -10.0f, 10.0f);
+        fields.Int("catchFovFrames", "…視野角が戻るまで (F)", catchFovFrames, 0, 120);
+        fields.Vfx("catchEffect", "吸い取った瞬間に口で出すエフェクト（空なら出さない）", catchEffect);
+        fields.Float("catchPulseScale", "吸い取った時にヒョウタンが膨らむ割合（0 は無効）", catchPulseScale, 0.0f, 2.0f);
+        fields.Float("catchPulseSeconds", "…膨らみが戻るまで (秒)", catchPulseSeconds, 0.0f, 2.0f);
+    }
     if (fields.Section("検証")) {
         fields.Int("traceEveryFrames", "状態ログ間隔（0 は無効）", traceEveryFrames, 0, 7200);
     }

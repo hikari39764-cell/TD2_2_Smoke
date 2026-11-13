@@ -26,6 +26,7 @@ bool DamageableRules::ApplyDamage(DamageableComponent& target, float amount, HIK
     const float scaled = amount * scale;
     target.currentHealth = std::max(0.0f, previousHealth - scaled);
     target.lastDamage = scaled;
+    target.lastRawDamage = amount;
     target.baseDamageTotal += static_cast<double>(amount);
     const double length = std::hypot(static_cast<double>(direction.x), static_cast<double>(direction.y),
                                      static_cast<double>(direction.z));
@@ -64,6 +65,10 @@ HIKARI::GameProjectFloat3 DamageableRules::GetLastDirection(const DamageableComp
 }
 
 uint64_t DamageableRules::GetHitCount(const DamageableComponent& target) { return target.hitCount; }
+
+void DamageableRules::RequestFlash(DamageableComponent& target, int frames) {
+    target.pendingFlashFrames = std::max(target.pendingFlashFrames, frames);
+}
 
 void DamageableRules::SetIncomingDamageScale(DamageableComponent& target, float scale) {
     target.incomingDamageScale = std::isfinite(scale) ? std::max(0.0f, scale) : 1.0f;

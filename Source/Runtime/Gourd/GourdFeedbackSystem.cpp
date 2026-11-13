@@ -5,9 +5,12 @@
 #include <cstdio>
 
 #include "HIKARI/Project/ActionViews.h"
+#include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "GourdShotComponent.h"
 #include "GourdComponent.h"
+#include "GourdRules.h"
+#include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
 
 namespace Project_TD2_2 {
@@ -18,6 +21,8 @@ constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 constexpr uint64_t kCameraSource = 0x5444324701ull;
 constexpr int kCameraPriority = 310;
+constexpr uint64_t kCatchHitStopSource = 0x5444324703ull;
+constexpr uint64_t kCatchCameraSource = 0x5444324704ull;
 // 色ずれ（動作の色調）の出どころと優先度。命中（320）が発射より勝つ。
 constexpr uint64_t kChromaSource = 0x5444324702ull;
 constexpr int kChromaPriority = 310;
@@ -119,6 +124,48 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
     feedback.ageSeconds += std::max(0.0f, frame.unscaledDt);
 }
 
+// ボスの斬撃・ナイフを吸い取った瞬間の手応え。視野角だけを引き、揺れと押しは出さない（吸い込みの寄りと喧嘩しない）。
+void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
+               const HIKARI::FrameContext& frame) {
+    if (gourd.catchObservedCount != gourd.catchCount) {
+        gourd.catchObservedCount = gourd.catchCount;
+        const uint64_t owner = object.GetHandle().value;
+        const uint64_t token = Feedback::RequestHitStop(world, kCatchHitStopSource ^ owner, Feedback::kCatchPriority,
+                                                        gourd.catchHitStopFrames, gourd.catchHitStopScale);
+        const bool rumble =
+            Feedback::Rumble(world, gourd.catchRumbleLow, gourd.catchRumbleHigh, gourd.catchRumbleFrames);
+        Feedback::CameraShakeParams shake{};
+        shake.sourceId = kCatchCameraSource ^ owner;
+        shake.priority = Feedback::kCatchPriority;
+        shake.frames = gourd.catchFovFrames;
+        shake.fovDegrees = gourd.catchFovDegrees;
+        Feedback::StartCameraShake(gourd.catchShake, shake);
+        const bool fovAccepted = Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.cameraId, frame.unscaledDt);
+        // 合図のエフェクトは口の位置で一度だけ。空なら何も出さない。
+        bool effectPlayed = false;
+        if (!gourd.catchEffect.IsEmpty()) {
+            HIKARI::GameProjectVfxPlayRequest play{};
+            play.asset = gourd.catchEffect;
+            play.transform.position = GourdRules::GetMouthPosition(gourd);
+            play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+            effectPlayed = world.GetVfx().Play(play).IsValid();
+            gourd.vfxAccepted = effectPlayed && gourd.vfxAccepted;
+        }
+        char message[192]{};
+        std::snprintf(message, sizeof(message),
+                      "Catch tick=%llu count=%llu stopFrames=%d stopToken=%llu rumble=%d fovActive=%d fovAccepted=%d "
+                      "effect=%d",
+                      static_cast<unsigned long long>(gourd.processedTick),
+                      static_cast<unsigned long long>(gourd.catchCount), gourd.catchHitStopFrames,
+                      static_cast<unsigned long long>(token), static_cast<int>(rumble),
+                      static_cast<int>(gourd.catchShake.active), static_cast<int>(fovAccepted),
+                      static_cast<int>(effectPlayed));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
+        return;
+    }
+    Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.cameraId, frame.unscaledDt);
+}
+
 } // namespace
 
 void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
@@ -127,6 +174,9 @@ void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::Fra
     world.ForEachComponent<GourdShotComponent>(
         HIKARI::MakeComponentTypeId(kGourdShotType),
         [&](HIKARI::ObjectView object, GourdShotComponent& shot) { StepFeedback(world, object, shot, frame); });
+    world.ForEachComponent<GourdComponent>(
+        HIKARI::MakeComponentTypeId(kGourdType),
+        [&](HIKARI::ObjectView object, GourdComponent& gourd) { StepCatch(world, object, gourd, frame); });
 }
 
 void GourdFeedbackSystem::PostRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {

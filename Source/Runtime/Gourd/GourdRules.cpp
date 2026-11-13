@@ -40,6 +40,11 @@ float GourdRules::AddSmoke(GourdComponent& gourd, float amount) {
     return gourd.storedSmoke - before;
 }
 
+void GourdRules::NotifyCatch(GourdComponent& gourd, int count) {
+    if (count > 0)
+        gourd.catchCount += static_cast<uint64_t>(count);
+}
+
 bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbing; }
 bool GourdRules::IsAbsorbCommitted(const GourdComponent& gourd) {
     return gourd.absorbPhase == GourdAbsorbPhase::Windup || gourd.absorbPhase == GourdAbsorbPhase::Absorbing;

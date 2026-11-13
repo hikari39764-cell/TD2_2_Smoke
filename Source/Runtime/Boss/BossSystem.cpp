@@ -9,6 +9,7 @@
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BossClones.h"
 #include "BossDetonate.h"
+#include "BossFeedback.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossObserver.h"
@@ -186,6 +187,7 @@ void EnterStun(BossComponent& boss) {
     boss.brain.cloneStruck = false;
     boss.state = BossState::Stunned;
     boss.stateFrame = 0;
+    boss.breakFeedbackPending = true;
     char message[160]{};
     std::snprintf(message, sizeof(message), "Stunned tick=%llu count=%d frames=%d",
                   static_cast<unsigned long long>(boss.tick), boss.stunCount, boss.stunFrames);
@@ -403,16 +405,21 @@ void BossSystem::OnWorldAttached(HIKARI::WorldView&) { treeBrain_.Attach(); }
 void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。煙がもう入らなければ吸えずに当たる（試作と同じ）。
+    // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。満杯でも吸う設定（Gourd.absorbWhenFull）なら、煙は増えないが
+    // 斬撃は吸い取れる（砲撃の煙のコストを 0 にした場面ではいつも満杯で、吸い込みが何もできなくなるため）。
+    // 切なら、煙がもう入らなければ吸えずに当たる（試作と同じ）。
     // ボスがプレイヤーの様子として見るのは、煙が入るかどうかに関わらず吸い込みの構えをしているか。
     bool absorbing = false, inhaling = false;
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView,
                                                                                         GourdComponent& gourd) {
         inhaling = inhaling || GourdRules::IsAbsorbing(gourd);
-        absorbing = absorbing || (GourdRules::IsAbsorbing(gourd) &&
-                                  GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd) > kAbsorbRoomEpsilon);
+        absorbing = absorbing ||
+                    (GourdRules::IsAbsorbing(gourd) &&
+                     (gourd.absorbWhenFull ||
+                      GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd) > kAbsorbRoomEpsilon));
     });
     float absorbed = 0.0f;
+    int caught = 0;
     world.ForEachComponent<BossComponent>(
         HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
             if (!boss.initialized)
@@ -485,11 +492,16 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             }
             absorbed += boss.absorbedSmoke;
             boss.absorbedSmoke = 0.0f;
+            caught += boss.absorbedWavesPending;
+            boss.absorbedWavesPending = 0;
         });
-    if (absorbed <= 0.0f)
+    if (absorbed <= 0.0f && caught == 0)
         return;
     world.ForEachComponent<GourdComponent>(
         HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+            // 吸った合図は、ヒョウタン自身が次の描画フレームで見せる（ボスはカメラに触れない）。
+            GourdRules::NotifyCatch(gourd, caught);
+            caught = 0;
             const float added = GourdRules::AddSmoke(gourd, absorbed);
             char message[160]{};
             std::snprintf(message, sizeof(message), "AbsorbSmoke amount=%.3f added=%.3f smoke=%.3f",
@@ -509,6 +521,7 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                               if (!boss.initialized)
                                                   return;
                                               BossVisuals::Update(world, object, boss, frame.gameDt);
+                                              BossFeedback::Update(world, object, boss, frame);
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });
     // 斬撃のエフェクトが使う流体域の分だけ、砲撃の炎の枠を譲ってもらう（毎フレーム入れ直す）。

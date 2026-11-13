@@ -17,6 +17,10 @@ void DamageableComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("hitCameraKickDistance", "命中でカメラが攻撃の向きへ押される幅 (m、0 は無効)",
                      hitCameraKickDistance, 0.0f, 1.0f);
         fields.Float("hitCameraFovDegrees", "命中で広がる視野角 (度、0 は無効)", hitCameraFovDegrees, 0.0f, 20.0f);
+        fields.Float("hitFeedbackFullDamage", "カメラの揺れが最大になる弾の威力（これ以上は最大）", hitFeedbackFullDamage,
+                     1.0f, 1000.0f);
+        fields.Float("hitFeedbackMinScale", "威力が小さい弾の、カメラの揺れの下限（最大に対する割合）",
+                     hitFeedbackMinScale, 0.0f, 1.0f);
         fields.SceneObject("feedbackCamera", "命中のカメラ（未指定は操作カメラ）", feedbackCameraId);
         fields.Int("hitRumbleFrames", "命中のコントローラー振動時間 (F、0 は無効)", hitRumbleFrames, 0, 120);
         fields.Float("hitRumbleLow", "命中の振動：重いモーター (0〜1)", hitRumbleLow, 0.0f, 1.0f);

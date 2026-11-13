@@ -195,10 +195,18 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
         HIKARI::GameProjectTransform transform{};
         transform.position = gourd.position;
         transform.rotation = VectorMath::RotationFromYAxis(gourd.aimDirection);
+        // ボスの斬撃を吸い取った時は、飲み込んだように一度大きく膨らんで戻る（止めの間は時間が遅いので、膨らんだまま見える）。
+        if (gourd.catchPulseObserved != gourd.catchCount) {
+            gourd.catchPulseObserved = gourd.catchCount;
+            gourd.catchPulseLeft = gourd.catchPulseSeconds;
+        }
+        gourd.catchPulseLeft = std::max(0.0f, gourd.catchPulseLeft - dt);
+        const float gulp = gourd.catchPulseSeconds > 0.0f ? gourd.catchPulseLeft / gourd.catchPulseSeconds : 0.0f;
         // 吸い込み中は脈を打つように膨らむ（見た目だけ。口の位置と吸い込みの規則は変えない）。
         const float pulse =
-            1.0f + gourd.absorbPulseScale * gourd.absorbBlend *
-                       (0.5f + 0.5f * std::sin(kTau * gourd.absorbPulseFrequency * gourd.absorbSeconds));
+            (1.0f + gourd.absorbPulseScale * gourd.absorbBlend *
+                        (0.5f + 0.5f * std::sin(kTau * gourd.absorbPulseFrequency * gourd.absorbSeconds))) *
+            (1.0f + gourd.catchPulseScale * gulp * gulp);
         transform.scale = {gourd.radius / kMeshRadius * pulse, gourd.height / kMeshHeight,
                            gourd.radius / kMeshRadius * pulse};
         gourd.transformAccepted = object.SetWorldTransform(transform).Accepted();

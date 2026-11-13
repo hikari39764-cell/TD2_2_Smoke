@@ -29,6 +29,19 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("stunMax", "気絶値（これだけたまると気絶）", stunMax, 1.0f, 100000.0f);
         fields.Int("stunLimit", "気絶する回数の上限（0＝上限なし）", stunLimit, 0, 99);
         fields.Int("stunFrames", "気絶している長さ (F)", stunFrames, 1, 3600);
+        fields.Int("breakHitStopFrames", "崩し・気絶の止め (F、0 は無効)", breakHitStopFrames, 0, 30);
+        fields.Float("breakHitStopScale", "崩し・気絶の止め中の時間倍率", breakHitStopScale, 0.0f, 1.0f);
+        fields.Float("breakCameraAmplitude", "崩し・気絶のカメラ揺れ幅 (m、0 は無効)", breakCameraAmplitude, 0.0f,
+                     1.0f);
+        fields.Int("breakCameraFrames", "崩し・気絶のカメラ揺れ時間 (F)", breakCameraFrames, 0, 120);
+        fields.Float("breakCameraFrequency", "崩し・気絶のカメラ揺れ周波数 (Hz)", breakCameraFrequency, 0.0f, 60.0f);
+        fields.Float("breakRumbleLow", "崩し・気絶の振動：重いモーター (0〜1)", breakRumbleLow, 0.0f, 1.0f);
+        fields.Float("breakRumbleHigh", "崩し・気絶の振動：軽いモーター (0〜1)", breakRumbleHigh, 0.0f, 1.0f);
+        fields.Int("breakRumbleFrames", "崩し・気絶の振動時間 (F、0 は無効)", breakRumbleFrames, 0, 120);
+        fields.Int("breakFlashFrames", "崩し・気絶の本体の光り (F、0 は無効)", breakFlashFrames, 0, 120);
+        fields.Float("breakBlastScale", "崩し・気絶の瞬間に体から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で無効）",
+                     breakBlastScale, 0.0f, 6.0f);
+        fields.Note("光り方（色・強さ・材質）は Damageable の被弾の発光と同じです。");
         fields.Float("stunDamageScale", "気絶中に受けるダメージ (倍)", stunDamageScale, 0.0f, 10.0f);
         fields.Float("stunDecayDelaySeconds", "気絶値が減り始めるまで (秒)", stunDecayDelaySeconds, 0.0f, 120.0f);
         fields.Float("stunDecayPerSecond", "気絶値が 1 秒に減る量", stunDecayPerSecond, 0.0f, 10000.0f);

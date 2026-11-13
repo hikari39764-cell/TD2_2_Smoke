@@ -1,0 +1,4920 @@
+{
+  "durationSeconds": 0.4,
+  "inputs": [],
+  "loop": false,
+  "version": 15,
+  "name": "Gourd Catch",
+  "emitters": [
+    {
+      "activeDuration": 0.2,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.a180ad3c32880cb113dd95223b1105af",
+      "inputLinks": [],
+      "kind": "Shape",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.dcd71c84d392313da12068ab15364cab",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.5295b1320162259d287f808d96b56531",
+          "lifetime": {
+            "maximum": 0.2,
+            "minimum": 0.2,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.46d592e114c4ea13ebb661fca1dc17db",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.5c2b71474a8d430758704e23faeb2caa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3ec8b45ef1f33650c636fa7ac078b33e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.11999999731779099,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.d9b8f41d5b09950a9dafa8b20b7530fc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8199999928474426,
+                    "value": 0.800000011920929
+                  },
+                  {
+                    "id": "emitter.f988e4f8228a2a99f9b2cece448c9caf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.bb29358d1d9e6ccbc142554064212158",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "emitter.4c2721bd571d641efb0e43c0e5a3ed7a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.c216df22e2616fee510b44be073fa440",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 4.199999809265137
+                  },
+                  {
+                    "id": "emitter.f72b8e34d67969d8af41b521b98b203d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 4.199999809265137
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.2c6c927c30de44b6126f56c6c5c52ac1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 2.5
+                  },
+                  {
+                    "id": "emitter.4ee54a21a86364c01560d20cb83ed23e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 2.5
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    0.6,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "id": "emitter.f917c1649cd82d1b1ff86c8112b20e99",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    0.6,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "id": "emitter.929e50e3a94a59b310a645dd9e35ca2a",
+                  "time": 0.15
+                },
+                {
+                  "color": [
+                    0.6,
+                    0.0,
+                    0.0,
+                    0.7
+                  ],
+                  "id": "emitter.69b7a19d2cb53ab0a5543067e61a3ae2",
+                  "time": 0.6
+                },
+                {
+                  "color": [
+                    0.6,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "id": "emitter.5cbdbffa58fa4179e79d55be9d1bf747",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Gradient"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.613ec01c838f3b3b96226693b9d58132",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.30000001192092896,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.6ac09d2ad930bc81a51917e8e77e7a61",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.e0694983f22dbc528373483f09ed608e",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Distortion",
+          "colorTextureAssetGuid": "engine.vfx.texture.glow_halo",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.d2fa6cffd273fa15ae83f71635f70985",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.3
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "RotatedBillboard",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.13404e984477b1d62f51e4491df4a13d",
+          "ribbonSegmentCount": 48,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 64,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.4f049317294826b6da2cd25f1e19ef2c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3868d60817b0fe1436e6c8a083de456d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4675e2ad648440b04fb14f76b03b94a5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6a93e1a8d82359c73b8165fd3db4cbf4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ab9e9f29afd1017320903ff3cf4c6865",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.73a08a8bf24eff37820adbdce6bd86dc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.82ccad1a2e8b277cc3dfdf333fdbe56d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.535d01ca34b5a2ef867097c512a5a1e2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9767a7f8bd0fd743538f216c83b55b3b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.132beb1581a1ebd58f76d163f6374a20",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2fb59c7973d3d498ee491d1d5dc5ad81",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2ac214fb4f915b1ce744faec29291d63",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.131472ebfe499180d8e3b06d9d2228a3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.689f65d23c3c2c8afcc4b65040ee265e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ead476817cd4df9bb6f3a5df80b5587d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ba202e29674c7f556c3e40609161155b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fd48387e7a94c45a8f74772cd9c7d27b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f4ce61b014a664cdba4d0770a0e488c2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f4a28e1098010af5311cfd4f99a18fae",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6ef97b707166a98a4adab0f6351469ec",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a3fb9f4711877fe57298a861e7edd982",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.bed62ce373e10de7bd7c7d2b5938ce83",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.af06d45122fb84e1a2032109a49affc1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.60e3525cd8687e5f26f93418508c4995",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4079c1850a375e7b7f7fcf54cf0e99db",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.81c29c92aa1a023af36af6931c55d1aa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ae9b2c555eb67f51a973fbfcaa0fd333",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4c33a75a8eadc2b2c105591636df8a0c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fcd1742265fc442a72530016ffee71fa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a29c80d4561635ec28ad73ae03df3f23",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5c437e0f73d40a0c8d9d73cabc105bf0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.dae530afbcc900d28b0631d9ca30af93",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ba37075fe16274d78d69a26c8a087de2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.21b0aac1803626c5c4b3795a83b7642c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.931cf9bc94feec1d929dde0d7cfa1e88",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8152aef462894492975d7a133292b5eb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.89f10eeff65ad1ff8973135dfedb6ca8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e5d64d9829cdb0624549a3e306986ec4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0f19dab19035c1177ffe6a2e7a064b97",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5e5ba396807b42ccaf1656f5204e2208",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0572366526502a6d6cd2588301026d5c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.035200faa22ae72c8e44c99324fcbc4d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8fe2321ec92a544b759b5603c97e9f25",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5ed7586b63cd7cde4e334644ed93b6b6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4cd2d71f24f6b58d48081597228470ad",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ae4a882ff7e944b77b56b1fe6ca419fa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.32cb37f80fe9e8937d10e0093b6eb4bc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3092513426347e70fda7a22557227745",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.44a0899f733a5903d7563edf97752d0a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.12a3ef4c8795a18faed0377f7deba82e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.07b18a7b38c08fd54406245d1a0b2b06",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2467455613d2a715740461988c7097de",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1ec55e18d926c93f83f0ff8691f82926",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fbd5b4e89ca676c82a24e544802b96b5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6b06bf27c080e4dcf2d30b282851898d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.292783e7ab88ae13796948f6292174e4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b023cc59508c34caaaddfd66418ffc16",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a40dd5db4f75d88b1b0bcba9d0e55238",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a82829dbd09820228152b24508e23d95",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a41a58c6dda0059a1808de1cb2d575ee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.89ccc767f2d2ee530c4410990c57cc96",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.31ed4201b56bfc1d7824bd2585e39bee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d14e492d791f7d60d9dc0bf4a7234358",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.384b5a4884a55c795e1c93c333945787",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a4c8659dd11516e4d5c2a95ccc3bb729",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7fe94b7cb2b9a1797c2b6c33fc60a6ee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.bc8e456b0f124e39215ac89f5e40f97f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6be03867f8a0c5ffb1d742594af29dfa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c7949311475f69873b792885c61b4248",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cdb4eb7db7136b291b5d46ba2a8d55c4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f450d59535b0a2ed714e0e70cb7a6a8b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.bdd2330dc87bf45d61b440040c94c172",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9bd871f79a1c57f629d8f6f0a50defe3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3a23227d78e4b8b6d5b5b6d1bf76f5e8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.521e4861ae4f29319c61846cf702d93b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0b3e1b613e38697d520c8f8cdb86667e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5cc4775b8e9c0e5161f5c3ad2bb9a320",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a6f3a4e458671cd964f002048a35c1b6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5bcfe7c730876a9ba76fc6a7c3b9d4fa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1c26da8fd75a9626f179ac3e10523620",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3d58beb98d1fd50bfb05277356710a07",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.be00705ef809c48391f38cf367f6d4f7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.df35aa487111979cd159f6c2acb6d014",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.20c92e86ea3aeb77c9bebf5979806d3e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.989ea181d11055d4eb82746ed793b5f9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.587d6d1c5fd01f1cc3ab8f0a36ab536a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8fa192290c02efc8ccb5df813ccfac87",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.143a4ba5e2c5024e450504e6587a3448",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c95daf107fa388b59077d7fdd1999ee7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.eebac34a90ef46e68db4f6e8e3cb24a4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.73ce608f30f4f10b6b47ad8fd5832d8c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.83bb1ea44d91cd0d3576201c58cb0912",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.24441723ad65a47a9980cc85361801a0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.115acd1732a7477090e947a47c556373",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.52532c15aae6fae2a219aea877b7eb4b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ccec35e4f88987a3bc35c5b3e339613d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cc835db7b4ff2accd97796ad70e1fa4e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a101a2207622c1d92535cade2e49ef89",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.0139c682495cca89423c9e39e2ab43b3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": -155.0
+                  },
+                  {
+                    "id": "emitter.c5d52a6c540faf5e0171f83605ec8b4e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": -153.00108337402344
+                  },
+                  {
+                    "id": "emitter.32cff3d4a8e89f1a231d37ee11327d2d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": -148.05087280273438
+                  },
+                  {
+                    "id": "emitter.008f8ab62ecc20a72ed9a6c8ca859136",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": -141.71920776367188
+                  },
+                  {
+                    "id": "emitter.3beb55b454f0126881404d6bf9a3b964",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": -135.57591247558594
+                  },
+                  {
+                    "id": "emitter.482d18411128b4006f17ebac841e5d5e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": -131.1908416748047
+                  },
+                  {
+                    "id": "emitter.103feee74267e8d33f9fe975d59ce450",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": -129.89129638671875
+                  },
+                  {
+                    "id": "emitter.87aac5e1c6c106d631161b3931ec4b01",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": -127.24390411376953
+                  },
+                  {
+                    "id": "emitter.5fb8abe945a638b17ddeae5d866f5d3a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": -121.48147583007812
+                  },
+                  {
+                    "id": "emitter.12cd7964f2dab70cb81223d69888b2e9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": -113.17247009277344
+                  },
+                  {
+                    "id": "emitter.b753356081006f647b46ea6314686919",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": -102.88529968261719
+                  },
+                  {
+                    "id": "emitter.cbaf0008fcd888440a3d67b319fd6a57",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": -91.18840026855469
+                  },
+                  {
+                    "id": "emitter.188e387fe9eb98d0a5e4c0575410331f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": -78.65023803710938
+                  },
+                  {
+                    "id": "emitter.0b405e2804436ef72b8a75c490abd2ba",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": -65.8392105102539
+                  },
+                  {
+                    "id": "emitter.5c3c2dc8500aa4af30b472c9cdce04c9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": -53.32379150390625
+                  },
+                  {
+                    "id": "emitter.01a5298b36b7197084bb543a37e174b2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": -41.67236328125
+                  },
+                  {
+                    "id": "emitter.820ba23a2d7318f0a7a30dac6fd7a11a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": -31.453407287597656
+                  },
+                  {
+                    "id": "emitter.32a1e5598c3a847236b53dfb1133d214",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": -23.2353515625
+                  },
+                  {
+                    "id": "emitter.f7ae0a6992fb70be69a0c125b85e86f7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": -17.58661651611328
+                  },
+                  {
+                    "id": "emitter.17ef958aa964f40d228616244fe846ac",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": -15.075645446777344
+                  },
+                  {
+                    "id": "emitter.83c687e4b020ea7aebf5fb682f507b46",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": -14.071123123168945
+                  },
+                  {
+                    "id": "emitter.47ad5d1f12f241d42a971904ee5aa09d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": -10.540449142456055
+                  },
+                  {
+                    "id": "emitter.a3669606adf3da5a5392521b0f57f4b7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": -4.796730041503906
+                  },
+                  {
+                    "id": "emitter.486a49fc027f98a3939b31e2860f1e60",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 2.7102184295654297
+                  },
+                  {
+                    "id": "emitter.28370b3471b3bdcfbc843d2bb32f0c1c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 11.530607223510742
+                  },
+                  {
+                    "id": "emitter.d971d70d012fdfb279ae07dc24a52c2c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 21.214614868164062
+                  },
+                  {
+                    "id": "emitter.9c4a373ecef074e0194f2ff7dfe1cbc6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 31.312469482421875
+                  },
+                  {
+                    "id": "emitter.c1dc633c2d2b12488ec089c8d082617b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 41.37430953979492
+                  },
+                  {
+                    "id": "emitter.ec6831e1d6160d62002e52cf3b15a8ee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 50.95036315917969
+                  },
+                  {
+                    "id": "emitter.2802e0175621d0695414c7033c5d49df",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 59.590843200683594
+                  },
+                  {
+                    "id": "emitter.541c8243c3720062d2e76a72eb524434",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 66.84590148925781
+                  },
+                  {
+                    "id": "emitter.71b74132c2b7283f8050f1108e51f6b4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 72.26575469970703
+                  },
+                  {
+                    "id": "emitter.f0397d8b94f61f067508771158326133",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 75.4006118774414
+                  },
+                  {
+                    "id": "emitter.81bdc271bf137cbfdab6aa550b8cab29",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 76.0438003540039
+                  },
+                  {
+                    "id": "emitter.7254383817a5345a6d28964320de9870",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 76.59752655029297
+                  },
+                  {
+                    "id": "emitter.6b44ad489219e9ea8b2b5d4f1f341506",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 77.71630859375
+                  },
+                  {
+                    "id": "emitter.74d3babcea16c9ca0c4e83f084514bf6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 79.31072998046875
+                  },
+                  {
+                    "id": "emitter.808d8966550e91e027a8fec5ea102a92",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 81.29138946533203
+                  },
+                  {
+                    "id": "emitter.ff146d691c5f976b5c8e32b62b13a91e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 83.56888580322266
+                  },
+                  {
+                    "id": "emitter.0f2e635bb90da8f55df197b0d90b9881",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 86.05380249023438
+                  },
+                  {
+                    "id": "emitter.771d6b26626ea4fab48cc13a0ef9a6aa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 88.65673828125
+                  },
+                  {
+                    "id": "emitter.14edc52fa004f5b0b9ee7c60319ef39b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 91.28828430175781
+                  },
+                  {
+                    "id": "emitter.4de380081ab94b853a309e9c93342b04",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 93.8590316772461
+                  },
+                  {
+                    "id": "emitter.cd66a6c5a727005f26616354dd9b884b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 96.27957153320312
+                  },
+                  {
+                    "id": "emitter.b824070f22e360273f557976ecf1b5a1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 98.46051025390625
+                  },
+                  {
+                    "id": "emitter.cd384b16ee71fa50a59361023af35391",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 100.31242370605469
+                  },
+                  {
+                    "id": "emitter.f6fe1bbd14e5354bf451026c2b1398e8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 101.74591827392578
+                  },
+                  {
+                    "id": "emitter.1637a5480c9aa59d5dfd511c7fdf86bb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 102.67157745361328
+                  },
+                  {
+                    "id": "emitter.aeeeecec845566b243b4472d67e0cc9c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 103.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.58ba3f9ce0e789125284e9d25c62bf45"
+        },
+        "scale": {
+          "id": "module.eb4e0223e4f01805457b9b8abd106827",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.ring.x.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.6
+                  },
+                  {
+                    "id": "key.ring.x.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7,
+                    "value": 0.4
+                  },
+                  {
+                    "id": "key.ring.x.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.128
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.ring.y.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.6
+                  },
+                  {
+                    "id": "key.ring.y.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7,
+                    "value": 0.4
+                  },
+                  {
+                    "id": "key.ring.y.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.128
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.ring.z.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.6
+                  },
+                  {
+                    "id": "key.ring.z.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7,
+                    "value": 0.4
+                  },
+                  {
+                    "id": "key.ring.z.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.128
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Curve",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.c4a5c6e584a50e5da2018fe87322ba55",
+          "radius": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Point"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.b0ae98542aa030e6709a1c95f86ab59d",
+          "maximumParticles": 1,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Catch Ring",
+      "order": 0,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    },
+    {
+      "activeDuration": 0.1,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.c141abde15c7ce1d9bdb534a8cc5bb5e",
+      "inputLinks": [],
+      "kind": "Shape",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.974eedfea226830f05a57009e0ae2a61",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.2f28f00ab016d04664ac479f2bca100d",
+          "lifetime": {
+            "maximum": 0.1,
+            "minimum": 0.1,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.011a7e20d300f54813281c7feb1ee2a2",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.74f05a0f478e174a5778a558461f8359",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.add759632a8f50543effdf177c6d58ac",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.11999999731779099,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.576abe7360cacf96182b9d32e67a27ef",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8199999928474426,
+                    "value": 0.800000011920929
+                  },
+                  {
+                    "id": "emitter.2e95b703197e60a5d731260b321508cd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.bcb84f566a1fdefe011e417a46cb8566",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "emitter.47c3e3c002737d381f6f99282965a028",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.d90bea5ae8c279eda1dd892e4a9bfb8b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 4.199999809265137
+                  },
+                  {
+                    "id": "emitter.04e7b316c7f1c240d2ded409dedc1c5c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 4.199999809265137
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.804268835af95a8d37fdd4fafc781d0a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 2.5
+                  },
+                  {
+                    "id": "emitter.a7c15df3f7a4fa049a3dfada09c6a44c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 2.5
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.62,
+                0.82,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                0.62,
+                0.82,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    4.34,
+                    5.739999999999999,
+                    7.0,
+                    1.0
+                  ],
+                  "id": "emitter.cb2152d798b7674faccda359ec52c3a9",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    2.604,
+                    3.444,
+                    4.2,
+                    0.7
+                  ],
+                  "id": "emitter.64907387107718ee30027693258fb6c2",
+                  "time": 0.4
+                },
+                {
+                  "color": [
+                    1.302,
+                    1.722,
+                    2.1,
+                    0.0
+                  ],
+                  "id": "emitter.4c481f1c90dbcb8dd0c7b607ae253164",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Gradient"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.4791a84234487aea9ef2369631792b91",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.30000001192092896,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.52d997dbb787bbdc0925e02805a5e933",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.cdea1976ebcdcfaacc7bc5fcc79f65e7",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Additive",
+          "colorTextureAssetGuid": "engine.vfx.texture.soft_disc",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.5bec1e6641350e8e6a58da3c3d8810c8",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.5
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "RotatedBillboard",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.6dfdd1fd70d60f2eb5b2a92d1e3bcb83",
+          "ribbonSegmentCount": 48,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 64,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.8ccc7386f84effb7f8c0ceecda1ebf35",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0ab92b2a13db3851b4d009be918573f0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f7be06c6e0d5501fef5be94d38699de0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2bf4a6e2551f93f49f0e3848c703333b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.73c412f491b9250e3494b555b4f85879",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.359e960e10d19becf4183b3e0a3bed76",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.41f57af111f51ea88710b15e1c69ae0a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.bbcbae73fa56b6b9c48698069ca51f54",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7ecdfb9beb1a90d4404542de1242bee9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.345e3b8bcc23f81609517760ca95e841",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7254e112937b73c890c706abe58a3149",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.810e9011ed4adfb73cf1fabeba833c9a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5f0d9b5cfef0fdcb6e5b31f63ad41ff4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ee9487d35f5fcd1e27dae065a3d103de",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3e507f56ef68a2255a0ee0863168a2ff",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4858fa3ef29dfb2284760e57f0fc8a39",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.544a25688aca3d95995c4dba1e8f1316",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a07791e547b75628879c4b0604149961",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1a6b70b2825aae48bff9525af84307bc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d534a18ca51c12d0e04c2bc97b9662d5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.caab0d3df329767388bf3f9ac74c78ab",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e9ccaa07dfb87f904250366bf86c6b46",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fdea481331c0be491666b83e4d38952d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3cd8da61b06429aa92079901a80034c9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.becb7aaaa7b4bfd35a250161811c7c23",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0ba972257ea68ae2793286792fcb9078",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a8deeec4a04c83d6fa37aaf2e4ba7bb5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3b6da84f0c8354bf60d8b1b4a3b9fcb8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2d60eb57fb8e0567b09c070f22a683e9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c3d4f583e66b3760478eb6cbe71d7dd2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.66324607685e3e24aaa73bbd4d7e52b2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.76c89e1d97aa8f5aa6824e10baa687b6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c0f2c7a1a0b0446bef48a9bf829b7cf0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.51b2001617c045a8e2c648390f392a95",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ec0dcab535b926a5d742b07198124858",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9177838f3c1c92c697a3617519ecc554",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4dae35c91edef0216ce0c8cf2861936d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.44c033b9c0f23ecb683efef2e7ce7787",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a8b50ee8afcad1369f1e3b0c9f5c05a1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.de568383ac562715c0cccdaadf7b2a9e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7ba3644e1f25adbc051c4078ced69e44",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.42d1a5a6af2b09a5de74b51d422c7533",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.210f5ce217dad6353e2928380d591e1c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6660adebda5254f6113260d4c34d1f5a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.46b56221c407a8975f7da15e7fdf7858",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f64b40074f995e6f2b0937f510a4ea60",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c44874f4437a2b6b07ad714111087cba",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1fa39e60d42d9f725cacb00b130ab22c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e5d7eb6ccac198373d1b2a95d7bb613a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.22a5f90ecad30a7636674aa305c96b43",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.35eeb4df0dfa4c770d41d4fd3c771bd2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9f199abb9aad9d62538054654b7aed78",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c6ab57e217de28103a1076c41c7ede8d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7565dfe717e82840e758a859cbba4bf7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a892e75994a66e266be6299db9fc7ffb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c17b4b185e74ea98cb7f1811d369a45f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f64fde1f617aab5b3c04afef5b01033f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4bfcac9e2454f995e30663743f4117c8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4769ea58affb8d4ed617169e47556f4c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ca8c39de7203698612f9fb1a59ff5a30",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6e3ca3a7cd37562f099115660521fdc9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3435aae9d45a46079513cc81bbff064d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fac8058e41972039cee788321c33409b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.aad0642a1f8eb11f83bd62c7485918d6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b9f93c8ea4d4bdab3c565798b57a83ba",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ac12fd60f82dfc73e831569f1a9ffa75",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c3680e6b8a3cae15c03a44f44614324a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d7e45a6ab0c8e5377d0e14a3b30f286d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0c925fe57b25687317290a4581994526",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.082038046c0162608a9fcce916385bd1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.97ed487d2fdf2debf0c8decf2ef98c68",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a971bff5a58bdbeee5a5d669eff33af6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a0d706d4d53bad1923b3c7fe2011abba",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.484b3a8e1487f28ab9d1d7f676871991",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b9e3b9bed36cbd47f667a5b07c41aa69",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.48f77d91a045117e36e0c8b1e15ff967",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f797e043a3a9679068f4d84a018e288e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8d20a0676f9455f28ebfecf72527d467",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3d33c3f4d1c5fb10fb2da06aede13aee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.32432e19437ab6ac1b9b9a1d87998142",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.67187248ae2dfadd1adb0669f6e55fc3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b3b1b14068d1437e00fa1e28056a9376",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.591428c0d02d50652015ae1ff8ea70b0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.77d98280e168c6ab1b6413dc500cfb2a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.21b2c9fc41815ca10bd358e6883f095a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.59e4f16a746d996bb1fc791eb793c1f4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f8c302ad885893e0bee909734b2bedc2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.831983331c6be11d07fe1cf1f2fc73ab",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9f4fd61c9d6040a126a094c2ce3fc035",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5c8ac94ea7495328790e01108572484d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.90ad3038de1dc86c45551196d739fe91",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9897ba5d7db282715c951ff131b45371",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.eea0fefccbe8c8bb9a6d3c2b8ad67311",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.85bcb65d2a54c2f9ec694fb5f7d9ebf9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.970196cddc1c9d8c45813310ed1765c2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fd76106a0e235d8f09617ea499ee97c6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.eda622d67b0ee50849942a4650bb347d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.aacf9a3a76e978b0f6290c8073a03994",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.a4def84f894571f0c2be1fbfc8cc1795",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": -155.0
+                  },
+                  {
+                    "id": "emitter.038df5b51ebb6abdc1ffda24e5386683",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": -153.00108337402344
+                  },
+                  {
+                    "id": "emitter.e13839a825c99358bfddcdeee9d59c9d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": -148.05087280273438
+                  },
+                  {
+                    "id": "emitter.38468e460140e3207f6c09884f73d214",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": -141.71920776367188
+                  },
+                  {
+                    "id": "emitter.929f3205984f5b1e612e77500b1e3a40",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": -135.57591247558594
+                  },
+                  {
+                    "id": "emitter.8fe5fcf67f07ed8b49e4cd4dd4181161",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": -131.1908416748047
+                  },
+                  {
+                    "id": "emitter.ca9ba688a732c2f8acd5284a2b94986a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": -129.89129638671875
+                  },
+                  {
+                    "id": "emitter.d45309179693b64c7731409f3610f063",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": -127.24390411376953
+                  },
+                  {
+                    "id": "emitter.993025dc79c834ea77b3d6bfb12f48dc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": -121.48147583007812
+                  },
+                  {
+                    "id": "emitter.8c614e93e786ec1e4d3feeeb3ec2ae20",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": -113.17247009277344
+                  },
+                  {
+                    "id": "emitter.8dcfdbfd20fad087aa745d25be4367b1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": -102.88529968261719
+                  },
+                  {
+                    "id": "emitter.5557561e07070ac437110c4f7a43b0ae",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": -91.18840026855469
+                  },
+                  {
+                    "id": "emitter.15fd6fd0474a6180d171aa3622957850",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": -78.65023803710938
+                  },
+                  {
+                    "id": "emitter.5f08f3b55c2f187b58754b94245aa4ac",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": -65.8392105102539
+                  },
+                  {
+                    "id": "emitter.b406f316ce7b84119ed442deba1ce068",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": -53.32379150390625
+                  },
+                  {
+                    "id": "emitter.6dd41df5ac8d7dd3a84c60bd0e38a79f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": -41.67236328125
+                  },
+                  {
+                    "id": "emitter.2142dca9bef708f7fa512ca846b54a8d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": -31.453407287597656
+                  },
+                  {
+                    "id": "emitter.07b3291a982a37833d02b6473491c0a5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": -23.2353515625
+                  },
+                  {
+                    "id": "emitter.0482e112c8dbcf9039145fd0492a421a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": -17.58661651611328
+                  },
+                  {
+                    "id": "emitter.7c934553f0c7c1de3b174b4c283090fb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": -15.075645446777344
+                  },
+                  {
+                    "id": "emitter.891421e37783d28f5b649f05c3ee9e57",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": -14.071123123168945
+                  },
+                  {
+                    "id": "emitter.f4f0adbd30be7225158ae45e7f7d9327",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": -10.540449142456055
+                  },
+                  {
+                    "id": "emitter.1011c494b5590c3529698c569e4b59be",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": -4.796730041503906
+                  },
+                  {
+                    "id": "emitter.020067c738bd7b8fe01f970a8a13bf45",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 2.7102184295654297
+                  },
+                  {
+                    "id": "emitter.04aaddc7c72142e184adccbd5eb07f2b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 11.530607223510742
+                  },
+                  {
+                    "id": "emitter.6c9a61b1dade74adf15327a6c7870857",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 21.214614868164062
+                  },
+                  {
+                    "id": "emitter.8649efb69c3d4d4b182007889afb70df",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 31.312469482421875
+                  },
+                  {
+                    "id": "emitter.f37de9466fdb7ed11a484e47f95a6ecf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 41.37430953979492
+                  },
+                  {
+                    "id": "emitter.50f3f432533bc2d85b62b70c1fa581a1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 50.95036315917969
+                  },
+                  {
+                    "id": "emitter.e25e376e5ef6c1914db77dc8c15b2767",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 59.590843200683594
+                  },
+                  {
+                    "id": "emitter.c50b20bc3e277988c8bc8e00ad264c69",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 66.84590148925781
+                  },
+                  {
+                    "id": "emitter.daa7851349aa794d652642be7649c764",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 72.26575469970703
+                  },
+                  {
+                    "id": "emitter.20af0fcf55df51e894c88ee57c2aa649",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 75.4006118774414
+                  },
+                  {
+                    "id": "emitter.9599b7d0adaba8e9f2a988970f2e63dc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 76.0438003540039
+                  },
+                  {
+                    "id": "emitter.aaa549ad67a1a74de9b4c49e003b5f85",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 76.59752655029297
+                  },
+                  {
+                    "id": "emitter.54073e0480938412459c729bb3a017ab",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 77.71630859375
+                  },
+                  {
+                    "id": "emitter.1af208e29a7ce26e8e67a9c579e0d70c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 79.31072998046875
+                  },
+                  {
+                    "id": "emitter.8bd38691dc832666ea468ceb8e1db648",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 81.29138946533203
+                  },
+                  {
+                    "id": "emitter.83f014e3fac2fc68a6cdfe777866942b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 83.56888580322266
+                  },
+                  {
+                    "id": "emitter.a1f78613b2daf421c660be0abf8da195",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 86.05380249023438
+                  },
+                  {
+                    "id": "emitter.0a5d66d1f98c8640615b894d8b867dd4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 88.65673828125
+                  },
+                  {
+                    "id": "emitter.f5be93bd13361b3b43afa48c72c29e31",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 91.28828430175781
+                  },
+                  {
+                    "id": "emitter.821ca4c85aa219ba8f47c91b2a933826",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 93.8590316772461
+                  },
+                  {
+                    "id": "emitter.143c18ab52b688b4df9306d948353ca7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 96.27957153320312
+                  },
+                  {
+                    "id": "emitter.1ce00b73660ed8e8abf4ed09aaa3ddbd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 98.46051025390625
+                  },
+                  {
+                    "id": "emitter.4521beb6ccb40729838f0e90764291d4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 100.31242370605469
+                  },
+                  {
+                    "id": "emitter.1c3fa2ca7f85a24c68f24173540df4a8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 101.74591827392578
+                  },
+                  {
+                    "id": "emitter.ba3b876408399fca454f76889568bb76",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 102.67157745361328
+                  },
+                  {
+                    "id": "emitter.460b980ca5f8f339413b1e290dac8fdf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 103.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.aa7ae5b46c22630f355aeb5518b0054a"
+        },
+        "scale": {
+          "id": "module.7588c3ca1d45f25035dfdf81342ac1d6",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.flash.x.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.35
+                  },
+                  {
+                    "id": "key.flash.x.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.35,
+                    "value": 0.7
+                  },
+                  {
+                    "id": "key.flash.x.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.21
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.flash.y.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.35
+                  },
+                  {
+                    "id": "key.flash.y.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.35,
+                    "value": 0.7
+                  },
+                  {
+                    "id": "key.flash.y.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.21
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "key.flash.z.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.35
+                  },
+                  {
+                    "id": "key.flash.z.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.35,
+                    "value": 0.7
+                  },
+                  {
+                    "id": "key.flash.z.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.21
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Curve",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.bf07326ea9c04a87c7647e8e8d989cb4",
+          "radius": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Point"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.fb26d6e1f3ae956d6efdd3c1e3174d8c",
+          "maximumParticles": 1,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Catch Flash",
+      "order": 1,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    },
+    {
+      "activeDuration": 0.0,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.d5f533fb8f3436329df895a8fdefb862",
+      "inputLinks": [],
+      "kind": "Particles",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.1850c2610ff197780209724949a97204",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.190a228a34b12ac3d4ac42cd7f9e8294",
+          "lifetime": {
+            "maximum": 0.17,
+            "minimum": 0.13,
+            "mode": "RandomRange",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.ffd4188009869191de5ac8d8ba870ba1",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.4bcd92875b6382c9641e70785b2fc48b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.8e402037ebcd99462ad2a9285b3bafca",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.9c721a5100910e7f166647d8b6a57564",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.d75a68c48ba37d55fdc88909e6e5d39c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.11999999731779099
+                  },
+                  {
+                    "id": "emitter.da54c9ae2949d884399c7dfaf86d1d75",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.11999999731779099
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.ffd9ed64fcc88789286393c194484cdd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.8500000238418579
+                  },
+                  {
+                    "id": "emitter.49093850e9776a7b856309ae09f2f6fc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.8500000238418579
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.0daacc1b9e482d59fdf3d2efda3752ce",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 3.0
+                  },
+                  {
+                    "id": "emitter.4415a4e03526662d666ffe883e75c867",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 3.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.62,
+                0.82,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                0.62,
+                0.82,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    3.7199999999999998,
+                    4.92,
+                    6.0,
+                    1.0
+                  ],
+                  "id": "emitter.26e4127bdd44115535f71bce3adaeba7",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    2.48,
+                    3.28,
+                    4.0,
+                    1.0
+                  ],
+                  "id": "emitter.ee0864a1ed7dd0ef6eec9b1239bd5814",
+                  "time": 0.5
+                },
+                {
+                  "color": [
+                    0.744,
+                    0.9839999999999999,
+                    1.2,
+                    0.0
+                  ],
+                  "id": "emitter.18a6032c3b7486b6045e5a92069cb2e6",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Gradient"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.1c36ef9492365f7a177c2fa686f4fa93",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 1.2,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.4,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "friction": 0.4,
+          "gravity": [
+            0.0,
+            -12.0,
+            0.0
+          ],
+          "id": "module.732c373130871d79cb500d19fa7a839e",
+          "restitution": 0.3,
+          "fluidFollow": 0.0,
+          "sceneDepthCollision": false,
+          "collisionThickness": 0.4
+        },
+        "position": {
+          "id": "module.aed20021b4552b9b538656f676d99b92",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": -4.0,
+            "minimum": -5.5,
+            "mode": "RandomRange",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Pva",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Additive",
+          "colorTextureAssetGuid": "engine.vfx.texture.soft_disc",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.7da48b7f772613d7f10b9d3dfd14e98c",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.1
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "DirectionalBillboard",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.94d8409546b5e95383b19f85aa8c4adb",
+          "ribbonSegmentCount": 48,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 64,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Pva",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  360.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "RandomRange",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.eee6565c64a967c4779180412381a6b1"
+        },
+        "scale": {
+          "id": "module.bbf91b428b325326f02bed708ee309ad",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.60edcbcd61eb736d7043622850d2a5a5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.05
+                  },
+                  {
+                    "id": "emitter.0658cf7b09489a4129434b07bf6d19be",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.015
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.370254ba810721d83533d5e4f98a75a2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.55
+                  },
+                  {
+                    "id": "emitter.757fee11fa5998ffa6a238a7bedbf119",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.1
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.a8d84f87e9ed2e1677c3b1ebe0083d69",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.05
+                  },
+                  {
+                    "id": "emitter.7760064a8f36bcc183be1ac306d36579",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.015
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Curve",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.a6e2689026ab5133af89beb0f9506920",
+          "radius": {
+            "maximum": 1.0,
+            "minimum": 0.7,
+            "mode": "RandomRange",
+            "randomGroup": 0
+          },
+          "type": "Sphere"
+        },
+        "spawn": {
+          "burstTimeline": [
+            {
+              "count": 14,
+              "id": "emitter.1a0b65ba2e83c84c1abaa163994f0d94",
+              "time": 0.0
+            }
+          ],
+          "capacityMode": "Fixed",
+          "id": "module.487c37c1aba80725358d5aad740ba4b5",
+          "maximumParticles": 32,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Catch Sparks",
+      "order": 2,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    }
+  ]
+}
