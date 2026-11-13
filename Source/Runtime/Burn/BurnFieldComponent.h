@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
@@ -25,9 +26,13 @@ struct BurnBlast {
     HIKARI::GameProjectFloat3 position{};
     float radius = 0.0f;
     BurnBlastKind kind = BurnBlastKind::Detonation;
+    // 引爆の塊が、その引爆で何番目に出来たか（1 から。捨てた塊も数える）。引爆以外は 0。
+    uint32_t order = 0;
 };
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 32;
+// 爆発のエフェクトの上限（BurnField の blastEffectCap）に選べる最大。出した時刻をこの数だけ覚えておく。
+inline constexpr size_t kBlastEffectCapMax = 256;
 
 // 燃えている所に居続けて、場の火の域へ燃料を入れる点（BurnFieldVisuals が使う）。
 struct BurnEmitter {
@@ -87,6 +92,8 @@ public:
     HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
     float blastEffectScale = 0.6f;
+    int blastEffectCap = 60;
+    float blastEffectWindow = 1.4f;
     float blastRadiusScale = 1.4f;
     float blastFuel = 400.0f;
     float blastTemperature = 10.0f;
@@ -129,6 +136,18 @@ public:
     // 爆ぜた塊。固定 tick ごとに後ろへ足す（いっぱいなら捨てる）。
     std::array<BurnBlast, kBurnBlastCapacity> blasts{};
     uint32_t blastCount = 0;
+    // 今の引爆で出ると見込んだ塊の数と、ここまでに出来た塊の数（規則が前線の最初の輪で見込み、塊ごとに数える）。
+    uint32_t blastPlan = 0;
+    uint32_t blastOrder = 0;
+    // 見込みを数える作業場所（格子を作る時に一度だけ確保し、引爆のたびには確保しない）。
+    std::vector<uint64_t> blastPlanKeys;
+    // 爆発のエフェクトを出した時刻（visualTime。直近 kBlastEffectCapMax 個の輪）と、検証ログ用の累計：
+    // 出した数・見込みに対して均等に間引いた数・窓の上限で止めた数・窓の中に同時にあった数の最大。
+    std::array<float, kBlastEffectCapMax> blastEffectTimes{};
+    uint32_t blastEffectsPlayed = 0;
+    uint32_t blastEffectsThinned = 0;
+    uint32_t blastEffectsHeld = 0;
+    uint32_t blastEffectPeak = 0;
 };
 
 } // namespace Project_TD2_2

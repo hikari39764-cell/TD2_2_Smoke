@@ -102,15 +102,19 @@ void Trace(const BurnFieldComponent& field) {
             first = emitter;
             break;
         }
-    char message[448]{};
+    // 爆発のエフェクトは累計（出した・均等に間引いた・窓の上限で止めた）と、窓の中に同時にあった数の最大。
+    char message[576]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-                  "emitters=%d cover=%.2f fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f blasts=%u",
+                  "emitters=%d cover=%.2f fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f blasts=%u "
+                  "blastPlan=%u effects=%u thinned=%u held=%u effectPeak=%u",
                   static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
                   static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds),
                   field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters,
                   static_cast<double>(field.cover), static_cast<double>(first.along), static_cast<double>(first.across),
-                  static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.blastCount);
+                  static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.blastCount,
+                  field.blastPlan, field.blastEffectsPlayed, field.blastEffectsThinned, field.blastEffectsHeld,
+                  field.blastEffectPeak);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 

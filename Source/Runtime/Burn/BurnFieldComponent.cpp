@@ -71,6 +71,10 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Vfx("blastEffect", "爆ぜた所の爆発のエフェクト（光・衝撃の輪・火花・煙）", blastEffect);
         fields.Float("blastEffectScale", "…爆発のエフェクトの大きさ (火球の半径に対する倍)", blastEffectScale, 0.0f,
                      10.0f);
+        fields.Int("blastEffectCap", "…爆発のエフェクトの上限 (直近の窓の間に出す数)", blastEffectCap, 1,
+                   static_cast<int>(kBlastEffectCapMax));
+        fields.Float("blastEffectWindow", "…上限を数える窓 (秒。エフェクトの長さより少し長く)", blastEffectWindow, 0.1f,
+                     10.0f);
         fields.Float("blastRadiusScale", "火球の半径 (規則の塊の半径に対する倍)", blastRadiusScale, 0.1f, 10.0f);
         fields.Float("blastFuel", "火球へ 1 フレームに入れる燃料の強さ", blastFuel, 0.0f, 10000.0f);
         fields.Float("blastTemperature", "火球の燃料の温度", blastTemperature, 0.0f, 64.0f);
@@ -84,7 +88,10 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("smokeBlastPush", "煙の塊が外へ押す速さ (m/s)", smokeBlastPush, 0.0f, 100.0f);
         fields.Note("溜めは、火そのものが熱く・細く・低くなることで見せます（地面や画面の予兆は出しません）。"
                     "爆発は、規則が爆ぜさせた火の塊ごとに、火の域へ燃料と衝撃を入れ、爆発のエフェクトを 1 つ出します"
-                    "（1 フレームに 3 つまで。残りは次のフレームへ回るので、広い火は波のように順に爆ぜます）。");
+                    "（1 フレームに 3 つまで。残りは次のフレームへ回るので、広い火は波のように順に爆ぜます）。"
+                    "爆ぜる塊が上限より多い引爆では、爆発のエフェクトだけを引爆の広がり全体へ均等に間引きます"
+                    "（最初の塊には必ず出します。火球の燃料と衝撃は全部の塊に入れます）。"
+                    "重なったエフェクトが多すぎると画面が止まって戻りません（155 個は平気、226 個で止まった）。");
     }
     if (fields.Section("検証")) {
         fields.Int("traceEveryFrames", "状態ログ間隔（0 は無効）", traceEveryFrames, 0, 7200);

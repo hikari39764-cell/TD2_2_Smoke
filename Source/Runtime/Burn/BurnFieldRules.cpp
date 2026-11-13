@@ -23,6 +23,27 @@ struct BlastBlock {
     uint32_t cells = 0;
 };
 
+// 引爆で同じ tick に爆ぜたセルを足し合わせる升の番号（origin から block m ごと）。
+int BlockIndex(float offset, float block) { return static_cast<int>(std::floor(offset / block)); }
+
+// 引爆の前線が最初の輪を通る tick に、この引爆で出来る塊の数を見込む（見た目が爆発のエフェクトを均等に間引くため）。
+// 前線は 1 tick に ringWidth ずつ広がり、Explode は tick ごとに爆ぜたセルを升でまとめるので、燃えているセルを
+// 「何番目の輪か」と「升」の組で分けた、違う組の数が塊の数になる。前線が届く前に燃え尽きるセルの分は多めに出る。
+uint32_t PlanBlasts(BurnFieldComponent& field, HIKARI::GameProjectFloat3 origin, float ringWidth, float block) {
+    std::vector<uint64_t>& keys = field.blastPlanKeys;
+    keys.clear();
+    field.map.ForEachBurning([&](int ix, int iz, float) {
+        const HIKARI::GameProjectFloat3 c = field.map.CellCenter(ix, iz);
+        const uint64_t ring = static_cast<uint64_t>(std::hypot(c.x - origin.x, c.z - origin.z) / ringWidth);
+        // 升の番号は 20 bit ずつに詰める（格子の一辺 200 m ÷ 升 0.5 m でも収まる）。
+        const uint64_t bx = static_cast<uint32_t>(BlockIndex(c.x - origin.x, block)) & 0xFFFFFu;
+        const uint64_t bz = static_cast<uint32_t>(BlockIndex(c.z - origin.z, block)) & 0xFFFFFu;
+        keys.push_back((ring << 40) | (bx << 20) | bz);
+    });
+    std::sort(keys.begin(), keys.end());
+    return static_cast<uint32_t>(std::unique(keys.begin(), keys.end()) - keys.begin());
+}
+
 // 最初の有効な BurnField に visit(BurnFieldComponent&) を 1 回だけ呼ぶ。格子がまだなら先に作る
 // （ボスは燃える地面のシステムより先に動くので、最初の tick に塗る時もここで作られる）。
 template <class Visitor>
@@ -51,6 +72,7 @@ void BurnFieldRules::Initialize(HIKARI::ObjectView object, BurnFieldComponent& f
     if (!object.GetWorldTransform(transform))
         return;
     field.map.Reset(transform.position, transform.position.y, field.fieldSize, field.cellSize);
+    field.blastPlanKeys.reserve(static_cast<size_t>(field.map.Width()) * static_cast<size_t>(field.map.Height()));
 }
 
 void BurnFieldRules::PaintSegment(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
@@ -116,6 +138,10 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
         size_t blockCount = 0;
         const float block = std::max(field.map.CellSize(), field.blastBlockSize);
         const float reach = std::max(0.0f, hitRadius);
+        if (innerRadius <= 0.0f && outerRadius > 0.0f) {
+            field.blastPlan = PlanBlasts(field, origin, outerRadius, block);
+            field.blastOrder = 0;
+        }
         const size_t cleared =
             field.map.ClearBand(origin, std::max(0.0f, innerRadius), outerRadius, [&](HIKARI::GameProjectFloat3 c) {
                 const float distance = std::hypot(c.x - origin.x, c.z - origin.z);
@@ -125,8 +151,8 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
                 if (player != nullptr && !result.playerCaught &&
                     (c.x - player->x) * (c.x - player->x) + (c.z - player->z) * (c.z - player->z) <= reach * reach)
                     result.playerCaught = true;
-                const int bx = static_cast<int>(std::floor((c.x - origin.x) / block));
-                const int bz = static_cast<int>(std::floor((c.z - origin.z) / block));
+                const int bx = BlockIndex(c.x - origin.x, block);
+                const int bz = BlockIndex(c.z - origin.z, block);
                 auto found = std::find_if(blocks.begin(), blocks.begin() + static_cast<ptrdiff_t>(blockCount),
                                           [&](const BlastBlock& b) { return b.bx == bx && b.bz == bz; });
                 if (found == blocks.begin() + static_cast<ptrdiff_t>(blockCount)) {
@@ -144,6 +170,8 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
         result.cells = static_cast<uint32_t>(cleared);
         for (size_t k = 0; k < blockCount; ++k) {
             const BlastBlock& b = blocks[k];
+            // 捨てる塊にも番号を振る（見込みの数と同じ数え方にして、間引きの間隔をずらさない）。
+            ++field.blastOrder;
             if (field.blastCount >= field.blasts.size()) {
                 ++result.blastsDropped;
                 continue;
@@ -151,7 +179,9 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
             const float n = static_cast<float>(b.cells);
             // 半径は、塊のセルを合わせた面積の円。
             field.blasts[field.blastCount++] = {{b.sumX / n, field.map.FloorY(), b.sumZ / n},
-                                                std::sqrt(n * field.map.CellArea() / kPi)};
+                                                std::sqrt(n * field.map.CellArea() / kPi),
+                                                BurnBlastKind::Detonation,
+                                                field.blastOrder};
             ++result.blasts;
         }
     });

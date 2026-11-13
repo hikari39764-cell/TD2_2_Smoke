@@ -137,6 +137,44 @@ bool PlaceEmitters(BurnFieldComponent& field, int limit) {
     return covered;
 }
 
+// 直近 window 秒の間に出した爆発のエフェクトの数（cap まで数えれば足りる）。
+uint32_t RecentBlastEffects(const BurnFieldComponent& field, uint32_t cap, float window) {
+    const uint32_t limit = std::min({field.blastEffectsPlayed, static_cast<uint32_t>(kBlastEffectCapMax), cap});
+    const float since = field.visualTime - window;
+    uint32_t recent = 0;
+    while (recent < limit &&
+           field.blastEffectTimes[(field.blastEffectsPlayed - recent - 1u) % kBlastEffectCapMax] > since)
+        ++recent;
+    return recent;
+}
+
+// 引爆の塊に爆発のエフェクトを出すか（間引いた・止めた数も数える）。重なった粒子のエフェクトが多すぎると描画が
+// 失敗して戻らないので、出す数を抑える。見込んだ塊の数が上限を超える引爆は、塊の番号を見込みに対して均等に間引く
+// （order 番目までに出す数 = ⌈order × 上限 ÷ 見込み⌉。最初の塊には必ず出る）。上限以下の引爆は今までどおり全部に出す。
+// どの場合も、直近の窓の間に出した数が上限に届いていれば出さない（見込みより塊が多かった時の歯止め）。
+bool TakeBlastEffect(BurnFieldComponent& field, const BurnBlast& blast) {
+    const uint32_t cap =
+        static_cast<uint32_t>(std::clamp(field.blastEffectCap, 1, static_cast<int>(kBlastEffectCapMax)));
+    const uint64_t plan = field.blastPlan;
+    if (plan > cap && blast.order > 0) {
+        const uint64_t before = ((blast.order - 1u) * uint64_t{cap} + plan - 1u) / plan;
+        const uint64_t through = (blast.order * uint64_t{cap} + plan - 1u) / plan;
+        if (through == before) {
+            ++field.blastEffectsThinned;
+            return false;
+        }
+    }
+    const uint32_t recent = RecentBlastEffects(field, cap, std::max(0.0f, field.blastEffectWindow));
+    if (recent >= cap) {
+        ++field.blastEffectsHeld;
+        return false;
+    }
+    field.blastEffectTimes[field.blastEffectsPlayed % kBlastEffectCapMax] = field.visualTime;
+    ++field.blastEffectsPlayed;
+    field.blastEffectPeak = std::max(field.blastEffectPeak, recent + 1u);
+    return true;
+}
+
 // 塊を、場の火の域の流体で見せる。引爆で爆ぜた火（規則の BurnFieldRules::Explode が積む）は火球と爆発のエフェクト、
 // 当たった所や刀の点火は小さな火球、煙の刃が当たった所や霞隠れの出入りは暗い煙の塊（ボスの演出が AddBlast で積む）。
 void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field) {
@@ -192,7 +230,7 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastPushBase + slot, push).Accepted() && field.fluidAccepted;
         }
-        if (detonation && !field.blastEffect.IsEmpty()) {
+        if (detonation && !field.blastEffect.IsEmpty() && TakeBlastEffect(field, blast)) {
             field.vfxAccepted =
                 VfxPlayback::PlayOneShot(world, field.blastEffect, center, radius * field.blastEffectScale) &&
                 field.vfxAccepted;

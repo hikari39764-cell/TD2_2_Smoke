@@ -41,7 +41,8 @@ public:
     // 引爆の前線の 1 tick：origin からの距離が innerRadius 以上 outerRadius 未満の燃えているセルを爆ぜさせて消す。
     // player（足元。nullptr はプレイヤーなし）が爆ぜたセルのどれかから hitRadius 以内なら playerCaught。
     // 爆ぜたセルは見た目への受け渡し（BurnFieldComponent::blasts）へ、blastBlockSize の升ごとに 1 塊で足す。
-    // 燃える地面が無ければ false（何も爆ぜない）。
+    // innerRadius が 0 の輪を引爆の始まりと見て、その引爆で出来る塊の数を見込む（BurnFieldComponent::blastPlan。
+    // 前線は 1 tick に最初の輪の幅ずつ広がる前提）。燃える地面が無ければ false（何も爆ぜない）。
     static bool Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin, float innerRadius,
                         float outerRadius, float hitRadius, const HIKARI::GameProjectFloat3* player,
                         BurnExplosion& result);
