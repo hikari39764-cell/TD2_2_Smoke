@@ -91,6 +91,8 @@ public:
     // 歩き出し・止まる時に速さを変える時間（0 で一瞬）。回避・被弾などの動作には掛からない。
     float moveAccelSeconds = 0.08f;
     float moveDecelSeconds = 0.06f;
+    // 立ち止まっていても滑り落ちない坂の傾きの上限（度）。これより急な坂では、今までどおり重力で滑る。
+    float standSlopeDegrees = 30.0f;
     uint64_t lockTargetId = 0;
     uint64_t cameraId = 0;
     // カメラ。姿勢は PlayerCamera が作る（Gameplay Camera の CameraFollow の値は使わない。画角だけカメラの値）。

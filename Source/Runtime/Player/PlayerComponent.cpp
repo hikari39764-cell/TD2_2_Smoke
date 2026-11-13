@@ -14,6 +14,10 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("inputBufferFrames", "先行入力 (F)", inputBufferFrames, 1, 60);
         fields.Float("moveAccelSeconds", "歩き出しで最高速になるまで (秒、0 で一瞬)", moveAccelSeconds, 0.0f, 2.0f);
         fields.Float("moveDecelSeconds", "入力を離して止まるまで (秒、0 で一瞬)", moveDecelSeconds, 0.0f, 2.0f);
+        fields.Float("standSlopeDegrees", "立ち止まっても滑らない坂の傾き (度、これより急なら滑る)", standSlopeDegrees,
+                     0.0f, 89.0f);
+        fields.Note("入力が無く止まっている間だけ、この傾きまでの地面の上では重力で坂を滑り落ちません。"
+                    "歩き・ローリング・被弾・押されて動く時の重力はそのままです。");
     }
     if (fields.Section("ローリング", true)) {
         fields.Note("移動 F は全体 F までに制限します。無敵は 0F から指定した F 数です。");

@@ -264,6 +264,22 @@ void KnockbackArc(const PlayerComponent& player, float& outLaunchSpeed, float& o
     outLaunchSpeed = 4.0f * height / seconds * (frames + 1.0f) / frames;
 }
 
+// 立ち止まっていて（通常の状態で水平の速度が 0）、前の tick に立てる傾きの地面へ足が着いていた。
+// 運動学ソルバーは地面の上でも毎 tick 重力 × dt の下向きの速度を足し、坂ではそれが斜面に沿った動きになって、
+// 立っているだけで坂を滑り落ちる（傾き θ で毎秒 g·dt·sinθ·cosθ。12 度の坂で約 3.3 cm）。
+bool StandingOnSlope(HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
+                     Vec3 velocity) {
+    if (player.state != PlayerState::Normal || velocity.x != 0.0f || velocity.z != 0.0f)
+        return false;
+    HIKARI::GameProjectKinematicState state{};
+    if (!world.GetMotion().GetKinematicState(object.GetHandle().value, state) ||
+        state.groundState != HIKARI::GameProjectGroundState::OnGround)
+        return false;
+    const Vec3 normal = state.groundNormal;
+    const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+    return length > 0.0f && normal.y >= length * std::cos(player.standSlopeDegrees * kRadiansPerDegree);
+}
+
 void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
                     const HIKARI::FrameContext& frame, Vec3 velocity, bool frozen = false) {
     HIKARI::GameProjectKinematicMove move{};
@@ -276,6 +292,15 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
     const float halfYaw = std::atan2(player.facing.x, player.facing.z) * 0.5f;
     move.hasDesiredRotation = 1;
     move.desiredRotation = {0.0f, std::sin(halfYaw), 0.0f, std::cos(halfYaw)};
+    if (StandingOnSlope(world, object, player, velocity)) {
+        // 立っている間だけ、この tick の縦の重力を 0 にする（足は地面に着いたままで、坂へ沿って流れない）。
+        // 押されて足場を失えば、次の tick は地面に着いていないので、いつもの重力で落ちる。
+        HIKARI::GameProjectKinematicMoveOptions options{};
+        options.overrideVerticalGravity = 1;
+        options.verticalGravityAcceleration = 0.0f;
+        player.motionAccepted = world.GetMotion().SubmitKinematicMoveWithOptions(move, options);
+        return;
+    }
     if (frozen || player.state != PlayerState::Knockback || player.knockbackHeight <= 0.0f) {
         player.motionAccepted = world.GetMotion().SubmitKinematicMove(move);
         return;
