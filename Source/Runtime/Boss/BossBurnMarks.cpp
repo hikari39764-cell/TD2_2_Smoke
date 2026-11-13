@@ -8,6 +8,7 @@
 
 #include "BossCsv.h"
 #include "BossMath.h"
+#include "BossWaves.h"
 #include "../Burn/BurnFieldRules.h"
 
 namespace Project_TD2_2 {
@@ -322,12 +323,11 @@ void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave&
     const Vec3 center = wave.travelled >= wave.crossReach ? wave.crossCenter : Floor(boss, wave.position);
     // 外れても地面で爆ぜる（当たった時は HitPlayer が同じ爆発を出しているので足さない）。
     if (!wave.struck) {
-        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-        blast = {};
-        blast.pushPending = blast.effectPending = true;
-        blast.fire = true;
-        blast.scale = 1.0f;
-        blast.position = {center.x, boss.ground.y + boss.bodyHalfHeight, center.z};
+        BossWaves::AddBlast(boss, {.pushPending = true,
+                                   .effectPending = true,
+                                   .fire = true,
+                                   .scale = 1.0f,
+                                   .position = {center.x, boss.ground.y + boss.bodyHalfHeight, center.z}});
     }
     BossBurnMark mark;
     mark.shape = BossBurnShape::Cross;

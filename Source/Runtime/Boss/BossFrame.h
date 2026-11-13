@@ -21,6 +21,11 @@ struct BossFrame {
     bool absorbing = false;
 };
 
+// プレイヤーの真下の、ボスの地面の高さの点（ボスから見たプレイヤーの水平の向き・距離を測る）。
+inline HIKARI::GameProjectFloat3 PlayerGround(const BossFrame& frame) {
+    return {frame.playerCenter.x, frame.boss.ground.y, frame.playerCenter.z};
+}
+
 namespace BossLog {
 
 inline void Write(const char* message) { HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Boss", message); }

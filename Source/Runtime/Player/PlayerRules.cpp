@@ -122,25 +122,23 @@ float PlayerRules::EaseOutFraction(int elapsedFrames, int frames, float easePowe
 }
 
 void PlayerRules::SetMovementSpeedScale(PlayerComponent& player, float scale) {
-    player.externalMoveScale = std::isfinite(scale) ? std::clamp(scale, 0.0f, 1.0f) : 1.0f;
+    player.external.moveScale = std::isfinite(scale) ? std::clamp(scale, 0.0f, 1.0f) : 1.0f;
 }
-
-float PlayerRules::GetMovementSpeedScale(const PlayerComponent& player) { return player.externalMoveScale; }
 
 void PlayerRules::SetTurnOverride(PlayerComponent& player, float degreesPerSecond) {
-    player.externalTurnSpeed = std::isfinite(degreesPerSecond) ? std::max(0.0f, degreesPerSecond) : 0.0f;
+    player.external.turnSpeed = std::isfinite(degreesPerSecond) ? std::max(0.0f, degreesPerSecond) : 0.0f;
 }
 
-void PlayerRules::BlockHeal(PlayerComponent& player) { player.externalHealBlock = true; }
+void PlayerRules::BlockHeal(PlayerComponent& player) { player.external.healBlocked = true; }
 
 void PlayerRules::AllowWalkDuringAction(PlayerComponent& player, float scale) {
     SetMovementSpeedScale(player, scale);
-    player.externalWalkAllowed = true;
+    player.external.walkAllowed = true;
 }
 
-void PlayerRules::HoldRollInput(PlayerComponent& player) { player.externalRollGate = PlayerRollGate::Hold; }
+void PlayerRules::HoldRollInput(PlayerComponent& player) { player.external.rollGate = PlayerRollGate::Hold; }
 
-void PlayerRules::AllowRollCancel(PlayerComponent& player) { player.externalRollGate = PlayerRollGate::Cancel; }
+void PlayerRules::AllowRollCancel(PlayerComponent& player) { player.external.rollGate = PlayerRollGate::Cancel; }
 
 bool PlayerRules::TryEndRollForAction(PlayerComponent& player) {
     if (!IsAlive(player) || player.state != PlayerState::Roll || player.actionLockFrames > 0 ||

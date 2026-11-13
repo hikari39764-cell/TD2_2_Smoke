@@ -89,11 +89,8 @@ void StepRing(BossFrame& frame, BossWave& wave) {
             continue;
         const Vec3 offset = Sub(frame.playerCenter, wave.position);
         if (std::abs(FlatLength(offset) - wave.radius) < wave.thickness * 0.5f + boss.playerHitRadius) {
-            bool dodged = false;
-            wave.struck =
-                BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring", dodged);
+            wave.struck = BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring");
             wave.done = true;
-            wave.dodged = dodged;
         }
     }
     if (wave.radius < wave.maxRadius)
@@ -125,7 +122,7 @@ bool BossWaves::Touches(const BossFrame& frame, Vec3 a, Vec3 b, float thickness)
 }
 
 bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blow, int move, int strike,
-                          const char* source, bool& dodged) {
+                          const char* source, bool* dodged) {
     if (frame.player == nullptr || !PlayerRules::IsAlive(*frame.player))
         return false;
     BossComponent& boss = frame.boss;
@@ -133,8 +130,8 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     char message[320]{};
     if (PlayerRules::IsInvulnerable(*frame.player)) {
         // 無敵で抜けた斬撃はもう当たらない（吹っ飛び・ダウン中の無敵も同じ）。
-        dodged = true;
-        ++boss.playerDodges;
+        if (dodged != nullptr)
+            *dodged = true;
         std::snprintf(message, sizeof(message), "PlayerDodge tick=%llu move=%s strike=%d source=%s playerState=%d",
                       static_cast<unsigned long long>(boss.tick), row ? row->name.c_str() : "?", strike, source,
                       static_cast<int>(frame.player->state));
@@ -145,14 +142,12 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     const bool accepted = PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
                                                    blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger);
     if (accepted) {
-        ++boss.playerHits;
-        // 当たった所に爆発を出す（ナイフは小さく）。枠は輪で使い回す。
-        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-        blast = {};
-        blast.pushPending = blast.effectPending = true;
-        blast.fire = boss.bladeLit;
-        blast.scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f;
-        blast.position = frame.playerCenter;
+        // 当たった所に爆発を出す（ナイフは小さく）。
+        AddBlast(boss, {.pushPending = true,
+                        .effectPending = true,
+                        .fire = boss.bladeLit,
+                        .scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f,
+                        .position = frame.playerCenter});
     }
     std::snprintf(message, sizeof(message),
                   "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s accepted=%d playerHealth=%.3f "
@@ -275,7 +270,6 @@ void BossWaves::Step(BossFrame& frame) {
         const Vec3 edge = Mul(wave.across, wave.width * 0.5f);
         if (!wave.done && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
             boss.absorbedSmoke += wave.absorbSmoke;
-            ++boss.wavesAbsorbed;
             ++boss.absorbedWavesPending;
             LogWave(boss, wave, "WaveAbsorbed");
             wave.active = false;
@@ -295,11 +289,9 @@ void BossWaves::Step(BossFrame& frame) {
                 continue;
             const Vec3 half = Mul(wave.across, wave.width * 0.5f);
             if (Touches(frame, Sub(wave.position, half), Add(wave.position, half), wave.thickness)) {
-                bool dodged = false;
                 wave.struck = HitPlayer(frame, wave.damage, wave.direction, wave.blow, wave.move, wave.strike,
-                                        wave.knife ? "knife" : "wave", dodged);
+                                        wave.knife ? "knife" : "wave");
                 wave.done = true;
-                wave.dodged = dodged;
             }
         }
         const bool ending =
@@ -374,6 +366,10 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
     target->radius = radius;
     target->smokeLeft = smoke;
     target->smokePerFrame = smoke / static_cast<float>(std::max(1, boss.depositFrames));
+}
+
+void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
+    boss.blasts[boss.blastCursor++ % boss.blasts.size()] = blast;
 }
 
 void BossWaves::StepDeposits(BossComponent& boss) {

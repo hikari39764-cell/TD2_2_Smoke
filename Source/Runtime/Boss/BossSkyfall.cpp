@@ -13,7 +13,7 @@ namespace {
 
 using namespace BossMath;
 
-// 着地の爆発を出す高さ（着地点の上 m）。エフェクトを作るまでの仮の見せ方なので項目にはしない。
+// 着地の爆発を出す高さ（着地点の上 m）。爆発の大きさ（skyfallBlastScale）で見え方は調整できるので、高さは項目にしない。
 constexpr float kSkyfallBlastLift = 1.5f;
 
 const char* PhaseName(BossSkyfallPhase phase) {
@@ -88,9 +88,7 @@ void StepHit(BossFrame& frame, const BossMove& move) {
     state.caught = true;
     // 真上に降られた時は、落ちてきた向きへ吹き飛ばす。
     const Vec3 push = FlatNormalize(offset, FlatNormalize(Sub(state.target, state.diveFrom), Forward(boss.yaw)));
-    bool dodged = false;
-    state.hit = BossWaves::HitPlayer(frame, strike.damage, push, strike.blow, boss.move, 0, "skyfall", dodged);
-    state.dodged = dodged;
+    state.hit = BossWaves::HitPlayer(frame, strike.damage, push, strike.blow, boss.move, 0, "skyfall", &state.dodged);
 }
 
 } // namespace
@@ -135,8 +133,7 @@ void BossSkyfall::Pre(BossFrame& frame) {
     } else if (t <= state.crouchFrames + state.riseFrames) {
         SetPhase(boss, BossSkyfallPhase::Rise);
         // 跳び上がり：地面を蹴って速く上がり、上で止まる（流れる距離も同じ曲線）。
-        const float u = static_cast<float>(t - state.crouchFrames) / static_cast<float>(state.riseFrames);
-        const float e = 1.0f - (1.0f - u) * (1.0f - u);
+        const float e = EaseOut(static_cast<float>(t - state.crouchFrames) / static_cast<float>(state.riseFrames));
         boss.crouch = 0.0f;
         boss.height = boss.skyfallHeight * e;
         boss.ground = Add(state.takeoff, Mul(state.away, boss.skyfallBackDrift * e));
@@ -144,8 +141,7 @@ void BossSkyfall::Pre(BossFrame& frame) {
         SetPhase(boss, BossSkyfallPhase::Hang);
         ++state.hangElapsed;
         boss.height = boss.skyfallHeight;
-        state.charge = std::clamp(
-            static_cast<float>(state.hangElapsed) / static_cast<float>(std::max(1, state.hangFrames)), 0.0f, 1.0f);
+        state.charge = Share(state.hangElapsed, state.hangFrames);
         boss.chargeVisual = state.charge;
     }
     if (state.locked)
@@ -205,7 +201,6 @@ void BossSkyfall::Land(BossFrame& frame) {
     BossComponent& boss = frame.boss;
     BossSkyfallState& state = boss.skyfall;
     state.dive = 1.0f;
-    state.landedTick = boss.tick;
     boss.ground = state.target;
     boss.height = 0.0f;
     boss.crouch = 1.0f;
@@ -214,19 +209,16 @@ void BossSkyfall::Land(BossFrame& frame) {
         return;
     // 着地の爆発（当たった所の爆発と同じ枠。見た目は BossVisuals、足元の霧を押すのは BossSmoke）。
     // フェーズ 2 は火球、フェーズ 1 は霞の塊。当てたかどうかに関わらず出す。
-    BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-    blast = {};
-    blast.pushPending = blast.effectPending = true;
-    blast.fire = boss.lastPhaseNumber >= 2;
-    blast.scale = boss.skyfallBlastScale;
-    blast.position = {state.target.x, state.target.y + kSkyfallBlastLift, state.target.z};
+    BossWaves::AddBlast(boss, {.pushPending = true,
+                               .effectPending = true,
+                               .fire = boss.lastPhaseNumber >= 2,
+                               .scale = boss.skyfallBlastScale,
+                               .position = {state.target.x, state.target.y + kSkyfallBlastLift, state.target.z}});
 }
 
 void BossSkyfall::Post(BossComponent& boss) {
     boss.height = 0.0f;
-    boss.crouch = 1.0f - std::clamp(static_cast<float>(boss.stateFrame) /
-                                        static_cast<float>(std::max(1, boss.skyfallLandCrouchFrames)),
-                                    0.0f, 1.0f);
+    boss.crouch = 1.0f - Share(boss.stateFrame, boss.skyfallLandCrouchFrames);
 }
 
 void BossSkyfall::Reset(BossComponent& boss, const char* reason) {

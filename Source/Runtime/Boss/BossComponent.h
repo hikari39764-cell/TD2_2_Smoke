@@ -44,7 +44,6 @@ struct BossWave {
     float pushedRadius = -1.0f;
     // 当たった・無敵で抜けられた後は、もう当たらない（煙は飛び続ける）。
     bool done = false;
-    bool dodged = false;
     // プレイヤーに当たった（エフェクトが刃を砕けさせる）。
     bool struck = false;
     bool blow = false;
@@ -171,8 +170,6 @@ struct BossSkyfallState {
     HIKARI::GameProjectFloat3 takeoff{};
     HIKARI::GameProjectFloat3 target{};
     bool locked = false;
-    // 着地した tick（boss.tick と同じ数え方。着地前は 0）。
-    uint64_t landedTick = 0;
     // ここから下は規則の内側の覚え（見た目は読まない）。
     // 跳ぶ間に流れる向き（跳んだ時のプレイヤーから離れる向き）と、落ち始めた所・高さ。
     HIKARI::GameProjectFloat3 away{};
@@ -229,6 +226,33 @@ struct BossGreatswordState {
     bool dodged = false;
     // 「弧」の火を塗り終えた所の数。
     int firePainted = 0;
+};
+
+// 天降り斬りの見た目の状態。見た目（BossSkyfallVisuals）だけが描画フレームごとに読み書きする。保存しない。
+struct BossSkyfallVisualState {
+    // 体と一緒に落ちる刃（斬撃のエフェクト）。
+    BossSlashEffect blade{};
+    // フェーズ 2 の着地で広がる炎の輪：エフェクト、出てからの秒、真ん中。
+    HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
+    float ringAge = 0.0f;
+    HIKARI::GameProjectFloat3 ringCenter{};
+    // 炎の輪を次のフレームに出す（着地のフレームは、一緒に落ちた刃の域がまだ数に入っているので 1 フレーム待つ）。
+    bool ringPending = false;
+    // 前のフレームに見た段階と、落ちる所が決まっていたか（変わった瞬間を見つける）。
+    BossSkyfallPhase seenPhase = BossSkyfallPhase::None;
+    bool seenLock = false;
+    // 落ちる所を決めた瞬間の剣の光の残り（1 から skyfallLockFlareSeconds で 0 へ）。剣先の霞のエフェクトが読む。
+    float flare = 0.0f;
+};
+
+// 霞の大剣の見た目の状態。見た目（BossGreatswordVisuals）だけが描画フレームごとに読み書きする。保存しない。
+struct BossGreatswordVisualState {
+    HIKARI::GameProjectVfxPlaybackHandle vfx{};
+    // 最後に送った変換（技が終わった後、消える間もそこに置く）と、消えるまでの残り秒。
+    HIKARI::GameProjectTransform transform{};
+    float fade = 0.0f;
+    // 前のフレームに見た段階（変わった瞬間を見つける）。
+    BossGreatswordPhase seenPhase = BossGreatswordPhase::None;
 };
 
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
@@ -326,6 +350,8 @@ public:
     int stunLimit = 0;
     int stunFrames = 180;
     // 溜めを崩した時・気絶した時の手応え（c-d330c0）。止め・カメラの揺れ・手柄の振動・本体の光り。
+    // 本体の光りは Damageable の光りを頼むだけで、いまの体（色を読める材質の無いカプセル）では見えない。
+    // 崩した合図は breakBlastScale の塊で見せる（体を模型にした時のために項目は残す）。
     int breakHitStopFrames = 6;
     float breakHitStopScale = 0.05f;
     float breakCameraAmplitude = 0.08f;
@@ -443,14 +469,15 @@ public:
     float greatswordFireFar = 7.0f;
     int greatswordFireRows = 3;
     float greatswordFireStepDegrees = 20.0f;
-    // ── 天降り斬りの見た目（規則は変えない） ──
-    // 溜める間（天降り斬りの空中・退き溜め。規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
+    // ── 溜める技の見た目（天降り斬りの空中・退き溜め。規則は変えない） ──
+    // 溜める間（規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
     // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
     HIKARI::GameProjectVfxAssetReference gatherEffect{"b84f0c6d2e9a4f17a35d6c1e0f7b92d4", "Assets/Vfx/BossChargeGather.hvfx"};
     float chargeGatherScale = 1.3f;
     // 溜め切った時の、剣の光の大きさと霞の量（構えの時に対する倍）。
     float chargeGlowScale = 3.0f;
     float chargeHazeScale = 3.0f;
+    // ── 天降り斬りの見た目（規則は変えない） ──
     // 落ちる所を決めた瞬間に剣がひときわ光る（落ちて来る合図。光の倍率と、戻るまでの秒）。
     float skyfallLockFlare = 2.5f;
     float skyfallLockFlareSeconds = 0.25f;
@@ -538,10 +565,10 @@ public:
     // 見た目：飛ぶ斬撃（自前の流体域を持つ三日月の霧。局所 +X が飛ぶ向き、刃は局所 XY 面）
     HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
                                                      "Assets/Vfx/BossSlashWave.hvfx"};
-    // 火を残さない斬撃の見た目（煙の刃）。空なら、どの斬撃も slashEffect（炎の刃）で出す。
     // 霞の刃（火を残さない斬撃）が当たった所に重ねるエフェクト（青白い光と火花。空なら blastEffect）。
     HIKARI::GameProjectVfxAssetReference mistBlastEffect{"c7a41d6be2f0483a9d15b0e36f7a2c18",
                                                          "Assets/Vfx/BossMistBurst.hvfx"};
+    // 火を残さない斬撃の見た目（煙の刃）。空なら、どの斬撃も slashEffect（炎の刃）で出す。
     HIKARI::GameProjectVfxAssetReference slashSmokeEffect{"a86e3e830ef54289e4dd42a4ef0a6100",
                                                           "Assets/Vfx/BossSlashSmoke.hvfx"};
     float slashEffectWidth = 11.0f;
@@ -676,7 +703,6 @@ public:
     bool bladeLit = false;
     // 吸い込みで吸われた斬撃・ナイフの煙（この tick にヒョウタンへ渡す）。
     float absorbedSmoke = 0.0f;
-    int wavesAbsorbed = 0;
     // この tick に吸われた斬撃・ナイフの数。BossSystem がヒョウタンへ知らせたら消す。
     int absorbedWavesPending = 0;
     // 気絶
@@ -689,7 +715,6 @@ public:
     double seenBaseDamage = 0.0;
     float clockSeconds = 0.0f;
     uint64_t tick = 0;
-    bool defeatedLogged = false;
     int lastPhaseNumber = 1;
     // 技の要求（行動ツリーや確かめ用が入れる）
     int requestedMove = -1;
@@ -726,26 +751,12 @@ public:
     HIKARI::GameProjectFloat3 ringCenter{};
     std::array<BossSlashEffect, kBossSlashEffectCapacity> slashEffects{};
     HIKARI::GameProjectVfxPlaybackHandle swordVfx{};
-    // 天降り斬りの見た目の状態：集まる光の粒、落ちる刃、着地の炎の輪、前のフレームに見た段階。
+    // 溜める間（天降り斬りの空中・退き溜め）、剣へ集まって来る光の粒。
     HIKARI::GameProjectVfxPlaybackHandle gatherVfx{};
-    BossSlashEffect skyfallBlade{};
-    HIKARI::GameProjectVfxPlaybackHandle skyfallRingVfx{};
-    float skyfallRingAge = 0.0f;
-    // 炎の輪を次のフレームに出す（着地のフレームは、一緒に落ちた刃の域がまだ数に入っているので 1 フレーム待つ）。
-    bool skyfallRingPending = false;
-    HIKARI::GameProjectFloat3 skyfallRingCenter{};
-    BossSkyfallPhase skyfallSeenPhase = BossSkyfallPhase::None;
-    bool skyfallSeenLock = false;
-    float skyfallFlare = 0.0f;
-    // 霞の大剣の見た目の状態：エフェクト、最後に送った変換（消える間もそこに置く）、消えるまでの残り秒、前のフレームに見た段階。
-    HIKARI::GameProjectVfxPlaybackHandle greatswordVfx{};
-    HIKARI::GameProjectTransform greatswordTransform{};
-    float greatswordFade = 0.0f;
-    BossGreatswordPhase greatswordSeenPhase = BossGreatswordPhase::None;
+    BossSkyfallVisualState skyfallVisual;
+    BossGreatswordVisualState greatswordVisual;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
-    int playerHits = 0;
-    int playerDodges = 0;
 };
 
 } // namespace Project_TD2_2

@@ -5,8 +5,8 @@
 #include <cmath>
 
 #include "HIKARI/Project/FluidView.h"
-#include "HIKARI/Project/VfxView.h"
 #include "../Common/FluidChannels.h"
+#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -193,13 +193,9 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
                 fluid.Submit(object.GetHandle(), kBlastPushBase + slot, push).Accepted() && field.fluidAccepted;
         }
         if (detonation && !field.blastEffect.IsEmpty()) {
-            HIKARI::GameProjectVfxPlayRequest play{};
-            play.asset = field.blastEffect;
-            play.transform.position = center;
-            const float scale = radius * field.blastEffectScale;
-            play.transform.scale = {scale, scale, scale};
-            play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
-            field.vfxAccepted = world.GetVfx().Play(play).IsValid() && field.vfxAccepted;
+            field.vfxAccepted =
+                VfxPlayback::PlayOneShot(world, field.blastEffect, center, radius * field.blastEffectScale) &&
+                field.vfxAccepted;
         }
     }
     // 見せた分を前から詰める。

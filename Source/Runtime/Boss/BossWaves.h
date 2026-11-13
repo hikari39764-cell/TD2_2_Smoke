@@ -30,11 +30,14 @@ public:
     // 刃や斬撃がプレイヤーの体の軸に触れたか（触れたら true）。
     static bool Touches(const BossFrame& frame, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
                         float thickness);
-    // プレイヤーに当てる。無敵なら dodged を立てて false。direction は攻撃が押す向き。
+    // プレイヤーに当てる。無敵なら *dodged を立てて（null なら知らせず）false。direction は攻撃が押す向き。
+    // 一撃が当たるのは 1 回だけ：呼んだ側は、当たっても無敵で抜けられても、その一撃をもう当てない。
     static bool HitPlayer(BossFrame& frame, int damage, HIKARI::GameProjectFloat3 direction, bool blow, int move,
-                          int strike, const char* source, bool& dodged);
+                          int strike, const char* source, bool* dodged = nullptr);
     // 場の霧へ少しずつ入れる煙を置く（煙の単位）。
     static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius);
+    // 爆発の枠へ 1 つ入れる。枠は輪で使い回し、埋まっていれば一番古いものを上書きする。
+    static void AddBlast(BossComponent& boss, const BossBlast& blast);
     static void StepDeposits(BossComponent& boss);
     static void Clear(BossComponent& boss);
 };

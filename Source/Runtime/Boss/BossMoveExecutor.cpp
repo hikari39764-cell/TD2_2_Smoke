@@ -40,8 +40,6 @@ constexpr float kOverheadLungeStart = 0.85f;
 
 const BossMove& CurrentMove(const BossComponent& boss) { return boss.table.GetMoves()[static_cast<size_t>(boss.move)]; }
 
-Vec3 PlayerGround(const BossFrame& frame) { return {frame.playerCenter.x, frame.boss.ground.y, frame.playerCenter.z}; }
-
 void Log(const BossComponent& boss, const char* event, const char* extra = "") {
     const BossMove* move =
         boss.move >= 0 && static_cast<size_t>(boss.move) < boss.table.GetMoves().size() ? &CurrentMove(boss) : nullptr;
@@ -322,9 +320,8 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     // 振っている剣そのものの当たり：剣が描いている霞の弧と同じ一撃（当たる・抜けるは 1 回だけ）。
     if (!swing.done && BossWaves::Touches(frame, sword.base, sword.outer, boss.thickness)) {
         const BossStrikeData& strike = BossMoveTable::Strike(move, g.hitIndex);
-        bool dodged = false;
         BossWaves::HitPlayer(frame, strike.damage, Sub(PlayerGround(frame), boss.ground), strike.blow, boss.move,
-                             g.hitIndex, "sword", dodged);
+                             g.hitIndex, "sword");
         swing.done = true;
     }
     if (g.tIn >= g.swingLength) {
@@ -339,8 +336,7 @@ void BossMoveExecutor::StepBack(BossFrame& frame, float progress) {
     BossComponent& boss = frame.boss;
     const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
     const float u = std::clamp(progress, 0.0f, 1.0f);
-    const float e = 1.0f - (1.0f - u) * (1.0f - u);
-    boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * e));
+    boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * EaseOut(u)));
     boss.height = boss.backstepHeight * std::sin(u * kPi);
 }
 

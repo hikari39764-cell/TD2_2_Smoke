@@ -5,18 +5,18 @@
 #include <cstdio>
 
 #include "HIKARI/Project/ActionViews.h"
-#include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "GourdShotComponent.h"
 #include "GourdComponent.h"
 #include "GourdRules.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
+#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-constexpr float kFramesPerSecond = 60.0f;
+constexpr float kFramesPerSecond = Feedback::kFramesPerSecond;
 constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 constexpr uint64_t kCameraSource = 0x5444324701ull;
@@ -74,18 +74,14 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
                                  feedback.cameraFovDegrees > 0.0f;
     if (feedback.observedDryFires != shot.dryFires) {
         feedback.observedDryFires = shot.dryFires;
-        if (feedback.dryFireRumbleFrames > 0 && feedback.dryFireRumble > 0.0f)
-            world.GetInput().SetGamepadVibration(0.0f, feedback.dryFireRumble,
-                                                 static_cast<float>(feedback.dryFireRumbleFrames) / kFramesPerSecond);
+        Feedback::Rumble(world, 0.0f, feedback.dryFireRumble, feedback.dryFireRumbleFrames);
     }
     if (feedback.observedShots != shot.shotsFired) {
         feedback.observedShots = shot.shotsFired;
         feedback.ageSeconds = 0.0f;
         feedback.direction = shot.muzzleDirection;
         feedback.active = feedback.cameraFrames > 0 && hasCameraMotion;
-        if (feedback.rumbleFrames > 0 && (feedback.rumbleLow > 0.0f || feedback.rumbleHigh > 0.0f))
-            world.GetInput().SetGamepadVibration(feedback.rumbleLow, feedback.rumbleHigh,
-                                                 static_cast<float>(feedback.rumbleFrames) / kFramesPerSecond);
+        Feedback::Rumble(world, feedback.rumbleLow, feedback.rumbleHigh, feedback.rumbleFrames);
         LogStart(shot);
     }
     const float duration = static_cast<float>(feedback.cameraFrames) / kFramesPerSecond;
@@ -144,11 +140,7 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
         // 合図のエフェクトは口の位置で一度だけ。空なら何も出さない。
         bool effectPlayed = false;
         if (!gourd.catchEffect.IsEmpty()) {
-            HIKARI::GameProjectVfxPlayRequest play{};
-            play.asset = gourd.catchEffect;
-            play.transform.position = GourdRules::GetMouthPosition(gourd);
-            play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
-            effectPlayed = world.GetVfx().Play(play).IsValid();
+            effectPlayed = VfxPlayback::PlayOneShot(world, gourd.catchEffect, GourdRules::GetMouthPosition(gourd));
             gourd.vfxAccepted = effectPlayed && gourd.vfxAccepted;
         }
         char message[192]{};

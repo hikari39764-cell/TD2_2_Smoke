@@ -85,9 +85,7 @@ void Pose(HIKARI::ObjectView object, const BossComponent& boss, BossCloneCompone
     ++clone.age;
     if (hasPlayer)
         clone.yaw = YawOf(Sub({playerCenter.x, clone.ground.y, playerCenter.z}, clone.ground));
-    const float rise =
-        std::clamp(static_cast<float>(clone.age) / static_cast<float>(std::max(1, boss.appearRiseFrames)), 0.0f, 1.0f);
-    const float sink = boss.hidePreSinkDepth * (1.0f - rise);
+    const float sink = boss.hidePreSinkDepth * (1.0f - Share(clone.age, boss.appearRiseFrames));
     transform.position = {clone.ground.x, clone.ground.y + boss.floatMin - sink + boss.bodyHalfHeight, clone.ground.z};
     transform.rotation = YawLeanSway(clone.yaw, 0.0f, 0.0f);
     object.SetWorldTransform(transform);

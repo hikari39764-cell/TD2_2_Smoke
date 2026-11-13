@@ -22,10 +22,6 @@ const char* PhaseName(BossGreatswordPhase phase) {
     }
 }
 
-float Share(int frame, int frames) {
-    return std::clamp(static_cast<float>(frame) / static_cast<float>(std::max(1, frames)), 0.0f, 1.0f);
-}
-
 // 剣の向きの、ボスの向きから見た水平の角度（度。右が負）と、水平からの仰ぎ（度）。
 float AngleOf(const BossComponent& boss) {
     return WrapPi(YawOf(boss.greatsword.direction) - boss.yaw) / kRadiansPerDegree;
@@ -116,11 +112,9 @@ void StepHit(BossFrame& frame, const BossMove& move, bool last) {
         distance >= boss.greatswordInnerRadius && distance <= reach && playerAngle >= low && playerAngle <= high;
     if (inside) {
         sword.caught = true;
-        bool dodged = false;
         const BossStrikeData& strike = BossMoveTable::Strike(move, 0);
         sword.hit = BossWaves::HitPlayer(frame, strike.damage, FlatNormalize(offset, Forward(sword.yaw)), strike.blow,
-                                         boss.move, 0, "greatsword", dodged);
-        sword.dodged = dodged;
+                                         boss.move, 0, "greatsword", &sword.dodged);
     }
     // 当たった・よけられた tick と、最後まで当たらなかった時の薙ぎ終わりに知らせる。
     if (inside || last)

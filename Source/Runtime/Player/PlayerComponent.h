@@ -18,6 +18,21 @@ enum class PlayerRollGate { None, Hold, Cancel };
 // 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
 inline constexpr size_t kPlayerLockCandidateCapacity = 8;
 
+// 外部の動作（ヒョウタンの吸い込み・砲撃）が、PlayerRules を通して出す 1 固定 tick ぶんの要求。
+// 外部は自分の PreFixedUpdate（PlayerSystem より後）で毎 tick 入れ直し、PlayerSystem は次の tick の PreFixedUpdate で
+// 使い終えた所で全部消す（外部のシステムが消えても要求を残さない）。
+// 歩く倍率・向き直り・歩ける・ローリングを待たせるは同じ tick の StepPlayer が、回復の停止とローリングの扱いは
+// 次の tick の先行入力（StartBufferedAction）が使う。
+struct PlayerExternalRequests {
+    float moveScale = 1.0f;
+    // 向きを入力の方向へ回す速さ（度/秒。0 は普段の向き直り）。
+    float turnSpeed = 0.0f;
+    // 動作ロック中でも moveScale で歩ける（砲撃の構え・後隙の後半）。
+    bool walkAllowed = false;
+    bool healBlocked = false;
+    PlayerRollGate rollGate = PlayerRollGate::None;
+};
+
 class PlayerComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
@@ -145,12 +160,7 @@ public:
     bool pendingHitFeedback = false;
     bool pendingHitFeedbackKnockback = false;
     Feedback::CameraShake hitShake{};
-    float externalMoveScale = 1.0f;
-    float externalTurnSpeed = 0.0f;
-    bool externalHealBlock = false;
-    // その固定 tick だけ、動作ロック中でも externalMoveScale で歩ける（砲撃の構え・後隙の後半）。
-    bool externalWalkAllowed = false;
-    PlayerRollGate externalRollGate = PlayerRollGate::None;
+    PlayerExternalRequests external{};
     // 射撃の構え中に向く方向。毎 tick 外部が要求し、PlayerSystem が使ったら消す。
     bool aimTurnPending = false;
     float aimTurnSpeed = 0.0f;

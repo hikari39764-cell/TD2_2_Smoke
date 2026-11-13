@@ -47,6 +47,12 @@ inline float Smooth(float u) {
     u = std::clamp(u, 0.0f, 1.0f);
     return u * u * (3.0f - 2.0f * u);
 }
+// 速く動き出して最後にゆっくり止まる（跳び上がり・後ろへ跳ぶ）。
+inline float EaseOut(float u) { return 1.0f - (1.0f - u) * (1.0f - u); }
+// frames F のうち frame F 目までの進み（0〜1）。frames が 0 以下でも割らない。
+inline float Share(int frame, int frames) {
+    return std::clamp(static_cast<float>(frame) / static_cast<float>(std::max(1, frames)), 0.0f, 1.0f);
+}
 
 inline Quat Multiply(Quat a, Quat b) {
     return {a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,

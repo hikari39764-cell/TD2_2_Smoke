@@ -90,11 +90,9 @@ void BossDetonate::Step(BossFrame& frame, const BossMove& move) {
     if (explosion.playerCaught && !detonation.caught) {
         // 1 回の引爆で当たるのは 1 回だけ。無敵でよけた時も、その引爆はもう当たらない（斬撃と同じ）。
         detonation.caught = true;
-        bool dodged = false;
         const Vec3 player{frame.playerCenter.x, detonation.origin.y, frame.playerCenter.z};
         detonation.hit = BossWaves::HitPlayer(frame, strike.damage, Sub(player, detonation.origin), strike.blow,
-                                              boss.move, 0, "detonate", dodged);
-        detonation.dodged = dodged;
+                                              boss.move, 0, "detonate", &detonation.dodged);
     }
     if (boss.traceEveryFrames > 0 && explosion.cells > 0) {
         char message[256]{};

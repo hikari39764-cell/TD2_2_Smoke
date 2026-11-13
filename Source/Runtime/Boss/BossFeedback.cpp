@@ -4,6 +4,7 @@
 
 #include "HIKARI/Project/ComponentViews.h"
 #include "BossFrame.h"
+#include "BossWaves.h"
 #include "../Combat/DamageableComponent.h"
 #include "../Combat/DamageableRules.h"
 #include "../Combat/Feedback.h"
@@ -40,12 +41,11 @@ void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent&
     bool blastAdded = false;
     HIKARI::GameProjectTransform transform{};
     if (boss.breakBlastScale > 0.0f && object.GetWorldTransform(transform)) {
-        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-        blast = {};
-        blast.pushPending = blast.effectPending = true;
-        blast.fire = boss.lastPhaseNumber >= 2;
-        blast.scale = boss.breakBlastScale;
-        blast.position = transform.position;
+        BossWaves::AddBlast(boss, {.pushPending = true,
+                                   .effectPending = true,
+                                   .fire = boss.lastPhaseNumber >= 2,
+                                   .scale = boss.breakBlastScale,
+                                   .position = transform.position});
         blastAdded = true;
     }
     char message[192]{};

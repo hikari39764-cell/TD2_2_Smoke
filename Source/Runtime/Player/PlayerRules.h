@@ -22,15 +22,15 @@ public:
     static void LockActions(PlayerComponent& player, int frames);
     // 射撃の後隙を吸い込みで取り消すときなど、残っている動作ロックをその場で解く。
     static void ReleaseActionLock(PlayerComponent& player);
-    // その固定 tick の歩行倍率。PlayerSystem が毎 tick 1 に戻してから外部が要求する。
+    // ここから TryEndRollForAction の前までは、外部の動作が出す 1 固定 tick ぶんの要求（PlayerExternalRequests）。
+    // 続ける間は毎 tick 要求し直す。
+    // その固定 tick の歩行倍率。
     static void SetMovementSpeedScale(PlayerComponent& player, float scale);
-    static float GetMovementSpeedScale(const PlayerComponent& player);
     // その固定 tick だけ、向きを入力の方向へ毎秒この角度まで回す（ロックオン中でも）。0 は通常の向き。
-    // PlayerSystem が毎 tick 0 に戻してから外部が要求する。
     static void SetTurnOverride(PlayerComponent& player, float degreesPerSecond);
-    // 次の固定 tick の開始まで、回復の開始を止める（ローリングは止めない）。続ける間は毎 tick 要求し直す。
+    // 次の固定 tick の開始まで、回復の開始を止める（ローリングは止めない）。
     static void BlockHeal(PlayerComponent& player);
-    // その固定 tick だけ、動作ロック中でも scale 倍で歩けるようにする。PlayerSystem が毎 tick 消す。
+    // その固定 tick だけ、動作ロック中でも scale 倍で歩けるようにする。
     static void AllowWalkDuringAction(PlayerComponent& player, float scale);
     // 次の固定 tick の開始まで、押されたローリングを消さずに待たせる（まだ打ち切れない動作の間）。
     static void HoldRollInput(PlayerComponent& player);

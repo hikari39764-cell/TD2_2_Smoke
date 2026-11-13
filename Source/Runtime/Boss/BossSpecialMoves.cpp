@@ -31,12 +31,6 @@ void Log(const BossComponent& boss, const char* event, const char* extra) {
     BossLog::Write(message);
 }
 
-Vec3 PlayerGround(const BossFrame& frame) { return {frame.playerCenter.x, frame.boss.ground.y, frame.playerCenter.z}; }
-
-float Share(int tIn, int frames) {
-    return std::clamp(static_cast<float>(tIn) / static_cast<float>(std::max(1, frames)), 0.0f, 1.0f);
-}
-
 // 霞隠れの「現れる」：プレイヤーの向きの反対（背後）から左右へ散らした所に回り込み、プレイヤーを向く。
 void Appear(BossFrame& frame) {
     BossComponent& boss = frame.boss;
@@ -131,7 +125,7 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
         const float share = std::clamp(boss.jumpCrouchShare, 0.0f, 0.95f);
         const float lift = progress < share ? 0.0f : (progress - share) / (1.0f - share);
         boss.crouch = progress < share && share > 0.0f ? progress / share : 0.0f;
-        boss.height = boss.jumpHeight * (1.0f - (1.0f - lift) * (1.0f - lift));
+        boss.height = boss.jumpHeight * EaseOut(lift);
         break;
     }
     case BossMoveType::Kick: boss.crouch = std::clamp(progress, 0.0f, 1.0f); break;
@@ -175,12 +169,10 @@ void BossSpecialMoves::Trigger(BossFrame& frame, const BossMove& move) {
     BossComponent& boss = frame.boss;
     if (move.type == BossMoveType::Kick) {
         BossWaves::SpawnRing(frame, boss.move);
-        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-        blast = {};
-        blast.effectPending = true;
-        blast.fire = boss.bladeLit;
-        blast.scale = boss.ringBurstScale;
-        blast.position = {boss.ground.x, boss.ground.y + boss.ringHeight, boss.ground.z};
+        BossWaves::AddBlast(boss, {.effectPending = true,
+                                   .fire = boss.bladeLit,
+                                   .scale = boss.ringBurstScale,
+                                   .position = {boss.ground.x, boss.ground.y + boss.ringHeight, boss.ground.z}});
     } else if (move.type == BossMoveType::Clone) {
         BossClones::Place(frame, move);
     } else if (move.type == BossMoveType::Detonate) {
@@ -221,12 +213,10 @@ void BossSpecialMoves::Puff(BossComponent& boss, Vec3 ground, bool residue) {
                               boss.puffRadius);
     if (!(boss.puffEffectScale > 0.0f))
         return;
-    BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
-    blast = {};
-    blast.effectPending = true;
-    blast.puff = true;
-    blast.scale = boss.puffEffectScale;
-    blast.position = {ground.x, ground.y + boss.bodyHalfHeight, ground.z};
+    BossWaves::AddBlast(boss, {.effectPending = true,
+                               .puff = true,
+                               .scale = boss.puffEffectScale,
+                               .position = {ground.x, ground.y + boss.bodyHalfHeight, ground.z}});
 }
 
 } // namespace Project_TD2_2

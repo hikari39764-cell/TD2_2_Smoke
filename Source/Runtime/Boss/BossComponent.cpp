@@ -41,7 +41,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("breakFlashFrames", "崩し・気絶の本体の光り (F、0 は無効)", breakFlashFrames, 0, 120);
         fields.Float("breakBlastScale", "崩し・気絶の瞬間に体から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で無効）",
                      breakBlastScale, 0.0f, 6.0f);
-        fields.Note("光り方（色・強さ・材質）は Damageable の被弾の発光と同じです。");
+        fields.Note("光り方（色・強さ・材質）は Damageable の被弾の発光と同じです。いまのボスの体（色を読める材質の無い"
+                    "カプセル）では光りは見えません。崩した合図は「体から弾ける塊」で見せます。");
         fields.Float("stunDamageScale", "気絶中に受けるダメージ (倍)", stunDamageScale, 0.0f, 10.0f);
         fields.Float("stunDecayDelaySeconds", "気絶値が減り始めるまで (秒)", stunDecayDelaySeconds, 0.0f, 120.0f);
         fields.Float("stunDecayPerSecond", "気絶値が 1 秒に減る量", stunDecayPerSecond, 0.0f, 10000.0f);
@@ -131,7 +132,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                    skyfallLandCrouchFrames, 1, 300);
         fields.Float("skyfallBlastScale", "天降り斬り：着地の爆発の大きさ（当たった所の爆発に対する倍。0 で出さない）",
                      skyfallBlastScale, 0.0f, 8.0f);
-        fields.Vfx("gatherEffect", "溜めの間、剣へ集まって来る光の粒のエフェクト（空なら出さない）", gatherEffect);
+        fields.Vfx("gatherEffect", "溜める技：溜めの間、剣へ集まって来る光の粒のエフェクト（空なら出さない）",
+                   gatherEffect);
         fields.Float("chargeGatherScale", "溜める技：集まる光の粒の大きさ (倍)", chargeGatherScale, 0.0f, 10.0f);
         fields.Float("chargeGlowScale", "溜める技：溜め切った時の剣の光の大きさ（構えに対する倍）", chargeGlowScale, 0.0f,
                      20.0f);
@@ -358,7 +360,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("ringPushRadius", "…押す 1 点の半径 (m)", ringPushRadius, 0.1f, 20.0f);
         fields.Vfx("puffEffect", "霞隠れ・分身が消える／現れる所の煙の塊のエフェクト", puffEffect);
         fields.Float("puffEffectScale", "…煙の塊の大きさ (倍)", puffEffectScale, 0.0f, 5.0f);
-        fields.Note("飛ぶ斬撃の霞はエフェクトではなく、場の霧の域へ直接入れます（Emit）。域は増やしません。");
+        fields.Note(
+            "飛ぶ斬撃が通った跡の残り煙は、エフェクトではなく場の霧の域へ直接入れます（Emit。域は増やしません）。");
     }
     if (fields.Section("確かめ用（正式シーンでは使わない）")) {
         fields.Text("testMove", "試す技（行の名前。空は使わない）", testMove);
