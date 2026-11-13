@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
@@ -30,6 +29,26 @@ struct BurnBlast {
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 32;
 
+// 燃えている所に居続けて、場の火の域へ燃料を入れる点（BurnFieldVisuals が使う）。
+struct BurnEmitter {
+    bool active = false;
+    float x = 0.0f;
+    float z = 0.0f;
+    // 受け持っているセルの少なさで燃料を絞る割合（0〜1）と、いちばん長く残る秒数（消え際に細らせる）。
+    float share = 0.0f;
+    float remaining = 0.0f;
+    // 受け持っているセルのかたまりの向き（長い方）と、長さ・幅 (m)。火線なら線の向きと線の幅になる。
+    float axisX = 1.0f;
+    float axisZ = 0.0f;
+    float along = 0.0f;
+    float across = 0.0f;
+    // 長い方へ行き来している今の位置（中心からの距離 m）と、進んでいる向き（+1／-1）。
+    float sweep = 0.0f;
+    float sweepSign = 1.0f;
+};
+// 燃料の点の数の上限。火の域が受け取れる注入は 32 個で、吸い込みの力・剣の炎・爆ぜた塊と分け合う。
+inline constexpr size_t kBurnEmitterCapacity = 20;
+
 // 燃える地面。格子は持ち主の物体の世界位置（XZ）を中心に置き、その高さを床とする。
 // 塗る・消す・当てる規則は BurnFieldRules と BurnFieldSystem が持ち、ここは調整値と実行時の状態だけを持つ。
 class BurnFieldComponent final : public HIKARI::IGameComponent {
@@ -47,18 +66,20 @@ public:
     float absorbNear = 1.5f;
     float absorbAreaPerSecond = 12.0f;
     float smokePerArea = 8.0f;
-    int painterCount = 6;
-    float areaPerPainter = 18.0f;
-    float fuelPerArea = 1.6f;
-    float fuelRadius = 1.0f;
-    float fuelMarkRadius = 0.8f;
-    float fuelHeight = 0.15f;
-    float fuelTemperature = 3.0f;
-    float fuelIgniteTemperature = 6.0f;
-    float fuelRise = 2.0f;
+    int emitterCount = 16;
+    float emitterCover = 1.1f;
+    float emitterCoverMax = 3.5f;
+    float fuelRate = 20.0f;
+    float fuelRadiusScale = 1.15f;
+    float fuelHeight = 0.0f;
+    float fuelTemperature = 6.0f;
+    float fuelRise = 0.0f;
+    float fuelSweep = 45.0f;
+    float fuelWave = 0.3f;
+    float fuelWaveHz = 0.8f;
     float fadeSeconds = 2.0f;
-    float fogBurnAbsorption = 30.0f;
-    float fogBurnRadius = 1.4f;
+    float fogBurnAbsorption = 4.0f;
+    float fogBurnRadiusScale = 2.8f;
     float chargeTemperature = 12.0f;
     float chargeShrink = 0.55f;
     float chargeFuelScale = 1.8f;
@@ -67,11 +88,11 @@ public:
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
     float blastEffectScale = 0.6f;
     float blastRadiusScale = 1.4f;
-    float blastFuel = 600.0f;
+    float blastFuel = 400.0f;
     float blastTemperature = 10.0f;
     float blastRise = 2.0f;
     float blastPush = 8.0f;
-    float hitFuelScale = 0.45f;
+    float hitFuelScale = 0.3f;
     float smokeBlastStrength = 40.0f;
     float smokeBlastFuelShare = 0.12f;
     float smokeBlastPush = 4.0f;
@@ -91,11 +112,12 @@ public:
     double absorbedAreaTotal = 0.0;
     double smokeGivenTotal = 0.0;
     // 見た目だけの状態。規則はここを読まない。
-    // 筆ごとの、毎フレーム入れ替える注入の番号（BurnFieldVisuals が使う）。
-    std::array<uint8_t, 8> painterFlip{};
-    // セルごとの、最後に燃料をもらってからの秒数（筆が次に行くセルを選ぶのに使う）。
-    std::vector<float> fueledAgo;
-    int activePainters = 0;
+    // 燃料の点と、1 点が受け持つ半径 (m。火が広がって点が足りなくなると広げる)。
+    std::array<BurnEmitter, kBurnEmitterCapacity> emitters{};
+    float cover = 0.0f;
+    int activeEmitters = 0;
+    uint32_t renderFrame = 0;
+    float visualTime = 0.0f;
     bool fluidAccepted = true;
     bool vfxAccepted = true;
     // 爆ぜた塊の注入の番号を、毎フレーム入れ替える（BurnFieldVisuals が使う）。

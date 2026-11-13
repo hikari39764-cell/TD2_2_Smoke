@@ -146,14 +146,11 @@ void PaintPool(BossFrame& frame, const BossMove& move, int strike, const BossBur
     LogPaint(frame.boss, move, strike, mark, geometry);
 }
 
-// 交差：狙った所（プレイヤーの足元。いなければボスの前、線の長さの半分）で、2 本の線分が中点で交わる X。
-void PaintCross(BossFrame& frame, const BossMove& move, int strike, const BossBurnMark& mark) {
+// 交差：center で、2 本の線分が中点で交わる X。toward はボスから狙った所への向き。
+void PaintCross(BossFrame& frame, const BossMove& move, int strike, const BossBurnMark& mark, Vec3 center,
+                Vec3 toward) {
     const BossComponent& boss = frame.boss;
     const float half = boss.burnCrossLength * 0.5f;
-    const Vec3 forward = Forward(boss.yaw);
-    const Vec3 center =
-        frame.player != nullptr ? Floor(boss, frame.playerCenter) : Add(boss.ground, Mul(forward, half));
-    const Vec3 toward = FlatNormalize(Sub(center, boss.ground), forward);
     for (const float sign : {1.0f, -1.0f}) {
         const Vec3 along = Mul(RotateY(toward, sign * kCrossDegrees * kRadiansPerDegree), half);
         BurnFieldRules::PaintSegment(frame.world, Sub(center, along), Add(center, along), mark.width, mark.seconds);
@@ -255,15 +252,38 @@ void BossBurnMarks::ArmWave(const BossComponent& boss, const BossMove& move, Bos
         return;
     wave.burnWidth = mark->width;
     wave.burnSeconds = mark->seconds;
+    wave.burnFrom = wave.position;
     // 線は飛んでいる間に少しずつ塗るので、放った時に 1 回だけ知らせる。輪は広がりきった時（RingEnded）に知らせる。
     if (!wave.ring)
         LogPaint(boss, move, strike, *mark, "");
 }
 
 void BossBurnMarks::Released(BossFrame& frame, const BossMove& move, int strike) {
-    const BossComponent& boss = frame.boss;
-    if (const BossBurnMark* cross = Find(move, BossBurnShape::Cross, strike, boss.lastPhaseNumber))
-        PaintCross(frame, move, strike, *cross);
+    BossComponent& boss = frame.boss;
+    if (const BossBurnMark* cross = Find(move, BossBurnShape::Cross, strike, boss.lastPhaseNumber)) {
+        // 狙った所（プレイヤーの足元。いなければボスの前、線の長さの半分）。
+        const Vec3 forward = Forward(boss.yaw);
+        const Vec3 center = frame.player != nullptr ? Floor(boss, frame.playerCenter)
+                                                    : Add(boss.ground, Mul(forward, boss.burnCrossLength * 0.5f));
+        const Vec3 toward = FlatNormalize(Sub(center, boss.ground), forward);
+        // この一撃で放った斬撃があれば、それが狙った所へ届いて爆ぜるまで待つ（地面が先に燃えない）。
+        BossWave* carrier = nullptr;
+        for (auto& wave : boss.waves) {
+            if (wave.active && !wave.knife && !wave.ring && wave.move == boss.move && wave.strike == strike &&
+                (carrier == nullptr || wave.id > carrier->id))
+                carrier = &wave;
+        }
+        if (carrier != nullptr) {
+            carrier->crossPending = true;
+            carrier->crossCenter = center;
+            carrier->crossToward = toward;
+            carrier->crossWidth = cross->width;
+            carrier->crossSeconds = cross->seconds;
+            carrier->crossReach = FlatLength(Sub(center, carrier->position));
+        } else {
+            PaintCross(frame, move, strike, *cross, center, toward);
+        }
+    }
     const BossBurnMark* pool = Find(move, BossBurnShape::Pool, strike, boss.lastPhaseNumber);
     if (pool == nullptr || move.type == BossMoveType::Ambush)
         return;
@@ -292,6 +312,29 @@ void BossBurnMarks::DashLanded(BossFrame& frame, const BossMove& move) {
                   static_cast<double>(from.x), static_cast<double>(from.z), static_cast<double>(to.x),
                   static_cast<double>(to.z), static_cast<double>(FlatLength(Sub(to, from))));
     LogPaint(boss, move, 0, *mark, geometry);
+}
+
+void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave) {
+    if (!wave.crossPending)
+        return;
+    wave.crossPending = false;
+    BossComponent& boss = frame.boss;
+    // 狙った所まで届かずに消えた斬撃（遠すぎた）は、消えた所で爆ぜる。
+    const Vec3 center = wave.travelled >= wave.crossReach ? wave.crossCenter : Floor(boss, wave.position);
+    // 外れても地面で爆ぜる（当たった時は HitPlayer が同じ爆発を出しているので足さない）。
+    if (!wave.struck) {
+        BossBlast& blast = boss.blasts[boss.blastCursor++ % boss.blasts.size()];
+        blast = {};
+        blast.pushPending = blast.effectPending = true;
+        blast.fire = true;
+        blast.scale = 1.0f;
+        blast.position = {center.x, boss.ground.y + boss.bodyHalfHeight, center.z};
+    }
+    BossBurnMark mark;
+    mark.shape = BossBurnShape::Cross;
+    mark.width = wave.crossWidth;
+    mark.seconds = wave.crossSeconds;
+    PaintCross(frame, move, wave.strike, mark, center, wave.crossToward);
 }
 
 void BossBurnMarks::RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave) {

@@ -286,7 +286,6 @@ void BossWaves::Step(BossFrame& frame) {
             wave.width = wave.fullWidth * wave.grow;
         }
         const float before = wave.travelled;
-        const Vec3 from = wave.position;
         for (int s = 0; s < kHitSubsteps; ++s) {
             const float stepLength = wave.speed * frame.dt / static_cast<float>(kHitSubsteps);
             wave.position = Add(wave.position, Mul(wave.direction, stepLength));
@@ -302,9 +301,23 @@ void BossWaves::Step(BossFrame& frame) {
                 wave.dodged = dodged;
             }
         }
-        // この tick に飛んだ分の地面を燃やす（当たって・飛びきって消える tick の分も塗ってから消す）。
-        if (wave.burnWidth > 0.0f)
-            BurnFieldRules::PaintSegment(frame.world, from, wave.position, wave.burnWidth, wave.burnSeconds);
+        const bool ending =
+            wave.travelled > boss.range || wave.position.y < boss.ground.y - kBelowGroundLimit || wave.struck;
+        // 飛んだ地面を燃やす。火は刃の burnLineLag m 後ろまで（刃より先に地面が燃えて見えないように）。当たって・
+        // 飛びきって消える tick には、残りを刃の所まで塗ってから消す。
+        if (wave.burnWidth > 0.0f) {
+            const float lag = ending ? 0.0f : std::max(0.0f, boss.burnLineLag);
+            if (wave.travelled > lag) {
+                const Vec3 to = Sub(wave.position, Mul(wave.direction, lag));
+                BurnFieldRules::PaintSegment(frame.world, wave.burnFrom, to, wave.burnWidth, wave.burnSeconds);
+                wave.burnFrom = to;
+            }
+        }
+        // 「交差」を待つ斬撃：狙った所へ届いた・当たった・飛びきった時に、そこで爆ぜて X の火を残す。
+        if (wave.crossPending && (ending || wave.travelled >= wave.crossReach)) {
+            if (const BossMove* move = MoveOf(boss, wave.move))
+                BossBurnMarks::WaveLanded(frame, *move, wave);
+        }
         // 斬撃は霞：通った跡に煙が残る（2 m 進むごとに residuePerTwoMeters）。ナイフは消えた所だけ。
         // 煙は刃の waveResidueLag 後ろへ入れる。そこまで進む前の分は貯めておき、後から少しずつ足す。
         if (!wave.knife) {
@@ -318,7 +331,7 @@ void BossWaves::Step(BossFrame& frame) {
             }
         }
         // 当たった斬撃・ナイフは、当たった所で爆発して終わる（見えない斬撃が後ろへ残り煙を引き続けないように）。
-        if (wave.travelled > boss.range || wave.position.y < boss.ground.y - kBelowGroundLimit || wave.struck) {
+        if (ending) {
             const float smoke =
                 boss.residuePerTwoMeters * (wave.knife ? boss.knifeEndResidueScale : 1.0f) + wave.smokeOwed;
             AddDeposit(boss, {wave.position.x, boss.ground.y + boss.depositHeight, wave.position.z}, smoke,

@@ -254,7 +254,7 @@
           }
         },
         "fluidDomain": {
-          "ambientStrength": 1.0,
+          "ambientStrength": 4.0,
           "anisotropy": 0.30000001192092896,
           "boundary": "Open",
           "buoyancy": 0.4,
@@ -271,39 +271,39 @@
             1.9
           ],
           "emissionColor": [
-            1.0,
-            0.06,
-            0.0
+            0.35,
+            0.55,
+            1.0
           ],
           "emissionHotColor": [
-            1.0,
-            0.55,
-            0.12
+            0.8,
+            0.92,
+            1.0
           ],
-          "emissionHotTemperature": 3.2,
+          "emissionHotTemperature": 1.0,
           "emissionIntensity": 150000.0,
-          "emissionTemperature": 0.5,
+          "emissionTemperature": 0.25,
           "expansionPerBurn": 0.3,
-          "extinction": 8.0,
+          "extinction": 4.5,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 2.5,
           "id": "module.fluidDomain.cf4f708f5a599795ea1e229d5f227053",
           "ignitionTemperature": 0.3,
           "inertia": 0.0,
           "maxSubsteps": 3,
-          "multipleScattering": 0.800000011920929,
+          "multipleScattering": 1.0,
           "prewarmSeconds": 0.0,
           "priority": 85,
           "relativeWind": 0.1,
           "resolution": 160,
           "scatteringColor": [
-            0.1,
-            0.1,
-            0.11
+            0.85,
+            0.9,
+            1.0
           ],
           "smokePerBurn": 0.6,
           "substepRate": 60.0,
-          "temperatureDissipation": 8.0,
+          "temperatureDissipation": 1.0,
           "vorticity": 7.0,
           "weight": 0.0
         },
@@ -1132,7 +1132,7 @@
           "id": "module.fluidSource.dff57c6425dfa22e5d67771de5f86cb6",
           "outflow": 0.0,
           "radialSpeed": 3.5,
-          "temperature": 0.0,
+          "temperature": 1.0,
           "velocity": [
             0.0,
             0.0,
@@ -1976,7 +1976,7 @@
           "id": "module.fluidSource.c3d3be12128c5474974bed2316cfc1ab",
           "outflow": 0.0,
           "radialSpeed": 8.0,
-          "temperature": 0.0,
+          "temperature": 0.5,
           "velocity": [
             0.0,
             0.0,
@@ -2814,13 +2814,13 @@
           "emissionNoise": 0.95,
           "emissionNoiseScale": 0.25,
           "forceMode": "Acceleration",
-          "fuelFraction": 1.0,
+          "fuelFraction": 0.0,
           "guideStrength": 0.0,
           "guideThickness": 0.25,
           "id": "module.fluidSource.8eec7d17979c53b423d0e1bbae8ea0b8",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.9,
+          "temperature": 1.0,
           "velocity": [
             0.0,
             0.0,
@@ -3379,7 +3379,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 72.0
+          "ratePerSecond": 160.0
         }
       },
       "name": "Edge0",
@@ -3664,7 +3664,7 @@
           "id": "module.fluidSource.d26a884374c89585e6653e508bbbcc49",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
+          "temperature": 1.0,
           "velocity": [
             0.0,
             0.0,
@@ -4508,7 +4508,7 @@
           "id": "module.fluidSource.dbfb6442ecd1dab1d0e32b676f725969",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
+          "temperature": 0.5,
           "velocity": [
             4.0,
             2.0,
@@ -5352,7 +5352,7 @@
           "id": "module.fluidSource.0de7e6bb7e04ce5cac100c8d4d330cba",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
+          "temperature": 0.5,
           "velocity": [
             4.0,
             -2.0,
@@ -6196,7 +6196,7 @@
           "id": "module.fluidSource.b61ed4fe8b628b1d0036a7f82249bce9",
           "outflow": 0.0,
           "radialSpeed": 9.0,
-          "temperature": 0.0,
+          "temperature": 0.5,
           "velocity": [
             0.0,
             0.0,
@@ -7884,7 +7884,7 @@
           "id": "module.fluidSource.4887ba65bbfda9c0dd964d07c84e0cc2",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
+          "temperature": 1.0,
           "velocity": [
             0.0,
             0.0,
@@ -11540,7 +11540,7 @@
           "bias": 0.0,
           "id": "emitter.8185ac35dc35030e9f7a14be3c39b04b.link.input.glow.valueMultiplier",
           "inputId": "input.glow",
-          "scale": 1.0,
+          "scale": 0.6,
           "target": {
             "emitterId": "emitter.8185ac35dc35030e9f7a14be3c39b04b",
             "moduleId": "module.scale.00ea27b4bd66ae4c30b98cd42d71e7d3",
@@ -11586,7 +11586,7 @@
           "socketName": ""
         },
         "basic": {
-          "enabled": false,
+          "enabled": true,
           "id": "module.basic.1e522e8e2fc634bcb03e937f4c38482f",
           "lifetime": {
             "maximum": 60.0,
@@ -11787,9 +11787,9 @@
               "stops": [
                 {
                   "color": [
+                    1.054,
+                    1.394,
                     1.7,
-                    0.5,
-                    0.08,
                     1.0
                   ],
                   "id": "emitter.8185ac35dc35030e9f7a14be3c39b04b.c0",
@@ -11797,9 +11797,9 @@
                 },
                 {
                   "color": [
+                    1.054,
+                    1.394,
                     1.7,
-                    0.5,
-                    0.08,
                     1.0
                   ],
                   "id": "emitter.8185ac35dc35030e9f7a14be3c39b04b.c1",
@@ -23818,7 +23818,7 @@
           "bias": 0.0,
           "id": "emitter.167025fb8592e391f7d197e249fcaf53.link.input.glow.valueMultiplier",
           "inputId": "input.glow",
-          "scale": 1.0,
+          "scale": 0.6,
           "target": {
             "emitterId": "emitter.167025fb8592e391f7d197e249fcaf53",
             "moduleId": "module.scale.aeec4876af12d1b18b45056e03c080df",
@@ -23864,7 +23864,7 @@
           "socketName": ""
         },
         "basic": {
-          "enabled": false,
+          "enabled": true,
           "id": "module.basic.8b53e4c0ba89b0ffa21bb7ecb02f3e14",
           "lifetime": {
             "maximum": 60.0,
@@ -24065,9 +24065,9 @@
               "stops": [
                 {
                   "color": [
+                    1.054,
+                    1.394,
                     1.7,
-                    0.5,
-                    0.08,
                     1.0
                   ],
                   "id": "emitter.167025fb8592e391f7d197e249fcaf53.c0",
@@ -24075,9 +24075,9 @@
                 },
                 {
                   "color": [
+                    1.054,
+                    1.394,
                     1.7,
-                    0.5,
-                    0.08,
                     1.0
                   ],
                   "id": "emitter.167025fb8592e391f7d197e249fcaf53.c1",
@@ -45210,7 +45210,7 @@
           "bias": 0.0,
           "id": "emitter.93c258c8be3414d28203f5d73a6ff2ae.link.input.fly.valueMultiplier",
           "inputId": "input.fly",
-          "scale": 0.12,
+          "scale": 0.6,
           "target": {
             "emitterId": "emitter.93c258c8be3414d28203f5d73a6ff2ae",
             "moduleId": "module.scale.87ee1e639eaa7cf041121716514697c1",
@@ -45457,9 +45457,9 @@
               "stops": [
                 {
                   "color": [
+                    1.488,
+                    1.9679999999999997,
                     2.4,
-                    0.8,
-                    0.12,
                     0.8
                   ],
                   "id": "emitter.93c258c8be3414d28203f5d73a6ff2ae.c0",
@@ -45467,9 +45467,9 @@
                 },
                 {
                   "color": [
+                    1.488,
+                    1.9679999999999997,
                     2.4,
-                    0.8,
-                    0.12,
                     0.8
                   ],
                   "id": "emitter.93c258c8be3414d28203f5d73a6ff2ae.c1",
@@ -48207,7 +48207,7 @@
           "bias": 0.0,
           "id": "emitter.7316976d4e2dded4c8550fb5c519abcd.link.input.fly.valueMultiplier",
           "inputId": "input.fly",
-          "scale": 0.9,
+          "scale": 0.5,
           "target": {
             "emitterId": "emitter.7316976d4e2dded4c8550fb5c519abcd",
             "moduleId": "module.scale.35779e9e44028997c16ac333f1157daa",
@@ -48454,9 +48454,9 @@
               "stops": [
                 {
                   "color": [
+                    2.604,
+                    3.444,
                     4.2,
-                    2.8,
-                    1.2,
                     1.0
                   ],
                   "id": "emitter.7316976d4e2dded4c8550fb5c519abcd.c0",
@@ -48464,9 +48464,9 @@
                 },
                 {
                   "color": [
+                    2.604,
+                    3.444,
                     4.2,
-                    2.8,
-                    1.2,
                     1.0
                   ],
                   "id": "emitter.7316976d4e2dded4c8550fb5c519abcd.c1",

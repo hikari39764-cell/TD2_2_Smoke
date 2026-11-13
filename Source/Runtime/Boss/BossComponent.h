@@ -72,6 +72,15 @@ struct BossWave {
     // 回し蹴りの輪は、この一撃に「輪」が付く時に、広がりきった所へ帯を 1 回塗る。
     float burnWidth = 0.0f;
     float burnSeconds = 0.0f;
+    // 線をまだ塗っていない所の始まり。火は刃の後ろ burnLineLag m まで塗り、消える時に残りを塗る。
+    HIKARI::GameProjectFloat3 burnFrom{};
+    // この一撃に「交差」が付く時：斬撃が狙った所へ届いて爆ぜた時に塗る（放った時には塗らない）。吸われた斬撃は塗らない。
+    bool crossPending = false;
+    HIKARI::GameProjectFloat3 crossCenter{};
+    HIKARI::GameProjectFloat3 crossToward{};
+    float crossWidth = 0.0f;
+    float crossSeconds = 0.0f;
+    float crossReach = 0.0f;
     // この一撃が火を残す（線に限らず、表の「残す火」のどれかが付く）＝火の刃。規則は読まず、見た目（BossVisuals）が読む。
     bool fire = false;
 };
@@ -300,6 +309,7 @@ public:
     // 地面に残す火の形（形そのものは技の表の「残す火」。交差の線の長さと、上段溜めの池を置く前の距離）
     float burnCrossLength = 7.0f;
     float burnPoolForward = 2.5f;
+    float burnLineLag = 1.2f;
     // 霞隠れ→回り込み突進（試作：プレイヤーの向きの反対 ±100°、3.64 m に現れ、振りの間に 2.2 m 突っ込む）
     float ambushAppearDistance = 3.64f;
     float ambushAppearSpreadDegrees = 100.0f;

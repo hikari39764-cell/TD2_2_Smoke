@@ -29,6 +29,8 @@ public:
     static void DashLanded(BossFrame& frame, const BossMove& move);
     // 回し蹴りの輪が広がりきった：その半径に帯を塗る（wave.burnWidth が 0 なら塗らない）。
     static void RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave);
+    // 「交差」を待っている斬撃が、狙った所へ届いた・当たった・飛びきった時：そこで爆ぜて、X の火を塗る。
+    static void WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave);
 };
 
 } // namespace Project_TD2_2

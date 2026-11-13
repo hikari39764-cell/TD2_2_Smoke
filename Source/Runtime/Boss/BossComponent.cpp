@@ -110,6 +110,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      0.0f, 2.0f);
         fields.Float("burnCrossLength", "残す火「交差」：X の 1 本の長さ (m。狙った所で 2 本が交わる)", burnCrossLength,
                      0.1f, 40.0f);
+        fields.Float("burnLineLag", "残す火「線」：火が飛ぶ刃の後ろへ遅れる距離 (m。0 だと刃の真下から燃える)",
+                     burnLineLag, 0.0f, 10.0f);
         fields.Float("burnPoolForward", "残す火「池」：上段溜めの池を置く所（ボスの前 m。振り下ろした所）",
                      burnPoolForward, 0.0f, 20.0f);
         fields.Float("ambushAppearDistance", "霞隠れ：プレイヤーから現れる距離 (m)", ambushAppearDistance, 0.0f, 30.0f);

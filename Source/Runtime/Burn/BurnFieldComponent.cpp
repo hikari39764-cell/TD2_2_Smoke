@@ -28,30 +28,32 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "近い火から消し、ヒョウタンに入りきらない分は消しません（満杯なら消えません）。");
     }
     if (fields.Section("火の見た目（流体）")) {
-        fields.Float("fuelPerArea", "火の強さ：燃えている広さ 1 m² に毎秒入れる燃料", fuelPerArea, 0.0f, 200.0f);
-        fields.Float("fuelRadius", "燃料の球の半径 (m。火の幅とぼけ方)", fuelRadius, 0.2f, 4.0f);
-        fields.Float("fuelTemperature", "続けて配っている所の燃料の温度（場の火の域の着火温度より高くする）",
-                     fuelTemperature, 0.0f, 16.0f);
-        fields.Float("fuelIgniteTemperature", "冷えきった所へ入れる燃料の温度（着火用）", fuelIgniteTemperature, 0.0f,
-                     64.0f);
+        fields.Float("fuelRate", "火の強さ：燃料の点 1 つが中心に毎秒入れる燃料", fuelRate, 0.0f, 2000.0f);
+        fields.Float("fuelTemperature", "燃料の温度（場の火の域の着火温度より高くする）", fuelTemperature, 0.0f, 16.0f);
         fields.Float("fuelRise", "燃料を上へ押す速さ (m/s。炎の背の高さ)", fuelRise, 0.0f, 20.0f);
-        fields.Float("fuelHeight", "燃料を入れる高さ（床から m）", fuelHeight, 0.0f, 3.0f);
+        fields.Float("fuelHeight", "燃料を入れる高さ（床から m。床より下にすると、球の上側だけが床の上に出る）",
+                     fuelHeight, -2.0f, 3.0f);
+        fields.Float("fuelSweep", "燃料の点を、火の長い方へ行き来させる速さ (m/s。0 で動かさない＝球のまま。60 未満)",
+                     fuelSweep, 0.0f, 55.0f);
+        fields.Float("fuelWave", "炎の背のうねり（0 で一様。点ごとに燃料をゆっくり増減させる割合）", fuelWave, 0.0f,
+                     0.9f);
+        fields.Float("fuelWaveHz", "うねりの速さ (Hz)", fuelWaveHz, 0.05f, 5.0f);
+        fields.Float("fuelRadiusScale", "炎の幅 (燃えている所の幅に対する倍。1 で踏むと痛い範囲とほぼ同じ幅)",
+                     fuelRadiusScale, 0.5f, 4.0f);
         fields.Float("fadeSeconds", "消える前に火が細くなり始める残り秒数", fadeSeconds, 0.01f, 30.0f);
-        fields.Int("painterCount", "燃料を配る筆の最大数", painterCount, 1, 8);
-        fields.Float("areaPerPainter", "筆 1 本が受け持つ広さ (m²)", areaPerPainter, 1.0f, 500.0f);
-        fields.Float("fuelMarkRadius", "筆が燃料を置いた時に「配った」とみなす半径 (m)", fuelMarkRadius, 0.1f, 4.0f);
-        fields.Float("fogBurnAbsorption", "火の下の霧を焼く率 (/s。筆が通る間だけ効く。0 は焼かない)",
-                     fogBurnAbsorption, 0.0f, 1000.0f);
-        fields.Float("fogBurnRadius", "霧を焼く半径 (m)", fogBurnRadius, 0.0f, 6.0f);
-        fields.Note(
-            "筆は 1 か所に 1 フレームしか燃料を置かず、注入はそこの温度を 1/60 秒に 13% しか燃料の温度へ近づけません。"
-            "冷えきった所へは熱い燃料を入れて着火させます（低いと燃料が冷たいまま消えて、火が出ません）。"
-            "狭い火で同じ所へ続けて配る時は fuelTemperature まで下げます（熱すぎると白く飛び、炎が高く噴きます）。");
+        fields.Int("emitterCount", "燃料の点の最大数", emitterCount, 1, static_cast<int>(kBurnEmitterCapacity));
+        fields.Float("emitterCover", "点 1 つが受け持つ半径の最小 (m。小さいほど火の形が細かい)", emitterCover, 0.5f,
+                     5.0f);
+        fields.Float("emitterCoverMax", "…最大 (m。火が広くて点が足りない時に、ここまで広げる)", emitterCoverMax, 0.5f,
+                     10.0f);
+        fields.Float("fogBurnAbsorption", "火の下の霧を焼く率 (/s。0 は焼かない)", fogBurnAbsorption, 0.0f, 1000.0f);
+        fields.Float("fogBurnRadiusScale", "霧を焼く半径 (燃料の点が受け持つ火の長さの半分に対する倍)",
+                     fogBurnRadiusScale, 0.0f, 6.0f);
         fields.Note(
             "炎そのものの色・明るさ・揺れ・煙の量は、エフェクト資産 ArenaFireField の流体域の層で決めます。"
-            "ここは、燃えているセルへ燃料をどれだけ・どう配るかだけです。"
-            "燃えている所が広いほど筆が同じ所へ戻るまでの時間が延びます（筆 1 本が 1 秒に配れるのは約 120 m²）。"
-            "炎がまだらに明滅して見える時は、筆を増やすか areaPerPainter を下げます。");
+            "ここは、燃えている所へ燃料をどう入れるかだけです。燃料の点は、燃えているセルのかたまりの上に居続けて、"
+            "毎フレーム同じ所へ燃料を入れます（つながって燃える炎になります）。"
+            "火が広がって点が足りなくなると、1 点が受け持つ半径を広げます（炎は太く、粗くなります）。");
     }
     if (fields.Section("引爆の見た目")) {
         fields.Float("blastBlockSize", "爆ぜたセルを 1 つの塊にまとめる大きさ (m)", blastBlockSize, 0.5f, 20.0f);

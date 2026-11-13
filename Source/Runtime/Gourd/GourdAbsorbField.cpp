@@ -31,6 +31,8 @@ constexpr float kRingGrowth = 0.15f;
 // いちばん手前の輪の筋の数（片側）と、それより奥の輪の筋の数（片側）。奥ほど扇が広いので筋を増やす。
 constexpr int kNearLanes = 1;
 constexpr int kFarLanes = 2;
+// 場の火の域にも届ける輪の数（手前から）。
+constexpr int kFireRings = 2;
 // 足元の全周から寄せる力：中心をプレイヤーの後ろへ寄せる割合と、前方の筋に対する強さ。
 constexpr float kNearBackShare = 0.4f;
 constexpr float kNearStrengthShare = 0.6f;
@@ -51,9 +53,12 @@ struct Field {
     GourdComponent& gourd;
     uint32_t channels = FluidChannels::kFog;
     uint64_t instance = kGatherInstanceBase;
+    // 火の域にも届ける力に足す通り道（0 なら火には届けない）。
+    uint32_t fire = 0u;
 
     // absorption は、この力の半径の中の霧が運ばれながら消える率 [1/s]（消した量は ReadRemoved が数える）。
-    void Push(Vec3 position, float radius, Vec3 direction, float strength, float absorption) {
+    // toFire：場の火の域にも届ける。火の域が受け取れる数は限られるので、口に近い力だけに付ける。
+    void Push(Vec3 position, float radius, Vec3 direction, float strength, float absorption, bool toFire = false) {
         if (strength <= 0.0f || radius <= 0.0f)
             return;
         HIKARI::GameProjectFluidInteraction force{};
@@ -65,7 +70,7 @@ struct Field {
         // 消した量を読めない番号の力では、霧を消さない（数えられない霧を場から減らさない）。
         const size_t slot = kRemovedFixedSlots + static_cast<size_t>(instance - kGatherInstanceBase);
         force.absorption = slot < gourd.removedByForce.size() ? absorption : 0.0f;
-        force.channels = channels;
+        force.channels = channels | (toFire ? fire : 0u);
         gourd.fluidAccepted =
             world.GetFluid().Submit(object.GetHandle(), instance++, force).Accepted() && gourd.fluidAccepted;
         ++gourd.fluidSubmissions;
@@ -104,10 +109,12 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     const float flow = blocked ? kFullFlowScale : 1.0f;
     // 扇の中の霧は、口へ運ばれながら消える（吸った所に穴が見える）。満杯で吸わない設定の時は消さない。
     const float fade = blocked ? 0.0f : gourd.gatherAbsorption;
-    // 場の霧にはいつも届く。煙が入る間は場の火にも届き、火の舌が口へ曲がって吸われる
-    // （満杯では火を吸えない規則に合わせて、満杯の間は火に触らない）。
-    const uint32_t channels = FluidChannels::kFog | (GourdRules::IsFull(gourd) ? 0u : FluidChannels::kFire);
+    // 場の霧にはいつも届く。場の火には、口に近い力だけが届き、火の舌が口へ曲がって吸われる（満杯でも同じ。
+    // 満杯で吸わない設定の時だけ、火に触らない）。火の域が 1 フレームに受け取れる注入は 32 個で、地面の火の燃料の点
+    // （最大 16）と分け合うので、火へ届けるのは手前 2 つの輪の中央 3 筋ずつ・持ち上げ・口元の 8 個に絞る。
+    const uint32_t channels = FluidChannels::kFog;
     Field field{world, object, gourd, channels};
+    field.fire = blocked ? 0u : FluidChannels::kFire;
     if (gourd.gatherStrength > 0.0f) {
         const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
         const Vec3 right{forward.z, 0.0f, -forward.x};
@@ -137,7 +144,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
                 const Vec3 inward = Normalize(Difference(inner, position), Scale(outward, -1.0f));
                 const Vec3 tangent{inward.z, 0.0f, -inward.x};
                 field.Push(position, radius, Normalize(Add(inward, Scale(tangent, gourd.gatherSwirl)), inward),
-                           strength, fade);
+                           strength, fade, ring <= kFireRings && std::abs(lane) <= 1);
             }
             inner = Add(base, Scale(forward, distance));
         }
@@ -149,7 +156,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
         }
         // 集まった霧を、足元から口へ持ち上げる。
         field.Push(foot, gourd.gatherRadius, Normalize(Difference(gourd.mouthPosition, foot), {0.0f, 1.0f, 0.0f}),
-                   gourd.gatherStrength * gourd.gatherLift * flow, 0.0f);
+                   gourd.gatherStrength * gourd.gatherLift * flow, 0.0f, true);
     }
     // 吸われていく霧を温める。場の霧（ArenaGroundFog）と口のエフェクトの域は、温度が上がった煙が青緑に光るので、
     // 本物の霧が口へ近づくほど明るく光って見える。注入の強さ（足す煙）は 0 にして、温度だけを使う。
@@ -190,7 +197,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     sink.extents = {gourd.absorbRadius, 0.0f, 0.0f};
     sink.strength = blocked ? 0.0f : -gourd.absorbStrength;
     sink.absorption = blocked ? 0.0f : gourd.absorption;
-    sink.channels = channels;
+    sink.channels = channels | field.fire;
     gourd.fluidAccepted =
         world.GetFluid().Submit(object.GetHandle(), kSinkInstance, sink).Accepted() && gourd.fluidAccepted;
     ++gourd.fluidSubmissions;

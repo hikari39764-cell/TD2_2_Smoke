@@ -18,7 +18,7 @@ namespace Project_TD2_2 {
 namespace {
 
 constexpr float kRadiansPerDegree = 3.14159265f / 180.0f;
-// ヒョウタンの空きがこれより少なければ火は吸えない（飛ぶ斬撃を吸う時と同じ値。BossSystem の kAbsorbRoomEpsilon）。
+// ヒョウタンの空きがこれより少なければ満杯と見る（飛ぶ斬撃を吸う時と同じ値。BossSystem の kAbsorbRoomEpsilon）。
 constexpr float kAbsorbRoomEpsilon = 0.01f;
 // 1/60 秒を足し続けた時の丸め誤差で、手傷の始まりが 1 tick 遅れないための余裕 (秒)。
 constexpr float kContactSlack = 1e-4f;
@@ -57,7 +57,8 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
     return seen;
 }
 
-// 吸い込み中で煙が入るヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡す。
+// 吸い込み中のヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡す。
+// 満杯でも火は消せる（煙は増えない）。ヒョウタンの「満杯でも吸う」（Gourd.absorbWhenFull）を切ると、満杯では消せない。
 void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt) {
     bool handled = false;
     world.ForEachComponent<GourdComponent>(
@@ -66,7 +67,8 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
                 return;
             handled = true;
             const float room = GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd);
-            if (!player.found || !GourdRules::IsAbsorbing(gourd) || room <= kAbsorbRoomEpsilon) {
+            const bool full = room <= kAbsorbRoomEpsilon;
+            if (!player.found || !GourdRules::IsAbsorbing(gourd) || (full && !gourd.absorbWhenFull)) {
                 field.absorbBudget = 0.0f;
                 return;
             }
@@ -74,7 +76,9 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
             // 1 tick の量が 1 セルに満たなくても、ためて丸ごと消す。吸う相手が無い間にためすぎない。
             field.absorbBudget = std::min(field.absorbBudget + rate, field.map.CellArea() + rate);
             const float perArea = std::max(0.0f, field.smokePerArea);
-            const float roomArea = perArea > 0.0f ? room / perArea : std::numeric_limits<float>::max();
+            // 満杯でも吸う設定なら、空きに関わらず消す（入り切らない煙は捨てる）。
+            const float roomArea =
+                perArea > 0.0f && !gourd.absorbWhenFull ? room / perArea : std::numeric_limits<float>::max();
             const float cleared = field.map.ClearFan(player.position, player.facing, field.absorbRange,
                                                      field.absorbFanDegrees * kRadiansPerDegree, field.absorbNear,
                                                      std::min(field.absorbBudget, roomArea));
@@ -91,13 +95,21 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
 void Trace(const BurnFieldComponent& field) {
     if (field.traceEveryFrames <= 0 || field.tick % static_cast<uint64_t>(field.traceEveryFrames) != 0)
         return;
-    char message[384]{};
+    // 燃料の点のうち最初の 1 つの、受け持つかたまりの長さと幅（炎の形の確かめ用）。
+    BurnEmitter first{};
+    for (const BurnEmitter& emitter : field.emitters)
+        if (emitter.active) {
+            first = emitter;
+            break;
+        }
+    char message[448]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-                  "painters=%d fluidAccepted=%d charge=%.3f blasts=%u",
+                  "emitters=%d cover=%.2f fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f blasts=%u",
                   static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
                   static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds),
-                  field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activePainters,
+                  field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters,
+                  static_cast<double>(field.cover), static_cast<double>(first.along), static_cast<double>(first.across),
                   static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.blastCount);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
