@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "HIKARI/Project/GameComponent.h"
 #include "../Combat/Feedback.h"
 
@@ -13,6 +15,8 @@ enum class PlayerDamageKind { Stagger, Knockback };
 // 外部の動作（砲撃）が、その固定 tick のローリングをどう扱うか。
 // Hold は押されたローリングを消さずに待たせ、Cancel は動作ロック中でもローリングで打ち切らせる。
 enum class PlayerRollGate { None, Hold, Cancel };
+// 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
+inline constexpr size_t kPlayerLockCandidateCapacity = 8;
 
 class PlayerComponent final : public HIKARI::IGameComponent {
 public:
@@ -125,6 +129,9 @@ public:
     bool lockedOn = false;
     // ロック対象を変える入力（Q）が押された。対象の候補を知っている側（ボスの分身）が使ったら消す。
     bool lockSwitchRequested = false;
+    // 照準補助の候補。ボス側が毎 tick 作り直す（分身が消えたら次の tick で外れる）。空なら lockTargetId だけを見る。
+    std::array<HIKARI::GameProjectObjectHandle, kPlayerLockCandidateCapacity> lockCandidates{};
+    size_t lockCandidateCount = 0;
     // ロック中のカメラが見る点を、対象の原点からずらす量（世界 m）。霧へ沈んだボスを見続ける時など、外部が毎 tick 入れる。
     HIKARI::GameProjectFloat3 lockPivotOffset{};
     bool rollFogPending = false;

@@ -731,6 +731,8 @@ public:
     BossSlashEffect skyfallBlade{};
     HIKARI::GameProjectVfxPlaybackHandle skyfallRingVfx{};
     float skyfallRingAge = 0.0f;
+    // 炎の輪を次のフレームに出す（着地のフレームは、一緒に落ちた刃の域がまだ数に入っているので 1 フレーム待つ）。
+    bool skyfallRingPending = false;
     HIKARI::GameProjectFloat3 skyfallRingCenter{};
     BossSkyfallPhase skyfallSeenPhase = BossSkyfallPhase::None;
     bool skyfallSeenLock = false;

@@ -54,6 +54,10 @@ public:
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);
     // ロックオンを押した時に狙う相手（シーン物体 id）。ロックしていない時の照準補助も同じ相手を見る。
     static uint64_t GetLockCandidateId(const PlayerComponent& player);
+    // 照準補助の候補（ボス本体＋その tick に出ている分身）を入れ替える。候補を知っているボスの側が毎 tick 呼ぶ。
+    static void SetLockCandidates(PlayerComponent& player, const HIKARI::GameProjectObjectHandle* handles, size_t count);
+    static size_t GetLockCandidateCount(const PlayerComponent& player);
+    static HIKARI::GameProjectObjectHandle GetLockCandidate(const PlayerComponent& player, size_t index);
     // ロックオン中なら、ロック対象を target に変える（ボスと分身の切り替え）。ロックしていなければ何もしない。
     static void SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target);
     // 「ロック対象を変える」が押されていたら true を返して消す（対象の候補を知っている側が呼ぶ）。

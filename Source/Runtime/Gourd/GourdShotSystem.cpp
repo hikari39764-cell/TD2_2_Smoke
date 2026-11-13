@@ -91,8 +91,13 @@ bool AssistPoint(HIKARI::WorldView& world, const GourdShotComponent& shot, const
         outPoint = LockPoint(transform, player);
         found = true;
     };
-    // ロックオンできる相手。分身はボスの側だけが知っているので、今はロック対象の設定（ボス）だけを見る。
-    consider(world.FindSceneObject(PlayerRules::GetLockCandidateId(player)));
+    // 分身はボスの側だけが知っているので、ボスが毎 tick 渡す候補（本体＋出ている分身）を見る。
+    // 渡されていない（ボスがいない・まだ最初の tick）間は、ロック対象の設定だけを見る。
+    const size_t count = PlayerRules::GetLockCandidateCount(player);
+    for (size_t i = 0; i < count; ++i)
+        consider(world.FindObject(PlayerRules::GetLockCandidate(player, i)));
+    if (count == 0)
+        consider(world.FindSceneObject(PlayerRules::GetLockCandidateId(player)));
     return found;
 }
 

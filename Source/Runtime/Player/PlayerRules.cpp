@@ -168,6 +168,18 @@ HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) 
 HIKARI::GameProjectObjectHandle PlayerRules::GetLockTarget(const PlayerComponent& player) { return player.lockTarget; }
 uint64_t PlayerRules::GetLockCandidateId(const PlayerComponent& player) { return player.lockTargetId; }
 
+void PlayerRules::SetLockCandidates(PlayerComponent& player, const HIKARI::GameProjectObjectHandle* handles,
+                                    size_t count) {
+    player.lockCandidateCount = std::min(count, player.lockCandidates.size());
+    std::copy_n(handles, player.lockCandidateCount, player.lockCandidates.begin());
+}
+
+size_t PlayerRules::GetLockCandidateCount(const PlayerComponent& player) { return player.lockCandidateCount; }
+
+HIKARI::GameProjectObjectHandle PlayerRules::GetLockCandidate(const PlayerComponent& player, size_t index) {
+    return index < player.lockCandidateCount ? player.lockCandidates[index] : HIKARI::GameProjectObjectHandle{};
+}
+
 void PlayerRules::SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target) {
     if (player.lockedOn && target.value != 0)
         player.lockTarget = target;

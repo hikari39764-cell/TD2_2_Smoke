@@ -335,12 +335,19 @@ void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
             blade.position = body.position;
         }
     } else if (blade.handle.IsValid() && blade.flying) {
-        // 着地した（か、打ち切られた）：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
-        // （砕けた霞が、着地の上に大きく立ちのぼる）。
-        blade.flying = false;
-        blade.impactSeconds = boss.slashImpactSeconds;
-        blade.fadeSeconds = boss.slashFadeSeconds;
-        blade.velocity = Mul(blade.velocity, boss.slashHitSpeedScale);
+        if (fire) {
+            // フェーズ 2 の着地は炎の輪と火球が後を引き受けるので、刃はすぐ止める（刃の域と輪の域が重なると、
+            // 流体域の数の上限を超えて、砲口の炎などが出ないフレームができる）。
+            StopHandle(world, blade.handle);
+            blade = {};
+        } else {
+            // 着地した（か、打ち切られた）：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
+            // （砕けた霞が、着地の上に大きく立ちのぼる）。
+            blade.flying = false;
+            blade.impactSeconds = boss.slashImpactSeconds;
+            blade.fadeSeconds = boss.slashFadeSeconds;
+            blade.velocity = Mul(blade.velocity, boss.slashHitSpeedScale);
+        }
     }
     if (blade.handle.IsValid() && !blade.flying) {
         blade.fadeSeconds -= seconds;
@@ -366,7 +373,11 @@ void UpdateSkyfall(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
             BurnFieldRules::AddBlast(world, at, boss.skyfallLandPuffRadius,
                                      fire ? BurnBlastKind::Hit : BurnBlastKind::Smoke);
         }
-        if (fire && !boss.ringEffect.IsEmpty() && boss.skyfallRingRadius > 0.0f && !boss.skyfallRingVfx.IsValid()) {
+        boss.skyfallRingPending = fire && !boss.ringEffect.IsEmpty() && boss.skyfallRingRadius > 0.0f;
+    } else if (boss.skyfallRingPending) {
+        // 着地の次のフレーム：炎の輪を出す（技が打ち切られていたら出さない）。
+        boss.skyfallRingPending = false;
+        if (sky.phase == BossSkyfallPhase::Landed && !boss.skyfallRingVfx.IsValid()) {
             boss.skyfallRingAge = 0.0f;
             boss.skyfallRingCenter = {sky.target.x, boss.ground.y + boss.ringHeight, sky.target.z};
             const float scale = kSkyfallRingStart * boss.skyfallRingRadius / std::max(0.01f, boss.ringEffectRadius);

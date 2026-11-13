@@ -232,6 +232,8 @@ void BossClones::Step(HIKARI::WorldView& world, HIKARI::ObjectView bossObject, B
     if (player == nullptr)
         return;
     SwitchLock(boss, *player, targets, spawning && active > 0, lostClone, playerCenter);
+    // ロックしていない時の照準補助も本体と分身を同じ土俵で比べられるよう、今 tick の候補を渡す（毎 tick 作り直す）。
+    PlayerRules::SetLockCandidates(*player, targets.handles.data(), targets.count);
     // 霧へ沈んだボスをロックしている間は、沈む前の高さを見続ける（カメラが地面の下を向かないように）。
     const bool lockingBoss = PlayerRules::GetLockTarget(*player).value == bossObject.GetHandle().value;
     PlayerRules::SetLockPivotOffset(*player, {0.0f, lockingBoss ? boss.sink : 0.0f, 0.0f});
