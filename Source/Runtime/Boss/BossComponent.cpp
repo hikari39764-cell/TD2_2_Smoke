@@ -415,6 +415,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      10000.0f);
         fields.Float("bladeFuelRadius", "…燃料の球の半径 (m)", bladeFuelRadius, 0.1f, 4.0f);
         fields.Float("bladeFuelTemperature", "…燃料の温度", bladeFuelTemperature, 0.0f, 64.0f);
+        fields.Float(
+            "bladeFuelMaxLift",
+            "…体が地面からこの高さより上にある間は燃料を入れない (m。跳躍・天降り斬りで空に火が残らないように)",
+            bladeFuelMaxLift, 0.0f, 50.0f);
         fields.Float("igniteFlashRadius", "剣に火が付く瞬間の火球の半径 (m。0 は出さない)", igniteFlashRadius, 0.0f,
                      5.0f);
         fields.Float("hitBlastRadius", "当たった所の火球・煙の塊の半径 (m)", hitBlastRadius, 0.1f, 10.0f);

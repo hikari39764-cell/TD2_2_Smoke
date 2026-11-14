@@ -240,7 +240,8 @@ void UpdateBladeFire(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
     if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f)
         BurnFieldRules::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
     boss.bladeWasLit = lit;
-    if (!lit || !(boss.bladeFuel > 0.0f))
+    // 体が地面から離れている間（跳躍・天降り斬り）は入れない：空中に入れた燃料は、剣が去った後も燃え尽きるまで空に漂う。
+    if (!lit || !(boss.bladeFuel > 0.0f) || boss.height > boss.bladeFuelMaxLift)
         return;
     const Vec3 points[2] = {sword.outer, Mul(Add(sword.inner, sword.outer), 0.5f)};
     for (uint64_t i = 0; i < 2; ++i) {
