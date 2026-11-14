@@ -266,9 +266,9 @@
           "castShadows": false,
           "cellColor": false,
           "combustion": true,
-          "densityDissipation": 2.5,
-          "detailScale": 0.2,
-          "detailStrength": 0.8,
+          "densityDissipation": 4.0,
+          "detailScale": 0.14,
+          "detailStrength": 1.0,
           "domainSize": [
             48.0,
             6.0,
@@ -276,19 +276,19 @@
           ],
           "emissionColor": [
             1.0,
-            0.09,
-            0.0
+            0.12,
+            0.01
           ],
           "emissionHotColor": [
             1.0,
-            0.48,
-            0.1
+            0.6,
+            0.2
           ],
-          "emissionHotTemperature": 4.5,
-          "emissionIntensity": 110000.0,
-          "emissionTemperature": 1.2,
+          "emissionHotTemperature": 7.0,
+          "emissionIntensity": 100000.0,
+          "emissionTemperature": 1.5,
           "expansionPerBurn": 0.1,
-          "extinction": 2.5,
+          "extinction": 3.0,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 5.0,
           "id": "module.fluidDomain.27bdd06311adf28a2e0ad2b531f3ae2d",
@@ -299,13 +299,13 @@
           "prewarmSeconds": 0.0,
           "priority": 96,
           "relativeWind": 0.0,
-          "resolution": 256,
+          "resolution": 320,
           "scatteringColor": [
-            0.14,
-            0.125,
-            0.115
+            0.05,
+            0.045,
+            0.04
           ],
-          "smokePerBurn": 0.3,
+          "smokePerBurn": 0.4,
           "substepRate": 60.0,
           "temperatureDissipation": 5.0,
           "vorticity": 6.0,
