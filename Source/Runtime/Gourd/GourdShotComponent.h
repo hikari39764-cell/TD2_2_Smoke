@@ -103,11 +103,13 @@ public:
     int rollCancelFrames = 6;
     // 最後の発射からこの F 以降は、後隙の間も shotMoveScale 倍で歩ける。構えの間も同じ倍率で歩ける。
     int moveCancelFrames = 12;
-    float shotMoveScale = 0.6f;
+    // 歩きを 5.2 → 3.8 m/秒に下げた時に、撃ちながらの速さを保つよう 0.6 → 0.75 にした（c-ff3e98）。
+    float shotMoveScale = 0.75f;
     // 最後の発射からこの F 以降は、攻撃を離して吸い込みを押すと後隙を取り消して吸い込みの構えへ移れる。
     int absorbCancelFrames = 6;
     int inputBufferFrames = 12;
-    float staminaCost = 20.0f;
+    // 精力満タンで連射 4 発（c-ff3e98。元は 20 で 5 発、ちょうど気絶値が埋まっていた）。
+    float staminaCost = 25.0f;
     float smokeCost = 20.0f;
     float recoilDistance = 0.7f;
     int recoilFrames = 8;

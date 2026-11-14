@@ -57,7 +57,11 @@ public:
     void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
 
     float maxHealth = 100.0f;
-    float moveSpeed = 5.2f;
+    // ふだんの歩き。走る（Gameplay.Sprint を押している間）は sprintSpeed（c-ff3e98。元は歩き 5.2、走りは無し）。
+    float moveSpeed = 3.8f;
+    float sprintSpeed = 5.2f;
+    // 走っている間に使う精力（/秒）。走っている間は回復せず、止めてから staminaDelayFrames 待って回復する。
+    float sprintStaminaPerSecond = 12.0f;
     // 通常・回復中に向きを変える速さ。試作の 12 rad/秒。
     float turnSpeed = 688.0f;
     float maxStamina = 100.0f;
@@ -176,6 +180,12 @@ public:
     int staminaAge = 0;
     int rollBuffer = 0;
     int healBuffer = 0;
+    // 走る入力を押している（描画フレームの入力から毎フレーム入れる）。
+    bool sprintHeld = false;
+    // この固定 tick に走っている（歩きより先に決める。向きとスタミナの規則が読む）。
+    bool sprinting = false;
+    // 精力が尽きて走れなくなった。走る入力を離すまで走らない（0 付近で走る・歩くを繰り返さない）。
+    bool sprintExhausted = false;
     int actionLockFrames = 0;
     int recoilFramesLeft = 0;
     int recoilFrames = 0;

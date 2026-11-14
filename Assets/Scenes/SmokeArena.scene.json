@@ -255,7 +255,7 @@
         {
           "id": 5,
           "properties": {
-            "maxHealth": 1500.0
+            "maxHealth": 1800.0
           },
           "type": "Project_TD2_2.Damageable"
         },

@@ -8,7 +8,12 @@ namespace Project_TD2_2 {
 void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("移動と体力", true)) {
         fields.Float("maxHealth", "最大 HP", maxHealth, 1.0f, 10000.0f);
-        fields.Float("moveSpeed", "移動速度 (m/s)", moveSpeed, 0.0f, 50.0f);
+        fields.Float("moveSpeed", "歩く速さ (m/s)", moveSpeed, 0.0f, 50.0f);
+        fields.Float("sprintSpeed", "走る速さ (m/s、Shift／L3 を押している間)", sprintSpeed, 0.0f, 50.0f);
+        fields.Float("sprintStaminaPerSecond", "走っている間のスタミナ消費 (/s)", sprintStaminaPerSecond, 0.0f,
+                     1000.0f);
+        fields.Note("走っている間はスタミナが回復しません。尽きたら、走る入力を離して押し直すまで歩きます。"
+                    "ロックオン中に走ると、体は進む向きを向きます。砲撃・吸い込み・回復の間は走りません。");
         fields.Float("turnSpeed", "振り向きの速さ (度/s、688 ≒ 12 rad/s)", turnSpeed, 1.0f, 5000.0f);
         fields.Float("maxStamina", "最大スタミナ", maxStamina, 1.0f, 10000.0f);
         fields.Int("staminaDelayFrames", "スタミナ回復待ち (F)", staminaDelayFrames, 0, 600);

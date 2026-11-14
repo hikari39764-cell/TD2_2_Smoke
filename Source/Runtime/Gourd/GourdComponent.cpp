@@ -69,8 +69,8 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("absorbRecoveryFrames", "吸い終わった後の後隙 (F)", absorbRecoveryFrames, 0, 600);
         fields.Int("absorbBufferFrames", "先行入力を覚えておく長さ (押した F の後の F 数。0 は無し)",
                    absorbBufferFrames, 0, 120);
-        fields.Float("absorbMoveScale", "構え・吸い込み・後隙の間の歩行倍率（0.5 で約 2.6 m/秒）", absorbMoveScale,
-                     0.0f, 1.0f);
+        fields.Float("absorbMoveScale", "構え・吸い込み・後隙の間の歩行倍率（歩く速さに掛ける。0.7 で約 2.7 m/秒）",
+                     absorbMoveScale, 0.0f, 1.0f);
         fields.Float("absorbTurnSpeed", "構え・吸い込み・後隙の間に向きを変えられる速さ (度/秒)", absorbTurnSpeed, 0.0f,
                      3600.0f);
         fields.Note("構え・吸い込み・後隙の間は歩けて、入力した方向へ向きを変えられます（ロックオン中でも）。"

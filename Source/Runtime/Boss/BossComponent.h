@@ -475,7 +475,10 @@ public:
     float thickness = 0.5f;
     // フェーズと気絶
     float phaseTwoHealthPercent = 60.0f;
-    float stunMax = 110.0f;
+    // 類魂の崩れにくさ（c-ff3e98）。気絶値 110 → 220：精力満タンの連射（4 発）だけでは気絶しない。
+    // 気絶するたびに、次に要る気絶値を stunMax × stunMaxGrowth ずつ増やす（2 回目 275、3 回目 330）。
+    float stunMax = 220.0f;
+    float stunMaxGrowth = 0.25f;
     int stunLimit = 0;
     int stunFrames = 180;
     // 溜めを崩した時・気絶した時の手応え（c-d330c0）。止め・カメラの揺れ・手柄の振動・本体の光り。
@@ -494,8 +497,9 @@ public:
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
     float breakBlastScale = 1.8f;
     float stunDamageScale = 1.5f;
-    float stunDecayDelaySeconds = 6.0f;
-    float stunDecayPerSecond = 10.0f;
+    // 手を止めると気絶値が早く散る（c-ff3e98。元は 6 秒後から 10/秒）。
+    float stunDecayDelaySeconds = 4.0f;
+    float stunDecayPerSecond = 20.0f;
     float stunPerShot = 22.0f;
     float stunReferenceDamage = 40.0f;
     // 技の選び方（行動ツリーの節が使う共通の値。試作の共通パラメータ）

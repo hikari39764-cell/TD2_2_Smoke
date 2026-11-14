@@ -59,7 +59,8 @@ class GourdComponent final : public HIKARI::IGameComponent {
     int absorbMinFrames = 10;
     int absorbRecoveryFrames = 8;
     int absorbBufferFrames = 12;
-    float absorbMoveScale = 0.5f;
+    // 歩きを 5.2 → 3.8 m/秒に下げた時に、吸いながらの速さ（約 2.6 m/秒）を保つよう 0.5 → 0.7 にした（c-ff3e98）。
+    float absorbMoveScale = 0.7f;
     float absorbTurnSpeed = 720.0f;
     float capacity = 100.0f;
     float initialSmoke = 100.0f;

@@ -29,6 +29,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("フェーズと気絶", true)) {
         fields.Float("phaseTwoHealthPercent", "フェーズ 2 になる HP (%)", phaseTwoHealthPercent, 0.0f, 100.0f);
         fields.Float("stunMax", "気絶値（これだけたまると気絶）", stunMax, 1.0f, 100000.0f);
+        fields.Float("stunMaxGrowth", "気絶するたびに気絶値を増やす割合（0.25 で 1 回ごとに +25%、0 で増えない）",
+                     stunMaxGrowth, 0.0f, 10.0f, 0.01f);
         fields.Int("stunLimit", "気絶する回数の上限（0＝上限なし）", stunLimit, 0, 99);
         fields.Int("stunFrames", "気絶している長さ (F)", stunFrames, 1, 3600);
         fields.Int("breakHitStopFrames", "崩し・気絶の止め (F、0 は無効)", breakHitStopFrames, 0, 30);

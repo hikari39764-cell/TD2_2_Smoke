@@ -207,12 +207,13 @@ void AddStun(BossComponent& boss, float amount) {
         return;
     boss.stun += amount;
     boss.stunHitSeconds = boss.clockSeconds;
+    const float threshold = BossRules::GetStunThreshold(boss);
     char message[160]{};
     std::snprintf(message, sizeof(message), "StunGain tick=%llu amount=%.3f stun=%.3f max=%.3f",
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(amount),
-                  static_cast<double>(boss.stun), static_cast<double>(boss.stunMax));
+                  static_cast<double>(boss.stun), static_cast<double>(threshold));
     BossLog::Write(message);
-    if (boss.stun >= boss.stunMax)
+    if (boss.stun >= threshold)
         EnterStun(boss);
 }
 

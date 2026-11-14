@@ -34,6 +34,8 @@ public:
     // フェーズ（1 か 2）。HP の持ち主は Damageable なので、その割合から決める。
     static int GetPhaseNumber(const BossComponent& boss, const DamageableComponent& health);
     static float GetStun(const BossComponent& boss);
+    // いま気絶するのに要る気絶値。気絶するたびに stunMax の stunMaxGrowth 倍ずつ増える（崩れた気絶も数える）。
+    static float GetStunThreshold(const BossComponent& boss);
     static int GetStunCount(const BossComponent& boss);
     static bool IsStunned(const BossComponent& boss);
     // ボスの足元（地面の点）と向き。行動ツリーが距離や角度を測るのに使う。

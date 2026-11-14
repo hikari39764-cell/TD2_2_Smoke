@@ -59,6 +59,7 @@ void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
     if (ReadAction(input, "Gameplay.Dodge").pressed) {
         player.rollBuffer = player.inputBufferFrames;
     }
+    player.sprintHeld = ReadAction(input, "Gameplay.Sprint").down != 0u;
     if (ReadAction(input, "Gameplay.Heal").pressed) {
         player.healBuffer = player.inputBufferFrames;
     }
@@ -185,15 +186,46 @@ float StaggerStep(const PlayerComponent& player) {
     return player.staggerStepThree / static_cast<float>(third);
 }
 
+// 走る：ふだんの歩き（外部の動作が歩きを変えていない・動作ロックが無い）で、入力があり、走る入力を押している間。
+// 走っている間はスタミナを使い、回復を止める（止めてから回復待ちの F を数え直す）。尽きたら入力を離すまで走らない。
+// 向き（UpdateFacing）と歩き（StateVelocity）より先に、その固定 tick の分を決める。
+void StepSprint(PlayerComponent& player, float dt, uint64_t tick) {
+    const bool wasSprinting = player.sprinting;
+    if (!player.sprintHeld)
+        player.sprintExhausted = false;
+    const bool hasInput = std::hypot(player.moveInput.x, player.moveInput.z) > kTurnInputDeadZone;
+    const bool plainWalk = player.state == PlayerState::Normal && player.actionLockFrames == 0 &&
+                           !player.external.walkAllowed && player.external.moveScale >= 1.0f &&
+                           player.external.turnSpeed <= 0.0f && !player.aimTurnPending;
+    player.sprinting = PlayerRules::IsAlive(player) && player.sprintHeld && !player.sprintExhausted && hasInput &&
+                       plainWalk && player.stamina > 0.0f;
+    if (player.sprinting) {
+        player.stamina = std::max(0.0f, player.stamina - player.sprintStaminaPerSecond * dt);
+        player.staminaAge = 0;
+        if (player.stamina <= 0.0f)
+            player.sprintExhausted = true;
+    }
+    if (player.sprinting != wasSprinting) {
+        char message[128]{};
+        std::snprintf(message, sizeof(message), "%s tick=%llu stamina=%.3f exhausted=%d",
+                      player.sprinting ? "SprintStart" : "SprintEnd", static_cast<unsigned long long>(tick),
+                      static_cast<double>(player.stamina), static_cast<int>(player.sprintExhausted));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
+    }
+}
+
 // 歩く速度を、入力の向き × speed へ寄せる。歩き出しと止まる時だけ少し時間を掛け、体の重さを出す。
-// 寄せる速さは「moveSpeed に届くまでの時間」で決める（0 なら一瞬）。
+// 寄せる速さは「最高速に届くまでの時間」で決める（0 なら一瞬）。最高速は歩き・走り・いまの速さの大きい方
+// （走りから止まる時も、決めた時間で止まる）。
 Vec3 WalkVelocity(PlayerComponent& player, float speed, float dt) {
     const Vec3 wanted{player.moveInput.x * speed, 0.0f, player.moveInput.z * speed};
     const Vec3 gap{wanted.x - player.moveVelocity.x, 0.0f, wanted.z - player.moveVelocity.z};
     const float distance = std::hypot(gap.x, gap.z);
-    const bool slowing = std::hypot(wanted.x, wanted.z) < std::hypot(player.moveVelocity.x, player.moveVelocity.z);
+    const float currentSpeed = std::hypot(player.moveVelocity.x, player.moveVelocity.z);
+    const bool slowing = std::hypot(wanted.x, wanted.z) < currentSpeed;
     const float seconds = slowing ? player.moveDecelSeconds : player.moveAccelSeconds;
-    const float step = seconds > 0.0f ? player.moveSpeed / seconds * dt : distance;
+    const float reference = std::max({player.moveSpeed, speed, currentSpeed});
+    const float step = seconds > 0.0f ? reference / seconds * dt : distance;
     if (distance <= step || distance <= 0.0f) {
         player.moveVelocity = wanted;
     } else {
@@ -205,7 +237,8 @@ Vec3 WalkVelocity(PlayerComponent& player, float speed, float dt) {
 
 Vec3 StateVelocity(PlayerComponent& player, float dt) {
     if (player.state == PlayerState::Normal && (player.actionLockFrames == 0 || player.external.walkAllowed)) {
-        return WalkVelocity(player, player.moveSpeed * std::clamp(player.external.moveScale, 0.0f, 1.0f), dt);
+        const float speed = player.sprinting ? player.sprintSpeed : player.moveSpeed;
+        return WalkVelocity(player, speed * std::clamp(player.external.moveScale, 0.0f, 1.0f), dt);
     }
     if (player.state == PlayerState::Heal) {
         if (!player.healApplied && player.stateFrame + 1 >= std::min(player.healApplyFrame, player.healFrames)) {
@@ -272,7 +305,8 @@ void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCom
     // 回避・被弾などの最中は、その動作を始めた時の向きのまま。
     if (player.state != PlayerState::Normal && player.state != PlayerState::Heal)
         return;
-    if (hasTarget)
+    // 走っている間は、ロックオン中でも進む向きを向く（横歩きではなく、その方向へ走る）。
+    if (hasTarget && !player.sprinting)
         TurnToward(player, toTarget, player.turnSpeed, dt);
     else if (hasInput)
         TurnToward(player, player.moveInput, player.turnSpeed, dt);
@@ -479,6 +513,7 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         SubmitMovement(world, object, player, frame, {}, true);
         return;
     }
+    StepSprint(player, frame.fixedDt, frame.fixedTickIndex);
     UpdateFacing(world, object, player, frame.fixedDt);
     StepKnockbackEvents(object, player, frame.fixedTickIndex);
     Vec3 velocity = StateVelocity(player, frame.fixedDt);

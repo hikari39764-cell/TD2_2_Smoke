@@ -66,6 +66,10 @@ size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
 
 float BossRules::GetStun(const BossComponent& boss) { return boss.stun; }
 
+float BossRules::GetStunThreshold(const BossComponent& boss) {
+    return boss.stunMax * (1.0f + std::max(0.0f, boss.stunMaxGrowth) * static_cast<float>(boss.stunCount));
+}
+
 int BossRules::GetStunCount(const BossComponent& boss) { return boss.stunCount; }
 
 bool BossRules::IsStunned(const BossComponent& boss) { return boss.state == BossState::Stunned; }
