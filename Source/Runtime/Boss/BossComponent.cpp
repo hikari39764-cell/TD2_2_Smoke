@@ -1,5 +1,7 @@
 #include "BossComponent.h"
 
+#include "../Common/ObjectVariables.h"
+
 namespace Project_TD2_2 {
 
 void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
@@ -98,6 +100,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("poseSwayDegrees", "剣の左右で横に傾く量 (度、剣 100 度あたり)", poseSwayDegrees, 0.0f, 45.0f);
         fields.Float("crouchSquash", "屈むと縮む割合", crouchSquash, 0.0f, 0.9f);
         fields.Float("stunLeanRadians", "気絶で前へ崩れる角度 (rad)", stunLeanRadians, 0.0f, 1.5f);
+        fields.Int("deadVanishDelayFrames", "撃破されてから体が縮み始めるまで (F)", deadVanishDelayFrames, 0, 3600);
+        fields.Int("deadVanishFrames", "体が縮んで消えるまでの長さ (F。0 で待ちの後すぐ消える)", deadVanishFrames, 0,
+                   3600);
         fields.Note(
             "地面や画面に予告は出しません（ソウルライク）。前隙は体の傾き・屈み・剣先に集まる霞だけで見せます。");
     }
@@ -383,3 +388,13 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
 }
 
 } // namespace Project_TD2_2
+void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
+    // プレイ中の世界だけで書く（編集中は書き手を作らない）。
+    if (context.GetWorld().GetGameSession() == nullptr) {
+        return;
+    }
+    constexpr std::string_view category = "Boss";
+    ObjectVariables::PublishFloat(context, category, kBossHealthVariable, shownHealth, variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kBossMaxHealthVariable, shownMaxHealth, variableWriteWarned);
+}
+

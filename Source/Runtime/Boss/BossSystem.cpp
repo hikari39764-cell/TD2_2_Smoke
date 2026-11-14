@@ -39,6 +39,8 @@ constexpr float kStunCrouchBlend = 0.12f;
 constexpr float kPoseLeanNeutral = 30.0f;
 // これより速い位置の変化（瞬間移動）では、動きの傾きを付けない (m/秒)。
 constexpr float kLeanSpeedLimit = 30.0f;
+// 撃破の後に体を縮める下限の倍率（0 にすると変換が潰れるので、見えない大きさで止める）。
+constexpr float kVanishMinScale = 0.001f;
 // 体のゆれの周期（rad/秒）。
 constexpr float kBobRate = 2.1f;
 constexpr float kStunWobbleRate = 1.7f;
@@ -238,6 +240,8 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
 void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health) {
     BossComponent& boss = frame.boss;
     DamageableRules::Initialize(health);
+    boss.shownHealth = DamageableRules::GetHealth(health);
+    boss.shownMaxHealth = DamageableRules::GetMaxHealth(health);
     if (boss.testDamageAtFrame >= 0 && boss.testDamageDone < boss.testDamageRepeatCount &&
         static_cast<int64_t>(boss.tick) >=
             static_cast<int64_t>(boss.testDamageAtFrame) +
@@ -306,7 +310,10 @@ void StartRequested(BossFrame& frame, int chain) {
 void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
     BossComponent& boss = frame.boss;
     switch (boss.state) {
-    case BossState::Dead: boss.crouch = Lerp(boss.crouch, 1.0f, kStunCrouchBlend); return;
+    case BossState::Dead:
+        ++boss.stateFrame;
+        boss.crouch = Lerp(boss.crouch, 1.0f, kStunCrouchBlend);
+        return;
     case BossState::Stunned:
         ++boss.stateFrame;
         boss.crouch = Lerp(boss.crouch, kStunCrouch, kStunCrouchBlend);
@@ -318,6 +325,11 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
         }
         return;
     case BossState::Idle:
+        // 戦いが始まるまで（Flow が止めている間）は、歩かず技も出さない。
+        if (boss.held) {
+            boss.velocity = {};
+            return;
+        }
         BossMoveExecutor::StepIdle(frame);
         if (boss.requestedMove < 0)
             brain.OnIdle(context);
@@ -381,7 +393,16 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     transform.rotation = YawLeanSway(boss.yaw + boss.spin, lean, sway);
     // 足元を支点に傾ける（中心で回すと足が反対へ流れる）。
     transform.position = Add(root, Rotate(transform.rotation, {0.0f, boss.bodyHalfHeight * squash, 0.0f}));
-    transform.scale = {1.0f, squash, 1.0f};
+    // 撃破の後は、待ってから体を縮めて見えなくする（撃破の演出は別に作る）。
+    float vanish = 1.0f;
+    if (boss.state == BossState::Dead && boss.stateFrame > boss.deadVanishDelayFrames) {
+        const float progress = boss.deadVanishFrames > 0
+                                   ? static_cast<float>(boss.stateFrame - boss.deadVanishDelayFrames) /
+                                         static_cast<float>(boss.deadVanishFrames)
+                                   : 1.0f;
+        vanish = std::max(kVanishMinScale, 1.0f - progress);
+    }
+    transform.scale = {vanish, squash * vanish, vanish};
     object.SetWorldTransform(transform);
 }
 

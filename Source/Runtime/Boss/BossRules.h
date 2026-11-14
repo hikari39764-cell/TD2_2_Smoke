@@ -19,6 +19,8 @@ public:
     static bool RequestMove(BossComponent& boss, int index, bool asCombo = false);
     static bool RequestMoveByName(BossComponent& boss, std::string_view name, bool asCombo = false);
     static void CancelRequest(BossComponent& boss);
+    // 戦いが始まるまで、ボスの行動を止める（技を頼まない・歩かない）。止めていない時は何も変わらない。
+    static void SetHeld(BossComponent& boss, bool held);
     static int FindMove(const BossComponent& boss, std::string_view name);
     static int GetMoveCount(const BossComponent& boss);
     // 読んだ表の 1 行（無ければ nullptr）。

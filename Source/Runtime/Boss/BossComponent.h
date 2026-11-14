@@ -14,6 +14,9 @@ namespace Project_TD2_2 {
 
 inline constexpr std::string_view kBossType = "Project_TD2_2.Boss";
 inline constexpr std::string_view kBossSystem = "Project_TD2_2.BossSystem";
+// 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
+inline constexpr std::string_view kBossHealthVariable = "Boss.Health";
+inline constexpr std::string_view kBossMaxHealthVariable = "Boss.MaxHealth";
 // 同時に飛ぶ斬撃・ナイフの枠。連撃 5 撃とナイフ 3 本が重なっても足りる数。
 inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
@@ -361,6 +364,8 @@ public:
     float breakRumbleHigh = 0.7f;
     int breakRumbleFrames = 12;
     int breakFlashFrames = 12;
+    // HUD などが読めるよう、HP と最大 HP を自分の物体の物体変数へ毎フレーム書く。
+    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
     // 崩した・気絶した瞬間に体の中心から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で出さない）。
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
     float breakBlastScale = 1.8f;
@@ -436,6 +441,9 @@ public:
     float greatswordHiltOffset = 0.8f;
     int greatswordFillFrames = 80;
     float greatswordRaiseTilt = 15.0f;
+    // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
+    int deadVanishDelayFrames = 60;
+    int deadVanishFrames = 30;
     float greatswordRaiseHeight = 2.6f;
     int greatswordWindFrames = 14;
     float greatswordSweepDegrees = 200.0f;
@@ -693,6 +701,12 @@ public:
     std::array<HIKARI::GameProjectFloat3, kBossCloneCapacity> cloneSpots{};
     int cloneSpotCount = 0;
     bool cloneSpawnPending = false;
+    // 戦いの流れ（Flow）が、戦いが始まるまでボスの行動を止めている間 true。技を頼まず、歩かない。
+    bool held = false;
+    // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
+    float shownHealth = 0.0f;
+    float shownMaxHealth = 0.0f;
+    bool variableWriteWarned = false;
     int activeClones = 0;
     BossDetonation detonation;
     BossSkyfallState skyfall;

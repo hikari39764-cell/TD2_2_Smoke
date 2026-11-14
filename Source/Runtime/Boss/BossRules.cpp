@@ -24,6 +24,8 @@ void BossRules::CancelRequest(BossComponent& boss) {
     boss.requestedAsCombo = false;
 }
 
+void BossRules::SetHeld(BossComponent& boss, bool held) { boss.held = held; }
+
 int BossRules::FindMove(const BossComponent& boss, std::string_view name) { return boss.table.Find(name); }
 
 int BossRules::GetMoveCount(const BossComponent& boss) { return static_cast<int>(boss.table.GetMoves().size()); }

@@ -21,6 +21,8 @@
 #include "Boss/BossSystem.h"
 #include "Burn/BurnFieldComponent.h"
 #include "Burn/BurnFieldSystem.h"
+#include "Flow/FlowComponent.h"
+#include "Flow/FlowSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -119,7 +121,15 @@ public:
                context.RegisterSystem<BurnFieldSystem>({.systemId = kBurnFieldSystem, .displayName = "燃える地面"}) &&
                // 同じ tick にボスの斬撃が塗った火を数え、当て、吸わせるので、ボス（125）の後に動かす。
                context.BindComponentSystem(
-                   {.componentType = kBurnFieldType, .systemId = kBurnFieldSystem, .defaultExecutionOrder = 130});
+                   {.componentType = kBurnFieldType, .systemId = kBurnFieldSystem, .defaultExecutionOrder = 130}) &&
+               context.RegisterComponent<FlowComponent>({.typeName = kFlowType, .displayName = "戦いの流れと HUD"}) &&
+               context.RegisterSystem<FlowSystem>({.systemId = kFlowSystem, .displayName = "戦いの流れと HUD"}) &&
+               // ボス（125）が戦いの始まりを待つ止めを、同じ tick の先頭で入れるので、ボスより前に動かす。
+               context.BindComponentSystem(
+                   {.componentType = kFlowType, .systemId = kFlowSystem, .defaultExecutionOrder = 80}) &&
+               // Flow 部品が無いシーン（ボスのいる場面）でも流れと HUD が動くよう、ボスの部品にも結ぶ。
+               context.BindComponentSystem(
+                   {.componentType = kBossType, .systemId = kFlowSystem, .defaultExecutionOrder = 80});
     }
 };
 

@@ -72,6 +72,33 @@
         "type": "Float",
         "value": 0.0
       }
+    },
+    {
+      "id": "Boss.Health",
+      "name": "Boss Health",
+      "description": "ボスの現在の HP（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Boss.MaxHealth",
+      "name": "Boss Max Health",
+      "description": "ボスの最大 HP（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Fight.State",
+      "name": "Fight State",
+      "description": "戦いの段階。0=開始待ち、1=戦い中、2=負け、3=勝ち。",
+      "default": {
+        "type": "Int",
+        "value": 0
+      }
     }
   ],
   "events": []

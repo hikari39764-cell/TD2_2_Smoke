@@ -1,0 +1,73 @@
+#pragma once
+
+#include <cstdint>
+
+#include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Project/ValueTypes.h"
+
+namespace Project_TD2_2 {
+
+inline constexpr std::string_view kFlowType = "Project_TD2_2.Flow";
+inline constexpr std::string_view kFlowSystem = "Project_TD2_2.FlowSystem";
+// 世界変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Int）にする。値は FlowPhase の番号。
+inline constexpr std::string_view kFightStateVariable = "Fight.State";
+
+// 1 戦の流れの段階。値は Fight.State の値と同じ。
+enum class FlowPhase { Waiting, Fighting, Lost, Won };
+
+// 戦いの流れ（開始・負け・勝ち・やり直し）と、文字の無い試験用 HUD の設定。1 シーンに 1 つ置く。
+class FlowComponent final : public HIKARI::IGameComponent {
+public:
+    void DescribeProperties(HIKARI::PropertyFields& fields) override;
+
+    // 流れ
+    float engageDistance = 18.0f;
+    float fallDepth = 20.0f;
+    float loseFadeSeconds = 2.0f;
+    float loseRestartSeconds = 3.0f;
+    float winFadeSeconds = 2.0f;
+    float winRestartSeconds = 3.0f;
+    // 負け・勝ちの画面の色（暗い赤・白）と、色が最も濃くなった時の不透明度。
+    HIKARI::GameProjectFloat3 loseColor{0.3f, 0.0f, 0.0f};
+    float loseOpacity = 0.9f;
+    HIKARI::GameProjectFloat3 winColor{1.0f, 1.0f, 1.0f};
+    float winOpacity = 0.9f;
+    // HUD の置き場所と大きさ。参照の画面（1920 × 1080）の点。プレイヤーの 4 つは左下から上へ並ぶ。
+    float playerBarX = 60.0f;
+    float playerBarBottom = 1020.0f;
+    float playerBarWidth = 420.0f;
+    float healthBarHeight = 24.0f;
+    float staminaBarHeight = 16.0f;
+    float smokeBarHeight = 16.0f;
+    float healSquareSize = 20.0f;
+    float barGap = 10.0f;
+    // ボスの HP の帯は画面の上の中央。
+    float bossBarWidth = 960.0f;
+    float bossBarHeight = 22.0f;
+    float bossBarTop = 56.0f;
+    // 条の色。底は半透明の深い灰色。
+    HIKARI::GameProjectFloat3 backColor{0.08f, 0.08f, 0.09f};
+    float backOpacity = 0.6f;
+    HIKARI::GameProjectFloat3 healthColor{0.82f, 0.12f, 0.12f};
+    HIKARI::GameProjectFloat3 staminaColor{0.25f, 0.75f, 0.28f};
+    HIKARI::GameProjectFloat3 healColor{0.85f, 0.85f, 0.55f};
+    HIKARI::GameProjectFloat3 smokeColor{0.45f, 0.65f, 0.68f};
+    HIKARI::GameProjectFloat3 bossColor{0.5f, 0.05f, 0.07f};
+
+    // 実行時の状態は保存しない。
+    FlowPhase phase = FlowPhase::Waiting;
+    // いまの段階に入ってからの固定 tick 数。
+    uint64_t phaseTicks = 0;
+    uint64_t tick = 0;
+    // 戦いの始まりのプレイヤーの高さ（落下の判定の基準）。
+    bool startHeightKnown = false;
+    float startHeight = 0.0f;
+    bool restartRequested = false;
+    bool restartRejectedLogged = false;
+    // HUD の矩形を出せなかった警告を出したか（1 回だけ出す）。
+    bool hudRejectedLogged = false;
+    // 世界変数の書き込みが断られた警告を出したか。
+    bool variableWriteWarned = false;
+};
+
+} // namespace Project_TD2_2
