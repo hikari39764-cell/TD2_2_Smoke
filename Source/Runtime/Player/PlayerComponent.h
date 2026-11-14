@@ -16,9 +16,19 @@ inline constexpr std::string_view kPlayerStaminaVariable = "Player.Stamina";
 inline constexpr std::string_view kPlayerMaxStaminaVariable = "Player.MaxStamina";
 inline constexpr std::string_view kPlayerHealChargesVariable = "Player.HealCharges";
 inline constexpr std::string_view kPlayerStateVariable = "Player.State";
+// 炎上の残り秒数（燃えていなければ 0）。HUD が HP の条の色を変えるのに読む。
+inline constexpr std::string_view kPlayerBurnVariable = "Player.Burn";
 
 enum class PlayerState { Normal, Roll, Heal, Stagger, Knockback, Down, GetUp, Dead };
+// 食らった時の体の反応（のけぞり・吹っ飛び）。ダメージの種類（PlayerDamageType）とは別に選ぶ。
 enum class PlayerDamageKind { Stagger, Knockback };
+// ダメージの種類。ログと、炎上の起こり方・見た目（次のカードの炎）を分けるために持つ。
+// Slash＝刃・斬撃・剣が当たった、Burn＝燃えている間に続けて減る（炎上・燃える地面）、Explosion＝爆発が当たった。
+enum class PlayerDamageType { Slash, Burn, Explosion };
+// 炎上が付いたきっかけ（ログ用）。Ground＝燃える地面に立ち続けた、Slash＝火の刃が当たった、Explosion＝爆発が当たった。
+enum class PlayerBurnCause { Ground, Slash, Explosion };
+// 炎上が消えた理由。None は一度も消えていない。
+enum class PlayerBurnEnd { None, Roll, Absorb, Timeout, Death };
 // 外部の動作（砲撃）が、その固定 tick のローリングをどう扱うか。
 // Hold は押されたローリングを消さずに待たせ、Cancel は動作ロック中でもローリングで打ち切らせる。
 enum class PlayerRollGate { None, Hold, Cancel };
@@ -88,6 +98,9 @@ public:
     int downFrames = 40;
     int downRollFrame = 14;
     int getUpFrames = 22;
+    // 炎上：付いてから消えるまでの秒数と、燃える地面の外で減る HP（/秒）。燃える地面の上では BurnField の値で減る。
+    float burnSeconds = 4.0f;
+    float burnDamagePerSecond = 6.0f;
     int maxHealCharges = 4;
     float healAmount = 40.0f;
     int healFrames = 60;
@@ -178,6 +191,24 @@ public:
     bool pendingHitFeedback = false;
     bool pendingHitFeedbackKnockback = false;
     Feedback::CameraShake hitShake{};
+    // 最後に受け入れた被弾（ApplyDamage）の種類と、被弾の通し番号（見た目が「新しく当たった」を知る）。
+    PlayerDamageType lastHitType = PlayerDamageType::Slash;
+    uint32_t hitCount = 0;
+    // 炎上。burnRemaining が 0 なら燃えていない。点いた・消えた回数は見た目（次のカードの炎）が差分で読む。
+    float burnRemaining = 0.0f;
+    // いまの炎上が点いてからの秒数と、いまの炎上で減った HP（消えた時のログ用）。
+    float burnElapsed = 0.0f;
+    float burnDamage = 0.0f;
+    uint32_t burnIgnitions = 0;
+    uint32_t burnEndings = 0;
+    PlayerBurnCause burnCause = PlayerBurnCause::Ground;
+    PlayerBurnEnd burnEndReason = PlayerBurnEnd::None;
+    // 炎上で減った HP の累計（燃える地面の検証ログ用）。
+    double burnDamageTotal = 0.0;
+    // 燃える地面からの知らせ：その固定 tick にプレイヤーが火の中にいる（触れ続けて damageDelay を越えた）と、その間の
+    // 減り方（/秒）。BurnFieldSystem が毎 tick 入れ、PlayerSystem の PostFixedUpdate が使ったら消す。
+    bool burnInGroundFire = false;
+    float burnGroundDamagePerSecond = 0.0f;
     PlayerExternalRequests external{};
     // 射撃の構え中に向く方向。毎 tick 外部が要求し、PlayerSystem が使ったら消す。
     bool aimTurnPending = false;

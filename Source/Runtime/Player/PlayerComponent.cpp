@@ -74,6 +74,14 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("downRollFrame", "ダウン回避開始 (F)", downRollFrame, 0, 600);
         fields.Int("getUpFrames", "起き上がり (F)", getUpFrames, 1, 600);
     }
+    if (fields.Section("炎上")) {
+        fields.Note(
+            "燃える地面に立ち続ける・火の刃や爆発を食らうと燃え、HP が少しずつ減ります（のけぞり・ヒットストップ・"
+            "揺れは起こしません。吹っ飛び・ダウン中も減ります）。ローリング・吸い込みで消え、時間が来ても消えます。"
+            "燃える地面の上にいる間は、その地面の減り方で減り、残りの秒数が満タンに戻ります。");
+        fields.Float("burnSeconds", "燃えている長さ (秒)", burnSeconds, 0.1f, 30.0f);
+        fields.Float("burnDamagePerSecond", "燃える地面の外で減る HP (/秒)", burnDamagePerSecond, 0.0f, 1000.0f);
+    }
     if (fields.Section("回復")) {
         fields.Note("回復発生は全体 F までに制限します。使用回数は動作開始時に消費します。");
         fields.Int("maxHealCharges", "回復回数", maxHealCharges, 0, 99);
@@ -132,6 +140,7 @@ void PlayerComponent::Update(HIKARI::GameComponentContext& context, float) {
                                 variableWriteWarned);
     ObjectVariables::PublishInt(context, category, kPlayerStateVariable, static_cast<int64_t>(state),
                                 variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kPlayerBurnVariable, burnRemaining, variableWriteWarned);
 }
 
 } // namespace Project_TD2_2

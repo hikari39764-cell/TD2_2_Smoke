@@ -2,8 +2,35 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+
+#include "HIKARI/Project/ProjectLog.h"
 
 namespace Project_TD2_2 {
+namespace {
+
+// 1/60 秒を引き続けた時の丸め誤差の余裕 (秒)。
+constexpr float kBurnTimeSlack = 1e-4f;
+
+const char* BurnCauseKey(PlayerBurnCause cause) {
+    switch (cause) {
+    case PlayerBurnCause::Slash: return "slash";
+    case PlayerBurnCause::Explosion: return "explosion";
+    default: return "ground";
+    }
+}
+
+const char* BurnEndKey(PlayerBurnEnd reason) {
+    switch (reason) {
+    case PlayerBurnEnd::Roll: return "roll";
+    case PlayerBurnEnd::Absorb: return "absorb";
+    case PlayerBurnEnd::Timeout: return "timeout";
+    case PlayerBurnEnd::Death: return "death";
+    default: return "none";
+    }
+}
+
+} // namespace
 
 void PlayerRules::Initialize(PlayerComponent& player) {
     if (player.initialized) {
@@ -42,13 +69,15 @@ void PlayerRules::EnterState(PlayerComponent& player, PlayerState state) {
 }
 
 bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::GameProjectFloat3 direction,
-                              PlayerDamageKind kind) {
+                              PlayerDamageKind kind, PlayerDamageType type) {
     Initialize(player);
     if (!IsAlive(player) || IsInvulnerable(player) || !std::isfinite(amount) || amount <= 0.0f ||
         !std::isfinite(direction.x) || !std::isfinite(direction.z)) {
         return false;
     }
     player.health = std::max(0.0f, player.health - amount);
+    player.lastHitType = type;
+    ++player.hitCount;
     player.actionDirection = FlatNormalize(direction, {-player.facing.x, 0.0f, -player.facing.z});
     // 押された向きの反対（攻撃した相手の方）を向いて、のけぞり・吹っ飛ぶ。
     player.facing = {-player.actionDirection.x, 0.0f, -player.actionDirection.z};
@@ -70,12 +99,78 @@ bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::Gam
 
 bool PlayerRules::ApplyDamageOverTime(PlayerComponent& player, float amount) {
     Initialize(player);
-    if (!IsAlive(player) || IsInvulnerable(player) || !std::isfinite(amount) || amount <= 0.0f)
+    if (!IsAlive(player) || !std::isfinite(amount) || amount <= 0.0f)
         return false;
     player.health = std::max(0.0f, player.health - amount);
     if (player.health <= 0.0f)
         EnterDeath(player);
     return true;
+}
+
+bool PlayerRules::IsBurning(const PlayerComponent& player) { return player.burnRemaining > 0.0f; }
+
+void PlayerRules::Ignite(PlayerComponent& player, PlayerBurnCause cause, uint64_t tick) {
+    Initialize(player);
+    if (!IsAlive(player))
+        return;
+    const bool wasBurning = IsBurning(player);
+    player.burnRemaining = player.burnSeconds;
+    if (wasBurning)
+        return;
+    player.burnElapsed = 0.0f;
+    player.burnDamage = 0.0f;
+    player.burnCause = cause;
+    ++player.burnIgnitions;
+    char message[160]{};
+    std::snprintf(message, sizeof(message), "BurnStart tick=%llu cause=%s health=%.3f",
+                  static_cast<unsigned long long>(tick), BurnCauseKey(cause), static_cast<double>(player.health));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
+}
+
+void PlayerRules::Extinguish(PlayerComponent& player, PlayerBurnEnd reason, uint64_t tick) {
+    if (!IsBurning(player))
+        return;
+    player.burnRemaining = 0.0f;
+    player.burnEndReason = reason;
+    ++player.burnEndings;
+    char message[192]{};
+    std::snprintf(message, sizeof(message), "BurnEnd tick=%llu reason=%s seconds=%.3f damage=%.3f health=%.3f",
+                  static_cast<unsigned long long>(tick), BurnEndKey(reason), static_cast<double>(player.burnElapsed),
+                  static_cast<double>(player.burnDamage), static_cast<double>(GetHealth(player)));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
+}
+
+void PlayerRules::StepBurn(PlayerComponent& player, float dt, uint64_t tick) {
+    // 燃える地面の知らせはこの tick だけ使う（燃える地面が無くなっても、次の tick に地面の減り方を残さない）。
+    const bool inFire = player.burnInGroundFire;
+    const float ground = player.burnGroundDamagePerSecond;
+    player.burnInGroundFire = false;
+    player.burnGroundDamagePerSecond = 0.0f;
+    if (!IsBurning(player))
+        return;
+    if (!IsAlive(player)) {
+        Extinguish(player, PlayerBurnEnd::Death, tick);
+        return;
+    }
+    // 火の中にいる間は地面の減り方で減り、残りは満タンのまま（離れてから burnSeconds で消える）。二つは重ねない。
+    const float before = player.health;
+    if (ApplyDamageOverTime(player, (inFire ? ground : player.burnDamagePerSecond) * dt)) {
+        player.burnDamage += before - player.health;
+        player.burnDamageTotal += static_cast<double>(before - player.health);
+    }
+    player.burnElapsed += dt;
+    if (!IsAlive(player)) {
+        Extinguish(player, PlayerBurnEnd::Death, tick);
+        return;
+    }
+    if (inFire) {
+        player.burnRemaining = player.burnSeconds;
+        return;
+    }
+    // 1/60 秒を足し引きした丸め誤差で、burnSeconds ちょうどの tick が 1 つ余分に燃えないようにする。
+    player.burnRemaining -= dt;
+    if (player.burnRemaining <= kBurnTimeSlack)
+        Extinguish(player, PlayerBurnEnd::Timeout, tick);
 }
 
 void PlayerRules::EnterDeath(PlayerComponent& player) {

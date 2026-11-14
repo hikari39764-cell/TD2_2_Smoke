@@ -9,8 +9,12 @@ namespace Project_TD2_2 {
 struct BurnExplosion {
     // 爆ぜて消えたセルの数。
     uint32_t cells = 0;
-    // 爆ぜたセルのどれかから hitRadius 以内にプレイヤーの足元があった。
-    bool playerCaught = false;
+    // プレイヤーの足元から、この tick に爆ぜたセルの中心までの最小の水平距離 (m。爆ぜたセルかプレイヤーが無ければ負)。
+    float playerDistance = -1.0f;
+    // その距離で決まる輪：hitRadius × BurnField.blastCoreShare 以内は Core、hitRadius 以内は Edge、その外は None。
+    BurnBlastZone zone = BurnBlastZone::None;
+    // その輪のダメージの割合（Core は 1、Edge は BurnField.blastEdgeDamageShare、None は 0）。
+    float damageShare = 0.0f;
     // 見た目へ渡せた塊の数と、受け渡しの枠があふれて捨てた塊の数。
     uint32_t blasts = 0;
     uint32_t blastsDropped = 0;
@@ -39,7 +43,7 @@ public:
     // origin から一番遠い燃えているセルの中心までの水平距離 (m)。燃えていなければ負。
     static float GetFarthestBurning(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin);
     // 引爆の前線の 1 tick：origin からの距離が innerRadius 以上 outerRadius 未満の燃えているセルを爆ぜさせて消す。
-    // player（足元。nullptr はプレイヤーなし）が爆ぜたセルのどれかから hitRadius 以内なら playerCaught。
+    // player（足元。nullptr はプレイヤーなし）から爆ぜたセルまでの最小距離で、当たった輪（zone）を決める。
     // 爆ぜたセルは見た目への受け渡し（BurnFieldComponent::blasts）へ、blastBlockSize の升ごとに 1 塊で足す。
     // innerRadius が 0 の輪を引爆の始まりと見て、その引爆で出来る塊の数を見込む（BurnFieldComponent::blastPlan。
     // 前線は 1 tick に最初の輪の幅ずつ広がる前提）。燃える地面が無ければ false（何も爆ぜない）。
@@ -51,6 +55,11 @@ public:
     // power は、塊の燃料と押す速さに掛ける倍率（場全体の引爆を 1 として、爆発の大きさを決める）。
     static bool ExplodeDisc(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float hitRadius,
                             const HIKARI::GameProjectFloat3* player, float power, BurnExplosion& result);
+    // いま燃えている火（まだ爆ぜていないセル）のどれかが、point から爆心の近さ（hitRadius × BurnField.blastCoreShare 以内）
+    // にあるか。引爆の前線は少しずつ進むので、火の上に立つ相手にも外の輪が先に届く。その時の輪の決め直しに使う。
+    static bool IsCoreOfBurning(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 point, float hitRadius);
+    // ログに書く輪の名前（core／edge／none）。
+    static const char* ZoneKey(BurnBlastZone zone);
     // 引爆の溜めの進み（0〜1）を見た目へ渡す（BurnFieldComponent::charge）。規則は読まない。
     static void SetCharge(HIKARI::WorldView& world, float charge);
     // 一か所だけの溜め：center から radius 以内の火だけを、進み charge（0〜1）の溜めの見た目にする。

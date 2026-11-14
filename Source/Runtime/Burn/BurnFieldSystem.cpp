@@ -27,10 +27,13 @@ struct PlayerOnField {
     bool found = false;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 facing{0.0f, 0.0f, 1.0f};
+    // この FixedUpdate の中だけ使う（次の tick へ持ち越さない）。
+    PlayerComponent* component = nullptr;
 };
 
-// 火の上に立っている間、damageDelay 秒たってから毎 tick HP を減らす。プレイヤーは 1 人（ボスと同じ探し方）。
-PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, float dt) {
+// 体（足元から contactRadius）が火に触れ続けて damageDelay 秒たつと、プレイヤーを炎上させ、火の中にいる間は
+// その tick の炎上の減り方を damagePerSecond にする（減らすのは PlayerSystem の炎上）。プレイヤーは 1 人（ボスと同じ探し方）。
+PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, float dt, uint64_t tick) {
     PlayerOnField seen;
     world.ForEachComponent<PlayerComponent>(
         HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
@@ -40,17 +43,20 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             seen.found = true;
             seen.position = transform.position;
             seen.facing = PlayerRules::GetFacing(player);
-            if (!PlayerRules::IsAlive(player) || !field.map.IsBurning(transform.position)) {
+            seen.component = &player;
+            field.fireDamageTotal = player.burnDamageTotal;
+            // 無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず 0 に戻す：転がって火を抜ければ燃え移らない。
+            if (!PlayerRules::IsAlive(player) || PlayerRules::IsInvulnerable(player) ||
+                !field.map.AnyBurningWithin(transform.position, field.contactRadius)) {
                 field.contactSeconds = 0.0f;
                 return;
             }
-            // 無敵の間（ローリングなど）も立っている時間は数え続け、明けた tick から減らす。
             field.contactSeconds += dt;
-            if (field.contactSeconds + kContactSlack < field.damageDelay || field.damagePerSecond <= 0.0f)
+            if (field.contactSeconds + kContactSlack < field.damageDelay)
                 return;
-            const float before = PlayerRules::GetHealth(player);
-            if (PlayerRules::ApplyDamageOverTime(player, field.damagePerSecond * dt))
-                field.fireDamageTotal += static_cast<double>(before - PlayerRules::GetHealth(player));
+            PlayerRules::Ignite(player, PlayerBurnCause::Ground, tick);
+            player.burnInGroundFire = true;
+            player.burnGroundDamagePerSecond = field.damagePerSecond;
         });
     if (!seen.found)
         field.contactSeconds = 0.0f;
@@ -59,7 +65,9 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
 
 // 吸い込み中のヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡す。
 // 満杯でも火は消せる（煙は増えない）。ヒョウタンの「満杯でも吸う」（Gourd.absorbWhenFull）を切ると、満杯では消せない。
-void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt) {
+// 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
+void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt,
+                uint64_t tick) {
     bool handled = false;
     world.ForEachComponent<GourdComponent>(
         HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
@@ -71,6 +79,10 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
             if (!player.found || !GourdRules::IsAbsorbing(gourd) || (full && !gourd.absorbWhenFull)) {
                 field.absorbBudget = 0.0f;
                 return;
+            }
+            if (PlayerRules::IsBurning(*player.component)) {
+                PlayerRules::Extinguish(*player.component, PlayerBurnEnd::Absorb, tick);
+                field.contactSeconds = 0.0f;
             }
             const float rate = std::max(0.0f, field.absorbAreaPerSecond) * dt;
             // 1 tick の量が 1 セルに満たなくても、ためて丸ごと消す。吸う相手が無い間にためすぎない。
@@ -134,8 +146,10 @@ void BurnFieldSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                    done = true;
                                                    ++field.tick;
                                                    field.map.Step(frame.fixedDt);
-                                                   const PlayerOnField player = StepFire(world, field, frame.fixedDt);
-                                                   StepAbsorb(world, field, player, frame.fixedDt);
+                                                   const PlayerOnField player =
+                                                       StepFire(world, field, frame.fixedDt, frame.fixedTickIndex);
+                                                   StepAbsorb(world, field, player, frame.fixedDt,
+                                                              frame.fixedTickIndex);
                                                    Trace(field);
                                                });
 }

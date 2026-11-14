@@ -168,6 +168,30 @@ bool BurnMap::IsBurning(HIKARI::GameProjectFloat3 point) const {
     return CellOf(point, ix, iz) && cells_[Index(ix, iz)] > 0.0f;
 }
 
+bool BurnMap::AnyBurningWithin(HIKARI::GameProjectFloat3 point, float radius) const {
+    if (burningCells_ == 0 || !Finite(point) || !std::isfinite(radius) || radius < 0.0f)
+        return false;
+    // 円を囲む正方形に掛かるセルの番号（格子の外と、燃えている範囲の外は見ない）。
+    const int x0 = std::max(minX_, static_cast<int>(std::floor((point.x - radius - originX_) / cellSize_)));
+    const int x1 = std::min(maxX_, static_cast<int>(std::floor((point.x + radius - originX_) / cellSize_)));
+    const int z0 = std::max(minZ_, static_cast<int>(std::floor((point.z - radius - originZ_) / cellSize_)));
+    const int z1 = std::min(maxZ_, static_cast<int>(std::floor((point.z + radius - originZ_) / cellSize_)));
+    for (int iz = z0; iz <= z1; ++iz) {
+        for (int ix = x0; ix <= x1; ++ix) {
+            if (cells_[Index(ix, iz)] <= 0.0f)
+                continue;
+            // セルの正方形の中で、円の中心に一番近い点までの距離。
+            const float left = originX_ + static_cast<float>(ix) * cellSize_;
+            const float bottom = originZ_ + static_cast<float>(iz) * cellSize_;
+            const float dx = point.x - std::clamp(point.x, left, left + cellSize_);
+            const float dz = point.z - std::clamp(point.z, bottom, bottom + cellSize_);
+            if (dx * dx + dz * dz <= radius * radius)
+                return true;
+        }
+    }
+    return false;
+}
+
 float BurnMap::ClearFan(HIKARI::GameProjectFloat3 origin, HIKARI::GameProjectFloat3 forward, float range,
                         float halfAngleRadians, float nearRadius, float maxArea) {
     if (burningCells_ == 0 || !Finite(origin) || !Finite(forward) || !std::isfinite(range) ||
@@ -234,6 +258,16 @@ float BurnMap::FarthestFrom(HIKARI::GameProjectFloat3 origin) const {
             std::max(farthestSquared, (c.x - origin.x) * (c.x - origin.x) + (c.z - origin.z) * (c.z - origin.z));
     });
     return farthestSquared < 0.0f ? -1.0f : std::sqrt(farthestSquared);
+}
+
+float BurnMap::NearestTo(HIKARI::GameProjectFloat3 point) const {
+    float nearestSquared = -1.0f;
+    ForEachBurning([&](int ix, int iz, float) {
+        const HIKARI::GameProjectFloat3 c = CellCenter(ix, iz);
+        const float d2 = (c.x - point.x) * (c.x - point.x) + (c.z - point.z) * (c.z - point.z);
+        nearestSquared = nearestSquared < 0.0f ? d2 : std::min(nearestSquared, d2);
+    });
+    return nearestSquared < 0.0f ? -1.0f : std::sqrt(nearestSquared);
 }
 
 HIKARI::GameProjectFloat3 BurnMap::CellCenter(int ix, int iz) const {

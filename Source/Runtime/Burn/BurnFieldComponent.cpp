@@ -13,10 +13,24 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "物体の高さが床の高さです。");
     }
     if (fields.Section("火の手傷", true)) {
-        fields.Float("damageDelay", "燃えている所に立ってから減り始めるまで (秒)", damageDelay, 0.0f, 5.0f);
-        fields.Float("damagePerSecond", "立っている間に減る HP (/秒)", damagePerSecond, 0.0f, 1000.0f);
-        fields.Note("火はのけぞり・吹っ飛び・ヒットストップ・カメラの揺れを起こさず、HP だけを少しずつ減らします。"
-                    "ローリングの無敵の間は減りませんが、立っている時間は数え続けます。");
+        fields.Float("contactRadius",
+                     "火に触れたとみなす体の半径 (m。足元からこの円に燃えているセルが掛かれば触れている)",
+                     contactRadius, 0.0f, 2.0f);
+        fields.Float("damageDelay", "火に触れ続けてから燃え移るまで (秒)", damageDelay, 0.0f, 5.0f);
+        fields.Float("damagePerSecond", "火の中にいる間に減る HP (/秒。プレイヤーの炎上の減り方の代わりに使う)",
+                     damagePerSecond, 0.0f, 1000.0f);
+        fields.Note("火に触れ続けるとプレイヤーが炎上します（炎上の長さ・火の外での減り方はプレイヤーの項目）。"
+                    "火はのけぞり・吹っ飛び・ヒットストップ・カメラの揺れを起こさず、HP だけを少しずつ減らします。"
+                    "無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず、0 に戻します"
+                    "（ローリングで火を抜ければ燃え移りません）。");
+    }
+    if (fields.Section("爆発の当たり", true)) {
+        fields.Float("blastCoreShare", "爆心の半径（爆発の当たりの半径に対する割合）", blastCoreShare, 0.0f, 1.0f);
+        fields.Float("blastEdgeDamageShare", "外の輪で当たった時のダメージ（威力に対する割合）", blastEdgeDamageShare,
+                     0.0f, 1.0f);
+        fields.Note(
+            "引爆・天降り斬りの爆発は、爆ぜた火から当たりの半径以内なら当たります。そのうち爆心（半径 × 割合以内）は"
+            "威力のまま技の表の被弾で、外の輪は威力 × 割合でのけぞります。どちらでも炎上します。");
     }
     if (fields.Section("火を吸う", true)) {
         fields.Float("absorbRange", "吸い込みで火を消せる前方の距離 (m)", absorbRange, 0.0f, 50.0f);

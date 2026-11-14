@@ -154,7 +154,7 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
         std::array<BlastBlock, kBlastBlockWork> blocks{};
         size_t blockCount = 0;
         const float block = std::max(field.map.CellSize(), field.blastBlockSize);
-        const float reach = std::max(0.0f, hitRadius);
+        float nearestSquared = -1.0f;
         if (innerRadius <= 0.0f && outerRadius > 0.0f) {
             field.blastPlan = PlanBlasts(field, origin, outerRadius, block, planReach);
             field.blastOrder = 0;
@@ -165,9 +165,10 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
                 result.nearest = result.nearest < 0.0f ? distance : std::min(result.nearest, distance);
                 result.farthest = std::max(result.farthest, distance);
                 // 当たりは高さを見ない：プレイヤーの足元と、爆ぜたセルの中心の水平距離。
-                if (player != nullptr && !result.playerCaught &&
-                    (c.x - player->x) * (c.x - player->x) + (c.z - player->z) * (c.z - player->z) <= reach * reach)
-                    result.playerCaught = true;
+                if (player != nullptr) {
+                    const float d2 = (c.x - player->x) * (c.x - player->x) + (c.z - player->z) * (c.z - player->z);
+                    nearestSquared = nearestSquared < 0.0f ? d2 : std::min(nearestSquared, d2);
+                }
                 const int bx = BlockIndex(c.x - origin.x, block);
                 const int bz = BlockIndex(c.z - origin.z, block);
                 auto found = std::find_if(blocks.begin(), blocks.begin() + static_cast<ptrdiff_t>(blockCount),
@@ -185,6 +186,17 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
                 ++found->cells;
             });
         result.cells = static_cast<uint32_t>(cleared);
+        if (nearestSquared >= 0.0f) {
+            result.playerDistance = std::sqrt(nearestSquared);
+            const float reach = std::max(0.0f, hitRadius);
+            if (result.playerDistance <= reach * field.blastCoreShare) {
+                result.zone = BurnBlastZone::Core;
+                result.damageShare = 1.0f;
+            } else if (result.playerDistance <= reach) {
+                result.zone = BurnBlastZone::Edge;
+                result.damageShare = field.blastEdgeDamageShare;
+            }
+        }
         for (size_t k = 0; k < blockCount; ++k) {
             const BlastBlock& b = blocks[k];
             // 捨てる塊にも番号を振る（見込みの数と同じ数え方にして、間引きの間隔をずらさない）。
@@ -203,6 +215,23 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
             ++result.blasts;
         }
     });
+}
+
+bool BurnFieldRules::IsCoreOfBurning(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 point, float hitRadius) {
+    bool core = false;
+    WithField(world, [&](BurnFieldComponent& field) {
+        const float nearest = field.map.NearestTo(point);
+        core = nearest >= 0.0f && nearest <= std::max(0.0f, hitRadius) * field.blastCoreShare;
+    });
+    return core;
+}
+
+const char* BurnFieldRules::ZoneKey(BurnBlastZone zone) {
+    switch (zone) {
+    case BurnBlastZone::Core: return "core";
+    case BurnBlastZone::Edge: return "edge";
+    default: return "none";
+    }
 }
 
 void BurnFieldRules::SetCharge(HIKARI::WorldView& world, float charge) {

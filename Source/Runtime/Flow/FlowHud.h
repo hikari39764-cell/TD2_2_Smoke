@@ -13,6 +13,8 @@ struct FlowHudValues {
     float playerStamina = 0.0f;
     float playerMaxStamina = 0.0f;
     int healCharges = 0;
+    // 炎上の残り秒数（燃えていなければ 0）。
+    float playerBurn = 0.0f;
     float gourdSmoke = 0.0f;
     float gourdCapacity = 0.0f;
     float bossHealth = 0.0f;

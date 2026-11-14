@@ -89,7 +89,8 @@ void StepRing(BossFrame& frame, BossWave& wave) {
             continue;
         const Vec3 offset = Sub(frame.playerCenter, wave.position);
         if (std::abs(FlatLength(offset) - wave.radius) < wave.thickness * 0.5f + boss.playerHitRadius) {
-            wave.struck = BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring");
+            wave.struck = BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring",
+                                               PlayerDamageType::Slash, wave.fire);
             wave.done = true;
         }
     }
@@ -122,7 +123,7 @@ bool BossWaves::Touches(const BossFrame& frame, Vec3 a, Vec3 b, float thickness)
 }
 
 bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blow, int move, int strike,
-                          const char* source, bool* dodged) {
+                          const char* source, PlayerDamageType type, bool fire, bool* dodged) {
     if (frame.player == nullptr || !PlayerRules::IsAlive(*frame.player))
         return false;
     BossComponent& boss = frame.boss;
@@ -139,8 +140,13 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
         return false;
     }
     const Vec3 push = FlatNormalize(direction);
-    const bool accepted = PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
-                                                   blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger);
+    const bool explosion = type == PlayerDamageType::Explosion;
+    const bool accepted =
+        PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
+                                 blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger, type);
+    // 火の当たり（火の刃・燃える地面の爆発）は体に燃え移る。霞の噴き上がりのような火の無い爆発は燃え移らない
+    // （ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
+    const bool ignite = accepted && fire;
     if (accepted) {
         // 当たった所に爆発を出す（ナイフは小さく）。
         AddBlast(boss, {.pushPending = true,
@@ -150,12 +156,15 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
                         .position = frame.playerCenter});
     }
     std::snprintf(message, sizeof(message),
-                  "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s accepted=%d playerHealth=%.3f "
-                  "playerState=%d",
+                  "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s type=%s fire=%d accepted=%d "
+                  "playerHealth=%.3f playerState=%d",
                   static_cast<unsigned long long>(boss.tick), row ? row->name.c_str() : "?", strike, source, damage,
-                  blow ? "Knockback" : "Stagger", static_cast<int>(accepted),
-                  static_cast<double>(PlayerRules::GetHealth(*frame.player)), static_cast<int>(frame.player->state));
+                  blow ? "Knockback" : "Stagger", explosion ? "explosion" : "slash", static_cast<int>(fire),
+                  static_cast<int>(accepted), static_cast<double>(PlayerRules::GetHealth(*frame.player)),
+                  static_cast<int>(frame.player->state));
     BossLog::Write(message);
+    if (ignite)
+        PlayerRules::Ignite(*frame.player, explosion ? PlayerBurnCause::Explosion : PlayerBurnCause::Slash, boss.tick);
     return accepted;
 }
 
@@ -290,7 +299,7 @@ void BossWaves::Step(BossFrame& frame) {
             const Vec3 half = Mul(wave.across, wave.width * 0.5f);
             if (Touches(frame, Sub(wave.position, half), Add(wave.position, half), wave.thickness)) {
                 wave.struck = HitPlayer(frame, wave.damage, wave.direction, wave.blow, wave.move, wave.strike,
-                                        wave.knife ? "knife" : "wave");
+                                        wave.knife ? "knife" : "wave", PlayerDamageType::Slash, wave.fire);
                 wave.done = true;
             }
         }

@@ -1,6 +1,7 @@
 #include "BossDetonate.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include "BossMath.h"
@@ -28,11 +29,12 @@ void Finish(BossFrame& frame, bool interrupted) {
     const float cleared = interrupted ? 0.0f : BurnFieldRules::ClearAll(frame.world);
     char message[320]{};
     std::snprintf(message, sizeof(message),
-                  "DetonateEnd tick=%llu exploded=%u hit=%d dodged=%d cleared=%.3f interrupted=%d frames=%d blasts=%u "
-                  "blastsDropped=%u",
+                  "DetonateEnd tick=%llu exploded=%u hit=%d dodged=%d zone=%s cleared=%.3f interrupted=%d frames=%d "
+                  "blasts=%u blastsDropped=%u",
                   static_cast<unsigned long long>(boss.tick), detonation.exploded, static_cast<int>(detonation.hit),
-                  static_cast<int>(detonation.dodged), static_cast<double>(cleared), static_cast<int>(interrupted),
-                  boss.stateFrame, detonation.blasts, detonation.blastsDropped);
+                  static_cast<int>(detonation.dodged), BurnFieldRules::ZoneKey(detonation.zone),
+                  static_cast<double>(cleared), static_cast<int>(interrupted), boss.stateFrame, detonation.blasts,
+                  detonation.blastsDropped);
     BossLog::Write(message);
 }
 
@@ -87,22 +89,32 @@ void BossDetonate::Step(BossFrame& frame, const BossMove& move) {
     detonation.exploded += explosion.cells;
     detonation.blasts += explosion.blasts;
     detonation.blastsDropped += explosion.blastsDropped;
-    if (explosion.playerCaught && !detonation.caught) {
+    if (explosion.zone != BurnBlastZone::None && !detonation.caught) {
         // 1 回の引爆で当たるのは 1 回だけ。無敵でよけた時も、その引爆はもう当たらない（斬撃と同じ）。
+        // 前線が届いた tick に当てる（爆心を待って遅らせない）：爆心は表の威力と被弾、外の輪は減らした威力でのけぞる。
+        // 前線は少しずつ進むので、火の上に立つ相手にも外の輪が先に届く。まだ爆ぜていない火が爆心の近さにあれば、
+        // この引爆がすぐそこも爆ぜさせるので、爆心として当てる。
         detonation.caught = true;
+        const bool core = explosion.zone == BurnBlastZone::Core ||
+                          BurnFieldRules::IsCoreOfBurning(frame.world, frame.playerCenter, strike.size);
+        detonation.zone = core ? BurnBlastZone::Core : explosion.zone;
         const Vec3 player{frame.playerCenter.x, detonation.origin.y, frame.playerCenter.z};
-        detonation.hit = BossWaves::HitPlayer(frame, strike.damage, Sub(player, detonation.origin), strike.blow,
-                                              boss.move, 0, "detonate", &detonation.dodged);
+        const int damage =
+            static_cast<int>(std::lround(static_cast<float>(strike.damage) * (core ? 1.0f : explosion.damageShare)));
+        detonation.hit =
+            BossWaves::HitPlayer(frame, damage, Sub(player, detonation.origin), core && strike.blow, boss.move, 0,
+                                 "detonate", PlayerDamageType::Explosion, true, &detonation.dodged);
     }
     if (boss.traceEveryFrames > 0 && explosion.cells > 0) {
-        char message[256]{};
+        char message[320]{};
         std::snprintf(message, sizeof(message),
                       "DetonateFront tick=%llu frame=%d inner=%.3f outer=%.3f cells=%u near=%.3f far=%.3f blasts=%u "
-                      "caught=%d",
+                      "caught=%d zone=%s playerDistance=%.3f",
                       static_cast<unsigned long long>(boss.tick), boss.stateFrame, static_cast<double>(inner),
                       static_cast<double>(outer), explosion.cells, static_cast<double>(explosion.nearest),
                       static_cast<double>(explosion.farthest), explosion.blasts,
-                      static_cast<int>(explosion.playerCaught));
+                      static_cast<int>(explosion.zone != BurnBlastZone::None), BurnFieldRules::ZoneKey(explosion.zone),
+                      static_cast<double>(explosion.playerDistance));
         BossLog::Write(message);
     }
     // 一番遠かったセルを前線が越えたら（燃えていなかったら最初の tick に）、表の攻撃中を待たずに後隙へ入る。

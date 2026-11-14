@@ -8,6 +8,7 @@
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossMoveTable.h"
+#include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
@@ -157,6 +158,8 @@ struct BossDetonation {
     bool caught = false;
     bool hit = false;
     bool dodged = false;
+    // 当たった（よけられた）時の輪。
+    BurnBlastZone zone = BurnBlastZone::None;
 };
 
 // 天降り斬りの段階。屈む → 跳び上がる → 空中で溜める → 落ちる → 着地した（技が終わるまで）。技の外は None。
@@ -499,15 +502,13 @@ public:
     // 天降り斬りのフェーズ 2：着地した所の周りに、まず火が現れ（着地点から地割れのような筋で走り、範囲の縁に炎の輪が立つ）、
     // 少し後に爆ぜる。爆ぜる前に吸って消した所は爆ぜない。skyfallBurstDelayFrames が 0 なら無し（着地の瞬間に火球の
     // 爆発が出て、表の「池」を着地で塗る）。爆ぜた後には、表の「池」が残る。
-    // 爆発が届くのは skyfallBurstRadius（炎の輪の半径）まで：火の筋はそこから skyfallBurstHitRadius 手前まで走り、
-    // 爆ぜた火から skyfallBurstHitRadius 以内のプレイヤーに当たる。
+    // 爆発が届くのは skyfallBurstRadius（炎の輪の半径）まで：火の筋はそこから技の表の「爆発の判定 m」手前まで走り、
+    // 爆ぜた火からその距離以内のプレイヤーに当たる。威力は表の「爆発の威力」。skyfallBurstBlow は爆心で当たった時の被弾。
     int skyfallBurstDelayFrames = 40;
     float skyfallBurstRadius = 3.5f;
     int skyfallBurstSpokes = 8;
     float skyfallBurstFireWidth = 0.8f;
     int skyfallBurstIgniteFrames = 8;
-    float skyfallBurstHitRadius = 1.4f;
-    int skyfallBurstDamage = 20;
     bool skyfallBurstBlow = true;
     float skyfallBurstFireSeconds = 6.0f;
     float skyfallBurstPower = 0.5f;

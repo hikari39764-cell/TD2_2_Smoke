@@ -11,12 +11,23 @@ public:
     static bool IsAlive(const PlayerComponent& player);
     static bool CanStartAction(const PlayerComponent& player);
     static bool IsInvulnerable(const PlayerComponent& player);
-    // direction は攻撃が押す世界方向。無敵・死亡・無効な量では false。
+    // direction は攻撃が押す世界方向。kind は体の反応、type はダメージの種類（Slash か Explosion）。
+    // 無敵・死亡・無効な量では false。
     static bool ApplyDamage(PlayerComponent& player, float amount, HIKARI::GameProjectFloat3 direction,
-                            PlayerDamageKind kind);
-    // 燃える地面のような、続けて受けるダメージ。HP だけを減らし、のけぞり・ヒットストップ・向きの変化・入力の取り消しは
-    // 起こさない（被弾ではない）。無敵・死亡・無効な量で false。HP が 0 になれば ApplyDamage と同じく死亡にする。
+                            PlayerDamageKind kind, PlayerDamageType type);
+    // 炎上で続けて受けるダメージ（種類は Burn）。HP だけを減らし、のけぞり・ヒットストップ・向きの変化・入力の取り消しは
+    // 起こさない（被弾ではない）。体に付いた火なので、吹っ飛び・ダウンの無敵でも減る。死亡・無効な量で false。
+    // HP が 0 になれば ApplyDamage と同じく死亡にする。
     static bool ApplyDamageOverTime(PlayerComponent& player, float amount);
+    static bool IsBurning(const PlayerComponent& player);
+    // 炎上を付ける。燃えていなければ点け（BurnStart を記録）、燃えていれば残りを満タンに戻すだけ。死亡中は何もしない。
+    // tick はログに書く固定 tick の番号。
+    static void Ignite(PlayerComponent& player, PlayerBurnCause cause, uint64_t tick);
+    // 燃えていれば消す（BurnEnd を記録）。
+    static void Extinguish(PlayerComponent& player, PlayerBurnEnd reason, uint64_t tick);
+    // 炎上の 1 固定 tick：減らす・時間切れ・死亡で消す。その tick の燃える地面の知らせ（burnGroundDamagePerSecond）を
+    // 使って消す。全部の FixedUpdate（被弾・燃える地面）の後に呼ぶ。
+    static void StepBurn(PlayerComponent& player, float dt, uint64_t tick);
     // allowInsufficient は残量が正なら不足分を認める。残量 0 では射撃できない。
     static bool TryConsumeStamina(PlayerComponent& player, float amount, bool allowInsufficient = false);
     static void LockActions(PlayerComponent& player, int frames);

@@ -34,6 +34,7 @@ void FlowComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Color3("backColor", "条の底の色", backColor);
         fields.Float("backOpacity", "条の底の不透明度", backOpacity, 0.0f, 1.0f, 0.01f);
         fields.Color3("healthColor", "HP の色", healthColor);
+        fields.Color3("burningHealthColor", "燃えている間（炎上）の HP の色", burningHealthColor);
         fields.Color3("staminaColor", "スタミナの色", staminaColor);
         fields.Color3("healColor", "回復の残り回数の印の色", healColor);
         fields.Color3("smokeColor", "煙の量の色", smokeColor);

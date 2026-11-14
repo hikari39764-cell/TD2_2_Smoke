@@ -60,7 +60,8 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
     const float staminaY = healY - flow.barGap - flow.staminaBarHeight;
     const float healthY = staminaY - flow.barGap - flow.healthBarHeight;
     bool accepted = Bar(ui, flow, kIdPlayerBack, kIdHealth, flow.playerBarX, healthY, flow.playerBarWidth,
-                        flow.healthBarHeight, Ratio(values.playerHealth, values.playerMaxHealth), flow.healthColor);
+                        flow.healthBarHeight, Ratio(values.playerHealth, values.playerMaxHealth),
+                        values.playerBurn > 0.0f ? flow.burningHealthColor : flow.healthColor);
     accepted = Bar(ui, flow, kIdStaminaBack, kIdStamina, flow.playerBarX, staminaY, flow.playerBarWidth,
                    flow.staminaBarHeight, Ratio(values.playerStamina, values.playerMaxStamina), flow.staminaColor) &&
                accepted;

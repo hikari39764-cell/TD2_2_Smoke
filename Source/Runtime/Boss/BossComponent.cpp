@@ -148,12 +148,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("skyfallBurstFireWidth", "…火の筋の幅 (m)", skyfallBurstFireWidth, 0.5f, 5.0f);
         fields.Int("skyfallBurstIgniteFrames", "…火の筋が着地点から端まで走る長さ (F)", skyfallBurstIgniteFrames, 1,
                    120);
-        fields.Float(
-            "skyfallBurstHitRadius",
-            "…爆ぜた火からこの距離以内のプレイヤーに当たる (m。火の筋は、範囲の半径からこの距離だけ手前まで走る)",
-            skyfallBurstHitRadius, 0.0f, 10.0f);
-        fields.Int("skyfallBurstDamage", "…爆発の威力", skyfallBurstDamage, 0, 1000);
-        fields.Bool("skyfallBurstBlow", "…爆発で吹っ飛ぶ（切はのけぞり）", skyfallBurstBlow);
+        fields.Note("天降り斬りの爆発の威力と当たりの半径は、技の表の「爆発の威力」「爆発の判定 m」です"
+                    "（火の筋は、範囲の半径から当たりの半径だけ手前まで走ります）。");
+        fields.Bool("skyfallBurstBlow", "…爆心で当たった時に吹っ飛ぶ（切はのけぞり。外の輪は常にのけぞり）",
+                    skyfallBurstBlow);
         fields.Float("skyfallBurstFireSeconds", "…気絶・撃破で爆ぜなかった時に、火が残る長さ (秒)",
                      skyfallBurstFireSeconds, 1.0f, 60.0f);
         fields.Float("skyfallBurstPower", "…爆発の火球の強さ（場全体の引爆を 1 とした倍。燃料と押す速さに掛かる）",

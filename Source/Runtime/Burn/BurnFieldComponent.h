@@ -21,6 +21,8 @@ enum class BurnBlastKind : uint8_t {
     // 煙の刃が当たった所・霞隠れや分身の出入り（暗い煙の塊に、少しだけ炎）。
     Smoke,
 };
+// 爆発がプレイヤーに当たった輪。Core＝爆心（威力のまま・技の被弾）、Edge＝外の輪（威力を減らし・のけぞり）。
+enum class BurnBlastZone : uint8_t { None, Edge, Core };
 // 見た目のための 1 塊（位置と半径 m）。引爆では、1 tick に爆ぜたセルをまとめた物。
 struct BurnBlast {
     HIKARI::GameProjectFloat3 position{};
@@ -67,8 +69,14 @@ public:
     float fieldSize = 48.0f;
     float cellSize = 0.5f;
     float arenaRadius = 22.0f;
-    float damageDelay = 0.25f;
-    float damagePerSecond = 8.0f;
+    // 足元からこの半径の円に燃えているセルが掛かれば、火に触れている。
+    float contactRadius = 0.3f;
+    // 触れ続けて燃え移るまでの秒数と、火の中にいる間の炎上の減り方（/秒）。
+    float damageDelay = 0.2f;
+    float damagePerSecond = 14.0f;
+    // 爆発の当たり：爆心は当たりの半径 × blastCoreShare 以内（威力のまま）、その外の輪は威力 × blastEdgeDamageShare。
+    float blastCoreShare = 0.625f;
+    float blastEdgeDamageShare = 0.5f;
     float absorbRange = 5.0f;
     float absorbFanDegrees = 60.0f;
     float absorbNear = 1.5f;
@@ -116,12 +124,12 @@ public:
     // 実行時の状態は保存しない。
     bool initialized = false;
     BurnMap map;
-    // プレイヤーが燃えているセルに続けて立っている秒数（離れた tick に 0 へ戻す）。
+    // プレイヤーが燃えているセルに続けて触れている秒数（離れた tick・無敵の tick・吸い込みで火が消えた tick に 0 へ戻す）。
     float contactSeconds = 0.0f;
     // 吸い込みで消せる面積の持ち越し (m²)。セルは丸ごと消すので、1 tick の量が 1 セルに満たない分をためる。
     float absorbBudget = 0.0f;
     uint64_t tick = 0;
-    // 検証ログ用の累計。
+    // 検証ログ用の累計。fireDamageTotal はプレイヤーの炎上で減った HP の累計（PlayerComponent::burnDamageTotal の写し）。
     double fireDamageTotal = 0.0;
     double absorbedAreaTotal = 0.0;
     double smokeGivenTotal = 0.0;

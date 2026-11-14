@@ -143,6 +143,10 @@ struct BossMove {
     std::vector<int> windupExtras;
     // 崩せる被弾数：前隙（溜めを含む）の間にこれだけ当てられると技が崩れ、気絶する。0 は崩れない。
     int breakHits = 0;
+    // 「爆発の威力」「爆発の判定 m」：一撃に添えて起きる爆発（天降り斬りのフェーズ 2 の着地の火の爆発）の威力と、
+    // 爆ぜた火からの当たりの半径。空欄は 0（爆発は当たらない）。技そのものが爆発（引爆）なら使わない。
+    int blastDamage = 0;
+    float blastSize = 0.0f;
     // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;

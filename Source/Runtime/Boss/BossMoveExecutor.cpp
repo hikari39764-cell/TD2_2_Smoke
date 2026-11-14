@@ -321,7 +321,7 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     if (!swing.done && BossWaves::Touches(frame, sword.base, sword.outer, boss.thickness)) {
         const BossStrikeData& strike = BossMoveTable::Strike(move, g.hitIndex);
         BossWaves::HitPlayer(frame, strike.damage, Sub(PlayerGround(frame), boss.ground), strike.blow, boss.move,
-                             g.hitIndex, "sword");
+                             g.hitIndex, "sword", PlayerDamageType::Slash, boss.bladeLit);
         swing.done = true;
     }
     if (g.tIn >= g.swingLength) {

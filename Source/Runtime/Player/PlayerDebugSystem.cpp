@@ -53,7 +53,8 @@ void ApplyScheduledActions(PlayerComponent& player, PlayerDebugComponent& debug)
     PlayerRules::Initialize(player);
     char message[256]{};
     if (IsDamageScheduled(debug)) {
-        const bool hit = PlayerRules::ApplyDamage(player, debug.damageAmount, debug.damageDirection, debug.damageKind);
+        const bool hit = PlayerRules::ApplyDamage(player, debug.damageAmount, debug.damageDirection, debug.damageKind,
+                                                  PlayerDamageType::Slash);
         ++debug.damageAttempts;
         std::snprintf(message, sizeof(message), "Damage tick=%llu amount=%.3f kind=%s accepted=%d health=%.3f",
                       static_cast<unsigned long long>(debug.elapsedTicks), static_cast<double>(debug.damageAmount),

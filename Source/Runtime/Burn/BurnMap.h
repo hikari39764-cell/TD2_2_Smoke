@@ -26,6 +26,9 @@ public:
     void Step(float dt);
 
     bool IsBurning(HIKARI::GameProjectFloat3 point) const;
+    // point（高さは見ない）を中心とする半径 radius の円に、燃えているセルの正方形が少しでも掛かるか。
+    // 点が入るセルは必ず含む（radius 0 は IsBurning と同じ）。
+    bool AnyBurningWithin(HIKARI::GameProjectFloat3 point, float radius) const;
     size_t BurningCells() const { return burningCells_; }
     float BurningArea() const { return static_cast<float>(burningCells_) * CellArea(); }
 
@@ -37,6 +40,8 @@ public:
     float ClearAll();
     // origin から一番遠い燃えているセルの中心までの水平距離 (m)。燃えていなければ負。
     float FarthestFrom(HIKARI::GameProjectFloat3 origin) const;
+    // point から一番近い燃えているセルの中心までの水平距離 (m)。燃えていなければ負。
+    float NearestTo(HIKARI::GameProjectFloat3 point) const;
     // origin からの水平距離が innerRadius 以上 outerRadius 未満の燃えているセルを消す（引爆の前線が通った輪）。
     // 消したセルごとに visit(中心の世界座標) を呼ぶ。続く tick の輪を隙間なく並べられるよう、内側だけを含める。
     template <class Visitor>

@@ -106,7 +106,8 @@ void StepHit(BossFrame& frame, const BossMove& move) {
     state.caught = true;
     // 真上に降られた時は、落ちてきた向きへ吹き飛ばす。
     const Vec3 push = FlatNormalize(offset, FlatNormalize(Sub(state.target, state.diveFrom), Forward(boss.yaw)));
-    state.hit = BossWaves::HitPlayer(frame, strike.damage, push, strike.blow, boss.move, 0, "skyfall", &state.dodged);
+    state.hit = BossWaves::HitPlayer(frame, strike.damage, push, strike.blow, boss.move, 0, "skyfall",
+                                     PlayerDamageType::Slash, boss.bladeLit, &state.dodged);
 }
 
 } // namespace
@@ -268,8 +269,11 @@ void BossSkyfall::StepBurst(BossFrame& frame) {
     BossSkyfallBurst& burst = boss.skyfallBurst;
     if (!burst.active)
         return;
+    // 爆発の威力と当たりの半径は、技の表の「爆発の威力」「爆発の判定 m」（空欄は 0＝当たらない）。
+    const BossMove* row = BossRules::GetMove(boss, burst.move);
+    const float hitRadius = row != nullptr ? row->blastSize : 0.0f;
     // 火の筋は、範囲の半径から「爆ぜた火が届く距離」を引いた所まで走る（爆発が届く端が、炎の輪の半径に揃う）。
-    const float spokeLength = std::max(0.5f, boss.skyfallBurstRadius - boss.skyfallBurstHitRadius);
+    const float spokeLength = std::max(0.5f, boss.skyfallBurstRadius - hitRadius);
     const float reach = spokeLength + boss.skyfallBurstFireWidth * 0.5f + kSkyfallBurstMargin;
     if (burst.cut) {
         BurnFieldRules::SetHotspot(frame.world, burst.center, 0.0f, 0.0f);
@@ -298,15 +302,18 @@ void BossSkyfall::StepBurst(BossFrame& frame) {
     }
     BurnFieldRules::SetHotspot(frame.world, burst.center, 0.0f, 0.0f);
     BurnExplosion explosion;
-    BurnFieldRules::ExplodeDisc(frame.world, burst.center, reach, boss.skyfallBurstHitRadius,
+    BurnFieldRules::ExplodeDisc(frame.world, burst.center, reach, hitRadius,
                                 frame.player != nullptr ? &frame.playerCenter : nullptr, boss.skyfallBurstPower,
                                 explosion);
-    // 1 回の爆発で当たるのは 1 回だけ。無敵でよけた時は当たらない（斬撃と同じ）。
+    // 1 回の爆発で当たるのは 1 回だけ。無敵でよけた時は当たらない（斬撃と同じ）。全部が同じ tick に爆ぜるので、
+    // 一番近い火で輪を決める：爆心は威力のまま skyfallBurstBlow、外の輪は減らした威力でのけぞる。
     bool hit = false, dodged = false;
-    if (explosion.playerCaught) {
+    if (explosion.zone != BurnBlastZone::None && row != nullptr) {
         const Vec3 player{frame.playerCenter.x, burst.center.y, frame.playerCenter.z};
-        hit = BossWaves::HitPlayer(frame, boss.skyfallBurstDamage, Sub(player, burst.center), boss.skyfallBurstBlow,
-                                   burst.move, 0, "skyfallBurst", &dodged);
+        const bool core = explosion.zone == BurnBlastZone::Core;
+        const int damage = static_cast<int>(std::lround(static_cast<float>(row->blastDamage) * explosion.damageShare));
+        hit = BossWaves::HitPlayer(frame, damage, Sub(player, burst.center), core && boss.skyfallBurstBlow, burst.move,
+                                   0, "skyfallBurst", PlayerDamageType::Explosion, true, &dodged);
     }
     if (explosion.cells > 0) {
         // 真ん中に大きな火球を足し、足元の霧を押す。爆ぜた後には、表の「池」が残る。
@@ -321,9 +328,11 @@ void BossSkyfall::StepBurst(BossFrame& frame) {
             BossBurnMarks::SkyfallBurst(frame, *move, burst.center);
     }
     char extra[192]{};
-    std::snprintf(extra, sizeof(extra), " cells=%u blasts=%u caught=%d hit=%d dodged=%d playerDistance=%.3f",
-                  explosion.cells, explosion.blasts, static_cast<int>(explosion.playerCaught), static_cast<int>(hit),
-                  static_cast<int>(dodged),
+    std::snprintf(extra, sizeof(extra),
+                  " cells=%u blasts=%u caught=%d zone=%s fireDistance=%.3f hit=%d dodged=%d playerDistance=%.3f",
+                  explosion.cells, explosion.blasts, static_cast<int>(explosion.zone != BurnBlastZone::None),
+                  BurnFieldRules::ZoneKey(explosion.zone), static_cast<double>(explosion.playerDistance),
+                  static_cast<int>(hit), static_cast<int>(dodged),
                   frame.player != nullptr
                       ? static_cast<double>(FlatLength(Sub(AimGround(frame, frame.playerCenter), burst.center)))
                       : -1.0);

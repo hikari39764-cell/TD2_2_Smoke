@@ -32,8 +32,9 @@ public:
                         float thickness);
     // プレイヤーに当てる。無敵なら *dodged を立てて（null なら知らせず）false。direction は攻撃が押す向き。
     // 一撃が当たるのは 1 回だけ：呼んだ側は、当たっても無敵で抜けられても、その一撃をもう当てない。
+    // type は Slash か Explosion。当たれば、爆発か、火の付いた一撃（fire）ならプレイヤーが炎上する。
     static bool HitPlayer(BossFrame& frame, int damage, HIKARI::GameProjectFloat3 direction, bool blow, int move,
-                          int strike, const char* source, bool* dodged = nullptr);
+                          int strike, const char* source, PlayerDamageType type, bool fire, bool* dodged = nullptr);
     // 場の霧へ少しずつ入れる煙を置く（煙の単位）。
     static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius);
     // 爆発の枠へ 1 つ入れる。枠は輪で使い回し、埋まっていれば一番古いものを上書きする。

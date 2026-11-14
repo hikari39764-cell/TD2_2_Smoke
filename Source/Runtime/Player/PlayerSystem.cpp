@@ -118,7 +118,7 @@ bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, 
     return true;
 }
 
-void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player) {
+void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
     // ローリングは外部の動作（吸い込み）の最中でも出せて、吸い込みの方が打ち切られる。
     // 回復だけは外部の要求で止める。先行入力は残り、明けた時に通る。
     // 砲撃の動作ロック中でも、打ち切れる F からはローリングで抜けられる。
@@ -146,6 +146,8 @@ void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Pl
         // 打ち切った動作のロックを、ローリングの後へ持ち越さない。
         player.actionLockFrames = 0;
         PlayerRules::EnterState(player, PlayerState::Roll);
+        // 転がると体の火が消える（ローリングに入った tick に消す）。
+        PlayerRules::Extinguish(player, PlayerBurnEnd::Roll, tick);
     } else if (player.healBuffer > 0 && !player.external.healBlocked && PlayerRules::CanStartAction(player) &&
                player.healCharges > 0 && player.health < player.maxHealth) {
         --player.healCharges;
@@ -413,7 +415,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                     ++player.stateFrame;
                                                 player.advanceStateNextTick = false;
                                                 CompleteState(player);
-                                                StartBufferedAction(world, object, player);
+                                                StartBufferedAction(world, object, player, frame.fixedTickIndex);
                                                 // 外部の要求は毎 tick 失効させ、外部システムが消えても減速や停止を
                                                 // 残さない（回復の停止・ローリングの扱いは前の tick の要求なので、
                                                 // 先行入力が使った後に消す）。
@@ -427,6 +429,16 @@ void PlayerSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCont
     world.ForEachComponent<PlayerComponent>(
         HIKARI::MakeComponentTypeId(kPlayerType),
         [&](HIKARI::ObjectView object, PlayerComponent& player) { StepPlayer(world, object, player, frame); });
+}
+
+void PlayerSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+    if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
+        return;
+    // 炎上は、その tick の被弾（ボス）と燃える地面（BurnFieldSystem）が全部済んだ後に進める（点いた tick から減る）。
+    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
+                                            [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                                PlayerRules::StepBurn(player, frame.fixedDt, frame.fixedTickIndex);
+                                            });
 }
 
 void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {

@@ -49,6 +49,8 @@ public:
     HIKARI::GameProjectFloat3 backColor{0.08f, 0.08f, 0.09f};
     float backOpacity = 0.6f;
     HIKARI::GameProjectFloat3 healthColor{0.82f, 0.12f, 0.12f};
+    // プレイヤーが燃えている間（Player.Burn が 0 より大きい間）の HP の色。消えたら healthColor へ戻る。
+    HIKARI::GameProjectFloat3 burningHealthColor{1.0f, 0.5f, 0.1f};
     HIKARI::GameProjectFloat3 staminaColor{0.25f, 0.75f, 0.28f};
     HIKARI::GameProjectFloat3 healColor{0.85f, 0.85f, 0.55f};
     HIKARI::GameProjectFloat3 smokeColor{0.45f, 0.65f, 0.68f};

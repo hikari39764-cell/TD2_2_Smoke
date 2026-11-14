@@ -44,6 +44,8 @@ enum class Column {
     TrackStop,
     WindupJitter,
     BreakHits,
+    BlastDamage,
+    BlastSize,
     Count
 };
 struct HeaderKey {
@@ -52,6 +54,8 @@ struct HeaderKey {
 };
 // 「追尾を止める」は「追尾」より、「崩せる被弾数」は「被弾」より先に見る（後ろの短い見出しに取られないように）。
 constexpr HeaderKey kHeaders[] = {
+    {"爆発の威力", Column::BlastDamage},
+    {"爆発の判定", Column::BlastSize},
     {"追尾を止める", Column::TrackStop},
     {"溜めの揺らぎ", Column::WindupJitter},
     {"崩せる", Column::BreakHits},
@@ -205,6 +209,20 @@ void ReadWindup(const RawMove& raw, BossMove& move) {
     if (!hits.empty() && (!breakHits || *breakHits < 1.0))
         move.warnings.push_back("崩せる被弾数「" + hits + "」が読めないので崩れません（1 以上の回数）");
     move.breakHits = breakHits && *breakHits >= 1.0 ? RoundHalfUp(*breakHits) : 0;
+}
+
+// 「爆発の威力」「爆発の判定 m」。列が無い・空欄は 0（添えて起きる爆発は当たらない）。
+void ReadBlast(const RawMove& raw, BossMove& move) {
+    const std::string& damageText = raw[Column::BlastDamage];
+    const auto damage = NumberOf(damageText);
+    if (!damageText.empty() && (!damage || *damage < 0.0))
+        move.warnings.push_back("爆発の威力「" + damageText + "」が読めないので 0 にしました（0 以上の数）");
+    move.blastDamage = damage && *damage > 0.0 ? RoundHalfUp(*damage) : 0;
+    const std::string& sizeText = raw[Column::BlastSize];
+    const auto size = NumberOf(sizeText);
+    if (!sizeText.empty() && (!size || *size < 0.0))
+        move.warnings.push_back("爆発の判定「" + sizeText + "」が読めないので 0 にしました（0 以上の m）");
+    move.blastSize = size && *size > 0.0 ? static_cast<float>(*size) : 0.0f;
 }
 
 // 1 行を読む中間結果。連撃の参照（別の行の名前）を解くため、全部の行を 2 回読む。
@@ -663,6 +681,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         ReadWindup(raw, move);
+        ReadBlast(raw, move);
         move.act = 0;
         move.hitCount = 0;
         for (const auto& segment : move.segments) {

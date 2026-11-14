@@ -56,6 +56,15 @@
       }
     },
     {
+      "id": "Player.Burn",
+      "name": "Player Burn",
+      "description": "プレイヤーの炎上の残り秒数。燃えていなければ 0。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
       "id": "Gourd.Smoke",
       "name": "Gourd Smoke",
       "description": "ヒョウタンに溜まっている煙の量（煙の量の単位。上限は容量）。",

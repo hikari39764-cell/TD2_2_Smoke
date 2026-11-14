@@ -152,6 +152,7 @@ FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors
     int64_t charges = 0;
     if (ObjectVariables::ReadInt(world, actors.player, kPlayerHealChargesVariable, charges))
         values.healCharges = static_cast<int>(charges);
+    ObjectVariables::ReadFloat(world, actors.player, kPlayerBurnVariable, values.playerBurn);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdSmokeVariable, values.gourdSmoke);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdCapacityVariable, values.gourdCapacity);
     ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);

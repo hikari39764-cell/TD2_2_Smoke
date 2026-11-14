@@ -158,8 +158,9 @@ void StepHit(BossFrame& frame, const BossMove& move, bool last) {
     if (inside) {
         sword.caught = true;
         const BossStrikeData& strike = BossMoveTable::Strike(move, 0);
-        sword.hit = BossWaves::HitPlayer(frame, strike.damage, FlatNormalize(offset, Forward(sword.yaw)), strike.blow,
-                                         boss.move, 0, "greatsword", &sword.dodged);
+        sword.hit =
+            BossWaves::HitPlayer(frame, strike.damage, FlatNormalize(offset, Forward(sword.yaw)), strike.blow,
+                                 boss.move, 0, "greatsword", PlayerDamageType::Slash, sword.fire, &sword.dodged);
     }
     // 当たった・よけられた tick と、最後まで当たらなかった時の薙ぎ終わりに知らせる。
     if (inside || last)
@@ -181,7 +182,7 @@ void StepCleaveHit(BossFrame& frame, const BossMove& move, float reach, bool las
         sword.caught = true;
         const BossStrikeData& strike = BossMoveTable::Strike(move, 0);
         sword.hit = BossWaves::HitPlayer(frame, strike.damage, Forward(sword.cleaveYaw), strike.blow, boss.move, 0,
-                                         "cleave", &sword.dodged);
+                                         "cleave", PlayerDamageType::Slash, sword.fire, &sword.dodged);
         sword.cleaveStruck = sword.hit;
     }
     if (!inside && !last)
@@ -428,7 +429,7 @@ void BossGreatsword::StepEruption(BossFrame& frame) {
             sword.eruptionCaught = true;
             sword.eruptionHit = BossWaves::HitPlayer(frame, boss.greatswordEruptionDamage, Forward(sword.cleaveYaw),
                                                      boss.greatswordEruptionBlow, sword.eruptionMove, 0, "eruption",
-                                                     &sword.eruptionDodged);
+                                                     PlayerDamageType::Explosion, sword.fire, &sword.eruptionDodged);
             sword.cleaveStruck = sword.cleaveStruck || sword.eruptionHit;
             char message[192]{};
             std::snprintf(message, sizeof(message),
