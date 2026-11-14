@@ -110,6 +110,28 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("smokeBlastFuelShare", "煙の塊に混ぜる燃料の割合（煙の中の炎のひらめき）", smokeBlastFuelShare,
                      0.0f, 1.0f);
         fields.Float("smokeBlastPush", "煙の塊が外へ押す速さ (m/s)", smokeBlastPush, 0.0f, 100.0f);
+        fields.Float("jetFuel", "火の刃がプレイヤーに当たった所：体を突き抜ける炎へ 1 フレームに入れる燃料の強さ",
+                     jetFuel, 0.0f, 10000.0f);
+        fields.Float("jetSpeed", "…炎を攻撃の向きへ飛ばす速さ (m/s。大きいほど炎の舌が長い)", jetSpeed, 0.0f, 60.0f);
+        fields.Float("jetRadius", "…燃料の球の半径 (m。炎の舌の太さ)", jetRadius, 0.1f, 4.0f);
+        fields.Float("jetTemperature", "…燃料の温度", jetTemperature, 0.0f, 64.0f);
+        fields.Float("jetSeconds", "…燃料を入れ続ける長さ (秒)", jetSeconds, 0.0f, 2.0f);
+        fields.Float("jetTravel", "…燃料を入れる点が、体の手前から向こうへ進む速さ (m/s。60 未満)", jetTravel, 0.0f,
+                     55.0f);
+        fields.Float("jetPush", "…同じ向きへ、火と場の霧を押す速さ (m/s。0 は押さない)", jetPush, 0.0f, 100.0f);
+        fields.Float("bodyFireFuel", "炎上の間の体の炎：1 フレームに入れる燃料の強さ（0 は出さない）", bodyFireFuel,
+                     0.0f, 10000.0f);
+        fields.Float("bodyFireRadius", "…燃料の球の半径 (m)", bodyFireRadius, 0.1f, 4.0f);
+        fields.Float("bodyFireOrbit", "…燃料を入れる 2 つの点が体の周りを回る半径 (m。体の外側になる大きさにする)",
+                     bodyFireOrbit, 0.0f, 3.0f);
+        fields.Float("bodyFireTurns", "…回る速さ (回/秒)", bodyFireTurns, 0.0f, 10.0f);
+        fields.Float("bodyFireSpread", "…2 つの点の高さの差の半分 (m。体の中心から上と下へ)", bodyFireSpread, 0.0f,
+                     2.0f);
+        fields.Float("bodyFireTemperature", "…燃料の温度", bodyFireTemperature, 0.0f, 64.0f);
+        fields.Float("bodyFireRise", "…燃料を上へ押す速さ (m/s。炎が体から立ちのぼる高さ)", bodyFireRise, 0.0f, 20.0f);
+        fields.Float("bodyFireFadeSeconds", "…消える前に細らせる長さ (秒)", bodyFireFadeSeconds, 0.0f, 10.0f);
+        fields.Float("bodyFireScatter", "…ローリング・吸い込みで消えた瞬間に、炎を外へ散らす速さ (m/s。0 は散らさない)",
+                     bodyFireScatter, 0.0f, 100.0f);
         fields.Note("溜めは、火そのものが熱く・細く・低くなることで見せます（地面や画面の予兆は出しません）。"
                     "爆発は、規則が爆ぜさせた火の塊ごとに、火の域へ燃料と衝撃を入れ、爆発のエフェクトを 1 つ出します"
                     "（1 フレームに 3 つまで。残りは次のフレームへ回るので、広い火は波のように順に爆ぜます）。"

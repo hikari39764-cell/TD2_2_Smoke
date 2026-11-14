@@ -416,6 +416,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "残さない技は、剣は霞のまま、斬撃は暗い煙の刃です。"
                     "剣の炎・当たった所の火球・煙の塊は、場の火の域（ArenaFireField）の流体です。");
         fields.Vfx("blastEffect", "当たった所の爆発のエフェクト（光・火花・爆炎）", blastEffect);
+        fields.Vfx(
+            "fireHitEffect",
+            "火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。体を突き抜ける炎は BurnField の jet の項目）",
+            fireHitEffect);
         fields.Float("slashHitFadeSeconds", "当たった斬撃の炎を消すまでの時間 (秒。爆発の光に隠してすぐ消す)",
                      slashHitFadeSeconds, 0.0f, 1.0f);
         fields.Float("blastPush", "爆発が足元の霧を外へ押す速さ (m/秒、0 は無効)", blastPush, 0.0f, 100.0f);

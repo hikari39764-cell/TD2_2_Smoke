@@ -114,8 +114,13 @@ struct BossBlast {
     bool puff = false;
     // 火を残す技の間に出た（剣が燃えている）。当たった所を火球にする。偽なら暗い煙の塊。
     bool fire = false;
+    // プレイヤーに当たった所（direction は押した向き）。火の刃なら、火球の代わりに、体を突き抜ける炎と火花を出す。
+    bool playerHit = false;
+    // 当たったのが爆発（引爆・着地の火の爆発）。爆発そのものの火球があるので、当たった所には何も足さない。
+    bool explosion = false;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
+    HIKARI::GameProjectFloat3 direction{};
 };
 
 // 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡）。
@@ -716,6 +721,9 @@ public:
     // 見た目：当たった所の爆発（光・火花・爆炎のエフェクトと、足元の霧を外へ押す力）
     HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
+    // 火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。炎そのものは、場の火の域の流体で出す）。
+    HIKARI::GameProjectVfxAssetReference fireHitEffect{"b0e523d7675b2f4320b92d7f1b0cda12",
+                                                       "Assets/Vfx/PlayerFireHit.hvfx"};
     // 当たった斬撃の炎を消すまでの時間。爆発の光に隠して、ほぼすぐ消す（残すと、薄い域の炎が板のように広がって画面を塞ぐ）。
     float slashHitFadeSeconds = 0.07f;
     float wavePartPush = 8.0f;

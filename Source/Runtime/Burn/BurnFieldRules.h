@@ -69,6 +69,10 @@ public:
     // 待ちがいっぱいなら捨てる。
     static void AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
                          BurnBlastKind kind);
+    // 火の刃がプレイヤーに当たった所：position（体の中心）を、direction（水平の向き）へ突き抜ける炎を出す。
+    // 見た目だけで、火の格子や当たりは変えない。scale は炎の太さと量の倍率（ナイフのような小さい当たり用）。
+    static void AddJet(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position,
+                       HIKARI::GameProjectFloat3 direction, float scale);
     // 格子が出来ていなければ、持ち主の物体の位置で作る（BurnFieldSystem が最初の固定 tick に呼ぶ）。
     static void Initialize(HIKARI::ObjectView object, BurnFieldComponent& field);
 

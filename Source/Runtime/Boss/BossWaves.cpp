@@ -148,12 +148,15 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     // （ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
     const bool ignite = accepted && fire;
     if (accepted) {
-        // 当たった所に爆発を出す（ナイフは小さく）。
+        // 当たった所の手応えを出す（ナイフは小さく）。火の当たりは炎が体を突き抜け、霞の当たりは霞が弾ける。
         AddBlast(boss, {.pushPending = true,
                         .effectPending = true,
-                        .fire = boss.bladeLit,
+                        .fire = fire,
+                        .playerHit = true,
+                        .explosion = explosion,
                         .scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f,
-                        .position = frame.playerCenter});
+                        .position = frame.playerCenter,
+                        .direction = push});
     }
     std::snprintf(message, sizeof(message),
                   "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s type=%s fire=%d accepted=%d "

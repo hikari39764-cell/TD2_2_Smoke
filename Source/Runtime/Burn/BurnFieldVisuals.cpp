@@ -22,6 +22,11 @@ constexpr uint64_t kFogInstanceBase = 20000;
 constexpr uint64_t kBlastFuelBase = 160;
 constexpr uint64_t kBlastPushBase = 180;
 constexpr uint64_t kBlastSmokeBase = 200;
+// 当たった所を突き抜ける炎（燃料と、同じ向きの衝撃）と、体の炎（体の周りを回る 2 つの燃料と、消えた瞬間に散らす衝撃）。
+constexpr uint64_t kJetFuelId = 220;
+constexpr uint64_t kJetPushId = 221;
+constexpr uint64_t kBodyFuelBase = 222;
+constexpr uint64_t kBodyScatterId = 224;
 // 1 フレームに見せる塊の数。火の域が受け取れる注入は 32 個で、燃料の点・吸い込みの力と分け合う。残りは次のフレームへ回す。
 constexpr uint32_t kBlastsPerFrame = 3;
 constexpr float kMaximumStrength = 10000.0f;
@@ -221,10 +226,86 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
     field.blastCount -= count;
 }
 
+// 火の刃が当たった所：攻撃の向きへ速さのある熱い燃料を、体の手前から向こうへ動かしながら数フレーム入れる
+// （同じ番号で動かすので、エンジンが通った線に沿って燃料を広げ、炎が体を突き抜ける舌になる）。
+void RenderJet(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field, float seconds) {
+    BurnJet& jet = field.jet;
+    if (!(jet.remaining > 0.0f))
+        return;
+    const HIKARI::FluidView fluid = world.GetFluid();
+    // 終わりへ向けて細らせる（急に切ると、炎の舌の尻が角ばって残る）。
+    const float fade = std::sqrt(std::clamp(jet.remaining / std::max(0.001f, field.jetSeconds), 0.0f, 1.0f));
+    const float radius = std::max(0.1f, field.jetRadius * jet.scale);
+    HIKARI::GameProjectFluidInteraction fuel{};
+    fuel.kind = Kind::Fuel;
+    fuel.position = jet.position;
+    fuel.extents = {radius, std::max(0.0f, field.jetTemperature), 0.0f};
+    fuel.direction = {jet.direction.x * field.jetSpeed, 0.0f, jet.direction.z * field.jetSpeed};
+    fuel.strength = std::clamp(field.jetFuel * jet.scale * fade, 0.0f, kMaximumStrength);
+    fuel.channels = FluidChannels::kFire;
+    if (fuel.strength > 0.0f)
+        field.fluidAccepted = fluid.Submit(object.GetHandle(), kJetFuelId, fuel).Accepted() && field.fluidAccepted;
+    if (field.jetPush > 0.0f) {
+        // 同じ向きへ、まわりの火と場の霧も押す（霧が、攻撃の通った向きへ割れる）。
+        HIKARI::GameProjectFluidInteraction push{};
+        push.kind = Kind::Impulse;
+        push.position = jet.position;
+        push.extents = {radius * 2.0f, 0.0f, 0.0f};
+        push.direction = jet.direction;
+        push.strength = field.jetPush * fade;
+        push.channels = FluidChannels::kFire | FluidChannels::kFog;
+        field.fluidAccepted = fluid.Submit(object.GetHandle(), kJetPushId, push).Accepted() && field.fluidAccepted;
+    }
+    const float step = std::min(field.jetTravel, 55.0f) * seconds;
+    jet.position = {jet.position.x + jet.direction.x * step, jet.position.y, jet.position.z + jet.direction.z * step};
+    jet.remaining -= seconds;
+}
+
+// 炎上の間：体の周りを回る 2 つの点（上と下、向かい合わせ）から、燃料を同じ番号で入れ続ける。体は火の域の障害物なので、
+// 体の中へ入れた燃料は流れず、炎が見えない。体の外側を回して入れると、エンジンが点の通った線に沿って燃料を広げ、
+// 炎が体を巻いて立ちのぼり、動けば尾を引く。ローリング・吸い込みで消えた瞬間は、残った炎を外へ散らす。
+void RenderBody(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field, const BurnBody& body) {
+    if (!body.found)
+        return;
+    const HIKARI::FluidView fluid = world.GetFluid();
+    if (body.remaining > 0.0f && field.bodyFireFuel > 0.0f) {
+        const float fade = field.bodyFireFadeSeconds > 0.0f
+                               ? std::clamp(body.remaining / field.bodyFireFadeSeconds, 0.0f, 1.0f)
+                               : 1.0f;
+        const float angle = 6.2831853f * field.bodyFireTurns * field.visualTime;
+        for (uint64_t i = 0; i < 2; ++i) {
+            const float side = i == 0 ? 1.0f : -1.0f;
+            HIKARI::GameProjectFluidInteraction fuel{};
+            fuel.kind = Kind::Fuel;
+            fuel.position = {body.position.x + side * std::cos(angle) * field.bodyFireOrbit,
+                             body.position.y + side * field.bodyFireSpread,
+                             body.position.z + side * std::sin(angle) * field.bodyFireOrbit};
+            fuel.extents = {std::max(0.1f, field.bodyFireRadius), std::max(0.0f, field.bodyFireTemperature), 0.0f};
+            fuel.direction = {0.0f, field.bodyFireRise, 0.0f};
+            fuel.strength = std::min(kMaximumStrength, field.bodyFireFuel * fade);
+            fuel.channels = FluidChannels::kFire;
+            field.fluidAccepted =
+                fluid.Submit(object.GetHandle(), kBodyFuelBase + i, fuel).Accepted() && field.fluidAccepted;
+        }
+    }
+    if (body.endings == field.bodyEndingsSeen)
+        return;
+    field.bodyEndingsSeen = body.endings;
+    if (!body.scatter || !(field.bodyFireScatter > 0.0f))
+        return;
+    HIKARI::GameProjectFluidInteraction scatter{};
+    scatter.kind = Kind::Impulse;
+    scatter.position = body.position;
+    scatter.extents = {field.bodyFireOrbit + 2.0f * std::max(0.1f, field.bodyFireRadius), 0.0f, 0.0f};
+    scatter.strength = field.bodyFireScatter;
+    scatter.channels = FluidChannels::kFire;
+    field.fluidAccepted = fluid.Submit(object.GetHandle(), kBodyScatterId, scatter).Accepted() && field.fluidAccepted;
+}
+
 } // namespace
 
 void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field,
-                              float seconds) {
+                              const BurnBody& body, float seconds) {
     const BurnMap& map = field.map;
     field.fluidAccepted = true;
     field.vfxAccepted = true;
@@ -235,6 +316,8 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     field.visualTime += seconds;
     // 爆ぜた塊は、火のセルが全部消えた後のフレームにも残っているので、先に見せる。
     RenderBlasts(world, object, field);
+    RenderJet(world, object, field, seconds);
+    RenderBody(world, object, field, body);
     field.burningTiles = 0;
     field.emitterStride = 1;
     if (map.BurningCells() == 0)

@@ -1,0 +1,14 @@
+{
+  "displayName": "PlayerFireHit",
+  "guid": "b0e523d7675b2f4320b92d7f1b0cda12",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/PlayerFireHit.hvfx",
+  "type": "VfxEffect"
+}

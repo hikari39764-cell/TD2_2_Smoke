@@ -34,6 +34,15 @@ struct BurnBlast {
     // 燃料の温度を地面の火の温度（fuelTemperature）へ寄せる（弱い爆発は、白く飛ばずに橙の火球になる）。
     float power = 1.0f;
 };
+// 火の刃が当たった所を突き抜ける炎（BurnFieldRules::AddJet が書き、BurnFieldVisuals が進めて消す）。
+struct BurnJet {
+    // 燃料を入れている点（攻撃の向きへ進む）と、攻撃の向き（水平の単位ベクトル）。
+    HIKARI::GameProjectFloat3 position{};
+    HIKARI::GameProjectFloat3 direction{};
+    float scale = 1.0f;
+    // 出し続ける残りの秒数（0 以下は出していない）。
+    float remaining = 0.0f;
+};
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 32;
 // 爆発のエフェクトの上限（BurnField の blastEffectCap）に選べる最大。出した時刻をこの数だけ覚えておく。
@@ -124,6 +133,22 @@ public:
     float smokeBlastFuelShare = 0.0f;
     float smokeBlastPush = 4.0f;
     float blastBlockSize = 2.0f;
+    float jetFuel = 800.0f;
+    float jetSpeed = 13.0f;
+    float jetRadius = 0.55f;
+    float jetTemperature = 7.5f;
+    float jetSeconds = 0.18f;
+    float jetTravel = 9.0f;
+    float jetPush = 8.0f;
+    float bodyFireFuel = 260.0f;
+    float bodyFireRadius = 0.32f;
+    float bodyFireOrbit = 0.42f;
+    float bodyFireTurns = 1.6f;
+    float bodyFireSpread = 0.3f;
+    float bodyFireTemperature = 7.0f;
+    float bodyFireRise = 3.0f;
+    float bodyFireFadeSeconds = 0.8f;
+    float bodyFireScatter = 5.0f;
     int traceEveryFrames = 0;
 
     // 実行時の状態は保存しない。
@@ -167,6 +192,10 @@ public:
     HIKARI::GameProjectFloat3 hotspotCenter{};
     float hotspotRadius = 0.0f;
     float hotspotCharge = 0.0f;
+    // 火の刃が当たった所を突き抜ける炎（プレイヤーは 1 人なので 1 つ。続けて当たれば新しい方で置き換える）。
+    BurnJet jet;
+    // 体の炎が消えた回数のうち、見た目が散らし終えた分（PlayerComponent::burnEndings と比べる）。
+    uint32_t bodyEndingsSeen = 0;
     // 爆ぜた塊。固定 tick ごとに後ろへ足す（いっぱいなら捨てる）。
     std::array<BurnBlast, kBurnBlastCapacity> blasts{};
     uint32_t blastCount = 0;

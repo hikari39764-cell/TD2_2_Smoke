@@ -255,4 +255,20 @@ void BurnFieldRules::AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat
     });
 }
 
+void BurnFieldRules::AddJet(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position,
+                            HIKARI::GameProjectFloat3 direction, float scale) {
+    WithField(world, [&](BurnFieldComponent& field) {
+        const float length = std::hypot(direction.x, direction.z);
+        if (!(length > 0.0f) || !(field.jetSeconds > 0.0f) || !(scale > 0.0f))
+            return;
+        const HIKARI::GameProjectFloat3 forward{direction.x / length, 0.0f, direction.z / length};
+        // 体の手前（攻撃の来た側）から入れ始め、入れる点が体を通り抜ける。
+        const float back = 0.5f * field.jetTravel * field.jetSeconds;
+        field.jet = {{position.x - forward.x * back, position.y, position.z - forward.z * back},
+                     forward,
+                     scale,
+                     field.jetSeconds};
+    });
+}
+
 } // namespace Project_TD2_2

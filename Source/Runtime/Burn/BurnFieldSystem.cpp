@@ -123,6 +123,23 @@ void Trace(const BurnFieldComponent& field) {
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 
+// 描画フレームの、プレイヤーの体の炎の様子（プレイヤーは 1 人）。
+BurnBody SeeBody(HIKARI::WorldView& world) {
+    BurnBody body;
+    world.ForEachComponent<PlayerComponent>(
+        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
+            HIKARI::GameProjectTransform transform{};
+            if (body.found || !object.GetWorldTransform(transform))
+                return;
+            body.found = true;
+            body.position = transform.position;
+            body.remaining = player.burnRemaining;
+            body.endings = player.burnEndings;
+            body.scatter = player.burnEndReason == PlayerBurnEnd::Roll || player.burnEndReason == PlayerBurnEnd::Absorb;
+        });
+    return body;
+}
+
 } // namespace
 
 void BurnFieldSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
@@ -157,7 +174,8 @@ void BurnFieldSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameCon
                                                    if (done || !field.enabled || !field.map.IsReady())
                                                        return;
                                                    done = true;
-                                                   BurnFieldVisuals::Render(world, object, field, frame.gameDt);
+                                                   BurnFieldVisuals::Render(world, object, field, SeeBody(world),
+                                                                            frame.gameDt);
                                                });
 }
 

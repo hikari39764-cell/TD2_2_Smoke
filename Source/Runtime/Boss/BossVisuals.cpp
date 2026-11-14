@@ -190,6 +190,20 @@ void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss) {
         if (!blast.effectPending)
             continue;
         blast.effectPending = false;
+        if (blast.playerHit && blast.fire) {
+            // 火がプレイヤーに当たった：火球と光の輪は出さない。爆発なら爆発そのものの火球に任せ、火の刃なら、
+            // 攻撃の向きへ体を突き抜ける炎（場の火の域の流体）と、同じ向きへ飛ぶ火花を出す。
+            if (blast.explosion)
+                continue;
+            BurnFieldRules::AddJet(world, blast.position, blast.direction, blast.scale);
+            HIKARI::GameProjectVfxPlayRequest sparks{};
+            sparks.asset = boss.fireHitEffect;
+            sparks.transform = Placed(blast.position, blast.scale,
+                                      BasisRotation(blast.direction, Cross({0.0f, 1.0f, 0.0f}, blast.direction)));
+            sparks.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+            Start(world, boss, sparks);
+            continue;
+        }
         // 塊そのものは流体で出す：剣が燃えている技で当てた所は場の火の域の火球、ほかは場の霧へ弾ける霞の塊。
         BurnFieldRules::AddBlast(world, blast.position,
                                  (blast.puff ? boss.puffRadius : boss.hitBlastRadius) * blast.scale,
