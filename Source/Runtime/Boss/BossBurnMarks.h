@@ -38,6 +38,8 @@ public:
     static void PaintCleaveLine(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 from,
                                 HIKARI::GameProjectFloat3 to, const BossBurnMark& mark,
                                 const HIKARI::GameProjectFloat3* loggedFrom);
+    // 天降り斬り（フェーズ 2）の着地の火が爆ぜた：着地点 center に、表の「池」を塗る（爆ぜた後に残る火）。
+    static void SkyfallBurst(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 center);
     // 「交差」を待っている斬撃が、狙った所へ届いた・当たった・飛びきった時：そこで爆ぜて、X の火を塗る。
     static void WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave);
 };

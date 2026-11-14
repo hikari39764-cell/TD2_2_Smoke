@@ -24,6 +24,12 @@ public:
     static void Post(BossComponent& boss);
     // 技を終えた・打ち切られた（待機へ戻る・気絶・撃破・次の技）：様子を消す。reason はログ用。
     static void Reset(BossComponent& boss, const char* reason);
+    // フェーズ 2 で、着地の後に「火が現れる → 爆ぜる」を出す設定か（出すなら、着地の瞬間の爆発と表の「池」は出さない）。
+    static bool Bursts(const BossComponent& boss);
+    // 着地の火の 1 tick（技の外でも毎 tick 呼ぶ）：火を真ん中から広げ、溜めの見た目を進め、時が来たら爆ぜさせて当てる。
+    static void StepBurst(BossFrame& frame);
+    // 気絶・撃破で打ち切られた：着地の火はもう爆ぜない。
+    static void CutBurst(BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

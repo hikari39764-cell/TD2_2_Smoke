@@ -28,6 +28,9 @@ struct BurnBlast {
     BurnBlastKind kind = BurnBlastKind::Detonation;
     // 引爆の塊が、その引爆で何番目に出来たか（1 から。捨てた塊も数える）。引爆以外は 0。
     uint32_t order = 0;
+    // 引爆の塊の強さ（場全体の引爆は 1。一か所だけの爆発は呼ぶ側が決める）：燃料と押す速さに掛け、1 より小さい分だけ
+    // 燃料の温度を地面の火の温度（fuelTemperature）へ寄せる（弱い爆発は、白く飛ばずに橙の火球になる）。
+    float power = 1.0f;
 };
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 32;
@@ -90,6 +93,9 @@ public:
     float chargeShrink = 0.55f;
     float chargeFuelScale = 1.8f;
     float chargeRiseScale = 0.3f;
+    float hotspotTemperature = 5.5f;
+    float hotspotFuelScale = 1.5f;
+    float hotspotRise = 3.0f;
     HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
     float blastEffectScale = 0.6f;
@@ -134,6 +140,11 @@ public:
     // blastCount を 0 に戻すのは BurnFieldVisuals（描画フレーム）。規則はどちらも読まない。
     // 溜めの進み（0〜1）。溜めていない間・崩された後・爆ぜ始めた後は 0。
     float charge = 0.0f;
+    // 一か所だけの溜め（天降り斬りの着地の火。BurnFieldRules::SetHotspot）：真ん中・半径 (m)・進み（0〜1）。
+    // その円の中の火だけが、溜めの見た目になる。半径か進みが 0 なら無し。
+    HIKARI::GameProjectFloat3 hotspotCenter{};
+    float hotspotRadius = 0.0f;
+    float hotspotCharge = 0.0f;
     // 爆ぜた塊。固定 tick ごとに後ろへ足す（いっぱいなら捨てる）。
     std::array<BurnBlast, kBurnBlastCapacity> blasts{};
     uint32_t blastCount = 0;

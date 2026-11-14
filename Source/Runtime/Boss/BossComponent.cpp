@@ -135,8 +135,32 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("skyfallMaxTravel", "天降り斬り：空中から進める最大の距離 (m)", skyfallMaxTravel, 0.0f, 60.0f);
         fields.Int("skyfallLandCrouchFrames", "天降り斬り：着地で屈んだ体を起こす長さ (F。後隙の始めから)",
                    skyfallLandCrouchFrames, 1, 300);
-        fields.Float("skyfallBlastScale", "天降り斬り：着地の爆発の大きさ（当たった所の爆発に対する倍。0 で出さない）",
-                     skyfallBlastScale, 0.0f, 8.0f);
+        fields.Float(
+            "skyfallBlastScale",
+            "天降り斬り：着地の爆発の大きさ（当たった所の爆発に対する倍。0 で出さない。着地の火が後で爆ぜる時は、"
+            "足元の霧を押す強さだけに使う）",
+            skyfallBlastScale, 0.0f, 8.0f);
+        fields.Int("skyfallBurstDelayFrames",
+                   "天降り斬り（フェーズ 2）：着地の火が爆ぜるまで (F。0 で無し＝着地の瞬間に爆発)",
+                   skyfallBurstDelayFrames, 0, 300);
+        fields.Float("skyfallBurstRadius", "…爆発が届く範囲の半径 (m。炎の輪の半径)", skyfallBurstRadius, 0.0f, 20.0f);
+        fields.Int("skyfallBurstSpokes", "…着地点から走る火の筋の数", skyfallBurstSpokes, 1, 16);
+        fields.Float("skyfallBurstFireWidth", "…火の筋の幅 (m)", skyfallBurstFireWidth, 0.5f, 5.0f);
+        fields.Int("skyfallBurstIgniteFrames", "…火の筋が着地点から端まで走る長さ (F)", skyfallBurstIgniteFrames, 1,
+                   120);
+        fields.Float(
+            "skyfallBurstHitRadius",
+            "…爆ぜた火からこの距離以内のプレイヤーに当たる (m。火の筋は、範囲の半径からこの距離だけ手前まで走る)",
+            skyfallBurstHitRadius, 0.0f, 10.0f);
+        fields.Int("skyfallBurstDamage", "…爆発の威力", skyfallBurstDamage, 0, 1000);
+        fields.Bool("skyfallBurstBlow", "…爆発で吹っ飛ぶ（切はのけぞり）", skyfallBurstBlow);
+        fields.Float("skyfallBurstFireSeconds", "…気絶・撃破で爆ぜなかった時に、火が残る長さ (秒)",
+                     skyfallBurstFireSeconds, 1.0f, 60.0f);
+        fields.Float("skyfallBurstPower", "…爆発の火球の強さ（場全体の引爆を 1 とした倍。燃料と押す速さに掛かる）",
+                     skyfallBurstPower, 0.0f, 4.0f);
+        fields.Float("skyfallBurstBlastScale",
+                     "…爆発の真ん中の火球の大きさ（当たった所の爆発に対する倍。0 で出さない）", skyfallBurstBlastScale,
+                     0.0f, 8.0f);
         fields.Vfx("gatherEffect", "溜める技：溜めの間、剣へ集まって来る光の粒のエフェクト（空なら出さない）",
                    gatherEffect);
         fields.Float("chargeGatherScale", "溜める技：集まる光の粒の大きさ (倍)", chargeGatherScale, 0.0f, 10.0f);
@@ -150,11 +174,14 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("skyfallTakeoffBlastScale", "天降り斬り：跳び上がる時の足元の霞の塊（倍。0 で出さない）",
                      skyfallTakeoffBlastScale, 0.0f, 8.0f);
         fields.Float("skyfallBladeWidth", "天降り斬り：一緒に落ちる刃の幅 (m。0 で出さない)", skyfallBladeWidth, 0.0f, 30.0f);
-        fields.Int("skyfallLandPuffs", "天降り斬り：着地の周りに立つ塊の数", skyfallLandPuffs, 0, 12);
+        fields.Int("skyfallLandPuffs", "天降り斬り：着地の周りに立つ塊の数（着地の火が後で爆ぜる時は出さない）",
+                   skyfallLandPuffs, 0, 12);
         fields.Float("skyfallLandPuffDistance", "…着地点からの距離 (m)", skyfallLandPuffDistance, 0.0f, 20.0f);
         fields.Float("skyfallLandPuffRadius", "…塊の大きさ (m)", skyfallLandPuffRadius, 0.0f, 10.0f);
-        fields.Float("skyfallRingRadius", "天降り斬り：フェーズ 2 の着地の炎の輪の半径 (m。0 で出さない)", skyfallRingRadius,
-                     0.0f, 30.0f);
+        fields.Float("skyfallRingRadius",
+                     "天降り斬り：フェーズ 2 の着地の炎の輪の半径 (m。0 で出さない。着地の火が後で爆ぜる時は、"
+                     "半径は skyfallBurstRadius を使い、爆ぜるまで輪が燃え続ける)",
+                     skyfallRingRadius, 0.0f, 30.0f);
         fields.Float("skyfallRingSeconds", "…輪が広がり切るまで (秒)", skyfallRingSeconds, 0.0f, 5.0f);
         fields.Note(
             "天降り斬りの落ちる先は、技の表の「追尾を止める F」の時のプレイヤーの手前です（空欄なら落ち始めの時）。"

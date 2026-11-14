@@ -581,6 +581,7 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     BossSpecialMoves::EndRetreatCharge(boss, "broken");
     // 空中（天降り斬り・跳躍）で打ち切られたら、その場で地面へ戻す。様子のログは落とす前の高さを残す。
     BossSkyfall::Reset(boss, "interrupted");
+    BossSkyfall::CutBurst(boss);
     BossGreatsword::Reset(boss, "interrupted");
     boss.height = 0.0f;
     boss.sink = 0.0f;

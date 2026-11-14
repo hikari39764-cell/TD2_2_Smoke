@@ -269,6 +269,20 @@ struct BossGreatswordState {
     int firePainted = 0;
 };
 
+// 天降り斬り（フェーズ 2）の、着地の火とその後の爆発。規則（BossSkyfall）が固定 tick ごとに書く。保存しない。
+// 技が終わっても、コンボで次の技へつないでも進む。気絶・撃破で打ち切られたら爆ぜない（火は燃え尽きるまで残る）。
+struct BossSkyfallBurst {
+    bool active = false;
+    // 気絶・撃破で打ち切られた（次の StepBurst が、溜めの見た目を下ろして止める）。
+    bool cut = false;
+    HIKARI::GameProjectFloat3 center{};
+    // 落ちてきた向き (rad)。火の筋は、この向きを挟んで等間隔に走る。
+    float yaw = 0.0f;
+    // 着地からの tick の数と、着地した技の番号（爆ぜた後に残す池と、当たりの記録に使う）。
+    int elapsed = 0;
+    int move = -1;
+};
+
 // 天降り斬りの見た目の状態。見た目（BossSkyfallVisuals）だけが描画フレームごとに読み書きする。保存しない。
 struct BossSkyfallVisualState {
     // 体と一緒に落ちる刃（斬撃のエフェクト）。
@@ -482,6 +496,22 @@ public:
     float skyfallMaxTravel = 16.0f;
     int skyfallLandCrouchFrames = 30;
     float skyfallBlastScale = 1.8f;
+    // 天降り斬りのフェーズ 2：着地した所の周りに、まず火が現れ（着地点から地割れのような筋で走り、範囲の縁に炎の輪が立つ）、
+    // 少し後に爆ぜる。爆ぜる前に吸って消した所は爆ぜない。skyfallBurstDelayFrames が 0 なら無し（着地の瞬間に火球の
+    // 爆発が出て、表の「池」を着地で塗る）。爆ぜた後には、表の「池」が残る。
+    // 爆発が届くのは skyfallBurstRadius（炎の輪の半径）まで：火の筋はそこから skyfallBurstHitRadius 手前まで走り、
+    // 爆ぜた火から skyfallBurstHitRadius 以内のプレイヤーに当たる。
+    int skyfallBurstDelayFrames = 40;
+    float skyfallBurstRadius = 3.5f;
+    int skyfallBurstSpokes = 8;
+    float skyfallBurstFireWidth = 0.8f;
+    int skyfallBurstIgniteFrames = 8;
+    float skyfallBurstHitRadius = 1.4f;
+    int skyfallBurstDamage = 20;
+    bool skyfallBurstBlow = true;
+    float skyfallBurstFireSeconds = 6.0f;
+    float skyfallBurstPower = 0.5f;
+    float skyfallBurstBlastScale = 1.8f;
     // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
     int retreatStepFrames = 20;
@@ -805,6 +835,7 @@ public:
     int activeClones = 0;
     BossDetonation detonation;
     BossSkyfallState skyfall;
+    BossSkyfallBurst skyfallBurst;
     BossRetreatState retreat;
     BossGreatswordState greatsword;
     // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに

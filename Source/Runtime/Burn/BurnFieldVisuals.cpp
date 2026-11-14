@@ -193,11 +193,14 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
             blast.position.x, detonation ? field.map.FloorY() + radius * 0.4f : blast.position.y, blast.position.z};
         const uint64_t slot = static_cast<uint64_t>(index) * 2u + field.blastFlip;
         const float fuelStrength = smoke ? field.smokeBlastStrength * field.smokeBlastFuelShare
-                                         : field.blastFuel * (detonation ? 1.0f : field.hitFuelScale);
+                                         : field.blastFuel * (detonation ? blast.power : field.hitFuelScale);
         HIKARI::GameProjectFluidInteraction fuel{};
         fuel.kind = Kind::Fuel;
         fuel.position = center;
-        fuel.extents = {radius, std::max(0.0f, field.blastTemperature), 0.0f};
+        const float blastTemperature =
+            detonation ? Lerp(field.fuelTemperature, field.blastTemperature, std::clamp(blast.power, 0.0f, 1.0f))
+                       : field.blastTemperature;
+        fuel.extents = {radius, std::max(0.0f, blastTemperature), 0.0f};
         fuel.direction = {0.0f, field.blastRise, 0.0f};
         fuel.strength = std::clamp(fuelStrength, 0.0f, kMaximumStrength);
         fuel.channels = FluidChannels::kFire;
@@ -217,7 +220,7 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
                 fluid.Submit(object.GetHandle(), kBlastSmokeBase + slot, puff).Accepted() && field.fluidAccepted;
         }
         // 向きの無い衝撃：火の域では塊を外へ膨らませ、引爆では場の霧も吹き飛ばす（当たった所の霧はボスの側が押す）。
-        const float pushSpeed = smoke ? field.smokeBlastPush : field.blastPush * (detonation ? 1.0f : 0.6f);
+        const float pushSpeed = smoke ? field.smokeBlastPush : field.blastPush * (detonation ? blast.power : 0.6f);
         if (pushSpeed > 0.0f) {
             HIKARI::GameProjectFluidInteraction push{};
             push.kind = Kind::Impulse;
@@ -274,19 +277,26 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
         field.cover = std::min(coverMax, field.cover * kCoverGrow);
 
     // 引爆の溜め：火そのものが熱く・細く・低くなる（白く締まって、内側へ縮んで見える）。地面や画面の予兆は出さない。
-    const float charge = std::clamp(field.charge, 0.0f, 1.0f);
-    const float shrink = Lerp(1.0f, field.chargeShrink, charge);
+    // 一か所だけの溜め（天降り斬りの着地の火）は、その円の中の点だけを同じ見た目にする。
+    const float fieldCharge = std::clamp(field.charge, 0.0f, 1.0f);
+    const float hotspotCharge = std::clamp(field.hotspotCharge, 0.0f, 1.0f);
     const float sweepStep = std::clamp(field.fuelSweep, 0.0f, 55.0f) * seconds;
-    const float rate = std::max(0.0f, field.fuelRate) * Lerp(1.0f, field.chargeFuelScale, charge);
-    const float rise = field.fuelRise * Lerp(1.0f, field.chargeRiseScale, charge);
-    const float temperature =
-        Lerp(field.fuelTemperature, std::max(field.fuelTemperature, field.chargeTemperature), charge);
     const HIKARI::FluidView fluid = world.GetFluid();
     for (size_t index = 0; index < field.emitters.size(); ++index) {
         BurnEmitter& emitter = field.emitters[index];
         if (!emitter.active)
             continue;
         ++field.activeEmitters;
+        // 一か所だけの溜めは、白く締めずに、炎を濃く・高く・少し熱くする（燃え盛ってから爆ぜる）。
+        const float hotX = emitter.x - field.hotspotCenter.x, hotZ = emitter.z - field.hotspotCenter.z;
+        const float hot = hotX * hotX + hotZ * hotZ <= field.hotspotRadius * field.hotspotRadius ? hotspotCharge : 0.0f;
+        const float shrink = Lerp(1.0f, field.chargeShrink, fieldCharge);
+        const float rate = std::max(0.0f, field.fuelRate) * Lerp(1.0f, field.chargeFuelScale, fieldCharge) *
+                           Lerp(1.0f, field.hotspotFuelScale, hot);
+        const float rise = field.fuelRise * Lerp(1.0f, field.chargeRiseScale, fieldCharge) + field.hotspotRise * hot;
+        const float charged =
+            Lerp(field.fuelTemperature, std::max(field.fuelTemperature, field.chargeTemperature), fieldCharge);
+        const float temperature = Lerp(charged, std::max(charged, field.hotspotTemperature), hot);
         // 燃えているセルの少ない点（火の端）と、消えかけの点は、燃料を絞る。
         const float fade = std::clamp(emitter.remaining / std::max(0.01f, field.fadeSeconds), 0.0f, 1.0f);
         const float share = emitter.share;

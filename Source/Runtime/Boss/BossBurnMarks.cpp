@@ -8,6 +8,7 @@
 
 #include "BossCsv.h"
 #include "BossMath.h"
+#include "BossSkyfall.h"
 #include "BossWaves.h"
 #include "../Burn/BurnFieldRules.h"
 
@@ -290,11 +291,19 @@ void BossBurnMarks::Released(BossFrame& frame, const BossMove& move, int strike)
     const BossBurnMark* pool = Find(move, BossBurnShape::Pool, strike, boss.lastPhaseNumber);
     if (pool == nullptr || move.type == BossMoveType::Ambush)
         return;
+    // 天降り斬りの着地の火が後で爆ぜる設定なら、池は爆ぜた後に塗る（SkyfallBurst）。
+    if (move.type == BossMoveType::Skyfall && BossSkyfall::Bursts(boss))
+        return;
     // 上段溜めは、振り下ろした剣が地面を打つ所（ボスの前）。ほかの型はボスの足元。
     const Vec3 center = move.type == BossMoveType::Overhead
                             ? Add(boss.ground, Mul(Forward(boss.yaw), boss.burnPoolForward))
                             : boss.ground;
     PaintPool(frame, move, strike, *pool, center);
+}
+
+void BossBurnMarks::SkyfallBurst(BossFrame& frame, const BossMove& move, Vec3 center) {
+    if (const BossBurnMark* pool = Find(move, BossBurnShape::Pool, 0, frame.boss.lastPhaseNumber))
+        PaintPool(frame, move, 0, *pool, center);
 }
 
 void BossBurnMarks::Appeared(BossFrame& frame, const BossMove& move, int strike) {

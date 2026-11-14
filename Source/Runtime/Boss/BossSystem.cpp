@@ -16,6 +16,7 @@
 #include "BossPose.h"
 #include "BossRules.h"
 #include "BossSelection.h"
+#include "BossSkyfall.h"
 #include "BossSmoke.h"
 #include "BossVisuals.h"
 #include "BossWaves.h"
@@ -477,6 +478,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                     SyncHealth(bossFrame, object, *health);
                 // 崩れ・気絶・撃破で引爆が打ち切られたら、溜めを燃える地面から下ろす。
                 BossDetonate::Sync(bossFrame);
+                // 天降り斬り（フェーズ 2）の着地の火は、技が終わった後も、爆ぜるまで進める。
+                BossSkyfall::StepBurst(bossFrame);
                 // ボスが動いた跡にも煙が残る（bossResidueStep ごとに 1 回ぶん。吸い込める）。
                 // 空中を動いた分は数えない（天降り斬りで落ちる先の地面に、落ちる前から煙が出てしまう）。
                 if (boss.height < kTrailMaxHeight)

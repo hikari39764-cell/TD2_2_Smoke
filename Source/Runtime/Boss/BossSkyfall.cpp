@@ -4,9 +4,12 @@
 #include <cmath>
 #include <cstdio>
 
+#include "BossBurnMarks.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
+#include "BossRules.h"
 #include "BossWaves.h"
+#include "../Burn/BurnFieldRules.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -15,6 +18,9 @@ using namespace BossMath;
 
 // 着地の爆発を出す高さ（着地点の上 m）。爆発の大きさ（skyfallBlastScale）で見え方は調整できるので、高さは項目にしない。
 constexpr float kSkyfallBlastLift = 1.5f;
+// 着地の火を爆ぜさせる時・溜めの見た目にする時に、火の筋の先（＋幅の半分）へ足す余白 (m)。縁のセルと、縁に置かれた
+// 火の点を取りこぼさない。
+constexpr float kSkyfallBurstMargin = 0.4f;
 
 const char* PhaseName(BossSkyfallPhase phase) {
     switch (phase) {
@@ -36,6 +42,18 @@ void SetPhase(BossComponent& boss, BossSkyfallPhase phase, const char* reason = 
                   static_cast<unsigned long long>(boss.tick), PhaseName(phase), static_cast<double>(boss.height),
                   static_cast<double>(boss.ground.x), static_cast<double>(boss.ground.z), reason ? " reason=" : "",
                   reason ? reason : "");
+    BossLog::Write(message);
+}
+
+// 着地の火の記録：state は lit（着地して火が付いた）・burst（爆ぜた）・cut（打ち切られて爆ぜない）。
+void LogBurst(const BossComponent& boss, const char* state, const char* extra) {
+    const BossSkyfallBurst& burst = boss.skyfallBurst;
+    char message[320]{};
+    std::snprintf(message, sizeof(message),
+                  "SkyfallBurst tick=%llu state=%s center=(%.3f,%.3f) elapsed=%d delay=%d radius=%.3f%s",
+                  static_cast<unsigned long long>(boss.tick), state, static_cast<double>(burst.center.x),
+                  static_cast<double>(burst.center.z), burst.elapsed, boss.skyfallBurstDelayFrames,
+                  static_cast<double>(boss.skyfallBurstRadius), extra);
     BossLog::Write(message);
 }
 
@@ -205,6 +223,21 @@ void BossSkyfall::Land(BossFrame& frame) {
     boss.height = 0.0f;
     boss.crouch = 1.0f;
     SetPhase(boss, BossSkyfallPhase::Landed);
+    if (Bursts(boss)) {
+        // フェーズ 2：着地の瞬間は足元の霧を押すだけ。火はここから広がり、少し後に爆ぜる（StepBurst）。
+        boss.skyfallBurst = {};
+        boss.skyfallBurst.active = true;
+        boss.skyfallBurst.center = state.target;
+        boss.skyfallBurst.yaw = YawOf(FlatNormalize(Sub(state.target, state.diveFrom), Forward(boss.yaw)));
+        boss.skyfallBurst.move = boss.move;
+        if (boss.skyfallBlastScale > 0.0f)
+            BossWaves::AddBlast(boss,
+                                {.pushPending = true,
+                                 .scale = boss.skyfallBlastScale,
+                                 .position = {state.target.x, state.target.y + kSkyfallBlastLift, state.target.z}});
+        LogBurst(boss, "lit", "");
+        return;
+    }
     if (!(boss.skyfallBlastScale > 0.0f))
         return;
     // 着地の爆発（当たった所の爆発と同じ枠。見た目は BossVisuals、足元の霧を押すのは BossSmoke）。
@@ -224,6 +257,83 @@ void BossSkyfall::Post(BossComponent& boss) {
 void BossSkyfall::Reset(BossComponent& boss, const char* reason) {
     SetPhase(boss, BossSkyfallPhase::None, reason);
     boss.skyfall = {};
+}
+
+bool BossSkyfall::Bursts(const BossComponent& boss) {
+    return boss.lastPhaseNumber >= 2 && boss.skyfallBurstDelayFrames > 0 && boss.skyfallBurstRadius > 0.0f;
+}
+
+void BossSkyfall::StepBurst(BossFrame& frame) {
+    BossComponent& boss = frame.boss;
+    BossSkyfallBurst& burst = boss.skyfallBurst;
+    if (!burst.active)
+        return;
+    // 火の筋は、範囲の半径から「爆ぜた火が届く距離」を引いた所まで走る（爆発が届く端が、炎の輪の半径に揃う）。
+    const float spokeLength = std::max(0.5f, boss.skyfallBurstRadius - boss.skyfallBurstHitRadius);
+    const float reach = spokeLength + boss.skyfallBurstFireWidth * 0.5f + kSkyfallBurstMargin;
+    if (burst.cut) {
+        BurnFieldRules::SetHotspot(frame.world, burst.center, 0.0f, 0.0f);
+        LogBurst(boss, "cut", "");
+        burst = {};
+        return;
+    }
+    ++burst.elapsed;
+    // 火は着地点から端へ、地割れのような筋で走る（走り切った後は塗り足さない：吸って消した所は消えたまま）。
+    // 筋は落ちてきた向きを挟んで等間隔（落ちてきた向きの真上には筋を置かない）。塗りつぶした円にはしない：
+    // 広い面が一度に燃えると、炎が舌にならず、白っぽい塊になる。
+    if (burst.elapsed <= boss.skyfallBurstIgniteFrames) {
+        const int spokes = std::max(1, boss.skyfallBurstSpokes);
+        const float length = spokeLength * Share(burst.elapsed, boss.skyfallBurstIgniteFrames);
+        for (int i = 0; i < spokes; ++i) {
+            const float angle = burst.yaw + 2.0f * kPi * (static_cast<float>(i) + 0.5f) / static_cast<float>(spokes);
+            BurnFieldRules::PaintSegment(frame.world, burst.center, Add(burst.center, Mul(Forward(angle), length)),
+                                         boss.skyfallBurstFireWidth, boss.skyfallBurstFireSeconds);
+        }
+    }
+    if (burst.elapsed < boss.skyfallBurstDelayFrames) {
+        // 溜めの見た目：始めはふつうの火で、爆ぜる前に急に燃え盛る。
+        const float fuse = Share(burst.elapsed, boss.skyfallBurstDelayFrames);
+        BurnFieldRules::SetHotspot(frame.world, burst.center, reach, fuse * fuse);
+        return;
+    }
+    BurnFieldRules::SetHotspot(frame.world, burst.center, 0.0f, 0.0f);
+    BurnExplosion explosion;
+    BurnFieldRules::ExplodeDisc(frame.world, burst.center, reach, boss.skyfallBurstHitRadius,
+                                frame.player != nullptr ? &frame.playerCenter : nullptr, boss.skyfallBurstPower,
+                                explosion);
+    // 1 回の爆発で当たるのは 1 回だけ。無敵でよけた時は当たらない（斬撃と同じ）。
+    bool hit = false, dodged = false;
+    if (explosion.playerCaught) {
+        const Vec3 player{frame.playerCenter.x, burst.center.y, frame.playerCenter.z};
+        hit = BossWaves::HitPlayer(frame, boss.skyfallBurstDamage, Sub(player, burst.center), boss.skyfallBurstBlow,
+                                   burst.move, 0, "skyfallBurst", &dodged);
+    }
+    if (explosion.cells > 0) {
+        // 真ん中に大きな火球を足し、足元の霧を押す。爆ぜた後には、表の「池」が残る。
+        if (boss.skyfallBurstBlastScale > 0.0f)
+            BossWaves::AddBlast(boss,
+                                {.pushPending = true,
+                                 .effectPending = true,
+                                 .fire = true,
+                                 .scale = boss.skyfallBurstBlastScale,
+                                 .position = {burst.center.x, burst.center.y + kSkyfallBlastLift, burst.center.z}});
+        if (const BossMove* move = BossRules::GetMove(boss, burst.move))
+            BossBurnMarks::SkyfallBurst(frame, *move, burst.center);
+    }
+    char extra[192]{};
+    std::snprintf(extra, sizeof(extra), " cells=%u blasts=%u caught=%d hit=%d dodged=%d playerDistance=%.3f",
+                  explosion.cells, explosion.blasts, static_cast<int>(explosion.playerCaught), static_cast<int>(hit),
+                  static_cast<int>(dodged),
+                  frame.player != nullptr
+                      ? static_cast<double>(FlatLength(Sub(AimGround(frame, frame.playerCenter), burst.center)))
+                      : -1.0);
+    LogBurst(boss, "burst", extra);
+    burst = {};
+}
+
+void BossSkyfall::CutBurst(BossComponent& boss) {
+    if (boss.skyfallBurst.active)
+        boss.skyfallBurst.cut = true;
 }
 
 } // namespace Project_TD2_2

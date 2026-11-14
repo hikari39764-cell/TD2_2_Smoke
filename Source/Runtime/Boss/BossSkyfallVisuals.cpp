@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/VfxView.h"
 #include "BossMath.h"
+#include "BossSkyfall.h"
 #include "BossVfx.h"
 #include "BossWaves.h"
 #include "../Burn/BurnFieldRules.h"
@@ -19,6 +20,19 @@ using namespace BossVfx;
 constexpr float kSkyfallPuffLift = 0.5f;
 // 炎の輪の出始めの大きさ（広がり切った時に対する割合）。
 constexpr float kSkyfallRingStart = 0.2f;
+
+// 着地の火が後で爆ぜる設定の時の、炎の輪の出始めの大きさ。小さく始めると、着地の瞬間に火球が立って爆発に見える
+// （火が現れるのが先、爆発は後）ので、体の周りの輪から始める。
+constexpr float kSkyfallBurstRingStart = 0.5f;
+
+// 炎の輪の半径：着地の火が後で爆ぜる設定なら、その範囲（輪が、火の筋の走る範囲の縁になる）。
+float RingRadius(const BossComponent& boss) {
+    return BossSkyfall::Bursts(boss) ? boss.skyfallBurstRadius : boss.skyfallRingRadius;
+}
+
+float RingStart(const BossComponent& boss) {
+    return BossSkyfall::Bursts(boss) ? kSkyfallBurstRingStart : kSkyfallRingStart;
+}
 
 // 落ちる間：体と一緒に落ちる刃（斬撃のエフェクトを 1 つ、落ちる向きに向けて持って行く）。着地で砕けさせる。
 void UpdateBlade(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds, bool fire) {
@@ -79,7 +93,8 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds, bo
     BossSkyfallVisualState& look = boss.skyfallVisual;
     const float effectRadius = std::max(0.01f, boss.ringEffectRadius);
     if (landedNow) {
-        look.ringPending = boss.lastPhaseNumber >= 2 && !boss.ringEffect.IsEmpty() && boss.skyfallRingRadius > 0.0f;
+        look.ringPending = boss.lastPhaseNumber >= 2 && !boss.ringEffect.IsEmpty() && boss.skyfallRingRadius > 0.0f &&
+                           RingRadius(boss) > 0.0f;
     } else if (look.ringPending) {
         // 着地の次のフレーム：炎の輪を出す（技が打ち切られていたら出さない）。
         look.ringPending = false;
@@ -88,7 +103,7 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds, bo
             look.ringCenter = {sky.target.x, boss.ground.y + boss.ringHeight, sky.target.z};
             HIKARI::GameProjectVfxPlayRequest play{};
             play.asset = boss.ringEffect;
-            play.transform = Placed(look.ringCenter, kSkyfallRingStart * boss.skyfallRingRadius / effectRadius);
+            play.transform = Placed(look.ringCenter, RingStart(boss) * RingRadius(boss) / effectRadius);
             play.parameters = RingParameters(true, 1.0f);
             look.ringVfx = Start(world, boss, play);
         }
@@ -98,6 +113,9 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds, bo
     if (!look.ringVfx.IsValid())
         return;
     look.ringAge += seconds;
+    // 着地の火が爆ぜるのを待っている間は、広がり切った輪を出し続ける（範囲の中に炎が立ち続け、爆ぜた後に消える）。
+    if (boss.skyfallBurst.active)
+        look.ringAge = std::min(look.ringAge, boss.skyfallRingSeconds);
     const float fade = look.ringAge - boss.skyfallRingSeconds;
     if (fade >= boss.ringFadeSeconds) {
         StopHandle(world, look.ringVfx);
@@ -105,7 +123,7 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds, bo
     }
     const float grow = std::clamp(look.ringAge / std::max(0.001f, boss.skyfallRingSeconds), 0.0f, 1.0f);
     const float glow = fade <= 0.0f ? 1.0f : 1.0f - fade / std::max(0.001f, boss.ringFadeSeconds);
-    const float scale = Lerp(kSkyfallRingStart, 1.0f, grow) * boss.skyfallRingRadius / effectRadius;
+    const float scale = Lerp(RingStart(boss), 1.0f, grow) * RingRadius(boss) / effectRadius;
     Send(world, boss, look.ringVfx, Placed(look.ringCenter, scale), RingParameters(fade <= 0.0f, glow));
 }
 
@@ -134,8 +152,9 @@ void BossSkyfallVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView obj
     UpdateBlade(world, object, boss, seconds, fire);
     // 着地した瞬間：着地点の周りに霞（フェーズ 2 は火球）の塊を立て、フェーズ 2 は次のフレームに炎の輪を広げる。
     // 真ん中の爆発と場の霧の押しは、規則が入れた爆発の枠（skyfallBlastScale）が出す。
+    // フェーズ 2 で着地の火が後で爆ぜる時は、着地の瞬間に火球を立てない（火が現れるのが先、爆発は後）。
     const bool landedNow = sky.phase == BossSkyfallPhase::Landed && seen != BossSkyfallPhase::Landed;
-    if (landedNow) {
+    if (landedNow && !boss.skyfallBurst.active) {
         for (int i = 0; i < boss.skyfallLandPuffs; ++i) {
             const float angle = 2.0f * kPi * (static_cast<float>(i) + 0.5f) / static_cast<float>(boss.skyfallLandPuffs);
             const Vec3 at{sky.target.x + std::cos(angle) * boss.skyfallLandPuffDistance,

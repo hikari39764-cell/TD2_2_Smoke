@@ -46,14 +46,28 @@ public:
     static bool Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin, float innerRadius,
                         float outerRadius, float hitRadius, const HIKARI::GameProjectFloat3* player,
                         BurnExplosion& result);
+    // center から radius 未満の燃えているセルを、1 tick で全部爆ぜさせて消す（一か所だけの爆発）。当たりと塊の出し方は
+    // Explode と同じ。塊の数は、その円の中だけで見込む（場のほかの火が多くても、爆発のエフェクトを間引かない）。
+    // power は、塊の燃料と押す速さに掛ける倍率（場全体の引爆を 1 として、爆発の大きさを決める）。
+    static bool ExplodeDisc(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float hitRadius,
+                            const HIKARI::GameProjectFloat3* player, float power, BurnExplosion& result);
     // 引爆の溜めの進み（0〜1）を見た目へ渡す（BurnFieldComponent::charge）。規則は読まない。
     static void SetCharge(HIKARI::WorldView& world, float charge);
+    // 一か所だけの溜め：center から radius 以内の火だけを、進み charge（0〜1）の溜めの見た目にする。
+    // 終わったら charge を 0 にして呼ぶ。規則は読まない。
+    static void SetHotspot(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float charge);
     // 見た目だけの塊を、場の火の域へ 1 つ出す（当たった所の火球・煙の塊）。火の格子や当たりは変えない。
     // 待ちがいっぱいなら捨てる。
     static void AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
                          BurnBlastKind kind);
     // 格子が出来ていなければ、持ち主の物体の位置で作る（BurnFieldSystem が最初の固定 tick に呼ぶ）。
     static void Initialize(HIKARI::ObjectView object, BurnFieldComponent& field);
+
+private:
+    // Explode と ExplodeDisc の中身。planReach が 0 以上なら、塊の数を origin から planReach 未満のセルだけで見込む。
+    static bool ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin, float innerRadius,
+                            float outerRadius, float hitRadius, const HIKARI::GameProjectFloat3* player,
+                            float planReach, float power, BurnExplosion& result);
 };
 
 } // namespace Project_TD2_2

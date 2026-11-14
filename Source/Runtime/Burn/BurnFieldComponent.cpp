@@ -70,6 +70,12 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("chargeFuelScale", "溜めきった時の燃料の量 (倍)", chargeFuelScale, 0.0f, 10.0f);
         fields.Float("chargeRiseScale", "溜めきった時の、燃料を上へ押す速さ (倍。小さいほど炎が低く張り付く)",
                      chargeRiseScale, 0.0f, 4.0f);
+        fields.Float("hotspotTemperature", "一か所だけの溜め（天降り斬りの着地の火）：溜めきった時の燃料の温度",
+                     hotspotTemperature, 0.0f, 64.0f);
+        fields.Float("hotspotFuelScale", "…溜めきった時の燃料の量 (倍。大きいほど炎が濃く大きい)", hotspotFuelScale,
+                     0.0f, 10.0f);
+        fields.Float("hotspotRise", "…溜めきった時に、燃料を上へ押す速さへ足す分 (m/s。大きいほど炎が高い)",
+                     hotspotRise, 0.0f, 30.0f);
         fields.Vfx("blastEffect", "爆ぜた所の爆発のエフェクト（光・衝撃の輪・火花・煙）", blastEffect);
         fields.Float("blastEffectScale", "…爆発のエフェクトの大きさ (火球の半径に対する倍)", blastEffectScale, 0.0f,
                      10.0f);

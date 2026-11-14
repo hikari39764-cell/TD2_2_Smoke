@@ -29,12 +29,17 @@ int BlockIndex(float offset, float block) { return static_cast<int>(std::floor(o
 // 引爆の前線が最初の輪を通る tick に、この引爆で出来る塊の数を見込む（見た目が爆発のエフェクトを均等に間引くため）。
 // 前線は 1 tick に ringWidth ずつ広がり、Explode は tick ごとに爆ぜたセルを升でまとめるので、燃えているセルを
 // 「何番目の輪か」と「升」の組で分けた、違う組の数が塊の数になる。前線が届く前に燃え尽きるセルの分は多めに出る。
-uint32_t PlanBlasts(BurnFieldComponent& field, HIKARI::GameProjectFloat3 origin, float ringWidth, float block) {
+// reach が 0 以上なら、origin から reach 未満のセルだけを数える（一か所だけの爆発）。
+uint32_t PlanBlasts(BurnFieldComponent& field, HIKARI::GameProjectFloat3 origin, float ringWidth, float block,
+                    float reach) {
     std::vector<uint64_t>& keys = field.blastPlanKeys;
     keys.clear();
     field.map.ForEachBurning([&](int ix, int iz, float) {
         const HIKARI::GameProjectFloat3 c = field.map.CellCenter(ix, iz);
-        const uint64_t ring = static_cast<uint64_t>(std::hypot(c.x - origin.x, c.z - origin.z) / ringWidth);
+        const float distance = std::hypot(c.x - origin.x, c.z - origin.z);
+        if (reach >= 0.0f && distance >= reach)
+            return;
+        const uint64_t ring = static_cast<uint64_t>(distance / ringWidth);
         // 升の番号は 20 bit ずつに詰める（格子の一辺 200 m ÷ 升 0.5 m でも収まる）。
         const uint64_t bx = static_cast<uint32_t>(BlockIndex(c.x - origin.x, block)) & 0xFFFFFu;
         const uint64_t bz = static_cast<uint32_t>(BlockIndex(c.z - origin.z, block)) & 0xFFFFFu;
@@ -132,6 +137,18 @@ float BurnFieldRules::GetFarthestBurning(HIKARI::WorldView& world, HIKARI::GameP
 bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin, float innerRadius,
                              float outerRadius, float hitRadius, const HIKARI::GameProjectFloat3* player,
                              BurnExplosion& result) {
+    return ExplodeBand(world, origin, innerRadius, outerRadius, hitRadius, player, -1.0f, 1.0f, result);
+}
+
+bool BurnFieldRules::ExplodeDisc(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius,
+                                 float hitRadius, const HIKARI::GameProjectFloat3* player, float power,
+                                 BurnExplosion& result) {
+    return ExplodeBand(world, center, 0.0f, radius, hitRadius, player, radius, power, result);
+}
+
+bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 origin, float innerRadius,
+                                 float outerRadius, float hitRadius, const HIKARI::GameProjectFloat3* player,
+                                 float planReach, float power, BurnExplosion& result) {
     result = {};
     return WithField(world, [&](BurnFieldComponent& field) {
         std::array<BlastBlock, kBlastBlockWork> blocks{};
@@ -139,7 +156,7 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
         const float block = std::max(field.map.CellSize(), field.blastBlockSize);
         const float reach = std::max(0.0f, hitRadius);
         if (innerRadius <= 0.0f && outerRadius > 0.0f) {
-            field.blastPlan = PlanBlasts(field, origin, outerRadius, block);
+            field.blastPlan = PlanBlasts(field, origin, outerRadius, block, planReach);
             field.blastOrder = 0;
         }
         const size_t cleared =
@@ -181,7 +198,8 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
             field.blasts[field.blastCount++] = {{b.sumX / n, field.map.FloorY(), b.sumZ / n},
                                                 std::sqrt(n * field.map.CellArea() / kPi),
                                                 BurnBlastKind::Detonation,
-                                                field.blastOrder};
+                                                field.blastOrder,
+                                                std::max(0.0f, power)};
             ++result.blasts;
         }
     });
@@ -189,6 +207,15 @@ bool BurnFieldRules::Explode(HIKARI::WorldView& world, HIKARI::GameProjectFloat3
 
 void BurnFieldRules::SetCharge(HIKARI::WorldView& world, float charge) {
     WithField(world, [&](BurnFieldComponent& field) { field.charge = std::clamp(charge, 0.0f, 1.0f); });
+}
+
+void BurnFieldRules::SetHotspot(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius,
+                                float charge) {
+    WithField(world, [&](BurnFieldComponent& field) {
+        field.hotspotCenter = center;
+        field.hotspotRadius = std::max(0.0f, radius);
+        field.hotspotCharge = std::clamp(charge, 0.0f, 1.0f);
+    });
 }
 
 void BurnFieldRules::AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
