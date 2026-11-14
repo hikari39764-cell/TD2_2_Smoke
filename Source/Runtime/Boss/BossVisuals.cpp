@@ -2,7 +2,6 @@
 
 #include <algorithm>
 
-#include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/VfxView.h"
 #include "BossGreatswordVisuals.h"
 #include "BossMath.h"
@@ -10,7 +9,6 @@
 #include "BossSkyfallVisuals.h"
 #include "BossVfx.h"
 #include "../Burn/BurnFieldRules.h"
-#include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
 #include "../Common/VfxPlayback.h"
 
@@ -21,7 +19,6 @@ using namespace BossMath;
 using namespace BossVfx;
 
 // 剣に沿って場の火の域へ入れる燃料の番号（BossSmoke の注入・押しの番号と重ならない所）。
-constexpr uint64_t kBladeFuelBase = 900;
 
 // 剣先の霞・ナイフの尾の入力。lit は剣が燃えている間（霞を炎の色にする）。
 HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember,
@@ -233,32 +230,21 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss) {
     }
 }
 
-// 火を残す技の間、剣を燃やす：剣に沿って場の火の域へ燃料を入れ（振ると炎が弧を引く）、火が付いた瞬間に小さな火球を出す。
-void UpdateBladeFire(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, bool lit) {
-    const BossSwordPoints sword = boss.swordSmoke ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
-                                                  : BossPose::SwordPoints(boss, BossPose::Target(boss));
-    if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f)
+// 剣に火が付いた瞬間に、剣先へ小さな火球を出す。剣に沿って燃料を入れ続けることはしない：ふだんの剣は模型が無く
+// 見えないので、剣の炎は、ボスのそばの空中に斜めに浮いた火に見え、振った後も淡い煙の弧が空に残る
+// （剣が燃えていることは、剣先の橙の光で見せる。斬撃の炎は、斬撃のエフェクトが出す）。
+void UpdateIgniteFlash(HIKARI::WorldView& world, BossComponent& boss, bool lit) {
+    if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f) {
+        const BossSwordPoints sword = boss.swordSmoke
+                                          ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
+                                          : BossPose::SwordPoints(boss, BossPose::Target(boss));
         BurnFieldRules::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
-    boss.bladeWasLit = lit;
-    // 体が地面から離れている間（跳躍・天降り斬り）は入れない：空中に入れた燃料は、剣が去った後も燃え尽きるまで空に漂う。
-    if (!lit || !(boss.bladeFuel > 0.0f) || boss.height > boss.bladeFuelMaxLift)
-        return;
-    const Vec3 points[2] = {sword.outer, Mul(Add(sword.inner, sword.outer), 0.5f)};
-    for (uint64_t i = 0; i < 2; ++i) {
-        // 同じ番号で出し続けるので、剣が動くとエンジンが通った線に沿って燃料を広げる（炎が剣の跡を引く）。
-        HIKARI::GameProjectFluidInteraction fuel{};
-        fuel.kind = HIKARI::GameProjectFluidInteractionKind::Fuel;
-        fuel.position = points[i];
-        fuel.extents = {boss.bladeFuelRadius, std::max(0.0f, boss.bladeFuelTemperature), 0.0f};
-        fuel.strength = boss.bladeFuel;
-        fuel.channels = FluidChannels::kFire;
-        boss.fluidAccepted =
-            world.GetFluid().Submit(object.GetHandle(), kBladeFuelBase + i, fuel).Accepted() && boss.fluidAccepted;
     }
+    boss.bladeWasLit = lit;
 }
 
 // 剣先の霞：構えでは剣先に集まり、振っている間は剣先が弧を描く（動く注入は通った線に沿って広がる）。
-void UpdateSwordHaze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss) {
+void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss) {
     const bool swinging = boss.swordSmoke;
     const bool kamae = boss.glintFrames > 0 && boss.state == BossState::Act;
     // 火を残す技の間は、前隙の最初から剣が燃えている（技を出す前の 1 枚の画面で見分けられる）。
@@ -266,7 +252,7 @@ void UpdateSwordHaze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
     const bool acting = boss.state == BossState::Act;
     const bool lit = (boss.bladeLit && acting) ||
                      (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
-    UpdateBladeFire(world, object, boss, lit);
+    UpdateIgniteFlash(world, boss, lit);
     // 溜める間（天降り斬りの空中・退き溜め）と、天降り斬りで落ちる間も、剣先の霞と光を出す。
     const bool diving = boss.skyfall.phase == BossSkyfallPhase::Dive;
     const bool charging = boss.chargeVisual > 0.0f || diving;
@@ -301,6 +287,10 @@ void UpdateSwordHaze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
         ember *= Lerp(1.0f, boss.chargeGlowScale, charge) *
                  (1.0f + (boss.skyfallLockFlare - 1.0f) * boss.skyfallVisual.flare);
     }
+    // 剣が燃えている間は、霞（煙）を出さずに光だけにする：ふだんの剣は模型が無く見えないので、火の色の霞は、構えでは
+    // ボスの上の空中に浮いた塊に、振った後は空に残る弧に見える（斬撃の炎は、斬撃のエフェクトが出す）。
+    if (lit && !trailing)
+        amount = 0.0f;
     StartOrSend(world, boss, boss.swordVfx, boss.swordEffect, Placed(position, 1.0f),
                 Parameters(boss, amount, ember, lit));
 }
@@ -316,7 +306,7 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     UpdateRing(world, boss, seconds);
     PlayBlasts(world, boss);
     UpdateKnives(world, boss);
-    UpdateSwordHaze(world, object, boss);
+    UpdateSwordHaze(world, boss);
 }
 
 void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {

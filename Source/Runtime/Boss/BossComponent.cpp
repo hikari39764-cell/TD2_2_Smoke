@@ -409,14 +409,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Vfx("slashSmokeEffect", "火を残さない斬撃のエフェクト（煙の刃。空なら炎の刃で出す）", slashSmokeEffect);
         fields.Float("bladeLitEmber", "火を残す技の間の、剣先の熾火の強さ (倍)", bladeLitEmber, 0.0f, 20.0f);
         fields.Color3("bladeLitColor", "…剣先の霞の色", bladeLitColor);
-        fields.Float("bladeFuel", "…剣に沿って場の火の域へ入れる燃料の強さ（0 は炎を出さない）", bladeFuel, 0.0f,
-                     10000.0f);
-        fields.Float("bladeFuelRadius", "…燃料の球の半径 (m)", bladeFuelRadius, 0.1f, 4.0f);
-        fields.Float("bladeFuelTemperature", "…燃料の温度", bladeFuelTemperature, 0.0f, 64.0f);
-        fields.Float(
-            "bladeFuelMaxLift",
-            "…体が地面からこの高さより上にある間は燃料を入れない (m。跳躍・天降り斬りで空に火が残らないように)",
-            bladeFuelMaxLift, 0.0f, 50.0f);
         fields.Float("igniteFlashRadius", "剣に火が付く瞬間の火球の半径 (m。0 は出さない)", igniteFlashRadius, 0.0f,
                      5.0f);
         fields.Float("hitBlastRadius", "当たった所の火球・煙の塊の半径 (m)", hitBlastRadius, 0.1f, 10.0f);

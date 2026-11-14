@@ -55,11 +55,13 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("fuelRadiusScale", "炎の幅 (燃えている所の幅に対する倍。1 で踏むと痛い範囲とほぼ同じ幅)",
                      fuelRadiusScale, 0.5f, 4.0f);
         fields.Float("fadeSeconds", "消える前に火が細くなり始める残り秒数", fadeSeconds, 0.01f, 30.0f);
-        fields.Int("emitterCount", "燃料の点の最大数", emitterCount, 1, static_cast<int>(kBurnEmitterCapacity));
-        fields.Float("emitterCover", "点 1 つが受け持つ半径の最小 (m。小さいほど火の形が細かい)", emitterCover, 0.5f,
-                     5.0f);
-        fields.Float("emitterCoverMax", "…最大 (m。火が広くて点が足りない時に、ここまで広げる)", emitterCoverMax, 0.5f,
-                     10.0f);
+        fields.Int(
+            "emitterCount",
+            "1 フレームに燃料を入れる所の数（これより燃えている升目が多い時は、数フレームに 1 回ずつ順番に入れる）",
+            emitterCount, 1, static_cast<int>(kBurnEmitterCapacity));
+        fields.Float("emitterTile",
+                     "燃料を入れる升目の一辺 (m。升目ごとに 1 か所。小さいほど火の形が細かいが、順番待ちが増える)",
+                     emitterTile, 0.5f, 8.0f);
         fields.Float("fogBurnAbsorption", "火の下の霧を焼く率 (/s。0 は焼かない)", fogBurnAbsorption, 0.0f, 1000.0f);
         fields.Float("fogBurnRadiusScale", "霧を焼く半径 (燃料の点が受け持つ火の長さの半分に対する倍)",
                      fogBurnRadiusScale, 0.0f, 6.0f);

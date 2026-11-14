@@ -734,10 +734,6 @@ public:
     // 見た目：火を残す技の間、剣が燃える（出す前の構えから、火を残す技だと見分けられる）
     float bladeLitEmber = 2.5f;
     HIKARI::GameProjectFloat3 bladeLitColor{1.0f, 0.45f, 0.14f};
-    float bladeFuel = 160.0f;
-    float bladeFuelRadius = 0.5f;
-    float bladeFuelTemperature = 6.0f;
-    float bladeFuelMaxLift = 1.0f;
     float igniteFlashRadius = 0.7f;
     float hitBlastRadius = 1.1f;
     float kamaeEmberScale = 0.6f;

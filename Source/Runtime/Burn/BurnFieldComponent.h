@@ -39,25 +39,31 @@ inline constexpr size_t kBurnBlastCapacity = 32;
 // 爆発のエフェクトの上限（BurnField の blastEffectCap）に選べる最大。出した時刻をこの数だけ覚えておく。
 inline constexpr size_t kBlastEffectCapMax = 256;
 
-// 燃えている所に居続けて、場の火の域へ燃料を入れる点（BurnFieldVisuals が使う）。
-struct BurnEmitter {
-    bool active = false;
-    float x = 0.0f;
-    float z = 0.0f;
-    // 受け持っているセルの少なさで燃料を絞る割合（0〜1）と、いちばん長く残る秒数（消え際に細らせる）。
-    float share = 0.0f;
-    float remaining = 0.0f;
-    // 受け持っているセルのかたまりの向き（長い方）と、長さ・幅 (m)。火線なら線の向きと線の幅になる。
+// 燃える地面を決まった大きさの升目（タイル）に分け、燃えているセルのあるタイルごとに、場の火の域へ燃料を入れる
+// （BurnFieldVisuals が使う）。タイルは場所で決まるので、ほかの所の火が増えても減っても、そのタイルの炎の位置と太さは
+// 変わらない。ここは、タイルごとにフレームをまたいで持つ分。
+struct BurnTile {
+    // 燃えているセルのかたまりの向き（長い方）。向きの符号を前のフレームに揃えるために持つ。
     float axisX = 1.0f;
     float axisZ = 0.0f;
-    float along = 0.0f;
-    float across = 0.0f;
-    // 長い方へ行き来している今の位置（中心からの距離 m）と、進んでいる向き（+1／-1）。
+    // 長い方へ行き来している今の位置（かたまりの中心からの距離 m）と、進んでいる向き（+1／-1）。
     float sweep = 0.0f;
     float sweepSign = 1.0f;
 };
-// 燃料の点の数の上限。火の域が受け取れる注入は 32 個で、吸い込みの力・剣の炎・爆ぜた塊と分け合う。
+// タイルごとに、そのフレームの燃えているセルを足し合わせる作業場所（タイルの中心からの相対位置で足す）。
+struct BurnTileSum {
+    float x = 0.0f;
+    float z = 0.0f;
+    float xx = 0.0f;
+    float zz = 0.0f;
+    float xz = 0.0f;
+    float remaining = 0.0f;
+    int cells = 0;
+};
+// 1 フレームに出す燃料の点の数の上限。火の域が受け取れる注入は 32 個で、障害物・吸い込みの力・爆ぜた塊と分け合う。
 inline constexpr size_t kBurnEmitterCapacity = 20;
+// 一辺のタイルの数の上限（タイルの一辺を小さくしすぎても、これより細かくは分けない）。
+inline constexpr int kBurnTilesPerSideMax = 64;
 
 // 燃える地面。格子は持ち主の物体の世界位置（XZ）を中心に置き、その高さを床とする。
 // 塗る・消す・当てる規則は BurnFieldRules と BurnFieldSystem が持ち、ここは調整値と実行時の状態だけを持つ。
@@ -83,8 +89,7 @@ public:
     float absorbAreaPerSecond = 12.0f;
     float smokePerArea = 8.0f;
     int emitterCount = 16;
-    float emitterCover = 1.1f;
-    float emitterCoverMax = 3.5f;
+    float emitterTile = 2.0f;
     float fuelRate = 20.0f;
     float fuelRadiusScale = 1.15f;
     float fuelHeight = 0.0f;
@@ -134,10 +139,19 @@ public:
     double absorbedAreaTotal = 0.0;
     double smokeGivenTotal = 0.0;
     // 見た目だけの状態。規則はここを読まない。
-    // 燃料の点と、1 点が受け持つ半径 (m。火が広がって点が足りなくなると広げる)。
-    std::array<BurnEmitter, kBurnEmitterCapacity> emitters{};
-    float cover = 0.0f;
+    // タイルごとの持ち越しと、そのフレームの足し合わせ（大きさが変わった時だけ確保し直す）。一辺のタイルの数と、
+    // タイルの一辺のセルの数。
+    std::vector<BurnTile> tiles;
+    std::vector<BurnTileSum> tileSums;
+    int tilesPerSide = 0;
+    int tileCells = 0;
+    // 検証ログ用：このフレームに燃料を入れたタイルの数・燃えているセルのあるタイルの数・何フレームに 1 回入れているか・
+    // 最初に入れたタイルのかたまりの長さと幅 (m)。
     int activeEmitters = 0;
+    int burningTiles = 0;
+    int emitterStride = 1;
+    float traceAlong = 0.0f;
+    float traceAcross = 0.0f;
     uint32_t renderFrame = 0;
     float visualTime = 0.0f;
     bool fluidAccepted = true;
