@@ -310,7 +310,7 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     UpdateChargeGather(world, boss);
     // 天降り斬り・霞の大剣は爆発の枠へ塊・霧の押しを入れるので、枠を出す所より前に進める。
     BossSkyfallVisuals::Update(world, object, boss, seconds);
-    BossGreatswordVisuals::Update(world, boss, seconds);
+    BossGreatswordVisuals::Update(world, object, boss, seconds);
     UpdateSlashes(world, boss, seconds);
     UpdateRing(world, boss, seconds);
     PlayBlasts(world, boss);

@@ -185,10 +185,46 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      greatswordInnerRadius, 0.0f, 10.0f);
         fields.Int("greatswordDissolveFrames", "霞の大剣：薙いだ後、剣がほどける長さ (F。後隙の始めから)",
                    greatswordDissolveFrames, 1, 300);
+        fields.Float("greatswordOverheadHeight", "縦割り：頭上へ振りかぶった時の柄の高さ（足元から m）",
+                     greatswordOverheadHeight, 0.0f, 10.0f);
+        fields.Float("greatswordOverheadForward", "…柄の前への位置（ボスの中心から m）", greatswordOverheadForward,
+                     -5.0f, 5.0f);
+        fields.Float("greatswordOverheadTilt", "…剣を真上から後ろへ倒す角度 (度)", greatswordOverheadTilt, 0.0f, 90.0f);
+        fields.Int("greatswordCleaveLiftFrames", "縦割り：前隙の最後に、作り出した剣を頭上へ振りかぶる長さ (F)",
+                   greatswordCleaveLiftFrames, 1, 120);
+        fields.Float("greatswordCleaveHiltHeight", "縦割り：叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）",
+                     greatswordCleaveHiltHeight, 0.0f, 10.0f);
+        fields.Float("greatswordCleaveHalfWidth",
+                     "縦割り：刃の当たりの半幅（正面の線から左右へ m。プレイヤーの半径を足す）",
+                     greatswordCleaveHalfWidth, 0.0f, 10.0f);
+        fields.Float("greatswordCleaveHitFrom",
+                     "縦割り：叩きつける進みのこれより後だけ刃が当たる (0〜1。0 で叩きつけ始めから)",
+                     greatswordCleaveHitFrom, 0.0f, 1.0f);
+        fields.Int("greatswordCleaveStuckFrames", "縦割り：叩きつけた剣が地面に刺さったままの長さ (F。後隙の始めから)",
+                   greatswordCleaveStuckFrames, 0, 600);
+        fields.Float("greatswordEruptionSpeed", "縦割り：地を走る噴き上がりの速さ (m/秒。剣先から正面へ)",
+                     greatswordEruptionSpeed, 0.1f, 200.0f);
+        fields.Float("greatswordEruptionReach", "…噴き上がりが届く所（ボスの中心から m）", greatswordEruptionReach,
+                     0.0f, 60.0f);
+        fields.Float("greatswordEruptionHalfWidth",
+                     "…噴き上がりの当たりの半幅（線から左右へ m。プレイヤーの半径を足す）", greatswordEruptionHalfWidth,
+                     0.0f, 10.0f);
+        fields.Int("greatswordEruptionDamage", "…噴き上がりの威力", greatswordEruptionDamage, 0, 1000);
+        fields.Bool("greatswordEruptionBlow", "…噴き上がりで吹っ飛ぶ（切はのけぞり）", greatswordEruptionBlow);
+        fields.Note(
+            "縦割りの刃は叩きつける間だけ、噴き上がりは前線がプレイヤーの所を通った tick だけ当たります（それぞれ 1 回。"
+            "片方をよけても、もう片方は当たり得る）。噴き上がりは刺さっている間・次の技の前隙の間も走り続けます。"
+            "連撃でつないだ技（表の役割「コンボ用」の行）は剣を作り出さず、前隙の全部で振りかぶる・構え直します。");
         fields.Vfx("greatswordMistEffect", "霞の大剣：フェーズ 1 のエフェクト（大剣の模型へ霞を流し込む）", greatswordMistEffect);
         fields.Vfx("greatswordFireEffect", "霞の大剣：フェーズ 2 のエフェクト（炎の大剣）", greatswordFireEffect);
+        fields.Float(
+            "greatswordEffectLength",
+            "霞の大剣：エフェクトの資産の剣の長さ (m。置く大きさ＝剣の長さ÷この値。資産を作り直した時だけ変える)",
+            greatswordEffectLength, 0.1f, 30.0f);
         fields.Float("greatswordFadeSeconds", "霞の大剣：終わった後、残った霞が消えるまで待つ (秒)", greatswordFadeSeconds, 0.0f,
                      5.0f);
+        fields.Float("greatswordRaiseAmount", "縦割り：振りかぶり終わりに流し込む量（作る間に対する倍）",
+                     greatswordRaiseAmount, 0.0f, 10.0f);
         fields.Float("greatswordSweepAmount", "霞の大剣：薙ぐ間に流し込む量（作る間に対する倍）", greatswordSweepAmount, 0.0f,
                      10.0f);
         fields.Float("greatswordSweepFaceTilt", "霞の大剣：薙ぐ間の剣の面の傾き（0 は真上、1 は正面へ 45 度）", greatswordSweepFaceTilt,
@@ -200,6 +236,34 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("greatswordTrailGlow", "…跡の光の大きさ（ふだんの振りに対する倍）", greatswordTrailGlow, 0.0f, 20.0f);
         fields.Int("greatswordSweepPushes", "霞の大剣：薙いだ後に場の霧を押す所の数 (0 で押さない)", greatswordSweepPushes, 0, 8);
         fields.Float("greatswordSweepPushDistance", "…押す所の、ボスからの距離 (m)", greatswordSweepPushDistance, 0.0f, 20.0f);
+        fields.Float("greatswordCleaveFaceTurn", "縦割り：剣の面を真横から正面へ回す角度 (度。0 は正面から見ると線)",
+                     greatswordCleaveFaceTurn, 0.0f, 90.0f);
+        fields.Float("greatswordLandBlastScale",
+                     "縦割り：叩きつけた瞬間の塊の大きさ（当たった所の爆発に対する倍。0 で出さない）",
+                     greatswordLandBlastScale, 0.0f, 10.0f);
+        fields.Int("greatswordSplitPushes", "縦割り：刃の線に沿って場の霧を左右へ割る所の数 (0 で割らない)",
+                   greatswordSplitPushes, 0, 6);
+        fields.Float("greatswordSplitRadius", "…1 つの半径 (m)", greatswordSplitRadius, 0.1f, 10.0f);
+        fields.Float("greatswordSplitSpeed", "…押す速さ (m/秒)", greatswordSplitSpeed, 0.0f, 100.0f);
+        fields.Float("greatswordGeyserBladeHeight",
+                     "縦割り：噴き上がりと一緒に地を走る縦の刃の、地面から出ている高さ (m。0 で出さない)",
+                     greatswordGeyserBladeHeight, 0.0f, 20.0f);
+        fields.Float("greatswordGeyserBladeLift", "…刃の中心の高さ (m)", greatswordGeyserBladeLift, -5.0f, 10.0f);
+        fields.Float("greatswordGeyserRadius", "縦割り：噴き上がりの前線から吹き上げる所の半径 (m)",
+                     greatswordGeyserRadius, 0.05f, 5.0f);
+        fields.Float("greatswordGeyserRise", "…吹き上げる速さ (m/秒)", greatswordGeyserRise, 0.0f, 100.0f);
+        fields.Float("greatswordGeyserFog", "…場の霧へ入れる霞（毎秒の濃さ。フェーズ 1。0 で出さない）",
+                     greatswordGeyserFog, 0.0f, 10000.0f);
+        fields.Float("greatswordGeyserFuel", "…場の火へ入れる燃料（毎秒。炎の大剣。0 で出さない）",
+                     greatswordGeyserFuel, 0.0f, 10000.0f);
+        fields.Float("greatswordGeyserTemperature", "…燃料の温度（炎の大剣）", greatswordGeyserTemperature, 0.0f,
+                     100.0f);
+        fields.Float("greatswordGeyserBurstSpacing", "…途中に塊を出す間隔 (m。0 で出さない)",
+                     greatswordGeyserBurstSpacing, 0.0f, 30.0f);
+        fields.Float("greatswordGeyserBurstScale", "…途中の塊の大きさ（当たった所の爆発に対する倍）",
+                     greatswordGeyserBurstScale, 0.0f, 10.0f);
+        fields.Float("greatswordGeyserEndScale", "…走り切った所の塊の大きさ（倍。0 で出さない）",
+                     greatswordGeyserEndScale, 0.0f, 10.0f);
         fields.Float("greatswordFireNear", "霞の大剣：残す火「弧」の内側の半径 (m)", greatswordFireNear, 0.0f, 30.0f);
         fields.Float("greatswordFireFar", "…外側の半径 (m)", greatswordFireFar, 0.0f, 30.0f);
         fields.Int("greatswordFireRows", "…内側から外側へ並べる本数", greatswordFireRows, 1, 12);
@@ -387,7 +451,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
 }
 
-} // namespace Project_TD2_2
 void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
     // プレイ中の世界だけで書く（編集中は書き手を作らない）。
     if (context.GetWorld().GetGameSession() == nullptr) {
@@ -398,3 +461,4 @@ void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
     ObjectVariables::PublishFloat(context, category, kBossMaxHealthVariable, shownMaxHealth, variableWriteWarned);
 }
 
+} // namespace Project_TD2_2

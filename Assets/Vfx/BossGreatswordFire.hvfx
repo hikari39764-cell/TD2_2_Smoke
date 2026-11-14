@@ -255,7 +255,7 @@
           "transform": {
             "position": [
               0.0,
-              2.86,
+              4.18,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -283,9 +283,9 @@
           "detailScale": 0.2,
           "detailStrength": 0.3,
           "domainSize": [
-            2.8,
-            8.4,
-            1.6
+            3.38,
+            12.28,
+            1.89
           ],
           "emissionColor": [
             1.0,
@@ -311,7 +311,7 @@
           "multipleScattering": 1.0,
           "prewarmSeconds": 0.0,
           "priority": 85,
-          "relativeWind": 0.0,
+          "relativeWind": 0.15,
           "resolution": 256,
           "scatteringColor": [
             0.14,
@@ -1146,7 +1146,7 @@
           "transform": {
             "position": [
               0.0,
-              -2.86,
+              -4.18,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -1155,9 +1155,9 @@
               0.0
             ],
             "scale": [
-              1.0,
-              1.0,
-              1.0
+              1.3,
+              1.4615384615384615,
+              1.3
             ]
           }
         },
@@ -2006,7 +2006,7 @@
           "transform": {
             "position": [
               0.0,
-              -2.86,
+              -4.18,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2015,9 +2015,9 @@
               0.0
             ],
             "scale": [
-              1.0,
-              1.0,
-              1.0
+              1.3,
+              1.4615384615384615,
+              1.3
             ]
           }
         },

@@ -135,7 +135,8 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     case BossMoveType::Detonate: BossDetonate::Charge(frame, std::clamp(progress, 0.0f, 1.0f)); break;
     case BossMoveType::Skyfall: BossSkyfall::Pre(frame); break;
     case BossMoveType::Retreat: RetreatPre(frame, move); break;
-    case BossMoveType::Greatsword: BossGreatsword::Pre(frame, move); break;
+    case BossMoveType::Greatsword:
+    case BossMoveType::GreatswordCleave: BossGreatsword::Pre(frame, move); break;
     default: break;
     }
 }
@@ -151,7 +152,8 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
     case BossMoveType::Ambush: AmbushAct(frame, move, g, entered); break;
     case BossMoveType::Detonate: BossDetonate::Step(frame, move); break;
     case BossMoveType::Skyfall: BossSkyfall::Act(frame, move, g); break;
-    case BossMoveType::Greatsword: BossGreatsword::Act(frame, move, g); break;
+    case BossMoveType::Greatsword:
+    case BossMoveType::GreatswordCleave: BossGreatsword::Act(frame, move, g); break;
     case BossMoveType::Retreat:
         // 振り抜いて斬撃を放った tick（実行器の SwingStep がこの tick に放つ）。
         if (g.hit && g.tIn == g.swingLength)
@@ -181,6 +183,8 @@ void BossSpecialMoves::Trigger(BossFrame& frame, const BossMove& move) {
         BossSkyfall::Land(frame);
     } else if (move.type == BossMoveType::Greatsword) {
         BossGreatsword::BeginSweep(frame);
+    } else if (move.type == BossMoveType::GreatswordCleave) {
+        BossGreatsword::BeginSlam(frame);
     }
 }
 
@@ -192,7 +196,8 @@ void BossSpecialMoves::Post(BossComponent& boss, const BossMove& move, float pro
     case BossMoveType::Ambush:
     case BossMoveType::Clone: boss.sink = 0.0f; break;
     case BossMoveType::Skyfall: BossSkyfall::Post(boss); break;
-    case BossMoveType::Greatsword: BossGreatsword::Post(boss); break;
+    case BossMoveType::Greatsword:
+    case BossMoveType::GreatswordCleave: BossGreatsword::Post(boss); break;
     default: break;
     }
 }

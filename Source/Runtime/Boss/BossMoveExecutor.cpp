@@ -450,6 +450,8 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     else
         ++boss.stateFrame;
     UpdateAimFreeze(frame, move);
+    // 縦割りの噴き上がりは、叩きつけた技の後隙や、コンボでつないだ次の技の前隙の間も走る。
+    BossGreatsword::StepEruption(frame);
     const Vec3 offset = Sub(PlayerGround(frame), boss.ground);
     const float distance = FlatLength(offset);
     const Vec3 toPlayer = FlatNormalize(offset, Forward(boss.yaw));

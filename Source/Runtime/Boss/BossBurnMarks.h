@@ -33,6 +33,11 @@ public:
     // toDegrees まで剣が通った所に「弧」を塗る（greatswordFireStepDegrees 度ごと。painted は塗り終えた所の数で、呼ぶ側が持つ）。
     static void SweptArc(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 center, float yaw,
                          float startDegrees, float toDegrees, int& painted);
+    // 縦割り：叩きつけた刃の下と、地を走る噴き上がりが通った所（from→to）に「線」を塗る（mark は表の線の火）。
+    // 噴き上がりは走る tick ごとに少しずつ塗るので、ログは loggedFrom がある時だけ（loggedFrom→to として）出す。
+    static void PaintCleaveLine(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 from,
+                                HIKARI::GameProjectFloat3 to, const BossBurnMark& mark,
+                                const HIKARI::GameProjectFloat3* loggedFrom);
     // 「交差」を待っている斬撃が、狙った所へ届いた・当たった・飛びきった時：そこで爆ぜて、X の火を塗る。
     static void WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave);
 };

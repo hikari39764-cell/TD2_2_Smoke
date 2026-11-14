@@ -200,7 +200,11 @@ struct BossRetreatState {
 
 // 霞の大剣の段階。作り出す（前隙。最後の greatswordWindFrames で薙ぎ始めの構えへ下ろす）→ 薙ぐ（攻撃中）→
 // ほどける（後隙の始めの greatswordDissolveFrames）。それ以外は None。
-enum class BossGreatswordPhase { None, Conjure, Sweep, Dissolve };
+// 縦割り（型 greatswordCleave）は、作り出す（前隙。最後の greatswordCleaveLiftFrames で頭上へ振りかぶる＝Raise）→
+// 叩きつける（攻撃中）→ 刺さっている（後隙の始めの greatswordCleaveStuckFrames）→ ほどける。
+// 連撃でつないだ時は剣を作り出さない：縦割りへは前隙の全部が振りかぶる（Raise）、横薙ぎへは前隙の全部が、刺さった剣を
+// 抜いて薙ぎ始めの構えへ回す（構え直す＝Ready）。後の値ほど新しい（前の値の意味は変えない）。
+enum class BossGreatswordPhase { None, Conjure, Sweep, Dissolve, Ready, Raise, Slam, Stuck };
 
 // 霞の大剣のいまの形。規則（BossGreatsword）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
 struct BossGreatswordState {
@@ -216,14 +220,48 @@ struct BossGreatswordState {
     HIKARI::GameProjectFloat3 hilt{};
     HIKARI::GameProjectFloat3 direction{0.0f, 1.0f, 0.0f};
     float length = 0.0f;
-    // 炎の大剣か（技を始めた tick の bladeLit。フェーズ 2 で「残す火」が付く時）。
+    // 炎の大剣か（技を始めた tick の bladeLit。フェーズ 2 で「残す火」が付く時）。連撃でつないだ技でも変えない。
     bool fire = false;
+    // 連撃でつないだ一振りか（剣を作り出さずに、前の技の剣のまま続けた）。
+    bool chained = false;
+    // いまの一振りが縦割りか（振りかぶり始めから、次に構え直すまで。剣の平らな面が横を向く）。
+    bool cleave = false;
+    // 振りかぶる進み（振りかぶる間に 0→1。叩きつける・刺さっている・ほどける間は 1）と、叩きつける進み（攻撃中に 0→1）。
+    float raise = 0.0f;
+    float slam = 0.0f;
+    // 縦割りの向き（rad。振りかぶる間は毎 tick のボスの向き、叩きつけ始めた tick に決まる）。
+    float cleaveYaw = 0.0f;
+    // 剣先が地面に着いた tick（boss.tick。まだなら 0）と、その tick だけ立つ印。
+    uint64_t landTick = 0;
+    bool landed = false;
+    // 地を走る噴き上がり：走っているか、前線の世界の位置（地面の高さ）、走り始めた所（着いた剣先の真下）。
+    // 剣先から cleaveYaw の向きへ greatswordEruptionSpeed で greatswordEruptionReach まで走る。次の技の前隙の間も走り続ける。
+    bool erupting = false;
+    HIKARI::GameProjectFloat3 eruptionFront{};
+    HIKARI::GameProjectFloat3 eruptionFrom{};
+    // この縦割りがプレイヤーに当たったか（刃か噴き上がり。次に叩きつけ始めるまで残る。連撃でつないでも消さない）。
+    // 見た目が、地を走る刃をプレイヤーの後ろのカメラへ通さないために読む。
+    bool cleaveStruck = false;
     // ここから下は規則の内側の覚え（見た目は読まない）。
+    // 連撃でつないだ一振りの、つなぎ始めの柄と向き（構え直す・振りかぶるのはここから）。
+    HIKARI::GameProjectFloat3 fromHilt{};
+    HIKARI::GameProjectFloat3 fromDirection{0.0f, 1.0f, 0.0f};
+    // 噴き上がり：前線のボスの中心（着いた tick）からの距離 m、中心、出した技の行、火の幅と秒（0 は残さない）・塗り終えた距離。
+    float eruptionDistance = 0.0f;
+    HIKARI::GameProjectFloat3 eruptionOrigin{};
+    int eruptionMove = -1;
+    float eruptionBurnWidth = 0.0f;
+    float eruptionBurnSeconds = 0.0f;
+    float eruptionPainted = 0.0f;
+    // 噴き上がりの当たり（1 回の縦割りで 1 回だけ）：判定に入った・当てた・無敵でよけられた。
+    bool eruptionCaught = false;
+    bool eruptionHit = false;
+    bool eruptionDodged = false;
     // 薙ぐ向きの基準（薙ぎ始めの tick のボスの向き。rad）と、いまと 1 tick 前の剣の角度（基準からの度。右が負）。
     float yaw = 0.0f;
     float angle = 0.0f;
     float previousAngle = 0.0f;
-    // 当たり（1 回の薙ぎで 1 回だけ）：判定に入った・当てた・無敵でよけられた。
+    // 当たり（1 回の薙ぎ・縦割りの刃で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
     bool caught = false;
     bool hit = false;
     bool dodged = false;
@@ -256,6 +294,14 @@ struct BossGreatswordVisualState {
     float fade = 0.0f;
     // 前のフレームに見た段階（変わった瞬間を見つける）。
     BossGreatswordPhase seenPhase = BossGreatswordPhase::None;
+    // 最後に見た着地の tick（変わったフレームに、叩きつけの塊と霧の割れを出す）。
+    uint64_t seenLandTick = 0;
+    // 噴き上がり：前のフレームに走っていたか、走り始めから塊を出し終えた所までの距離 m、最後に見た前線。
+    bool seenErupting = false;
+    float geyserBurstAt = 0.0f;
+    HIKARI::GameProjectFloat3 geyserFront{};
+    // 噴き上がりの前線と一緒に地を走る縦の刃（斬撃のエフェクトを 1 つ）。走り切ったら砕けて消える。
+    BossSlashEffect geyserBlade{};
 };
 
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
@@ -329,6 +375,8 @@ struct BossBrainMemory {
 class BossComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
+    // HUD などが読めるよう、HP と最大 HP を自分の物体の物体変数へ毎フレーム書く。
+    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
 
     // 表
     std::string movesPath = "Boss/kasumi_bushi_moves.csv";
@@ -364,8 +412,6 @@ public:
     float breakRumbleHigh = 0.7f;
     int breakRumbleFrames = 12;
     int breakFlashFrames = 12;
-    // HUD などが読めるよう、HP と最大 HP を自分の物体の物体変数へ毎フレーム書く。
-    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
     // 崩した・気絶した瞬間に体の中心から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で出さない）。
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
     float breakBlastScale = 1.8f;
@@ -406,6 +452,9 @@ public:
     float poseSwayDegrees = 7.0f;
     float crouchSquash = 0.18f;
     float stunLeanRadians = 0.45f;
+    // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
+    int deadVanishDelayFrames = 60;
+    int deadVanishFrames = 30;
     // 動きの型ごとの体の動き
     float dashStopDistance = 2.84f;
     int dashTeleportFrames = 12;
@@ -437,13 +486,10 @@ public:
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
     int retreatStepFrames = 20;
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
-    float greatswordLength = 6.5f;
+    float greatswordLength = 9.5f;
     float greatswordHiltOffset = 0.8f;
     int greatswordFillFrames = 80;
     float greatswordRaiseTilt = 15.0f;
-    // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
-    int deadVanishDelayFrames = 60;
-    int deadVanishFrames = 30;
     float greatswordRaiseHeight = 2.6f;
     int greatswordWindFrames = 14;
     float greatswordSweepDegrees = 200.0f;
@@ -451,15 +497,39 @@ public:
     float greatswordHitMarginDegrees = 4.0f;
     float greatswordInnerRadius = 1.0f;
     int greatswordDissolveFrames = 24;
+    // 縦割り（型 greatswordCleave。前隙・叩きつける F・後隙・刃の威力と被弾・追尾を止める F・崩せる被弾数・残す火は技の表）。
+    // 頭上の構え：柄の高さ（足元から m）・前への位置 m・真上から後ろへ倒す角度（度）。作り出してから振りかぶる F。
+    float greatswordOverheadHeight = 3.4f;
+    float greatswordOverheadForward = 0.3f;
+    float greatswordOverheadTilt = 10.0f;
+    int greatswordCleaveLiftFrames = 16;
+    // 叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）。
+    // 刃の当たり：正面の線の半幅 m と、叩きつける進みのどこから当たるか（0〜1）。
+    float greatswordCleaveHiltHeight = 1.2f;
+    float greatswordCleaveHalfWidth = 1.1f;
+    float greatswordCleaveHitFrom = 0.5f;
+    // 剣が地面に刺さったままの長さ（F。後隙の始めから。その後 greatswordDissolveFrames でほどける）。
+    int greatswordCleaveStuckFrames = 40;
+    // 地を走る噴き上がり：速さ m/s・届く所（ボスの中心から m）・線の半幅 m・威力・吹っ飛ぶか（切はのけぞり）。
+    float greatswordEruptionSpeed = 30.0f;
+    float greatswordEruptionReach = 18.0f;
+    float greatswordEruptionHalfWidth = 1.2f;
+    int greatswordEruptionDamage = 25;
+    bool greatswordEruptionBlow = false;
     // ── 霞の大剣の見た目（規則は変えない） ──
-    // 大剣のエフェクト：大剣の模型（Assets/Models/KasumiGreatsword.obj。握りから剣先まで 6.5 m）の輪郭へ流体を流し込む。
-    // フェーズ 1 は霞、フェーズ 2（炎の大剣）は火。剣の長さ greatswordLength は、この模型の長さに合わせてある。
+    // 大剣のエフェクト：大剣の模型（Assets/Models/KasumiGreatsword.obj。握りから剣先まで 6.5 m）を、資産の中で
+    // 握りから剣先まで greatswordEffectLength（9.5 m）に伸ばして、その輪郭へ流体を流し込む。フェーズ 1 は霞、フェーズ 2
+    // （炎の大剣）は火。置く時の大きさは greatswordLength ÷ greatswordEffectLength（当たりの長さを少し変えても付いて来る。
+    // 流体の域の大きさは変わらないので、大きく変える時は資産を作り直す：Library/Handover/round28/greatsword_fx.py length=…）。
     HIKARI::GameProjectVfxAssetReference greatswordMistEffect{"c2e6f08a4b1d47c39a5e7d103f8b6a42",
                                                               "Assets/Vfx/BossGreatswordMist.hvfx"};
     HIKARI::GameProjectVfxAssetReference greatswordFireEffect{"d93a7b15e0c24f8ab46d2e9c7a01f5b3",
                                                               "Assets/Vfx/BossGreatswordFire.hvfx"};
+    float greatswordEffectLength = 9.5f;
     // 技が終わった・崩された後、残った霞が消えるまでエフェクトを止めずに待つ秒。
     float greatswordFadeSeconds = 0.6f;
+    // 振りかぶる間に流し込む量（振りかぶり終わりに、作る間のこの倍まで増やす。刃がふくらんで明るくなる）。
+    float greatswordRaiseAmount = 3.0f;
     // 薙ぐ間に流し込む量（作る間に対する倍）。速く回る域の中で霞が薄まるのを補い、刃を明るく保つ。
     float greatswordSweepAmount = 2.5f;
     // 薙ぐ間の剣の平らな面の傾き（0＝真上を向く＝横から見ると線、1＝ボスの正面へ 45 度傾いて、前のプレイヤーから面が見える）。
@@ -471,12 +541,37 @@ public:
     float greatswordTrailGlow = 2.0f;
     // 薙ぎ終わった時、剣が通った所の場の霧を外へ押す所の数と、ボスからの距離 m（0 で押さない）。
     int greatswordSweepPushes = 4;
-    float greatswordSweepPushDistance = 4.5f;
+    float greatswordSweepPushDistance = 6.5f;
+    // 縦割りの間の剣の平らな面：真横（刃が縦に立つ。正面から見ると線）から、正面へこの角度だけ回す（度。正面のプレイヤーから
+    // も面が見える）。
+    float greatswordCleaveFaceTurn = 35.0f;
+    // 叩きつけた瞬間：剣先に出す塊の大きさ（当たった所の爆発に対する倍。0 で出さない）と、刃の線に沿って
+    // 場の霧を左右へ割る押しの所の数・1 つの半径 m・速さ m/秒。
+    float greatswordLandBlastScale = 1.8f;
+    int greatswordSplitPushes = 4;
+    float greatswordSplitRadius = 2.5f;
+    float greatswordSplitSpeed = 14.0f;
+    // 地を走る噴き上がりの見た目。前線と一緒に、縦に立てた刃（斬撃のエフェクト：霞の刃／炎の刃）が地を走る：
+    // 地面から出ている高さ m（0 で出さない）と、刃の中心の高さ m。前線は、足元の場の霧を左右へ割りながら進む
+    // （半径と速さは上の「割る押し」と同じ）。
+    float greatswordGeyserBladeHeight = 5.0f;
+    float greatswordGeyserBladeLift = 0.6f;
+    // 前線から吹き上げる霞（炎の大剣は燃料）の半径 m・上向きの速さ m/秒・毎秒の濃さ／燃料と温度、
+    // 途中に塊を出す間隔 m と大きさ（倍）、走り切った所の塊の大きさ（倍。0 で出さない）。
+    float greatswordGeyserRadius = 1.2f;
+    float greatswordGeyserRise = 14.0f;
+    float greatswordGeyserFog = 0.0f;
+    float greatswordGeyserFuel = 250.0f;
+    float greatswordGeyserTemperature = 5.0f;
+    float greatswordGeyserBurstSpacing = 4.0f;
+    float greatswordGeyserBurstScale = 0.7f;
+    float greatswordGeyserEndScale = 1.3f;
     // 「弧」の火：ボスからこの距離の間に rows 本、薙いだ角度の step 度ごとに小さな円を塗る（円の直径は表の火の幅）。
-    float greatswordFireNear = 3.0f;
-    float greatswordFireFar = 7.0f;
-    int greatswordFireRows = 3;
-    float greatswordFireStepDegrees = 20.0f;
+    // 剣を 9.5 m に伸ばした時に、円の間隔が前（6.5 m の時の 3〜7 m・3 本・20 度）と同じくらいになるようにしてある。
+    float greatswordFireNear = 4.0f;
+    float greatswordFireFar = 10.0f;
+    int greatswordFireRows = 4;
+    float greatswordFireStepDegrees = 14.0f;
     // ── 溜める技の見た目（天降り斬りの空中・退き溜め。規則は変えない） ──
     // 溜める間（規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
     // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
@@ -645,6 +740,12 @@ public:
 
     // 実行時の状態は保存しない。
     bool initialized = false;
+    // 戦いの流れ（Flow）が、戦いが始まるまでボスの行動を止めている間 true。技を頼まず、歩かない。
+    bool held = false;
+    // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
+    float shownHealth = 0.0f;
+    float shownMaxHealth = 0.0f;
+    bool variableWriteWarned = false;
     bool tableLoaded = false;
     BossMoveTable table;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。
@@ -701,12 +802,6 @@ public:
     std::array<HIKARI::GameProjectFloat3, kBossCloneCapacity> cloneSpots{};
     int cloneSpotCount = 0;
     bool cloneSpawnPending = false;
-    // 戦いの流れ（Flow）が、戦いが始まるまでボスの行動を止めている間 true。技を頼まず、歩かない。
-    bool held = false;
-    // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
-    float shownHealth = 0.0f;
-    float shownMaxHealth = 0.0f;
-    bool variableWriteWarned = false;
     int activeClones = 0;
     BossDetonation detonation;
     BossSkyfallState skyfall;

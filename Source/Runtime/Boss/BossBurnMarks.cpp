@@ -89,7 +89,10 @@ std::optional<BossBurnMark> ReadMark(std::string_view token) {
 // その形を塗る動きがある型か。無い型に書いた火は塗られないまま剣だけ燃えるので、読む時に断る。
 const char* ShapeProblem(BossBurnShape shape, BossMoveType type) {
     switch (shape) {
-    case BossBurnShape::Line: return BossMoveTable::IsSwingType(type) ? nullptr : "線は斬撃を飛ばす型だけが残します";
+    case BossBurnShape::Line:
+        return BossMoveTable::IsSwingType(type) || type == BossMoveType::GreatswordCleave
+                   ? nullptr
+                   : "線は斬撃を飛ばす型と縦割りの型だけが残します";
     case BossBurnShape::Trail: return type == BossMoveType::Dash ? nullptr : "跡は瞬間突進の型だけが残します";
     case BossBurnShape::Ring: return type == BossMoveType::Kick ? nullptr : "輪は回し蹴り（霞の輪）の型だけが残します";
     case BossBurnShape::Arc: return type == BossMoveType::Greatsword ? nullptr : "弧は霞の大剣の型だけが残します";
@@ -363,6 +366,19 @@ void BossBurnMarks::SweptArc(BossFrame& frame, const BossMove& move, Vec3 center
                   static_cast<double>(center.x), static_cast<double>(center.z), static_cast<double>(toDegrees),
                   painted - before, rows);
     LogPaint(boss, move, 0, *mark, geometry);
+}
+
+void BossBurnMarks::PaintCleaveLine(BossFrame& frame, const BossMove& move, Vec3 from, Vec3 to,
+                                    const BossBurnMark& mark, const Vec3* loggedFrom) {
+    const BossComponent& boss = frame.boss;
+    BurnFieldRules::PaintSegment(frame.world, Floor(boss, from), Floor(boss, to), mark.width, mark.seconds);
+    if (loggedFrom == nullptr)
+        return;
+    char geometry[192]{};
+    std::snprintf(geometry, sizeof(geometry), "from=(%.3f,%.3f) to=(%.3f,%.3f) length=%.3f",
+                  static_cast<double>(loggedFrom->x), static_cast<double>(loggedFrom->z), static_cast<double>(to.x),
+                  static_cast<double>(to.z), static_cast<double>(FlatLength(Sub(to, *loggedFrom))));
+    LogPaint(boss, move, 0, mark, geometry);
 }
 
 void BossBurnMarks::RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave) {
