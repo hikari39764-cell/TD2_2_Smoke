@@ -120,6 +120,19 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("backstepDistance", "後ろへ下がる：距離 (m)", backstepDistance, 0.0f, 30.0f);
         fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", backstepHeight, 0.0f, 10.0f);
         fields.Float("jumpHeight", "跳躍：跳ぶ高さ (m)", jumpHeight, 0.0f, 20.0f);
+        fields.Float("detonateRaiseShare", "引爆の前隙：剣を頭上へ掲げ終える所（前隙の割合。体が浮き上がる）",
+                     detonateRaiseShare, 0.05f, 0.9f);
+        fields.Float("detonatePlantShare", "…剣を地面へ突き立て終える所（前隙の割合。ここから爆ぜるまでが溜め）",
+                     detonatePlantShare, 0.1f, 0.95f);
+        fields.Float("detonateLift", "…掲げる間に体が浮き上がる高さ (m)", detonateLift, 0.0f, 5.0f);
+        fields.Float("detonatePlantBlast", "…突き立てた瞬間に足元へ出す火球の半径 (m。0 は出さない)",
+                     detonatePlantBlast, 0.0f, 5.0f);
+        fields.Int("detonatePulses", "…溜めの間に、場の火が脈を打つ回数（間隔はだんだん縮む。0 は脈なし）",
+                   detonatePulses, 0, 8);
+        fields.Float("detonatePulseDepth", "…脈の深さ（0〜1。脈の間は、火の締まり方をこの分だけ緩める）",
+                     detonatePulseDepth, 0.0f, 1.0f);
+        fields.Float("detonatePulseQuicken", "…脈の間隔が縮む割合（次の間隔 ＝ 前の間隔 × この値）",
+                     detonatePulseQuicken, 0.3f, 1.0f);
         fields.Float("jumpCrouchShare", "跳躍：前隙のうち屈む割合（残りで跳ぶ）", jumpCrouchShare, 0.0f, 0.95f, 0.01f);
         fields.Float("skyfallHeight", "天降り斬り：跳ぶ高さ (m)", skyfallHeight, 0.0f, 40.0f);
         fields.Float("skyfallBackDrift", "天降り斬り：跳ぶ間に後ろへ流れる距離 (m)", skyfallBackDrift, 0.0f, 10.0f);

@@ -150,6 +150,8 @@ struct BossSwing {
 // 引爆の 1 回ぶん。攻撃中に入った tick に始め、前線が火を通り過ぎたら（または打ち切られたら）終える。
 struct BossDetonation {
     bool active = false;
+    // 前隙で、剣を地面へ突き立てた（足元の火球を 1 回だけ出すため）。
+    bool planted = false;
     // 溜めの進みを燃える地面へ渡している間（溜めをやめた tick に 0 へ戻すため）。
     bool charging = false;
     // 前線の中心（攻撃中に入った時のボスの足元）と、その時に一番遠かった燃えているセルまでの距離 (m)。
@@ -491,6 +493,13 @@ public:
     float backstepHeight = 0.5f;
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
     float jumpHeight = 3.6f;
+    float detonateRaiseShare = 0.42f;
+    float detonatePlantShare = 0.58f;
+    float detonateLift = 0.6f;
+    float detonatePlantBlast = 0.9f;
+    int detonatePulses = 3;
+    float detonatePulseDepth = 0.45f;
+    float detonatePulseQuicken = 0.8f;
     float jumpCrouchShare = 0.28f;
     // 天降り斬り（前隙＝屈む F ＋跳び上がる F ＋残りが空中の溜め。攻撃中＝落ちる F ＋残りが着地の当たり。
     // 前隙・攻撃中・後隙・当たりの半径・威力・落ちる先を決める F（追尾を止める F）は技の表）

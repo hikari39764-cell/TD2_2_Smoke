@@ -38,12 +38,49 @@ void Finish(BossFrame& frame, bool interrupted) {
     BossLog::Write(message);
 }
 
+// 突き立てた所の火球を、地面からこの高さに出す。
+constexpr float kPlantBlastLift = 0.3f;
+// 脈の立ち上がりの長さ（その脈までの間隔に対する割合）と、脈の後の緩み方の速さ。
+constexpr float kPulseAttack = 0.18f;
+constexpr float kPulseDecay = 5.0f;
+
+// 溜めの進み h（0〜1）での、場の火の締まり方（0＝緩んでいる、1＝締まり切っている）。脈は count 回で、間隔は quicken 倍ずつ
+// 縮む（最後の脈から爆ぜるまでも、その続きの間隔）。脈ごとに、手前で素早く締まり、その後ゆっくり緩む。最後は締まり切って終わる。
+float Pulse(float h, int count, float quicken) {
+    h = std::clamp(h, 0.0f, 1.0f);
+    if (count <= 0)
+        return h;
+    // 間隔は first, first·q, first·q², …（count + 1 個で 1 になる）。
+    float sum = 0.0f;
+    float power = 1.0f;
+    for (int k = 0; k <= count; ++k) {
+        sum += power;
+        power *= quicken;
+    }
+    float value = 0.0f;
+    float at = 0.0f;
+    float gap = 1.0f / sum;
+    for (int k = 0; k <= count; ++k) {
+        // この間隔の終わりが、脈（最後の間隔の終わりは、爆ぜる時）。
+        const float peak = at + gap;
+        const float attack = gap * kPulseAttack;
+        if (h <= peak)
+            value = std::max(value, std::clamp((h - (peak - attack)) / attack, 0.0f, 1.0f));
+        else
+            value = std::max(value, std::exp(-kPulseDecay * (h - peak) / (gap * quicken)));
+        at = peak;
+        gap *= quicken;
+    }
+    return value;
+}
+
 } // namespace
 
 void BossDetonate::Charge(BossFrame& frame, float progress) {
     BossComponent& boss = frame.boss;
     if (!boss.detonation.charging) {
         boss.detonation.charging = true;
+        boss.detonation.planted = false;
         char message[192]{};
         std::snprintf(message, sizeof(message), "DetonateCharge tick=%llu cells=%zu area=%.3f percent=%.3f",
                       static_cast<unsigned long long>(boss.tick), BurnFieldRules::GetBurningCells(frame.world),
@@ -51,7 +88,42 @@ void BossDetonate::Charge(BossFrame& frame, float progress) {
                       static_cast<double>(BurnFieldRules::GetBurningFraction(frame.world) * 100.0f));
         BossLog::Write(message);
     }
-    BurnFieldRules::SetCharge(frame.world, progress);
+    // 前隙の動き：掲げる（体が浮く）→ 突き立てる（落ちて屈む）→ 溜める。地面や画面の予兆は出さず、ボスの体と剣先の光、
+    // 場の火の様子で見せる。
+    const float raise = std::clamp(boss.detonateRaiseShare, 0.05f, 0.9f);
+    const float plant = std::clamp(boss.detonatePlantShare, raise + 0.01f, 0.99f);
+    if (progress < raise) {
+        const float up = progress / raise;
+        boss.height = boss.detonateLift * (1.0f - (1.0f - up) * (1.0f - up));
+        boss.crouch = 0.0f;
+        boss.chargeVisual = 0.6f * up;
+        BurnFieldRules::SetCharge(frame.world, 0.0f);
+        return;
+    }
+    if (progress < plant) {
+        const float down = (progress - raise) / (plant - raise);
+        boss.height = boss.detonateLift * (1.0f - down * down);
+        boss.crouch = down * down;
+        boss.chargeVisual = 0.6f + 0.4f * down;
+        BurnFieldRules::SetCharge(frame.world, 0.0f);
+        return;
+    }
+    boss.height = 0.0f;
+    boss.crouch = 1.0f;
+    if (!boss.detonation.planted) {
+        // 突き立てた瞬間：足元から火が噴き、足元の霧を押しのける。
+        boss.detonation.planted = true;
+        const Vec3 feet{boss.ground.x, boss.ground.y + kPlantBlastLift, boss.ground.z};
+        if (boss.detonatePlantBlast > 0.0f)
+            BurnFieldRules::AddBlast(frame.world, feet, boss.detonatePlantBlast, BurnBlastKind::Hit);
+        BossWaves::AddBlast(boss, {.pushPending = true, .position = feet});
+    }
+    // 溜め：場の火が脈を打つ（火が白く締まっては緩む）。間隔はだんだん縮み、最後の脈の後、締まり切って爆ぜる。
+    const float pulse = Pulse((progress - plant) / (1.0f - plant), boss.detonatePulses,
+                              std::clamp(boss.detonatePulseQuicken, 0.3f, 1.0f));
+    const float depth = std::clamp(boss.detonatePulseDepth, 0.0f, 1.0f);
+    BurnFieldRules::SetCharge(frame.world, 1.0f - depth * (1.0f - pulse));
+    boss.chargeVisual = 0.5f + 0.5f * pulse;
 }
 
 void BossDetonate::Begin(BossFrame& frame) {
@@ -134,7 +206,9 @@ void BossDetonate::Sync(BossFrame& frame) {
         if (InPhase(boss, BossActPhase::Act)) {
             BurnFieldRules::SetCharge(frame.world, 1.0f);
         } else {
+            // 前隙の途中で崩された・気絶した：浮き上がっていた体を地面へ戻す。
             detonation.charging = false;
+            boss.height = 0.0f;
             BurnFieldRules::SetCharge(frame.world, 0.0f);
         }
     }

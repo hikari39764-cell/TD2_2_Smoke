@@ -201,6 +201,18 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
         return Swing(boss, kUpRight, kDownLeft, g.tIn, g.swingLength);
     }
     case BossMoveType::Kick: return kHeld;
+    case BossMoveType::Detonate: {
+        // 剣を頭上へ掲げ、切っ先を下へ向けて地面へ突き立て、溜めの間・爆ぜる間は突き立てたまま。後隙で抜いて戻す。
+        if (phase == BossActPhase::Post)
+            return Sweep(kPlunge, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
+        if (phase != BossActPhase::Pre)
+            return kPlunge;
+        const float progress = static_cast<float>(t) / static_cast<float>(std::max(1, move.pre));
+        const float raise = std::clamp(boss.detonateRaiseShare, 0.05f, 0.9f);
+        const float plant = std::max(raise + 0.01f, boss.detonatePlantShare);
+        return progress < raise ? Sweep(kRest, kUp, progress / raise)
+                                : Sweep(kUp, kPlunge, (progress - raise) / (plant - raise));
+    }
     case BossMoveType::Clone: return kForward;
     case BossMoveType::Skyfall:
         // 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
