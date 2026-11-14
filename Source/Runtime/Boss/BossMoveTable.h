@@ -106,6 +106,8 @@ struct BossStrikeData {
     float homing = 0.0f;
     float step = 0.0f;
     bool blow = false;
+    // 吹っ飛ばす距離 (m)。0 はプレイヤーの既定（knockbackDistance）。
+    float knockDistance = 0.0f;
     int damage = 0;
     // 参照した行（-1 は参照なし）。
     int reference = -1;
@@ -147,6 +149,8 @@ struct BossMove {
     // 爆ぜた火からの当たりの半径。空欄は 0（爆発は当たらない）。技そのものが爆発（引爆）なら使わない。
     int blastDamage = 0;
     float blastSize = 0.0f;
+    // 「吹っ飛びの距離 m」：この技の斬撃が吹っ飛ばす距離。空欄は 0（プレイヤーの既定）。添えて起きる爆発には使わない。
+    float knockDistance = 0.0f;
     // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;

@@ -56,10 +56,28 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("staggerStepTwo", "二歩目の距離 (m)", staggerStepTwo, 0.0f, 10.0f);
         fields.Float("staggerStepThree", "三歩目の距離 (m)", staggerStepThree, 0.0f, 10.0f);
         fields.Int("staggerHitStopFrames", "のけぞりヒットストップ (F)", staggerHitStopFrames, 0, 60);
+        fields.Note(
+            "吹っ飛びの距離は、ボスの技の表の「吹っ飛びの距離 m」が空ならこの値です。総距離と F は変わりません。");
         fields.Float("knockbackDistance", "吹っ飛び距離 (m)", knockbackDistance, 0.0f, 30.0f);
         fields.Int("knockbackFrames", "吹っ飛び (F)", knockbackFrames, 1, 600);
+        fields.Float("knockbackEasePower", "吹っ飛びの出だしの速さ（1 は等速、大きいほど前が速く後ろがゆっくり）",
+                     knockbackEasePower, 1.0f, 5.0f);
         fields.Float("knockbackHeight", "吹っ飛びの放物線の高さ (m、0 は地面を滑る)", knockbackHeight, 0.0f, 10.0f);
+        fields.Float("knockbackApexAt", "頂点に届く時（飛行の割合）", knockbackApexAt, 0.05f, 0.9f);
+        fields.Float("knockbackLandAt", "着地する時（飛行の割合。以降は残りを地面で滑る）", knockbackLandAt, 0.1f,
+                     1.0f);
         fields.Int("knockbackHitStopFrames", "吹っ飛びヒットストップ (F)", knockbackHitStopFrames, 0, 60);
+        fields.Float("knockbackLandShake", "着地のカメラ揺れ幅 (m、0 は無効)", knockbackLandShake, 0.0f, 1.0f);
+        fields.Int("knockbackLandShakeFrames", "着地のカメラ揺れ・振動の時間 (F)", knockbackLandShakeFrames, 0, 120);
+        fields.Float("knockbackLandRumble", "着地の振動の強さ (0〜1、0 は無効)", knockbackLandRumble, 0.0f, 1.0f);
+        fields.Float("knockbackLandPushRadius", "着地で足元の霧を外へ押す半径 (m)", knockbackLandPushRadius, 0.01f,
+                     10.0f);
+        fields.Float("knockbackLandPush", "着地で霧を外へ押す強さ (m/s、0 は無効)", knockbackLandPush, 0.0f, 100.0f);
+        fields.Float("knockbackLandPushHeightOffset", "着地の霧の押しの中心高さ補正 (m)", knockbackLandPushHeightOffset,
+                     -5.0f, 5.0f);
+        fields.Float("knockbackCameraFov", "吹っ飛びでカメラを引く画角 (度、0 は無効)", knockbackCameraFov, 0.0f,
+                     30.0f);
+        fields.Int("knockbackCameraFovFrames", "引いたカメラが戻るまで (F)", knockbackCameraFovFrames, 0, 120);
         fields.Float("hitCameraAmplitudeStagger", "のけぞりのカメラ揺れ幅 (m、0 は無効)", hitCameraAmplitudeStagger, 0.0f,
                      1.0f);
         fields.Int("hitCameraFramesStagger", "のけぞりのカメラ揺れ時間 (F)", hitCameraFramesStagger, 0, 120);

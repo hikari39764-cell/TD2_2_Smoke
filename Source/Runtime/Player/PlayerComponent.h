@@ -83,9 +83,24 @@ public:
     int staggerHitStopFrames = 5;
     float knockbackDistance = 6.0f;
     int knockbackFrames = 30;
-    // 吹っ飛びの放物線の頂点の高さ。knockbackFrames の半分で頂点に届き、終わりに着地する。
-    float knockbackHeight = 1.3f;
+    // 進んだ距離 = knockbackDistance × (1 − (1 − 進み)^knockbackEasePower)。ローリングと同じ形で、前が速く後ろが遅い。
+    float knockbackEasePower = 2.2f;
+    // 吹っ飛びの放物線の頂点の高さ。knockbackApexAt（飛行の割合）で頂点に届き、knockbackLandAt で着地して、
+    // 残りは地面を滑る。
+    float knockbackHeight = 0.8f;
+    float knockbackApexAt = 0.2f;
+    float knockbackLandAt = 0.55f;
     int knockbackHitStopFrames = 8;
+    // 着地の重み：小さなカメラの揺れ・手柄の振動・足元の霧を外へ押す一発。
+    float knockbackLandShake = 0.06f;
+    int knockbackLandShakeFrames = 6;
+    float knockbackLandRumble = 0.5f;
+    float knockbackLandPushRadius = 1.6f;
+    float knockbackLandPush = 5.0f;
+    float knockbackLandPushHeightOffset = -0.45f;
+    // 吹っ飛ばされた時にカメラを少し引いて（画角を広げて）戻す。
+    float knockbackCameraFov = 4.0f;
+    int knockbackCameraFovFrames = 18;
     // 食らった時のカメラの揺れと振動（c-d330c0。止めは上の値のまま）。のけぞりは小さく短く、吹っ飛びは大きく長く。
     float hitCameraAmplitudeStagger = 0.05f;
     int hitCameraFramesStagger = 8;
@@ -191,6 +206,14 @@ public:
     bool pendingHitFeedback = false;
     bool pendingHitFeedbackKnockback = false;
     Feedback::CameraShake hitShake{};
+    // 吹っ飛びの画角の引き。揺れとは別の送り手で出す（同時に出せるように）。
+    Feedback::CameraShake knockbackFov{};
+    // いまの吹っ飛びの距離（食らった時に決まる。表の「吹っ飛びの距離 m」が空なら knockbackDistance）と、始めた位置。
+    float knockbackDistanceNow = 0.0f;
+    HIKARI::GameProjectFloat3 knockbackOrigin{};
+    // 着地した tick に立て、描画フレームの手応え（揺れ・振動）と霧の押しが使ったら消す。
+    bool pendingLandFeedback = false;
+    bool pendingLandFog = false;
     // 最後に受け入れた被弾（ApplyDamage）の種類と、被弾の通し番号（見た目が「新しく当たった」を知る）。
     PlayerDamageType lastHitType = PlayerDamageType::Slash;
     uint32_t hitCount = 0;

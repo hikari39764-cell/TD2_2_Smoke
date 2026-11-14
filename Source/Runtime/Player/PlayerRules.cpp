@@ -69,7 +69,7 @@ void PlayerRules::EnterState(PlayerComponent& player, PlayerState state) {
 }
 
 bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::GameProjectFloat3 direction,
-                              PlayerDamageKind kind, PlayerDamageType type) {
+                              PlayerDamageKind kind, PlayerDamageType type, float knockbackDistance) {
     Initialize(player);
     if (!IsAlive(player) || IsInvulnerable(player) || !std::isfinite(amount) || amount <= 0.0f ||
         !std::isfinite(direction.x) || !std::isfinite(direction.z)) {
@@ -89,6 +89,8 @@ bool PlayerRules::ApplyDamage(PlayerComponent& player, float amount, HIKARI::Gam
         kind == PlayerDamageKind::Knockback ? player.knockbackHitStopFrames : player.staggerHitStopFrames;
     player.pendingHitFeedback = true;
     player.pendingHitFeedbackKnockback = kind == PlayerDamageKind::Knockback;
+    player.knockbackDistanceNow =
+        std::isfinite(knockbackDistance) && knockbackDistance > 0.0f ? knockbackDistance : player.knockbackDistance;
     if (player.health <= 0.0f) {
         EnterDeath(player);
     } else {

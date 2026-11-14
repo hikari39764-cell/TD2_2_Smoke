@@ -141,9 +141,11 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     }
     const Vec3 push = FlatNormalize(direction);
     const bool explosion = type == PlayerDamageType::Explosion;
+    // 吹っ飛ばす距離は斬撃の表の値（空欄はプレイヤーの既定）。添えて起きる爆発は表の値を使わず、既定の距離にする。
+    const float knockDistance = row != nullptr && !explosion ? BossMoveTable::Strike(*row, strike).knockDistance : 0.0f;
     const bool accepted =
         PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
-                                 blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger, type);
+                                 blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger, type, knockDistance);
     // 火の当たり（火の刃・燃える地面の爆発）は体に燃え移る。霞の噴き上がりのような火の無い爆発は燃え移らない
     // （ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
     const bool ignite = accepted && fire;

@@ -18,11 +18,12 @@ namespace {
 constexpr uint64_t kMotionSource = 0x5444325001ull;
 constexpr uint64_t kHitStopSource = 0x5444325003ull;
 constexpr uint64_t kHitCameraSource = 0x5444325004ull;
+constexpr uint64_t kHitFovSource = 0x5444325005ull;
 constexpr uint64_t kRollFogInstance = 1;
 constexpr uint64_t kRollFireInstance = 2;
 constexpr uint64_t kFireObstacleInstance = 3;
+constexpr uint64_t kKnockbackLandFogInstance = 4;
 constexpr int kPlayerPriority = 300;
-constexpr float kFramesPerSecond = 60.0f;
 constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 // 向きを変える入力として扱う最小の倒し量。スティックの遊びで向きが震えないようにする。
@@ -90,10 +91,25 @@ int StateDuration(const PlayerComponent& player) {
     }
 }
 
-void CompleteState(PlayerComponent& player) {
+// 水平に、吹っ飛びを始めた位置からどれだけ離れたか（ログ用）。
+float KnockbackTravelled(HIKARI::ObjectView object, const PlayerComponent& player) {
+    HIKARI::GameProjectTransform transform{};
+    if (!object.GetWorldTransform(transform))
+        return 0.0f;
+    return std::hypot(transform.position.x - player.knockbackOrigin.x, transform.position.z - player.knockbackOrigin.z);
+}
+
+void CompleteState(HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
     const int duration = StateDuration(player);
     if (duration <= 0 || player.stateFrame < duration) {
         return;
+    }
+    if (player.state == PlayerState::Knockback) {
+        // 最後の tick の動きまで物体の位置へ反映された後なので、ここで測る距離が吹っ飛びの総距離になる。
+        char message[160]{};
+        std::snprintf(message, sizeof(message), "KnockbackEnd tick=%llu travelled=%.3f",
+                      static_cast<unsigned long long>(tick), static_cast<double>(KnockbackTravelled(object, player)));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
     }
     const auto next = player.state == PlayerState::Knockback ? PlayerState::Down
                       : player.state == PlayerState::Down    ? PlayerState::GetUp
@@ -211,7 +227,11 @@ Vec3 StateVelocity(PlayerComponent& player, float dt) {
     } else if (player.state == PlayerState::Stagger) {
         distance = StaggerStep(player);
     } else if (player.state == PlayerState::Knockback) {
-        distance = player.knockbackDistance / static_cast<float>(player.knockbackFrames);
+        // 前が速く後ろが遅い（ローリングと同じ形）。合計はちょうど knockbackDistanceNow。
+        distance =
+            player.knockbackDistanceNow *
+            (PlayerRules::EaseOutFraction(player.stateFrame + 1, player.knockbackFrames, player.knockbackEasePower) -
+             PlayerRules::EaseOutFraction(player.stateFrame, player.knockbackFrames, player.knockbackEasePower));
     }
     const float speed = distance / dt;
     return {player.actionDirection.x * speed, 0.0f, player.actionDirection.z * speed};
@@ -258,15 +278,59 @@ void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCom
         TurnToward(player, player.moveInput, player.turnSpeed, dt);
 }
 
-// 吹っ飛びの放物線。knockbackFrames（N F、T 秒）の半分で knockbackHeight（h）に届き、終わりに元の高さへ戻る。
-// 下向きの加速度は 8h/T²。運動学ソルバーは F ごとに速度を先に減らしてから進めるので、初速を (N+1)/N 倍して
-// 頂点と着地を F の刻みにそろえる（4h/T のままだと頂点が 1 割ほど低くなる）。
-void KnockbackArc(const PlayerComponent& player, float& outLaunchSpeed, float& outGravity) {
+// 吹っ飛びの高さの輪郭。飛行（knockbackFrames）の knockbackApexAt で頂点（高さ knockbackHeight）に届き、
+// knockbackLandAt で高さ 0 へ着く。上りと下りを別の放物線でつなぎ、頂点では速さが 0 でそろう。
+// 着地より後は地面を滑る（高さの輪郭は 0 で、重力はいつもどおり）。
+struct KnockbackProfile {
+    float apexFrames = 1.0f;
+    float landFrames = 2.0f;
+};
+
+KnockbackProfile MakeKnockbackProfile(const PlayerComponent& player) {
     const float frames = static_cast<float>(std::max(1, player.knockbackFrames));
-    const float seconds = frames / kFramesPerSecond;
+    KnockbackProfile profile;
+    profile.apexFrames = std::max(1.0f, player.knockbackApexAt * frames);
+    profile.landFrames = std::max(profile.apexFrames + 1.0f, player.knockbackLandAt * frames);
+    return profile;
+}
+
+// 着地が完了する tick の番号（その tick の終わりで高さが 0 に届く）。
+int KnockbackLandTick(const KnockbackProfile& profile) { return static_cast<int>(std::ceil(profile.landFrames)) - 1; }
+
+// 飛び始めから frames F たった時の高さ。
+float KnockbackHeightAt(const PlayerComponent& player, const KnockbackProfile& profile, float frames) {
     const float height = std::max(0.0f, player.knockbackHeight);
-    outGravity = 8.0f * height / (seconds * seconds);
-    outLaunchSpeed = 4.0f * height / seconds * (frames + 1.0f) / frames;
+    if (frames <= 0.0f || frames >= profile.landFrames)
+        return 0.0f;
+    if (frames < profile.apexFrames) {
+        const float left = 1.0f - frames / profile.apexFrames;
+        return height * (1.0f - left * left);
+    }
+    const float fall = (frames - profile.apexFrames) / (profile.landFrames - profile.apexFrames);
+    return height * (1.0f - fall * fall);
+}
+
+// この tick の縦の動き。運動学ソルバーは F ごとに速度を先に変えてから進めるので、tick k の速度を
+// 「k〜k+1 F の高さの差 ÷ dt」にして、k+1 F の高さを輪郭にそろえる。重力は速度の変化として毎 tick 差し替える。
+// 最初の tick は跳ね上げの速度だけで、重力は 0。
+// 下りは、下向きの加速度を輪郭の下りの加速度以上に保つ（着地の tick は高さが 0 に切られて速度の変化が上向きになるが、
+// 地面が輪郭より高い坂で先に着地していても上へ突き上げないために、下向きのままにする。着地はソルバーに任せる）。
+void KnockbackVertical(const PlayerComponent& player, float dt, float& outLaunchSpeed, float& outGravity) {
+    const KnockbackProfile profile = MakeKnockbackProfile(player);
+    const float k = static_cast<float>(player.stateFrame);
+    const auto speedAt = [&](float frame) {
+        return (KnockbackHeightAt(player, profile, frame + 1.0f) - KnockbackHeightAt(player, profile, frame)) / dt;
+    };
+    outLaunchSpeed = speedAt(0.0f);
+    if (player.stateFrame == 0) {
+        outGravity = 0.0f;
+        return;
+    }
+    outGravity = (speedAt(k) - speedAt(k - 1.0f)) / dt;
+    if (k >= profile.apexFrames) {
+        const float fallSeconds = (profile.landFrames - profile.apexFrames) * dt;
+        outGravity = std::min(outGravity, -2.0f * std::max(0.0f, player.knockbackHeight) / (fallSeconds * fallSeconds));
+    }
 }
 
 // 立ち止まっていて（通常の状態で水平の速度が 0）、前の tick に立てる傾きの地面へ足が着いていた。
@@ -283,6 +347,31 @@ bool StandingOnSlope(HIKARI::WorldView& world, HIKARI::ObjectView object, const 
     const Vec3 normal = state.groundNormal;
     const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
     return length > 0.0f && normal.y >= length * std::cos(player.standSlopeDegrees * kRadiansPerDegree);
+}
+
+// 吹っ飛びの始まりと着地（ログと、着地の手応えの合図）。ヒットストップの tick は呼ばれないので、始まりは 1 回だけ。
+// 位置は前の tick までの動きが反映された値なので、着地のログの距離は着地の 1 tick 手前までの値になる。
+void StepKnockbackEvents(HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
+    if (player.state != PlayerState::Knockback)
+        return;
+    char message[192]{};
+    if (player.stateFrame == 0) {
+        HIKARI::GameProjectTransform transform{};
+        if (object.GetWorldTransform(transform))
+            player.knockbackOrigin = transform.position;
+        std::snprintf(message, sizeof(message), "KnockbackStart tick=%llu distance=%.3f direction=(%.3f,%.3f)",
+                      static_cast<unsigned long long>(tick), static_cast<double>(player.knockbackDistanceNow),
+                      static_cast<double>(player.actionDirection.x), static_cast<double>(player.actionDirection.z));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
+    }
+    if (player.knockbackHeight <= 0.0f || player.stateFrame != KnockbackLandTick(MakeKnockbackProfile(player)))
+        return;
+    player.pendingLandFeedback = true;
+    player.pendingLandFog = true;
+    std::snprintf(message, sizeof(message), "KnockbackLand tick=%llu frame=%d travelled=%.3f",
+                  static_cast<unsigned long long>(tick), player.stateFrame,
+                  static_cast<double>(KnockbackTravelled(object, player)));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
 }
 
 void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
@@ -306,13 +395,15 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
         player.motionAccepted = world.GetMotion().SubmitKinematicMoveWithOptions(move, options);
         return;
     }
-    if (frozen || player.state != PlayerState::Knockback || player.knockbackHeight <= 0.0f) {
+    // 着地の後は、いつもの重力で地面を滑る（着地の判定も、坂や縁の扱いも運動学ソルバーに任せる）。
+    if (frozen || player.state != PlayerState::Knockback || player.knockbackHeight <= 0.0f ||
+        player.stateFrame > KnockbackLandTick(MakeKnockbackProfile(player))) {
         player.motionAccepted = world.GetMotion().SubmitKinematicMove(move);
         return;
     }
-    // 吹っ飛びの間だけ重力を差し替え、最初の F に跳ね上げて放物線を描かせる。着地の判定は運動学ソルバーに任せる。
+    // 飛んでいる間だけ重力を差し替え、最初の F に跳ね上げて、上り・下りの放物線を描かせる。
     float launchSpeed = 0.0f, gravity = 0.0f;
-    KnockbackArc(player, launchSpeed, gravity);
+    KnockbackVertical(player, frame.fixedDt, launchSpeed, gravity);
     if (player.stateFrame == 0) {
         move.jumpRequested = 1;
         move.jumpSpeed = launchSpeed;
@@ -320,7 +411,7 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
     }
     HIKARI::GameProjectKinematicMoveOptions options{};
     options.overrideVerticalGravity = 1;
-    options.verticalGravityAcceleration = -gravity;
+    options.verticalGravityAcceleration = gravity;
     player.motionAccepted = world.GetMotion().SubmitKinematicMoveWithOptions(move, options);
 }
 
@@ -339,7 +430,30 @@ void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HI
         Feedback::StartCameraShake(player.hitShake, shake);
         const float rumble = knockback ? player.hitRumbleKnockback : player.hitRumbleStagger;
         Feedback::Rumble(world, rumble, rumble, player.hitRumbleFrames);
+        if (knockback) {
+            // 吹っ飛ばされた瞬間にカメラを少し引き、戻す。
+            Feedback::CameraShakeParams fov{};
+            fov.sourceId = kHitFovSource;
+            fov.priority = kPlayerPriority;
+            fov.frames = player.knockbackCameraFovFrames;
+            fov.fovDegrees = player.knockbackCameraFov;
+            Feedback::StartCameraShake(player.knockbackFov, fov);
+        }
     }
+    if (player.pendingLandFeedback) {
+        // 着地の重み。揺れは食らった時の揺れの機構をそのまま使う（その揺れはもう終わっている長さ）。
+        player.pendingLandFeedback = false;
+        Feedback::CameraShakeParams shake{};
+        shake.sourceId = kHitCameraSource;
+        shake.priority = kPlayerPriority;
+        shake.frames = player.knockbackLandShakeFrames;
+        shake.amplitude = player.knockbackLandShake;
+        shake.frequency = player.hitCameraFrequency;
+        Feedback::StartCameraShake(player.hitShake, shake);
+        Feedback::Rumble(world, player.knockbackLandRumble, player.knockbackLandRumble,
+                         player.knockbackLandShakeFrames);
+    }
+    Feedback::SubmitCameraShake(world, player.knockbackFov, player.cameraId, frame.unscaledDt);
     HIKARI::GameProjectFloat3 offset{};
     const bool wasActive = player.hitShake.active;
     const bool accepted =
@@ -366,6 +480,7 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         return;
     }
     UpdateFacing(world, object, player, frame.fixedDt);
+    StepKnockbackEvents(object, player, frame.fixedTickIndex);
     Vec3 velocity = StateVelocity(player, frame.fixedDt);
     if (PlayerRules::IsAlive(player) && player.recoilFramesLeft > 0) {
         const int elapsed = player.recoilFrames - player.recoilFramesLeft;
@@ -414,7 +529,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 if (player.advanceStateNextTick)
                                                     ++player.stateFrame;
                                                 player.advanceStateNextTick = false;
-                                                CompleteState(player);
+                                                CompleteState(object, player, frame.fixedTickIndex);
                                                 StartBufferedAction(world, object, player, frame.fixedTickIndex);
                                                 // 外部の要求は毎 tick 失効させ、外部システムが消えても減速や停止を
                                                 // 残さない（回復の停止・ローリングの扱いは前の tick の要求なので、
@@ -458,6 +573,23 @@ void PlayerSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContex
                                                                                           PlayerComponent& player) {
         player.fluidAccepted = FireObstacle::Submit(world, object, kFireObstacleInstance, player.fireObstacleRadius,
                                                     player.fireObstacleHeight);
+        if (player.pendingLandFog) {
+            // 着地：足元の霧を外へ 1 回押す（向きの無い押しは、中心から外へ広がる）。
+            player.pendingLandFog = false;
+            HIKARI::GameProjectTransform landTransform{};
+            if (player.knockbackLandPush > 0.0f && object.GetWorldTransform(landTransform)) {
+                HIKARI::GameProjectFluidInteraction burst{};
+                burst.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
+                burst.position = landTransform.position;
+                burst.position.y += player.knockbackLandPushHeightOffset;
+                burst.extents = {player.knockbackLandPushRadius, 0.0f, 0.0f};
+                burst.strength = player.knockbackLandPush;
+                burst.channels = FluidChannels::kFog;
+                player.fluidAccepted =
+                    world.GetFluid().Submit(object.GetHandle(), kKnockbackLandFogInstance, burst).Accepted() &&
+                    player.fluidAccepted;
+            }
+        }
         if (!player.rollFogPending)
             return;
         player.rollFogPending = false;

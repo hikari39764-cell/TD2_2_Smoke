@@ -46,6 +46,7 @@ enum class Column {
     BreakHits,
     BlastDamage,
     BlastSize,
+    KnockDistance,
     Count
 };
 struct HeaderKey {
@@ -56,6 +57,7 @@ struct HeaderKey {
 constexpr HeaderKey kHeaders[] = {
     {"爆発の威力", Column::BlastDamage},
     {"爆発の判定", Column::BlastSize},
+    {"吹っ飛びの距離", Column::KnockDistance},
     {"追尾を止める", Column::TrackStop},
     {"溜めの揺らぎ", Column::WindupJitter},
     {"崩せる", Column::BreakHits},
@@ -223,6 +225,15 @@ void ReadBlast(const RawMove& raw, BossMove& move) {
     if (!sizeText.empty() && (!size || *size < 0.0))
         move.warnings.push_back("爆発の判定「" + sizeText + "」が読めないので 0 にしました（0 以上の m）");
     move.blastSize = size && *size > 0.0 ? static_cast<float>(*size) : 0.0f;
+}
+
+// 「吹っ飛びの距離 m」。空欄・読めない値は 0（プレイヤーの knockbackDistance を使う）。
+void ReadKnockDistance(const RawMove& raw, BossMove& move) {
+    const std::string& text = raw[Column::KnockDistance];
+    const auto distance = NumberOf(text);
+    if (!text.empty() && (!distance || *distance <= 0.0))
+        move.warnings.push_back("吹っ飛びの距離「" + text + "」が読めないので既定の距離にしました（0 より大きい m）");
+    move.knockDistance = distance && *distance > 0.0 ? static_cast<float>(*distance) : 0.0f;
 }
 
 // 1 行を読む中間結果。連撃の参照（別の行の名前）を解くため、全部の行を 2 回読む。
@@ -682,6 +693,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         ReadWindup(raw, move);
         ReadBlast(raw, move);
+        ReadKnockDistance(raw, move);
         move.act = 0;
         move.hitCount = 0;
         for (const auto& segment : move.segments) {
@@ -715,6 +727,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             data.step = move.step;
             data.blow =
                 move.knock == BossKnock::Blow || (move.knock == BossKnock::LastBlow && hitIndex >= move.hitCount - 1);
+            data.knockDistance = move.knockDistance;
             data.damage = move.damage;
             data.direction = DefaultDirection(move.type).value_or(BossStrikeDirection::Horizontal);
             if (!parsed.strikes.empty()) {
@@ -733,6 +746,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                     data.homing = ref.homing;
                     data.step = ref.step;
                     data.blow = ref.knock != BossKnock::Flinch;
+                    data.knockDistance = ref.knockDistance;
                 }
             }
             move.strikes.push_back(data);

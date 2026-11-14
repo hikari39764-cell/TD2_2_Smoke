@@ -12,9 +12,10 @@ public:
     static bool CanStartAction(const PlayerComponent& player);
     static bool IsInvulnerable(const PlayerComponent& player);
     // direction は攻撃が押す世界方向。kind は体の反応、type はダメージの種類（Slash か Explosion）。
+    // knockbackDistance は吹っ飛びの距離（m）。0 以下は PlayerComponent の knockbackDistance を使う（のけぞりには使わない）。
     // 無敵・死亡・無効な量では false。
     static bool ApplyDamage(PlayerComponent& player, float amount, HIKARI::GameProjectFloat3 direction,
-                            PlayerDamageKind kind, PlayerDamageType type);
+                            PlayerDamageKind kind, PlayerDamageType type, float knockbackDistance = 0.0f);
     // 炎上で続けて受けるダメージ（種類は Burn）。HP だけを減らし、のけぞり・ヒットストップ・向きの変化・入力の取り消しは
     // 起こさない（被弾ではない）。体に付いた火なので、吹っ飛び・ダウンの無敵でも減る。死亡・無効な量で false。
     // HP が 0 になれば ApplyDamage と同じく死亡にする。
