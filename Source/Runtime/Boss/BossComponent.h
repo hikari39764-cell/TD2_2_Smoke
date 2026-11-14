@@ -279,6 +279,60 @@ struct BossGreatswordState {
     int firePainted = 0;
 };
 
+// 炎走りの前線を持てる数（フェーズ 2 の 5 本が入る数。項目 flameRunCount／flameRunCountPhase2 の上限）。
+inline constexpr size_t kBossFlameRunCapacity = 5;
+
+// 炎走りの、地を走る炎の前線 1 本。規則（BossFlameRun）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
+// 放った技が気絶・崩れで打ち切られても、走り切るまで進む（BossSystem が毎 tick 進める）。
+struct BossFlameRunFront {
+    // 走っている（放った tick に立て、走り切った tick に下ろす）。ended は走り切った tick に立ち、同じ枠で次に放つまで残る。
+    bool running = false;
+    bool ended = false;
+    // 走り始めた所（地面の高さ。放った時のボスの足元から flameRunStartDistance m 前）、走る向き（水平の単位ベクトル）と
+    // その yaw (rad)。
+    HIKARI::GameProjectFloat3 origin{};
+    HIKARI::GameProjectFloat3 direction{0.0f, 0.0f, 1.0f};
+    float yaw = 0.0f;
+    // 走り始めから走った距離 m と、走る長さ m（放った時の flameRunLength）。
+    float travelled = 0.0f;
+    float length = 0.0f;
+    // この tick に進む前と後の前線（地面の高さ）。当たりはこの 2 点を結ぶ線分で見る。
+    HIKARI::GameProjectFloat3 previous{};
+    HIKARI::GameProjectFloat3 front{};
+    // 放った tick（boss.tick）。
+    uint64_t releaseTick = 0;
+    // ここから下は規則の内側の覚え（見た目は読まない）。
+    // 放った技の行と、前線の速さ m/s（表の斬撃速度）、火の幅と秒（0 は残さない）・塗り終えた距離（走り始めから m）。
+    int move = -1;
+    float speed = 0.0f;
+    float burnWidth = 0.0f;
+    float burnSeconds = 0.0f;
+    float painted = 0.0f;
+    // 当たり（1 本で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
+    bool caught = false;
+    bool hit = false;
+    bool dodged = false;
+};
+
+// 炎走りの 1 回の技の様子。前線の枠 k は、その技で k 本目に放った前線（次の炎走りで放つ時に上書きする）。
+// 炎走りの見た目（BossFlameRunVisuals）が、描画フレームをまたいで持つ分。
+struct BossFlameRunVisualState {
+    // 放った瞬間を出し終えた前線の数（BossFlameRunState::released と比べる）。
+    int seenReleased = 0;
+    // 前のフレームに走っていた前線（走り切った瞬間を拾う）。
+    std::array<bool, kBossFlameRunCapacity> wasRunning{};
+};
+
+struct BossFlameRunState {
+    std::array<BossFlameRunFront, kBossFlameRunCapacity> fronts{};
+    // この技で放つ数（技を始めた tick のフェーズで決まる）と、放った数（放つたびに +1。技を始めた tick に 0）。
+    // 見た目は released が増えた tick に、fronts[released − 1] の放つ瞬間を出す。
+    int count = 0;
+    int released = 0;
+    // 扇の真ん中の向き（rad。1 本目を放つ tick＝前隙が終わった次の tick のボスの向き。その後ボスは向き直らない）。
+    float yaw = 0.0f;
+};
+
 // 天降り斬り（フェーズ 2）の、着地の火とその後の爆発。規則（BossSkyfall）が固定 tick ごとに書く。保存しない。
 // 技が終わっても、コンボで次の技へつないでも進む。気絶・撃破で打ち切られたら爆ぜない（火は燃え尽きるまで残る）。
 struct BossSkyfallBurst {
@@ -561,6 +615,26 @@ public:
     float greatswordEruptionHalfWidth = 1.2f;
     int greatswordEruptionDamage = 25;
     bool greatswordEruptionBlow = false;
+    // 炎走り（前隙・攻撃中（最後の前線を放ってからの F）・後隙・当たりの距離・威力・被弾・前線の速さ・残す火・崩せる被弾数は
+    // 技の表）。放つ数（フェーズ 1／2 以上）、隣の前線との角度（度。真ん中の向きを挟んで左右に等しく並べ、左から順に放つ）、
+    // 放つ間隔 F、走り始める所（ボスの足元から前へ m）、走る長さ m。
+    int flameRunCount = 3;
+    int flameRunCountPhase2 = 5;
+    float flameRunStepDegrees = 22.0f;
+    int flameRunIntervalFrames = 10;
+    float flameRunStartDistance = 1.0f;
+    float flameRunLength = 20.0f;
+    float flameRunFuel = 220.0f;
+    float flameRunFuelRadius = 0.8f;
+    float flameRunFuelTemperature = 6.5f;
+    float flameRunFuelRise = 5.0f;
+    float flameRunFuelLean = 4.0f;
+    float flameRunFogPush = 80.0f;
+    float flameRunFogPushRadius = 1.6f;
+    float flameRunReleaseBlast = 0.6f;
+    float flameRunEndBlast = 0.9f;
+    float flameRunDragFuel = 60.0f;
+    float flameRunDragRadius = 0.35f;
     // ── 霞の大剣の見た目（規則は変えない） ──
     // 大剣のエフェクト：大剣の模型（Assets/Models/KasumiGreatsword.obj。握りから剣先まで 6.5 m）を、資産の中で
     // 握りから剣先まで greatswordEffectLength（9.5 m）に伸ばして、その輪郭へ流体を流し込む。フェーズ 1 は霞、フェーズ 2
@@ -853,6 +927,8 @@ public:
     BossSkyfallBurst skyfallBurst;
     BossRetreatState retreat;
     BossGreatswordState greatsword;
+    BossFlameRunState flameRun;
+    BossFlameRunVisualState flameRunVisual;
     // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに
     // 書き、それ以外の tick は 0（BossSystem が tick の始めに戻す）。規則は読まず、見た目（BossVisuals）が読む。
     float chargeVisual = 0.0f;

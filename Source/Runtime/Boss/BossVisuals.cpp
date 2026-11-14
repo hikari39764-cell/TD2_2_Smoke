@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "HIKARI/Project/VfxView.h"
+#include "BossFlameRunVisuals.h"
 #include "BossGreatswordVisuals.h"
 #include "BossMath.h"
 #include "BossPose.h"
@@ -316,6 +317,7 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     // 天降り斬り・霞の大剣は爆発の枠へ塊・霧の押しを入れるので、枠を出す所より前に進める。
     BossSkyfallVisuals::Update(world, object, boss, seconds);
     BossGreatswordVisuals::Update(world, object, boss, seconds);
+    BossFlameRunVisuals::Update(world, object, boss);
     UpdateSlashes(world, boss, seconds);
     UpdateRing(world, boss, seconds);
     PlayBlasts(world, boss);

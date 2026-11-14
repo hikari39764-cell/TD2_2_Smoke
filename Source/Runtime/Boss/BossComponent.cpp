@@ -253,6 +253,41 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "縦割りの刃は叩きつける間だけ、噴き上がりは前線がプレイヤーの所を通った tick だけ当たります（それぞれ 1 回。"
             "片方をよけても、もう片方は当たり得る）。噴き上がりは刺さっている間・次の技の前隙の間も走り続けます。"
             "連撃でつないだ技（表の役割「コンボ用」の行）は剣を作り出さず、前隙の全部で振りかぶる・構え直します。");
+        fields.Int("flameRunCount", "炎走り：放つ前線の数（フェーズ 1）", flameRunCount, 1,
+                   static_cast<int>(kBossFlameRunCapacity));
+        fields.Int("flameRunCountPhase2", "…放つ前線の数（フェーズ 2 以上）", flameRunCountPhase2, 1,
+                   static_cast<int>(kBossFlameRunCapacity));
+        fields.Float("flameRunStepDegrees", "炎走り：隣の前線との角度 (度。真ん中の向きを挟んで左右に等しく並べる)",
+                     flameRunStepDegrees, 0.0f, 90.0f);
+        fields.Int("flameRunIntervalFrames", "炎走り：前線を 1 本ずつ放つ間隔 (F。左から順に)", flameRunIntervalFrames,
+                   1, 60);
+        fields.Float("flameRunStartDistance", "炎走り：前線が走り始める所（ボスの足元から前へ m）",
+                     flameRunStartDistance, 0.0f, 10.0f);
+        fields.Float("flameRunLength", "炎走り：前線が走る長さ (m。走り始める所から)", flameRunLength, 0.5f, 60.0f);
+        fields.Float("flameRunFuel", "炎走りの見た目：走る前線の波頭へ入れる燃料の強さ（場の火の域。0 は出さない）",
+                     flameRunFuel, 0.0f, 10000.0f);
+        fields.Float("flameRunFuelRadius", "…波頭の燃料の球の半径 (m)", flameRunFuelRadius, 0.1f, 4.0f);
+        fields.Float("flameRunFuelTemperature", "…燃料の温度（引きずる剣先の炎も同じ）", flameRunFuelTemperature, 0.0f,
+                     64.0f);
+        fields.Float("flameRunFuelRise", "…燃料を上へ噴く速さ (m/s。波頭の高さ)", flameRunFuelRise, 0.0f, 30.0f);
+        fields.Float("flameRunFuelLean", "…燃料を走る向きへ押す速さ (m/s。波頭の前への倒れ込み)", flameRunFuelLean,
+                     0.0f, 30.0f);
+        fields.Float("flameRunFogPush", "…前線が、場の霧を走る向きへ押す強さ (m/s²。0 は押さない)", flameRunFogPush,
+                     0.0f, 1000.0f);
+        fields.Float("flameRunFogPushRadius", "…霧を押す半径 (m)", flameRunFogPushRadius, 0.1f, 6.0f);
+        fields.Float("flameRunReleaseBlast", "…放った瞬間の、走り始めの所の火球の半径 (m。0 は出さない)",
+                     flameRunReleaseBlast, 0.0f, 5.0f);
+        fields.Float("flameRunEndBlast", "…走り切った瞬間の、先端の火球の半径 (m。0 は出さない)", flameRunEndBlast,
+                     0.0f, 5.0f);
+        fields.Float("flameRunDragFuel", "…前隙に、地面を引きずる剣先から出す炎の燃料の強さ（0 は出さない）",
+                     flameRunDragFuel, 0.0f, 10000.0f);
+        fields.Float("flameRunDragRadius", "…引きずる剣先の炎の半径 (m)", flameRunDragRadius, 0.1f, 4.0f);
+        fields.Note(
+            "炎走りは、前隙の間はプレイヤーの方を向き続け、1 本目を放つ時の向きを真ん中に扇を決めます（その後は向き直り"
+            "ません）。攻撃中の長さは、表の攻撃中（最後の前線を放ってからの F）に（数−1）×間隔を足したものです。前線は"
+            "表の斬撃速度で走り、通った所に表の「線」の火を残します（刃の後ろへ遅れる距離は burnLineLag）。当たりは表の"
+            "判定サイズ（前線の線からの距離。プレイヤーの半径を足す）で、1 本につき 1 回。気絶・崩れで打ち切られても、"
+            "放った前線は走り切ります（まだ放っていない前線は放ちません）。");
         fields.Vfx("greatswordMistEffect", "霞の大剣：フェーズ 1 のエフェクト（大剣の模型へ霞を流し込む）", greatswordMistEffect);
         fields.Vfx("greatswordFireEffect", "霞の大剣：フェーズ 2 のエフェクト（炎の大剣）", greatswordFireEffect);
         fields.Float(

@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "BossBurnMarks.h"
+#include "BossFlameRun.h"
 #include "BossGreatsword.h"
 #include "BossMath.h"
 #include "BossPose.h"
@@ -411,6 +412,8 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
                                                     0.5f)));
         boss.strafe = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
     }
+    // 炎走りは、放つ数（フェーズで変わる）の分だけ攻撃中が延びる。
+    BossFlameRun::Begin(boss, move);
     // 後ろへ跳ぶ型（後ろへ下がる・退き溜め）の跳び始め。
     boss.stepFrom = boss.ground;
     boss.retreat = {};
@@ -583,6 +586,7 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     BossSkyfall::Reset(boss, "interrupted");
     BossSkyfall::CutBurst(boss);
     BossGreatsword::Reset(boss, "interrupted");
+    BossFlameRun::Cut(boss);
     boss.height = 0.0f;
     boss.sink = 0.0f;
     boss.spin = 0.0f;

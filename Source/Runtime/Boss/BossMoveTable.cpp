@@ -13,10 +13,10 @@ namespace {
 
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
-constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",    "slashR",   "slashL",     "overhead",
-                                               "kick",     "knife",   "string",   "ambush",     "clone",
-                                               "slashH",   "slashV",  "walkSide", "walkIn",     "backstep",
-                                               "detonate", "skyfall", "retreat",  "greatsword", "greatswordCleave"};
+constexpr const char* kTypeKeys[kTypeCount] = {
+    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",   "knife",    "string",
+    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn", "backstep", "detonate",
+    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -147,6 +147,8 @@ BossMoveType GuessType(std::string_view name) {
     // 「天降り」は「跳」より先に見る（跳んで落ちる技を、跳躍→X字と取り違えないように）。
     if (Contains(name, "天降"))
         return BossMoveType::Skyfall;
+    if (Contains(name, "炎走"))
+        return BossMoveType::FlameRun;
     int strokes = 0;
     for (size_t at = 0; at + 3 <= name.size(); at += 1) {
         const std::string_view piece = name.substr(at, 3);

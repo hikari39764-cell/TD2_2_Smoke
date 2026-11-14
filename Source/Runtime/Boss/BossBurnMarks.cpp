@@ -91,9 +91,10 @@ std::optional<BossBurnMark> ReadMark(std::string_view token) {
 const char* ShapeProblem(BossBurnShape shape, BossMoveType type) {
     switch (shape) {
     case BossBurnShape::Line:
-        return BossMoveTable::IsSwingType(type) || type == BossMoveType::GreatswordCleave
+        return BossMoveTable::IsSwingType(type) || type == BossMoveType::GreatswordCleave ||
+                       type == BossMoveType::FlameRun
                    ? nullptr
-                   : "線は斬撃を飛ばす型と縦割りの型だけが残します";
+                   : "線は斬撃を飛ばす型と縦割り・炎走りの型だけが残します";
     case BossBurnShape::Trail: return type == BossMoveType::Dash ? nullptr : "跡は瞬間突進の型だけが残します";
     case BossBurnShape::Ring: return type == BossMoveType::Kick ? nullptr : "輪は回し蹴り（霞の輪）の型だけが残します";
     case BossBurnShape::Arc: return type == BossMoveType::Greatsword ? nullptr : "弧は霞の大剣の型だけが残します";

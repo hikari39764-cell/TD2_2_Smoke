@@ -30,6 +30,11 @@ constexpr BossSwordPose kForward{0.0f, 0.0f};
 // 天降り斬りで落ちる・着地した剣：切っ先を真下へ向けて突き立てる。落ちる進みのこの倍で向け終える（落ちる前半で下を向く）。
 constexpr BossSwordPose kPlunge{90.0f, 0.0f};
 constexpr float kPlungeTurnSpeed = 2.0f;
+// 炎走り：前隙は剣を右後ろへ引きずる（切っ先が地面すれすれ）。前線を放つたびに前の高い所へ斬り上げ、放つ間隔のこの割合で
+// 上げ切って、残りで引きずる構えへ戻す（次の 1 本も低い所から斬り上げる）。
+constexpr BossSwordPose kDrag{60.0f, -160.0f};
+constexpr BossSwordPose kFlameRunUp{-65.0f, 0.0f};
+constexpr float kFlameRunUpShare = 0.6f;
 // 振り上げた構えの引き（反対へ 22% 引く）、振り出しの割合、フェイントで引き戻す長さ (F)。
 constexpr float kCockedPull = 0.22f;
 constexpr float kSwingInShare = 0.16f;
@@ -214,6 +219,23 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
                                 : Sweep(kUp, kPlunge, (progress - raise) / (plant - raise));
     }
     case BossMoveType::Clone: return kForward;
+    case BossMoveType::FlameRun: {
+        if (phase == BossActPhase::Pre)
+            return Sweep(kRest, kDrag, static_cast<float>(t) / static_cast<float>(std::max(1, boss.raiseFrames)));
+        if (phase == BossActPhase::Post)
+            return Sweep(kFlameRunUp, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
+        // 攻撃中：いちばん新しく放った前線を放った tick（stateFrame 1＋間隔×番号）からの F で斬り上げる。
+        // 最後の 1 本は斬り上げたまま後隙へ。
+        const int interval = std::max(1, boss.flameRunIntervalFrames);
+        const int since = std::max(0, t - 1 - interval * std::max(0, boss.flameRun.released - 1));
+        const int up = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
+        if (since <= up)
+            return Sweep(kDrag, kFlameRunUp, static_cast<float>(since) / static_cast<float>(up));
+        if (boss.flameRun.released >= boss.flameRun.count)
+            return kFlameRunUp;
+        return Sweep(kFlameRunUp, kDrag,
+                     static_cast<float>(since - up) / static_cast<float>(std::max(1, interval - up)));
+    }
     case BossMoveType::Skyfall:
         // 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
         switch (boss.skyfall.phase) {

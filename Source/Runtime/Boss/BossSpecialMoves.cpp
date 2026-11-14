@@ -7,6 +7,7 @@
 #include "BossBurnMarks.h"
 #include "BossClones.h"
 #include "BossDetonate.h"
+#include "BossFlameRun.h"
 #include "BossGreatsword.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
@@ -154,6 +155,7 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
     case BossMoveType::Skyfall: BossSkyfall::Act(frame, move, g); break;
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: BossGreatsword::Act(frame, move, g); break;
+    case BossMoveType::FlameRun: BossFlameRun::Act(frame, move); break;
     case BossMoveType::Retreat:
         // 振り抜いて斬撃を放った tick（実行器の SwingStep がこの tick に放つ）。
         if (g.hit && g.tIn == g.swingLength)
