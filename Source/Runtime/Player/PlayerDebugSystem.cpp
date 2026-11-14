@@ -5,6 +5,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/ObjectVariables.h"
 #include "PlayerDebugComponent.h"
 #include "PlayerRules.h"
 
@@ -77,15 +78,31 @@ void ApplyScheduledActions(PlayerComponent& player, PlayerDebugComponent& debug)
     }
 }
 
-void TracePlayer(HIKARI::ObjectView object, const PlayerComponent& player, const PlayerDebugComponent& debug) {
+void TracePlayer(const HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
+                 const PlayerDebugComponent& debug) {
     HIKARI::GameProjectTransform transform{};
     const bool positionValid = object.GetWorldTransform(transform);
-    char message[768]{};
+    // 物体変数の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
+    const HIKARI::GameProjectObjectHandle handle = object.GetHandle();
+    float varHealth = 0.0f;
+    float varMaxHealth = 0.0f;
+    float varStamina = 0.0f;
+    float varMaxStamina = 0.0f;
+    int64_t varHealCharges = 0;
+    int64_t varState = 0;
+    bool varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerHealthVariable, varHealth);
+    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerMaxHealthVariable, varMaxHealth) && varsRead;
+    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerStaminaVariable, varStamina) && varsRead;
+    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerMaxStaminaVariable, varMaxStamina) && varsRead;
+    varsRead = ObjectVariables::ReadInt(world, handle, kPlayerHealChargesVariable, varHealCharges) && varsRead;
+    varsRead = ObjectVariables::ReadInt(world, handle, kPlayerStateVariable, varState) && varsRead;
+    char message[1024]{};
     std::snprintf(
         message, sizeof(message),
         "Trace tick=%llu object=%llu state=%s stateFrame=%d health=%.3f stamina=%.3f healCharges=%d invulnerable=%d "
         "positionValid=%d position=(%.6f,%.6f,%.6f) motionAccepted=%d cameraAccepted=%d "
-        "fluidAccepted=%d hitStopAccepted=%d actionLockFrames=%d recoilFramesLeft=%d facing=(%.4f,%.4f)",
+        "fluidAccepted=%d hitStopAccepted=%d actionLockFrames=%d recoilFramesLeft=%d facing=(%.4f,%.4f) "
+        "varsRead=%d varHealth=%.3f varStamina=%.3f varHealCharges=%lld varState=%lld",
         static_cast<unsigned long long>(debug.processedTick),
         static_cast<unsigned long long>(object.GetSceneObjectId()), StateName(player.state), player.stateFrame,
         static_cast<double>(player.health), static_cast<double>(player.stamina), player.healCharges,
@@ -94,7 +111,9 @@ void TracePlayer(HIKARI::ObjectView object, const PlayerComponent& player, const
         static_cast<double>(transform.position.z), static_cast<int>(player.motionAccepted),
         static_cast<int>(player.cameraAccepted), static_cast<int>(player.fluidAccepted),
         static_cast<int>(player.hitStopAccepted), player.actionLockFrames, player.recoilFramesLeft,
-        static_cast<double>(player.facing.x), static_cast<double>(player.facing.z));
+        static_cast<double>(player.facing.x), static_cast<double>(player.facing.z), static_cast<int>(varsRead),
+        static_cast<double>(varHealth), static_cast<double>(varStamina), static_cast<long long>(varHealCharges),
+        static_cast<long long>(varState));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerDebug", message);
 }
 
@@ -133,7 +152,7 @@ void PlayerDebugSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::
             world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
                                                     [&](HIKARI::ObjectView object, PlayerComponent& player) {
                                                         if (object.GetHandle() == owner.GetHandle()) {
-                                                            TracePlayer(object, player, debug);
+                                                            TracePlayer(world, object, player, debug);
                                                         }
                                                     });
         });

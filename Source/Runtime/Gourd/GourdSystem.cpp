@@ -11,6 +11,7 @@
 #include "GourdAbsorbField.h"
 #include "GourdAbsorbVisuals.h"
 #include "GourdRules.h"
+#include "../Common/ObjectVariables.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 
@@ -213,8 +214,13 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
     });
 }
 
-void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
-    char message[768]{};
+void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const GourdComponent& gourd) {
+    // 物体変数の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
+    float varSmoke = 0.0f;
+    float varCapacity = 0.0f;
+    bool varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdSmokeVariable, varSmoke);
+    varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdCapacityVariable, varCapacity) && varsRead;
+    char message[1024]{};
     std::snprintf(
         message, sizeof(message),
         "Trace tick=%llu frame=%llu object=%llu smoke=%.6f capacity=%.3f "
@@ -224,7 +230,8 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         "mouth=(%.6f,%.6f,%.6f) transformAccepted=%d submitAccepted=%d "
         "readAccepted=%d "
         "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u "
-        "gatherStrength=%.3f intake=%.3f phase=%d phaseFrames=%d buffer=%d",
+        "gatherStrength=%.3f intake=%.3f phase=%d phaseFrames=%d buffer=%d "
+        "varsRead=%d varSmoke=%.3f varCapacity=%.3f",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -237,7 +244,8 @@ void Trace(HIKARI::ObjectView object, const GourdComponent& gourd) {
         static_cast<int>(gourd.readAccepted), static_cast<double>(gourd.recoilOffset.x),
         static_cast<double>(gourd.recoilOffset.y), static_cast<double>(gourd.recoilOffset.z), gourd.recoilFramesLeft,
         gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate),
-        static_cast<int>(gourd.absorbPhase), gourd.absorbPhaseFrames, gourd.absorbBuffer);
+        static_cast<int>(gourd.absorbPhase), gourd.absorbPhaseFrames, gourd.absorbBuffer, static_cast<int>(varsRead),
+        static_cast<double>(varSmoke), static_cast<double>(varCapacity));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -307,7 +315,7 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
             GourdAbsorbField::Submit(world, object, gourd, gourd.absorbSeconds);
         ++gourd.renderFrameCount;
         if (gourd.traceEveryFrames > 0 && gourd.renderFrameCount % static_cast<uint64_t>(gourd.traceEveryFrames) == 0)
-            Trace(object, gourd);
+            Trace(world, object, gourd);
     });
 }
 

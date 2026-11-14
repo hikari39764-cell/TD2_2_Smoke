@@ -10,6 +10,9 @@ namespace Project_TD2_2 {
 
 inline constexpr std::string_view kGourdType = "Project_TD2_2.Gourd";
 inline constexpr std::string_view kGourdSystem = "Project_TD2_2.GourdSystem";
+// 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
+inline constexpr std::string_view kGourdSmokeVariable = "Gourd.Smoke";
+inline constexpr std::string_view kGourdCapacityVariable = "Gourd.Capacity";
 
 // 吸い込みの段階：構え（吸う力はまだ出ない）→ 吸う → 後隙。どの段階でもゆっくり歩けて、向きも変えられる。
 // ローリングはどの段階でも出せて、吸い込みを後隙なしで打ち切る。
@@ -18,6 +21,8 @@ enum class GourdAbsorbPhase { Idle, Windup, Absorbing, Recovery };
 class GourdComponent final : public HIKARI::IGameComponent {
   public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
+    // HUD などが読めるよう、煙の量と容量を自分の物体の物体変数へ毎フレーム書く。
+    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
 
     bool enabled = true;
     uint64_t playerId = 0;
@@ -96,6 +101,8 @@ class GourdComponent final : public HIKARI::IGameComponent {
 
     // 累積回読値と所持量は別々に持ち、消費や容量超過を次の回読で戻さない。
     bool initialized = false;
+    // 物体変数の書き込みが断られた警告を出したか（部品ごとに 1 回だけ出す）。
+    bool variableWriteWarned = false;
     bool poseInitialized = false;
     bool absorbHeld = false;
     // 動けない間に押された吸い込みを覚えておく残り F（押した F を含む。0 で無し）。

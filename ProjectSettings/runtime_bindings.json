@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "variables": [
+    {
+      "id": "Player.Health",
+      "name": "Player Health",
+      "description": "プレイヤーの現在の HP（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Player.MaxHealth",
+      "name": "Player Max Health",
+      "description": "プレイヤーの最大 HP（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Player.Stamina",
+      "name": "Player Stamina",
+      "description": "プレイヤーの現在のスタミナ（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Player.MaxStamina",
+      "name": "Player Max Stamina",
+      "description": "プレイヤーの最大スタミナ（点）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Player.HealCharges",
+      "name": "Player Heal Charges",
+      "description": "プレイヤーの残りの回復回数（回）。",
+      "default": {
+        "type": "Int",
+        "value": 0
+      }
+    },
+    {
+      "id": "Player.State",
+      "name": "Player State",
+      "description": "プレイヤーの状態。0=通常、1=ローリング、2=回復、3=のけぞり、4=吹っ飛び、5=ダウン、6=起き上がり、7=死亡。",
+      "default": {
+        "type": "Int",
+        "value": 0
+      }
+    },
+    {
+      "id": "Gourd.Smoke",
+      "name": "Gourd Smoke",
+      "description": "ヒョウタンに溜まっている煙の量（煙の量の単位。上限は容量）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
+      "id": "Gourd.Capacity",
+      "name": "Gourd Capacity",
+      "description": "ヒョウタンに溜められる煙の容量（煙の量の単位）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    }
+  ],
+  "events": []
+}

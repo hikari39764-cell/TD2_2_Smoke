@@ -9,6 +9,13 @@ namespace Project_TD2_2 {
 
 inline constexpr std::string_view kPlayerType = "Project_TD2_2.Player";
 inline constexpr std::string_view kPlayerSystem = "Project_TD2_2.PlayerSystem";
+// 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float か Int）にする。
+inline constexpr std::string_view kPlayerHealthVariable = "Player.Health";
+inline constexpr std::string_view kPlayerMaxHealthVariable = "Player.MaxHealth";
+inline constexpr std::string_view kPlayerStaminaVariable = "Player.Stamina";
+inline constexpr std::string_view kPlayerMaxStaminaVariable = "Player.MaxStamina";
+inline constexpr std::string_view kPlayerHealChargesVariable = "Player.HealCharges";
+inline constexpr std::string_view kPlayerStateVariable = "Player.State";
 
 enum class PlayerState { Normal, Roll, Heal, Stagger, Knockback, Down, GetUp, Dead };
 enum class PlayerDamageKind { Stagger, Knockback };
@@ -36,6 +43,8 @@ struct PlayerExternalRequests {
 class PlayerComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
+    // HUD などが読めるよう、HP・スタミナ・回復回数・状態を自分の物体の物体変数へ毎フレーム書く。
+    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
 
     float maxHealth = 100.0f;
     float moveSpeed = 5.2f;
@@ -128,6 +137,8 @@ public:
 
     // 実行時のデータは保存しない。ルールは PlayerRules と PlayerSystem が所有する。
     bool initialized = false;
+    // 物体変数の書き込みが断られた警告を出したか（部品ごとに 1 回だけ出す）。
+    bool variableWriteWarned = false;
     PlayerState state = PlayerState::Normal;
     int stateFrame = 0;
     bool advanceStateNextTick = false;

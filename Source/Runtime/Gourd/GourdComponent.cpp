@@ -1,5 +1,8 @@
 #include "GourdComponent.h"
 
+#include "GourdRules.h"
+#include "../Common/ObjectVariables.h"
+
 namespace Project_TD2_2 {
 
 void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
@@ -135,6 +138,19 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("検証")) {
         fields.Int("traceEveryFrames", "状態ログ間隔（0 は無効）", traceEveryFrames, 0, 7200);
     }
+}
+
+void GourdComponent::Update(HIKARI::GameComponentContext& context, float) {
+    // プレイ中の世界だけで書く（編集中は書き手を作らない）。
+    if (context.GetWorld().GetGameSession() == nullptr) {
+        return;
+    }
+    // 値は GourdRules の問い合わせと同じ物を使い、ほかのコードが読む値と食い違わないようにする。
+    constexpr std::string_view category = "Gourd";
+    ObjectVariables::PublishFloat(context, category, kGourdSmokeVariable, GourdRules::GetSmoke(*this),
+                                  variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kGourdCapacityVariable, GourdRules::GetCapacity(*this),
+                                  variableWriteWarned);
 }
 
 } // namespace Project_TD2_2

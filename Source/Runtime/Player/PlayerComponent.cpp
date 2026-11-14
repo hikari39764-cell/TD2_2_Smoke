@@ -1,5 +1,8 @@
 #include "PlayerComponent.h"
 
+#include "../Common/ObjectVariables.h"
+#include "PlayerRules.h"
+
 namespace Project_TD2_2 {
 
 void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
@@ -110,6 +113,25 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("cameraEyeFloor", "見上げた時に視点が軸から下がれる限度 (m)", cameraEyeFloor, 0.0f, 10.0f);
         fields.Bool("cameraTrace", "カメラの姿勢を毎フレーム記録する（確かめ用）", cameraTrace);
     }
+}
+
+void PlayerComponent::Update(HIKARI::GameComponentContext& context, float) {
+    // プレイ中の世界だけで書く（編集中は書き手を作らない）。
+    if (context.GetWorld().GetGameSession() == nullptr) {
+        return;
+    }
+    // 値は PlayerRules の問い合わせと同じ物を使い、ほかのコードが読む値と食い違わないようにする。
+    constexpr std::string_view category = "Player";
+    ObjectVariables::PublishFloat(context, category, kPlayerHealthVariable, PlayerRules::GetHealth(*this),
+                                  variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kPlayerMaxHealthVariable, maxHealth, variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kPlayerStaminaVariable, PlayerRules::GetStamina(*this),
+                                  variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kPlayerMaxStaminaVariable, maxStamina, variableWriteWarned);
+    ObjectVariables::PublishInt(context, category, kPlayerHealChargesVariable, PlayerRules::GetHealCharges(*this),
+                                variableWriteWarned);
+    ObjectVariables::PublishInt(context, category, kPlayerStateVariable, static_cast<int64_t>(state),
+                                variableWriteWarned);
 }
 
 } // namespace Project_TD2_2
