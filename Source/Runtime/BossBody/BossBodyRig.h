@@ -23,6 +23,8 @@ struct BossBodyPose {
     BossBodyHandShape leftShape = BossBodyHandShape::Open;
     // 刀身を、灼けた刀身（火の技・フェーズ 2）で出す。
     bool bladeHot = false;
+    // 地面に止める前の剣先の、地面からの高さ (m。負＝地面に止められて、刀の向きが起こされている)。
+    float swordTipClearance = 1000.0f;
     // 鎧：胴、兜（目の光も同じ置き場所）、大袖（右・左）、草摺（腰の周りに tassetCount 枚）。
     BossBodyPlacement torso;
     BossBodyPlacement head;

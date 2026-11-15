@@ -8,6 +8,29 @@ void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
     DescribeShape(fields);
     motion.Describe(fields);
     leftHand.Describe(fields);
+    accents.Describe(fields);
+}
+
+void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
+    if (!fields.Section("外形：技の演出（見た目だけ）", false))
+        return;
+    fields.Note("技の点描の演出です。当たり・F 数は変えません。色・明るさ・消える時間は、演出の値の資産と各エフェクトの中に"
+                "あります。");
+    fields.Vfx("bodyBladeEffect", "刀に付くエフェクト（刀光の帯と、燃える刀身の炎・ゆがみ・光。空なら出さない）",
+               bladeEffect);
+    fields.Float("bodyBladeFromShare", "刀に付くエフェクト：刃の始まり（握りから剣先までの割合）", bladeFromShare,
+                 0.0f, 0.9f);
+    fields.Bool("bodyTrail", "刀光：振りの間、刃が通った面に光る帯とゆがみを出す", trail);
+    fields.Float("bodyTrailFollowSeconds", "刀光：命中の窓の後も、振り抜きの間は出し続ける時間 (秒)",
+                 trailFollowSeconds, 0.0f, 1.0f);
+    fields.Float("bodyTrailMinTipSpeed", "刀光：振り抜きの間に出すのに要る剣先の速さ (m/秒)", trailMinTipSpeed, 0.0f,
+                 100.0f);
+    fields.Float("bodyTrailGroundCut", "刀光：剣先が地面からこの高さより下へ来たら切る (m)", trailGroundCut, 0.0f,
+                 3.0f);
+    fields.Float3("bodyTrailMistColor", "刀光：霞の技の色と明るさ（1 を超えると光る）", trailMistColor);
+    fields.Float3("bodyTrailFireColor", "刀光：刀が燃えている技の色と明るさ", trailFireColor);
+    fields.Float("bodyBladeHeat", "燃える刀身：炎の明るさ（倍率。0 で出さない）", bladeHeat, 0.0f, 8.0f);
+    fields.Float("bodyBladeHeatSeconds", "燃える刀身：火が付く・消える時間 (秒)", bladeHeatSeconds, 0.01f, 3.0f);
 }
 
 void BossBodyLeftHandSettings::Describe(HIKARI::PropertyFields& fields) {
@@ -109,6 +132,8 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
                  leftBalanceMeters, 0.0f, 2.0f);
     fields.Float("bodyLeftBalanceMax", "左手の釣り合い：動く長さの上限 (m)", leftBalanceMax, 0.0f, 2.0f);
     fields.Float("bodyLeftBalanceSeconds", "左手の釣り合い：追う時間 (秒)", leftBalanceSeconds, 0.01f, 2.0f);
+    fields.Float("bodyTipGroundClearance", "剣先を地面からこの高さより下へ入れない (m。負で切る)", tipGroundClearance,
+                 -1.0f, 2.0f);
     fields.Float("bodyGreatswordGripAlong", "霞の大剣の間：握りを大剣の柄から剣の向きへずらす長さ (m)",
                  greatswordGripAlong, -2.0f, 5.0f);
     fields.Float("bodyGreatswordBlendSeconds", "霞の大剣の間：刀を大剣へ重ねる・離す時間 (秒)", greatswordBlendSeconds,

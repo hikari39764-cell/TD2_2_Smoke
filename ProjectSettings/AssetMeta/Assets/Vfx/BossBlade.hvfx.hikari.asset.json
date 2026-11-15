@@ -1,0 +1,14 @@
+{
+  "displayName": "BossBlade",
+  "guid": "9d2c47e1b6a3405f8e17c5d0a4b2f693",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossBlade.hvfx",
+  "type": "VfxEffect"
+}

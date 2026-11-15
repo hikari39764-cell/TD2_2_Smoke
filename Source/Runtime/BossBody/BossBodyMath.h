@@ -115,6 +115,17 @@ inline float VisibleBladeReach(const BossComponent& boss) {
     return std::max(0.01f, VisibleSwordLength(boss) - boss.body.swordGripAlong);
 }
 
+// 握り grip から direction へ reach 伸びた剣先が、高さ floor より下へ入る時は、水平の向きを保ったまま剣先が floor に
+// 乗る所まで向きを起こす。真下を向いていて水平の向きが決まらない時は forward を使う。
+inline Vec3 KeepTipAbove(Vec3 grip, Vec3 direction, float reach, float floor, Vec3 forward) {
+    if (reach <= kTiny || grip.y + direction.y * reach >= floor)
+        return direction;
+    const float y = std::clamp((floor - grip.y) / reach, -1.0f, 1.0f);
+    const Vec3 flat = Normalize(Vec3{direction.x, 0.0f, direction.z}, Normalize(Vec3{forward.x, 0.0f, forward.z}));
+    const float horizontal = std::sqrt(std::max(0.0f, 1.0f - y * y));
+    return {flat.x * horizontal, y, flat.z * horizontal};
+}
+
 // 刀の模型の拡大（見える刀の長さに合わせる）と、手の模型の拡大。
 inline float SwordScale(const BossComponent& boss) {
     return VisibleBladeReach(boss) / std::max(0.01f, boss.body.swordModelLength);

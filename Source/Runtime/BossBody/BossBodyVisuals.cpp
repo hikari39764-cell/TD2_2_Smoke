@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "HIKARI/Project/PresentationViews.h"
+#include "BossBodyAccents.h"
 #include "BossBodyMath.h"
 #include "BossBodyRig.h"
 #include "BossBodySword.h"
@@ -124,6 +125,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, pose);
     SubmitPose(world, object, boss, pose);
+    BossBodyAccents::Update(world, object, boss, pose, seconds);
 }
 
 void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
@@ -153,6 +155,7 @@ void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView o
 
 void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     BossVfx::StopHandle(world, boss.bodyState.smokeVfx);
+    BossBodyAccents::Stop(world, boss);
 }
 
 } // namespace Project_TD2_2

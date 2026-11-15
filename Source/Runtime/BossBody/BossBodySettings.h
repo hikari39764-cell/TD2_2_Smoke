@@ -144,6 +144,9 @@ struct BossBodyMotionSettings {
     float leftBalanceMax = 0.30f;
     float leftBalanceSeconds = 0.15f;
 
+    // 剣先を地面からこの高さより下へ入れない (m)。下へ入る分は、剣の向きを起こして地面に沿わせる。負で切る。
+    float tipGroundClearance = 0.05f;
+
     // 霞の大剣が出ている間は、見せる刀を大剣の柄と向きに重ねる（霧の大剣が刀を包む）。握りを柄から剣の向きへ
     // ずらす長さ (m) と、重ね始める・離す時間 (秒)。
     float greatswordGripAlong = 0.10f;
@@ -151,6 +154,39 @@ struct BossBodyMotionSettings {
 
     // 確かめ用：命中の窓の間、毎フレーム刃の向き・規則の線とのずれを記録に出す。
     bool traceMotion = false;
+};
+
+// 技の点描の演出（見た目だけ）。当たり・F 数は変えない。地面や画面への予告は出さない。
+struct BossBodyAccentSettings {
+    void Describe(HIKARI::PropertyFields& fields);
+
+    // 刀に付くエフェクト（刀光の帯と、燃える刀身の炎・ゆがみ・光）。見える刀の刃に付けて出し続ける。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference bladeEffect{"9d2c47e1b6a3405f8e17c5d0a4b2f693", "Assets/Vfx/BossBlade.hvfx"};
+    // 刀光：振っている間、刃が通った面に光る帯とゆがみを出す。
+    bool trail = true;
+    // エフェクトを付ける刃の始まり（握りから剣先までの割合。鍔のすぐ先）。
+    float bladeFromShare = 0.14f;
+    // 命中の窓が閉じた後も、振り抜きの間は出し続ける時間 (秒) と、その間に要る剣先の速さ (m/秒)。
+    float trailFollowSeconds = 0.08f;
+    float trailMinTipSpeed = 25.0f;
+    // 剣先が地面からこの高さ (m) より下へ来たら、刀光を切る。
+    float trailGroundCut = 0.35f;
+    // 刀光の色と明るさ（1 を超えると光る）：霞の技（刀が燃えていない）と、刀が燃えている技。
+    HIKARI::GameProjectFloat3 trailMistColor{0.80f, 1.20f, 2.20f};
+    HIKARI::GameProjectFloat3 trailFireColor{2.40f, 1.00f, 0.30f};
+    // 燃える刀身：炎の明るさ（倍率。0 で出さない）と、火が付く・消える時間 (秒)。
+    float bladeHeat = 1.0f;
+    float bladeHeatSeconds = 0.25f;
+};
+
+// 技の演出の実行時の状態（保存しない）。
+struct BossBodyAccentState {
+    // 刀に付くエフェクトの再生。
+    HIKARI::GameProjectVfxPlaybackHandle bladeVfx{};
+    // 刀光を出し続ける残り時間 (秒)、刀光の明るさ（0〜1）、刀身の炎の明るさ（0〜1）。
+    float trailHold = 0.0f;
+    float trailGain = 0.0f;
+    float heatGain = 0.0f;
 };
 
 // ボスの外形（模型の部品）の、人が調整する値。ボスの部品（BossComponent）が持ち、項目は「外形」の節に出る。
@@ -232,6 +268,8 @@ struct BossBodySettings {
     BossBodyMotionSettings motion;
     // 左手の手振り。
     BossBodyLeftHandSettings leftHand;
+    // 技の点描の演出。
+    BossBodyAccentSettings accents;
 
 private:
     void DescribeShape(HIKARI::PropertyFields& fields);
@@ -298,6 +336,7 @@ struct BossBodyState {
     HIKARI::GameProjectFloat3 lookTarget{};
     bool lookTargetSeen = false;
     BossBodyMotionState motion;
+    BossBodyAccentState accents;
 };
 
 } // namespace Project_TD2_2
