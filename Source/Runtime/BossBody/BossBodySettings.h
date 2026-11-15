@@ -177,6 +177,37 @@ struct BossBodyAccentSettings {
     // 燃える刀身：炎の明るさ（倍率。0 で出さない）と、火が付く・消える時間 (秒)。
     float bladeHeat = 1.0f;
     float bladeHeatSeconds = 0.25f;
+
+    // 目の光：兜に付くエフェクト（頭が動くと尾を引く光・暈・技を出すと決めた瞬間に横へ伸びる閃き）。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference eyesEffect{"a4f1c8e27b5d4390b61e2c9d3f7a0851", "Assets/Vfx/BossEyes.hvfx"};
+    // 目の光の色と明るさ：ふだん（霞）と、フェーズ 2（火）。
+    HIKARI::GameProjectFloat3 eyesMistColor{0.70f, 1.10f, 1.90f};
+    HIKARI::GameProjectFloat3 eyesFireColor{3.60f, 1.30f, 0.30f};
+    // 閃きの強さ：ふつうの技・大技（引爆・天降り斬り・退き溜め・霞の大剣）と、消えるまでの時間 (秒)。0 で出さない。
+    float eyeFlare = 0.6f;
+    float eyeFlareBig = 1.6f;
+    float eyeFlareSeconds = 0.45f;
+
+    // 刀身を走る光：刀を振る技を出すと決めた瞬間に、鍔元から剣先へ光が走る（1 回きりのエフェクト）。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference glintEffect{"c7e2b9041d6f4a8e95b3f0a1d2c4e687",
+                                                     "Assets/Vfx/BossBladeGlint.hvfx"};
+    HIKARI::GameProjectFloat3 glintMistColor{0.80f, 1.10f, 1.60f};
+    HIKARI::GameProjectFloat3 glintFireColor{1.80f, 0.90f, 0.35f};
+
+    // 溜めの気配：溜めている間、体を包んで立ちのぼるエフェクト。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference auraEffect{"5b0d3e9a7c124f6e8a2b1c0d9e3f4a75", "Assets/Vfx/BossAura.hvfx"};
+    HIKARI::GameProjectFloat3 auraMistColor{0.45f, 0.75f, 1.40f};
+    HIKARI::GameProjectFloat3 auraFireColor{1.60f, 0.55f, 0.12f};
+    // 気配が立ち上がる・引く時間 (秒) と、霞の大剣を作り出す間の強さ（溜め切りを 1 として）。
+    float auraSeconds = 0.25f;
+    float auraConjure = 0.7f;
+
+    // 胴の煙を技に合わせる：溜め切った時の量（倍率）、フェーズ 1 で刀が燃えている間の熱さ（熱い煙は橙に光る）、
+    // 振り終わった直後に吹き出す量（倍率）とその時間 (秒)。
+    float smokeChargeAmount = 2.4f;
+    float smokeLitHeat = 5.0f;
+    float smokeSwingPuff = 2.5f;
+    float smokeSwingPuffSeconds = 0.30f;
 };
 
 // 技の演出の実行時の状態（保存しない）。
@@ -187,6 +218,19 @@ struct BossBodyAccentState {
     float trailHold = 0.0f;
     float trailGain = 0.0f;
     float heatGain = 0.0f;
+    // 目の光・刀身を走る光・溜めの気配の再生。
+    HIKARI::GameProjectVfxPlaybackHandle eyesVfx{};
+    HIKARI::GameProjectVfxPlaybackHandle glintVfx{};
+    HIKARI::GameProjectVfxPlaybackHandle auraVfx{};
+    // 目の閃きの明るさ（出した瞬間の強さから 0 へ）、気配の強さ（0〜1）、前のフレームに構えの合図が出ていたか。
+    float flare = 0.0f;
+    float aura = 0.0f;
+    bool wasGlint = false;
+    // 胴の煙へ掛ける量と熱さ（倍率）、振り終わりの吹き出しの残り（1→0）、前のフレームが命中の窓だったか。
+    float smokeAmount = 1.0f;
+    float smokeHeat = 1.0f;
+    float puff = 0.0f;
+    bool wasWindow = false;
 };
 
 // ボスの外形（模型の部品）の、人が調整する値。ボスの部品（BossComponent）が持ち、項目は「外形」の節に出る。

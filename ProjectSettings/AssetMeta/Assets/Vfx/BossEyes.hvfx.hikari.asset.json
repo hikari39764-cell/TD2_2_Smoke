@@ -1,0 +1,14 @@
+{
+  "displayName": "BossEyes",
+  "guid": "a4f1c8e27b5d4390b61e2c9d3f7a0851",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossEyes.hvfx",
+  "type": "VfxEffect"
+}

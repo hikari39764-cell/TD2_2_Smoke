@@ -55,10 +55,14 @@ void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Ga
         body.position, BossMath::Rotate(body.rotation, {0.0f, -boss.bodyHalfHeight * body.scale.y, 0.0f}));
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     const bool stunned = boss.state == BossState::Stunned || boss.state == BossState::Dead;
+    // 技に合わせた量と熱さ（溜め・刀の火・振り終わりの吹き出し）は、演出の層（BossBodyAccents::StepSmoke）が決める。
+    const BossBodyAccentState& accents = boss.bodyState.accents;
     VfxParameters::SetFloat(parameters, kAmountInput,
-                            boss.body.smokeAmount * (stunned ? boss.body.smokeAmountStunned : 1.0f));
+                            boss.body.smokeAmount * (stunned ? boss.body.smokeAmountStunned : accents.smokeAmount));
     VfxParameters::SetFloat(parameters, kSmokeHeatInput,
-                            boss.lastPhaseNumber >= 2 && !stunned ? boss.body.smokeHeatPhaseTwo : 1.0f);
+                            stunned                      ? 1.0f
+                            : boss.lastPhaseNumber >= 2 ? boss.body.smokeHeatPhaseTwo
+                                                         : accents.smokeHeat);
     StartOrSend(world, boss, boss.bodyState.smokeVfx, boss.body.smokeEffect, transform, parameters);
 }
 
@@ -117,6 +121,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
         Stop(world, boss);
         return;
     }
+    BossBodyAccents::StepSmoke(boss, seconds);
     UpdateSmoke(world, boss, body);
     if (boss.body.model.empty())
         return;
@@ -125,7 +130,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, pose);
     SubmitPose(world, object, boss, pose);
-    BossBodyAccents::Update(world, object, boss, pose, seconds);
+    BossBodyAccents::Update(world, boss, body, pose, seconds);
 }
 
 void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,

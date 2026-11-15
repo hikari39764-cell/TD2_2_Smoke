@@ -1,0 +1,14 @@
+{
+  "displayName": "BossAura",
+  "guid": "5b0d3e9a7c124f6e8a2b1c0d9e3f4a75",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossAura.hvfx",
+  "type": "VfxEffect"
+}

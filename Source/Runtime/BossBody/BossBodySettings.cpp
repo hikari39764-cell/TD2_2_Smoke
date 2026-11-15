@@ -31,6 +31,31 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float3("bodyTrailFireColor", "刀光：刀が燃えている技の色と明るさ", trailFireColor);
     fields.Float("bodyBladeHeat", "燃える刀身：炎の明るさ（倍率。0 で出さない）", bladeHeat, 0.0f, 8.0f);
     fields.Float("bodyBladeHeatSeconds", "燃える刀身：火が付く・消える時間 (秒)", bladeHeatSeconds, 0.01f, 3.0f);
+    fields.Vfx("bodyEyesEffect", "目の光のエフェクト（兜に付く。尾を引く光・暈・閃き。空なら出さない）", eyesEffect);
+    fields.Float3("bodyEyesMistColor", "目の光：ふだんの色と明るさ", eyesMistColor);
+    fields.Float3("bodyEyesFireColor", "目の光：フェーズ 2 の色と明るさ", eyesFireColor);
+    fields.Float("bodyEyeFlare", "目の閃き：ふつうの技を出すと決めた瞬間の強さ（0 で出さない）", eyeFlare, 0.0f, 8.0f);
+    fields.Float("bodyEyeFlareBig", "目の閃き：大技（引爆・天降り斬り・退き溜め・霞の大剣）の強さ", eyeFlareBig, 0.0f,
+                 8.0f);
+    fields.Float("bodyEyeFlareSeconds", "目の閃き：消えるまでの時間 (秒)", eyeFlareSeconds, 0.01f, 3.0f);
+    fields.Vfx("bodyGlintEffect", "刀身を走る光のエフェクト（刀を振る技を出すと決めた瞬間。空なら出さない）",
+               glintEffect);
+    fields.Float3("bodyGlintMistColor", "刀身を走る光：霞の技の色と明るさ", glintMistColor);
+    fields.Float3("bodyGlintFireColor", "刀身を走る光：刀が燃えている技の色と明るさ", glintFireColor);
+    fields.Vfx("bodyAuraEffect", "溜めの気配のエフェクト（溜めている間、体を包んで立ちのぼる。空なら出さない）",
+               auraEffect);
+    fields.Float3("bodyAuraMistColor", "溜めの気配：霞の技の色と明るさ", auraMistColor);
+    fields.Float3("bodyAuraFireColor", "溜めの気配：刀が燃えている技の色と明るさ", auraFireColor);
+    fields.Float("bodyAuraSeconds", "溜めの気配：立ち上がる・引く時間 (秒)", auraSeconds, 0.01f, 3.0f);
+    fields.Float("bodyAuraConjure", "溜めの気配：霞の大剣を作り出す間の強さ（溜め切りを 1 として）", auraConjure, 0.0f,
+                 2.0f);
+    fields.Float("bodySmokeChargeAmount", "胴の煙：溜め切った時の量（倍率）", smokeChargeAmount, 0.0f, 8.0f);
+    fields.Float("bodySmokeLitHeat", "胴の煙：フェーズ 1 で刀が燃えている間の熱さ（熱い煙は橙に光る。1 で光らない）",
+                 smokeLitHeat, 0.0f, 20.0f);
+    fields.Float("bodySmokeSwingPuff", "胴の煙：振り終わった直後に吹き出す量（倍率。1 で吹き出さない）", smokeSwingPuff,
+                 1.0f, 8.0f);
+    fields.Float("bodySmokeSwingPuffSeconds", "胴の煙：吹き出しが収まるまでの時間 (秒)", smokeSwingPuffSeconds, 0.01f,
+                 3.0f);
 }
 
 void BossBodyLeftHandSettings::Describe(HIKARI::PropertyFields& fields) {

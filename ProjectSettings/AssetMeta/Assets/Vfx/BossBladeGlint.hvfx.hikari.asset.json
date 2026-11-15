@@ -1,0 +1,14 @@
+{
+  "displayName": "BossBladeGlint",
+  "guid": "c7e2b9041d6f4a8e95b3f0a1d2c4e687",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossBladeGlint.hvfx",
+  "type": "VfxEffect"
+}
