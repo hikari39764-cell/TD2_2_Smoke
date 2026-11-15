@@ -4,8 +4,8 @@ import bb_common as bb
 
 def make():
     return {
-        # 黒漆の鉄板：金属ではなく、つやのある黒。夕方の光で青白い照り返しが乗る。
-        "lacquer": bb.material("Lacquer", (0.012, 0.012, 0.016), metallic=0.0, roughness=0.24),
+        # 黒漆の鉄板：つやのある黒。真っ黒にすると夕方の逆光で黒い塊になるので、少しだけ明るく、空を映すようにしてある。
+        "lacquer": bb.material("Lacquer", (0.030, 0.032, 0.040), metallic=0.35, roughness=0.30),
         # 朱漆（差し色）
         "lacquer_red": bb.material("LacquerRed", (0.33, 0.025, 0.02), metallic=0.0, roughness=0.3),
         # 金具（鍍金）
@@ -13,7 +13,7 @@ def make():
         # 鉄地（鍔・縁頭）
         "iron": bb.material("Iron", (0.07, 0.065, 0.06), metallic=1.0, roughness=0.55),
         # 縅の絹糸（深い紅）
-        "silk": bb.material("Silk", (0.30, 0.018, 0.028), metallic=0.0, roughness=0.85),
+        "silk": bb.material("Silk", (0.36, 0.022, 0.030), metallic=0.0, roughness=0.85),
         # 革・布（籠手の家地、手袋）
         "leather": bb.material("Leather", (0.022, 0.02, 0.022), metallic=0.0, roughness=0.8),
         # 鎖（籠手の鎖帷子の所）
@@ -26,6 +26,13 @@ def make():
                                  emission=(1.0, 0.22, 0.03), emission_strength=8000.0),
         "blade_hot_edge": bb.material("BladeHotEdge", (0.9, 0.6, 0.3), metallic=0.3, roughness=0.5,
                                       emission=(1.0, 0.72, 0.30), emission_strength=30000.0),
+        # 鎧の中の闇（胴と兜の中が空へ抜けて見えないようにする、つやの無い黒）
+        "void": bb.material("Void", (0.004, 0.004, 0.005), metallic=0.0, roughness=1.0),
+        # 目の光（霞の色・火の色）。昼の戦場でも光って見える強さ。
+        "eye_mist": bb.material("EyeMist", (0.0, 0.0, 0.0), roughness=1.0, emission=(0.62, 0.86, 1.0),
+                                emission_strength=60000.0),
+        "eye_fire": bb.material("EyeFire", (0.0, 0.0, 0.0), roughness=1.0, emission=(1.0, 0.42, 0.06),
+                                emission_strength=60000.0),
         # 鮫皮と柄巻
         "same": bb.material("Same", (0.72, 0.69, 0.60), metallic=0.0, roughness=0.9),
         "ito": bb.material("Ito", (0.02, 0.022, 0.03), metallic=0.0, roughness=0.75),

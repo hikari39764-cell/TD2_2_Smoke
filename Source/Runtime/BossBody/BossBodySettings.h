@@ -36,7 +36,28 @@ struct BossBodySettings {
     HIKARI::GameProjectFloat3 leftRestWrist{1.0f, 1.80f, 0.35f};
     HIKARI::GameProjectFloat3 leftRestFingers{0.10f, -0.85f, 0.50f};
     HIKARI::GameProjectFloat3 leftRestBack{0.85f, 0.25f, 0.45f};
+
+    // 鎧の部品の置き場所（体の足元から、局所 m。+X が左、+Z が前）。鎧は体の傾き・屈みに付いて動く。
+    // 胴（ノード Do）の中心。模型を作るスクリプトの DO_CENTER_Y と合わせる。
+    HIKARI::GameProjectFloat3 torsoCenter{0.0f, 2.50f, 0.0f};
+    // 兜（ノード Kabuto・目の光）の中心と大きさ。
+    HIKARI::GameProjectFloat3 headCenter{0.0f, 3.50f, 0.03f};
+    float headScale = 1.16f;
+    // 大袖（ノード Sode）：吊る所（右の袖。左は左右を反転）、外へ向ける角度（真横が 90 度。小さいほど前へ向く）、
+    // 裾を外へ開く角度。
+    HIKARI::GameProjectFloat3 sodeHang{-0.88f, 3.14f, 0.02f};
+    float sodeYawDegrees = 76.0f;
+    float sodeFlareDegrees = 24.0f;
+    // 草摺（ノード KusazuriPanel）：枚数、吊る高さ、腰の輪郭の半径（横・前後）、裾を外へ開く角度。
+    int tassetCount = 7;
+    float tassetHangHeight = 2.02f;
+    float tassetRadiusSide = 0.57f;
+    float tassetRadiusFront = 0.50f;
+    float tassetFlareDegrees = 15.0f;
 };
+
+// 草摺の枚数の上限（表示の番号を先に取っておく数）。
+inline constexpr int kBossBodyTassetCapacity = 12;
 
 // 外形の実行時の状態（保存しない）。
 struct BossBodyState {

@@ -25,6 +25,18 @@ void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
                   shoulder);
     fields.Float("bodyCuffGripBlend", "右の籠手の筒の向きに、握りの手の模型の肘の向きを混ぜる割合", cuffGripBlend, 0.0f,
                  1.0f);
+    fields.Float3("bodyTorsoCenter", "鎧：胴の中心（体の足元から、局所 m）", torsoCenter);
+    fields.Float3("bodyHeadCenter", "鎧：兜の中心（体の足元から、局所 m）", headCenter);
+    fields.Float("bodyHeadScale", "鎧：兜の大きさ（倍率）", headScale, 0.2f, 4.0f);
+    fields.Float3("bodySodeHang", "鎧：大袖を吊る所（右の袖。体の足元から、局所 m。左は左右を反転）", sodeHang);
+    fields.Float("bodySodeYawDegrees", "鎧：大袖を外へ向ける角度 (度。90 で真横、小さいほど前へ向く)", sodeYawDegrees,
+                 0.0f, 180.0f);
+    fields.Float("bodySodeFlareDegrees", "鎧：大袖の裾を外へ開く角度 (度)", sodeFlareDegrees, -30.0f, 80.0f);
+    fields.Int("bodyTassetCount", "鎧：草摺の枚数", tassetCount, 0, kBossBodyTassetCapacity);
+    fields.Float("bodyTassetHangHeight", "鎧：草摺を吊る高さ (m、体の足元から)", tassetHangHeight, 0.0f, 10.0f);
+    fields.Float("bodyTassetRadiusSide", "鎧：草摺を吊る腰の半径・横 (m)", tassetRadiusSide, 0.05f, 5.0f);
+    fields.Float("bodyTassetRadiusFront", "鎧：草摺を吊る腰の半径・前後 (m)", tassetRadiusFront, 0.05f, 5.0f);
+    fields.Float("bodyTassetFlareDegrees", "鎧：草摺の裾を外へ開く角度 (度)", tassetFlareDegrees, -30.0f, 80.0f);
     fields.Note("刀と右手は、剣の姿勢（剣の付け根 Boss.swordShoulder と剣の向き）に付いて動きます。"
                 "剣の長さは Boss.swordLength です。「握りの右手の模型」の 3 つは、模型を作り直した時にだけ、"
                 "作るスクリプトが出す値へ合わせます。");
