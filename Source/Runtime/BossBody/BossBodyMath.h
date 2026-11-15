@@ -89,6 +89,21 @@ inline const BossMove* CurrentMove(const BossComponent& boss) {
     return &moves[static_cast<size_t>(boss.move)];
 }
 
+// 待機の構え（下段）：息に合わせて握りと剣先が少し上下する。局所（体の向きの枠。足元が原点）。
+inline void IdleKamae(const BossBodyMotionSettings& s, float clock, Vec3& direction, Vec3& grip) {
+    const float breath = std::sin(2.0f * kPi * s.breathFrequency * clock);
+    const Vec3 base = Normalize(s.idleDirection);
+    const Vec3 up = Perpendicular({0.0f, 1.0f, 0.0f}, base);
+    direction = ExpMap(base, Mul(up, s.breathDegrees * kRadiansPerDegree * breath));
+    grip = Add(s.idleGrip, Vec3{0.0f, s.breathMeters * breath, 0.0f});
+}
+
+// 胴の捻りの目標：刀の横の向き（局所 x）に比例し、上限で止める。
+inline float TwistTarget(const BossBodyMotionSettings& s, Vec3 direction) {
+    const float limit = s.twistMaxDegrees * kRadiansPerDegree;
+    return std::clamp(direction.x * s.twistDegrees * kRadiansPerDegree, -limit, limit);
+}
+
 // 刀の模型の拡大（剣の長さに合わせる）と、手の模型の拡大。
 inline float SwordScale(const BossComponent& boss) {
     return std::max(0.01f, boss.swordLength - boss.body.swordGripAlong) / std::max(0.01f, boss.body.swordModelLength);

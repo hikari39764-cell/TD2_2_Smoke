@@ -4,8 +4,10 @@
 #include <string_view>
 
 #include "HIKARI/Project/PresentationViews.h"
+#include "BossBodyMath.h"
 #include "BossBodyRig.h"
 #include "BossBodySword.h"
+#include "../Boss/BossCloneComponent.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
 #include "../Boss/BossVfx.h"
@@ -84,6 +86,26 @@ void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& 
     BossLog::Warn("[BossBody] 外形の模型を出せませんでした（Boss の「外形の模型」とノードの名前を確かめてください）");
 }
 
+// 置き場所の一式を、持ち主の物体（本体・分身）の表示専用の模型として頼む。番号は持ち主ごとなので、本体と分身で
+// 同じ番号を使っても重ならない。
+void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyPose& pose) {
+    Submit(world, object, boss, kHilt, pose.sword);
+    Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
+    Submit(world, object, boss, kRightHand, pose.rightHand);
+    Submit(world, object, boss, kRightCuff, pose.rightCuff);
+    Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);
+    Submit(world, object, boss, kLeftCuff, pose.leftCuff);
+    Submit(world, object, boss, kTorso, pose.torso);
+    Submit(world, object, boss, kHead, pose.head);
+    if (pose.eyesLit)
+        Submit(world, object, boss, pose.eyesFire ? kEyesFire : kEyesMist, pose.head);
+    for (size_t side = 0; side < pose.sode.size(); ++side)
+        Submit(world, object, boss, {kSodeNode, kSodeInstance + side}, pose.sode[side]);
+    for (int k = 0; k < pose.tassetCount; ++k)
+        Submit(world, object, boss, {kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},
+               pose.tassets[static_cast<size_t>(k)]);
+}
+
 } // namespace
 
 void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
@@ -101,21 +123,32 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossBodySword::Step(boss, seconds);
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, pose);
-    Submit(world, object, boss, kHilt, pose.sword);
-    Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
-    Submit(world, object, boss, kRightHand, pose.rightHand);
-    Submit(world, object, boss, kRightCuff, pose.rightCuff);
-    Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);
-    Submit(world, object, boss, kLeftCuff, pose.leftCuff);
-    Submit(world, object, boss, kTorso, pose.torso);
-    Submit(world, object, boss, kHead, pose.head);
-    if (pose.eyesLit)
-        Submit(world, object, boss, pose.eyesFire ? kEyesFire : kEyesMist, pose.head);
-    for (size_t side = 0; side < pose.sode.size(); ++side)
-        Submit(world, object, boss, {kSodeNode, kSodeInstance + side}, pose.sode[side]);
-    for (int k = 0; k < pose.tassetCount; ++k)
-        Submit(world, object, boss, {kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},
-               pose.tassets[static_cast<size_t>(k)]);
+    SubmitPose(world, object, boss, pose);
+}
+
+void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+                                  BossCloneComponent& clone, float seconds) {
+    // 出ていない分身は地面の下にしまってあり、何も頼まない（頼まなかったフレームは消える）。
+    HIKARI::GameProjectTransform body{};
+    if (!clone.active || !boss.body.visible || boss.body.model.empty() || !object.GetWorldTransform(body))
+        return;
+    clone.bodyClock += std::max(0.0f, seconds);
+    // 待機の構えの入力：分身の物体の変換（霧から浮かび上がる高さ・向き）と、分身の時計。振れは持たず、
+    // 大袖・草摺は揺らぎだけ。胴の捻りは本体の待機と同じく刀の横の向きから。
+    HIKARI::GameProjectFloat3 blade{}, grip{};
+    BossBodyMath::IdleKamae(boss.body.motion, clone.bodyClock, blade, grip);
+    const BossBodyRigInput input{boss.body,
+                                 body,
+                                 boss.bodyHalfHeight,
+                                 clone.bodyClock,
+                                 {},
+                                 BossBodyMath::TwistTarget(boss.body.motion, blade),
+                                 0.0f,
+                                 boss.lastPhaseNumber >= 2,
+                                 true,
+                                 BossBodyMath::SwordScale(boss),
+                                 BossBodyMath::HandScale(boss)};
+    SubmitPose(world, object, boss, BossBodyRig::SolveIdle(input));
 }
 
 void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {

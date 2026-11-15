@@ -7,6 +7,7 @@
 
 #include "HIKARI/Project/ProjectDataView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "BossCloneComponent.h"
 #include "BossClones.h"
 #include "BossDetonate.h"
 #include "BossFeedback.h"
@@ -563,6 +564,13 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                   return;
                                               BossVisuals::Update(world, object, boss, frame.gameDt);
                                               BossBodyVisuals::Update(world, object, boss, frame.gameDt);
+                                              // 霞分身の外形（分身の物体は BossClones と同じく部品の型で回る）。
+                                              world.ForEachComponent<BossCloneComponent>(
+                                                  HIKARI::MakeComponentTypeId(kBossCloneType),
+                                                  [&](HIKARI::ObjectView cloneObject, BossCloneComponent& clone) {
+                                                      BossBodyVisuals::UpdateClone(world, cloneObject, boss, clone,
+                                                                                   frame.gameDt);
+                                                  });
                                               BossFeedback::Update(world, object, boss, frame);
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });

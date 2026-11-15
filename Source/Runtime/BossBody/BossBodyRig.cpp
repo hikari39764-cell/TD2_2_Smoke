@@ -3,14 +3,14 @@
 #include <algorithm>
 #include <cmath>
 
+#include "BossBodyMath.h"
 #include "BossBodySword.h"
-#include "../Boss/BossMath.h"
 #include "../Boss/BossRules.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-using namespace BossMath;
+using namespace BossBodyMath;
 
 // 草摺を吊る腰の輪郭：角の丸い四角（模型を作るスクリプト bb_armor.superpoint と同じ指数）。
 constexpr float kWaistOutlinePower = 2.6f;
@@ -47,16 +47,15 @@ struct BodyFrame {
         return placement;
     }
     // 揺れを足した、垂れた部品。振れ（世界座標の度）のうち、外向きの成分は裾の開き、横の成分は横振りになる。
-    BossBodyPlacement Swinging(const BossComponent& boss, Vec3 local, float yaw, float flareDegrees, int index) const {
-        const BossBodyState& state = boss.bodyState;
+    BossBodyPlacement Swinging(const BossBodyRigInput& in, Vec3 local, float yaw, float flareDegrees, int index) const {
         const Vec3 outward = Rotate(body.rotation, {std::sin(yaw), 0.0f, std::cos(yaw)});
         const Vec3 tangent = Rotate(body.rotation, {std::cos(yaw), 0.0f, -std::sin(yaw)});
-        const Vec3 flat{state.sway.x, 0.0f, state.sway.z};
+        const Vec3 flat{in.sway.x, 0.0f, in.sway.z};
         const float flutter =
-            boss.body.flutterDegrees * std::sin(2.0f * kPi * boss.body.flutterFrequency * state.clock +
-                                                kFlutterPhaseStep * static_cast<float>(index));
+            in.settings.flutterDegrees * std::sin(2.0f * kPi * in.settings.flutterFrequency * in.clock +
+                                                  kFlutterPhaseStep * static_cast<float>(index));
         const float flare =
-            std::clamp(flareDegrees + Dot(flat, outward) + state.sway.y + flutter, kFlareMinDegrees, kFlareMaxDegrees);
+            std::clamp(flareDegrees + Dot(flat, outward) + in.sway.y + flutter, kFlareMinDegrees, kFlareMaxDegrees);
         return Hanging(local, yaw, flare, 1.0f, Dot(flat, tangent));
     }
 };
@@ -69,17 +68,17 @@ Vec3 WaistPoint(float angle, float radiusSide, float radiusFront, float height) 
             std::copysign(std::pow(std::abs(c), e), c) * radiusFront};
 }
 
-void SolveArmor(const BossComponent& boss, const HIKARI::GameProjectTransform& bodyTransform, BossBodyPose& pose) {
-    const BossBodySettings& body = boss.body;
-    const BodyFrame frame{bodyTransform, boss.bodyHalfHeight};
+void SolveArmor(const BossBodyRigInput& in, BossBodyPose& pose) {
+    const BossBodySettings& body = in.settings;
+    const BodyFrame frame{in.body, in.halfHeight};
     // 胴・兜・大袖は、刀の横の向きに付いて縦の軸まわりに捻る（BossBodySword が進める）。兜はさらにプレイヤーを向く。
-    const float twist = boss.bodyState.motion.twist;
+    const float twist = in.twist;
     pose.torso = frame.Hanging(RotateY(body.torsoCenter, twist), twist, 0.0f);
-    pose.head = frame.Hanging(RotateY(body.headCenter, twist), boss.bodyState.motion.headYaw, 0.0f, body.headScale);
+    pose.head = frame.Hanging(RotateY(body.headCenter, twist), in.headYaw, 0.0f, body.headScale);
     const float sodeYaw = body.sodeYawDegrees * kRadiansPerDegree;
     // 右の袖は -X の側（外向きは -X 寄り）、左は +X の側。
-    pose.sode[0] = frame.Swinging(boss, RotateY(body.sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100);
-    pose.sode[1] = frame.Swinging(boss, RotateY({-body.sodeHang.x, body.sodeHang.y, body.sodeHang.z}, twist),
+    pose.sode[0] = frame.Swinging(in, RotateY(body.sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100);
+    pose.sode[1] = frame.Swinging(in, RotateY({-body.sodeHang.x, body.sodeHang.y, body.sodeHang.z}, twist),
                                   twist + sodeYaw, body.sodeFlareDegrees, 101);
     pose.tassetCount = std::clamp(body.tassetCount, 0, kBossBodyTassetCapacity);
     // 草摺は腰に付くので、捻りの一部だけ。
@@ -87,13 +86,41 @@ void SolveArmor(const BossComponent& boss, const HIKARI::GameProjectTransform& b
     for (int k = 0; k < pose.tassetCount; ++k) {
         const float angle = 2.0f * kPi * static_cast<float>(k) / static_cast<float>(pose.tassetCount);
         pose.tassets[static_cast<size_t>(k)] = frame.Swinging(
-            boss,
+            in,
             RotateY(WaistPoint(angle, body.tassetRadiusSide, body.tassetRadiusFront, body.tassetHangHeight),
                     tassetTwist),
             angle + tassetTwist, body.tassetFlareDegrees, k);
     }
-    pose.eyesFire = boss.lastPhaseNumber >= 2;
-    pose.eyesLit = boss.state != BossState::Stunned && boss.state != BossState::Dead;
+    pose.eyesFire = in.phaseTwo;
+    pose.eyesLit = in.eyesLit;
+}
+
+// 待機の構えの刀・握りの右手・右の籠手・左手（待機の置き場所）・左の籠手。本体の待機（BossBodySword・BossBodyLeftHand が
+// 落ち着いた形）と同じ値で置く。分身は動きの状態を持たないので、ばね・釣り合いのずれは入れない。
+void SolveIdleHands(const BossBodyRigInput& in, BossBodyPose& pose) {
+    const BossBodySettings& s = in.settings;
+    const BodyFrame frame{in.body, in.halfHeight};
+    const auto direction = [&](Vec3 local) { return Normalize(Rotate(in.body.rotation, local), local); };
+    Vec3 blade{}, grip{};
+    IdleKamae(s.motion, in.clock, blade, grip);
+    const Vec3 edge = Perpendicular(s.motion.idleEdge, blade);
+    pose.sword.position = frame.Point(grip);
+    pose.sword.rotation = AimZ(direction(blade), Mul(direction(edge), -1.0f));
+    pose.sword.scale = in.swordScale;
+    pose.rightHand = pose.sword;
+    pose.rightHand.scale = in.handScale;
+    const Vec3 rightShoulder = frame.Point(RotateY(s.shoulder, in.twist));
+    const Vec3 rightWrist = Add(pose.sword.position, Rotate(pose.sword.rotation, Mul(s.gripWrist, in.handScale)));
+    const Vec3 gripElbow = Normalize(Rotate(pose.sword.rotation, s.gripElbow));
+    const Vec3 rightElbow = Lerp(Normalize(Sub(rightShoulder, rightWrist), gripElbow), gripElbow, s.cuffGripBlend);
+    pose.rightCuff = Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, s.gripBack), in.handScale);
+    const Vec3 back = direction(RotateY(s.leftRestBack, in.twist));
+    pose.leftHand.position = frame.Point(RotateY(s.leftRestWrist, in.twist));
+    pose.leftHand.rotation = AimZ(direction(RotateY(s.leftRestFingers, in.twist)), back);
+    pose.leftHand.scale = in.handScale;
+    pose.leftShape = BossBodyHandShape::Open;
+    const Vec3 leftShoulder = frame.Point(RotateY({-s.shoulder.x, s.shoulder.y, s.shoulder.z}, in.twist));
+    pose.leftCuff = Cuff(pose.leftHand.position, Sub(leftShoulder, pose.leftHand.position), back, in.handScale);
 }
 
 } // namespace
@@ -138,7 +165,31 @@ BossBodyPose BossBodyRig::Solve(const BossComponent& boss, const HIKARI::GamePro
     pose.bladeHot = BossRules::IsBladeLit(boss);
     // 刀・手・籠手は、見せる姿勢（BossBodySword が進める）から置く。
     BossBodySword::Solve(boss, bodyTransform, pose);
-    SolveArmor(boss, bodyTransform, pose);
+    SolveArmor(InputOf(boss, bodyTransform), pose);
+    return pose;
+}
+
+BossBodyRigInput BossBodyRig::InputOf(const BossComponent& boss, const HIKARI::GameProjectTransform& body) {
+    const BossBodyState& state = boss.bodyState;
+    return {boss.body,
+            body,
+            boss.bodyHalfHeight,
+            state.clock,
+            state.sway,
+            state.motion.twist,
+            state.motion.headYaw,
+            boss.lastPhaseNumber >= 2,
+            boss.state != BossState::Stunned && boss.state != BossState::Dead,
+            SwordScale(boss),
+            HandScale(boss)};
+}
+
+BossBodyPose BossBodyRig::SolveIdle(const BossBodyRigInput& input) {
+    BossBodyPose pose;
+    // 分身は技を出さないので、刀が灼けるのはフェーズ 2 の常の分だけ。
+    pose.bladeHot = input.phaseTwo;
+    SolveIdleHands(input, pose);
+    SolveArmor(input, pose);
     return pose;
 }
 

@@ -28,6 +28,8 @@ public:
     int age = 0;
     // 同じ物体の Damageable の命中の数（増えたら撃たれた）。
     uint64_t seenHits = 0;
+    // 外形（鎧・刀・手）の揺らぎと息の時計 (秒)。見た目だけが使う。
+    float bodyClock = 0.0f;
 };
 
 } // namespace Project_TD2_2

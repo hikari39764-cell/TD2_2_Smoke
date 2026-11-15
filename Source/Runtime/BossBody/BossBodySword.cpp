@@ -113,12 +113,7 @@ void GreatTargets(const BossComponent& boss, MotionTargets& t) {
 
 // 待機の構え：下段で、息に合わせて握りと剣先が少し上下する。
 void Kamae(const BossComponent& boss, Vec3& direction, Vec3& grip) {
-    const BossBodyMotionSettings& s = boss.body.motion;
-    const float breath = std::sin(2.0f * kPi * s.breathFrequency * boss.bodyState.clock);
-    const Vec3 base = Normalize(s.idleDirection);
-    const Vec3 up = Perpendicular({0.0f, 1.0f, 0.0f}, base);
-    direction = ExpMap(base, Mul(up, s.breathDegrees * kRadiansPerDegree * breath));
-    grip = Add(s.idleGrip, Vec3{0.0f, s.breathMeters * breath, 0.0f});
+    IdleKamae(boss.body.motion, boss.bodyState.clock, direction, grip);
 }
 
 // 待機の構えを混ぜる重み。待機・溜めの始めは「規則の剣が下ろした構えに近いほど」、後隙は後半で待機の構えへ戻す。
@@ -264,11 +259,6 @@ void StepGrip(const BossComponent& boss, const MotionTargets& t, BossBodyMotionS
     // 振りの直前：握りを規則の線の上へ寄せる（窓が開く時に跳ばない）。
     if (t.lead > 0.0f)
         m.grip = Lerp(m.grip, Add(t.ruleRoot, Mul(m.direction, along)), t.lead);
-}
-
-float TwistTarget(const BossBodyMotionSettings& s, Vec3 direction) {
-    const float limit = s.twistMaxDegrees * kRadiansPerDegree;
-    return std::clamp(direction.x * s.twistDegrees * kRadiansPerDegree, -limit, limit);
 }
 
 // 兜の向き（体の向きからの rad）：プレイヤーの方へ、上限の内で。気絶・撃破・プレイヤー無しは正面。
