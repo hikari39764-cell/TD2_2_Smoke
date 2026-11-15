@@ -228,6 +228,26 @@ struct BossBodyAccentSettings {
     // 尾が出始める体の速さと、出切る速さ (m/秒)。
     float dashMinSpeed = 9.0f;
     float dashFullSpeed = 18.0f;
+
+    // 左手の光：所作の間、掌に集まる光（暈・芯・ゆがみ・速く動いた時の尾）。左手の掌に付けて出し続ける。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference handEffect{"7e3a9c5d1b8f4e62a0d4c6b2f1e8a937", "Assets/Vfx/BossHand.hvfx"};
+    // 左手の弾け：握る・印を切る・投げる・刀身をなぞり終える瞬間に、手元で弾ける閃きと輪（1 回きり）。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference handBurstEffect{"0f6d2b8e4c1a49d7b3e5a7c9d1f20b64",
+                                                         "Assets/Vfx/BossHandBurst.hvfx"};
+    // 色と明るさ：霞の所作（刀印・投げナイフ・狙い）と、火の所作（引爆・刀身をなぞる・刀が燃えている時の狙い）。
+    HIKARI::GameProjectFloat3 handMistColor{0.70f, 1.05f, 1.80f};
+    HIKARI::GameProjectFloat3 handFireColor{2.00f, 0.80f, 0.22f};
+    // 所作ごとの光の強さ（0 で出さない）：引爆（掲げた掌）、刀印、投げナイフ（引いた手）、刀身をなぞる、狙い（溜め切り）。
+    float handDetonate = 1.0f;
+    float handSeal = 0.8f;
+    float handKnife = 0.5f;
+    float handWipe = 1.2f;
+    float handAim = 0.9f;
+    // 光が立ち上がる・引く時間 (秒) と、弾けの大きさ（倍率。0 で出さない）。
+    float handSeconds = 0.12f;
+    float handBurst = 1.0f;
+    // 光を置く所（左手の模型の座標・実寸 m。掌の真ん中の少し前）。
+    HIKARI::GameProjectFloat3 handPoint{0.0f, -0.07f, 0.20f};
 };
 
 // 技の演出の実行時の状態（保存しない）。
@@ -262,6 +282,13 @@ struct BossBodyAccentState {
     int previousActPhase = -1;
     uint64_t previousRing = 0;
     float previousCharge = 0.0f;
+    // 左手の光の再生と明るさ（0〜1）、前のフレームの所作・手の形（弾ける瞬間を見分ける。-1＝まだ見ていない）。
+    HIKARI::GameProjectVfxPlaybackHandle handVfx{};
+    float hand = 0.0f;
+    bool handFire = false;
+    int previousGesture = -1;
+    int previousShape = -1;
+    int previousHandPhase = -1;
 };
 
 // ボスの外形（模型の部品）の、人が調整する値。ボスの部品（BossComponent）が持ち、項目は「外形」の節に出る。

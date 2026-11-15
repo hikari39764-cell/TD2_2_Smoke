@@ -1,0 +1,14 @@
+{
+  "displayName": "BossHandBurst",
+  "guid": "0f6d2b8e4c1a49d7b3e5a7c9d1f20b64",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossHandBurst.hvfx",
+  "type": "VfxEffect"
+}

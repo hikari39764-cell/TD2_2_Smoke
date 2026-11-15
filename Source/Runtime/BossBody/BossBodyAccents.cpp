@@ -23,6 +23,7 @@ constexpr const char* kFlareInput = "input.flare"; // 目の閃きの色と明�
 constexpr const char* kColorInput = "input.color"; // 刀身を走る光の色
 constexpr const char* kAuraInput = "input.aura";   // 溜めの気配の色と強さ
 constexpr const char* kDashInput = "input.dash";   // 突進の尾の色と明るさ
+constexpr const char* kHandInput = "input.hand";   // 左手の光の色と明るさ
 // これより速い 1 フレームの動きは、瞬間移動と見て速さに数えない (m/秒)。
 constexpr float kTeleportSpeed = 300.0f;
 // 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
@@ -257,6 +258,78 @@ void UpdateDash(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Gam
                 Color(kDashInput, Mul(pose.bladeHot ? s.dashFireColor : s.dashMistColor, a.dash)));
 }
 
+// 左手の所作の演出：所作の間、掌に光が集まり、握る・印を切る・投げる・刀身をなぞり終える瞬間に手元で弾ける。
+// 所作と手の形は、動きの層（BossBodyLeftHand）が決めたものを読むだけ。
+void UpdateHand(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, float seconds) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    BossBodyAccentState& a = boss.bodyState.accents;
+    const BossBodyMotionState& m = boss.bodyState.motion;
+    const BossBodyLeftGesture gesture = m.leftGesture;
+    const bool acting = boss.state == BossState::Act;
+    const int phase = acting ? static_cast<int>(boss.phase) : -1;
+    // 所作ごとの光の強さと色。引爆は握った後、投げナイフは投げた後は消す。
+    float target = 0.0f;
+    bool fire = a.handFire;
+    switch (gesture) {
+    case BossBodyLeftGesture::Detonate:
+        target = pose.leftShape == BossBodyHandShape::Fist ? 0.0f : s.handDetonate;
+        fire = true;
+        break;
+    case BossBodyLeftGesture::Seal:
+        target = s.handSeal;
+        fire = false;
+        break;
+    case BossBodyLeftGesture::Knife:
+        target = acting && boss.phase == BossActPhase::Pre ? s.handKnife : 0.0f;
+        fire = false;
+        break;
+    case BossBodyLeftGesture::FlameWipe:
+        target = s.handWipe;
+        fire = true;
+        break;
+    case BossBodyLeftGesture::Aim:
+        target = s.handAim * std::clamp(boss.chargeVisual, 0.0f, 1.0f);
+        fire = pose.bladeHot;
+        break;
+    default: break;
+    }
+    a.handFire = fire;
+    a.hand = Lerp(a.hand, target, Follow(seconds, s.handSeconds));
+    const Vec3 color = fire ? s.handFireColor : s.handMistColor;
+    const Vec3 point =
+        Add(pose.leftHand.position, Rotate(pose.leftHand.rotation, Mul(s.handPoint, pose.leftHand.scale)));
+
+    // 弾ける瞬間：引爆で拳を握った、刀印・投げナイフの前隙が終わった、刀身をなぞり終えた。
+    const int shape = static_cast<int>(pose.leftShape);
+    bool burst = false;
+    if (a.previousGesture >= 0) {
+        const auto previous = static_cast<BossBodyLeftGesture>(a.previousGesture);
+        const bool released = a.previousHandPhase == static_cast<int>(BossActPhase::Pre) &&
+                              phase == static_cast<int>(BossActPhase::Act);
+        burst = (gesture == BossBodyLeftGesture::Detonate && pose.leftShape == BossBodyHandShape::Fist &&
+                 a.previousShape != static_cast<int>(BossBodyHandShape::Fist)) ||
+                ((previous == BossBodyLeftGesture::Seal || previous == BossBodyLeftGesture::Knife) && released) ||
+                (previous == BossBodyLeftGesture::FlameWipe && gesture != BossBodyLeftGesture::FlameWipe);
+    }
+    a.previousGesture = static_cast<int>(gesture);
+    a.previousShape = shape;
+    a.previousHandPhase = phase;
+    if (burst && s.handBurst > 0.0f && !s.handBurstEffect.IsEmpty()) {
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = s.handBurstEffect;
+        play.transform = Placed(point, s.handBurst * pose.leftHand.scale);
+        play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+        play.parameters = Color(kColorInput, color);
+        BossVfx::Start(world, boss, play);
+    }
+    if (s.handEffect.IsEmpty()) {
+        StopHandle(world, a.handVfx);
+        return;
+    }
+    StartOrSend(world, boss, a.handVfx, s.handEffect, Placed(point, pose.leftHand.scale, pose.leftHand.rotation),
+                Color(kHandInput, Mul(color, a.hand)));
+}
+
 } // namespace
 
 void BossBodyAccents::StepSmoke(BossComponent& boss, float seconds) {
@@ -283,6 +356,7 @@ void BossBodyAccents::Update(HIKARI::WorldView& world, BossComponent& boss, cons
     UpdateAura(world, boss, body, pose, seconds);
     UpdateShock(world, boss, body, pose);
     UpdateDash(world, boss, body, pose, seconds);
+    UpdateHand(world, boss, pose, seconds);
 }
 
 void BossBodyAccents::Stop(HIKARI::WorldView& world, BossComponent& boss) {
@@ -292,6 +366,7 @@ void BossBodyAccents::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     StopHandle(world, a.glintVfx);
     StopHandle(world, a.auraVfx);
     StopHandle(world, a.dashVfx);
+    StopHandle(world, a.handVfx);
     a = {};
 }
 

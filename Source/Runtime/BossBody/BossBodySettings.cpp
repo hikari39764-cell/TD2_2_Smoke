@@ -70,6 +70,19 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float3("bodyDashFireColor", "突進の尾：刀が燃えている間の色と明るさ", dashFireColor);
     fields.Float("bodyDashMinSpeed", "突進の尾：出始める体の速さ (m/秒)", dashMinSpeed, 0.0f, 100.0f);
     fields.Float("bodyDashFullSpeed", "突進の尾：出切る体の速さ (m/秒)", dashFullSpeed, 0.1f, 100.0f);
+    fields.Vfx("bodyHandEffect", "左手の光のエフェクト（所作の間、掌に集まる光。空なら出さない）", handEffect);
+    fields.Vfx("bodyHandBurstEffect", "左手の弾けのエフェクト（握る・印を切る・投げる瞬間。空なら出さない）",
+               handBurstEffect);
+    fields.Float3("bodyHandMistColor", "左手の光：霞の所作の色と明るさ", handMistColor);
+    fields.Float3("bodyHandFireColor", "左手の光：火の所作の色と明るさ", handFireColor);
+    fields.Float("bodyHandDetonate", "左手の光の強さ：引爆（掲げた掌。0 で出さない）", handDetonate, 0.0f, 8.0f);
+    fields.Float("bodyHandSeal", "左手の光の強さ：刀印（霞分身・霞隠れ）", handSeal, 0.0f, 8.0f);
+    fields.Float("bodyHandKnife", "左手の光の強さ：投げナイフ（引いた手）", handKnife, 0.0f, 8.0f);
+    fields.Float("bodyHandWipe", "左手の光の強さ：刀身をなぞる（炎走り）", handWipe, 0.0f, 8.0f);
+    fields.Float("bodyHandAim", "左手の光の強さ：狙い（退き溜めの溜め切り）", handAim, 0.0f, 8.0f);
+    fields.Float("bodyHandSeconds", "左手の光：立ち上がる・引く時間 (秒)", handSeconds, 0.01f, 2.0f);
+    fields.Float("bodyHandBurst", "左手の弾けの大きさ（倍率。0 で出さない）", handBurst, 0.0f, 6.0f);
+    fields.Float3("bodyHandPoint", "左手の光を置く所（左手の模型の座標・実寸 m）", handPoint);
 }
 
 void BossBodyLeftHandSettings::Describe(HIKARI::PropertyFields& fields) {

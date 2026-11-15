@@ -1,0 +1,14 @@
+{
+  "displayName": "BossHand",
+  "guid": "7e3a9c5d1b8f4e62a0d4c6b2f1e8a937",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossHand.hvfx",
+  "type": "VfxEffect"
+}
