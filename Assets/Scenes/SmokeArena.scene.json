@@ -204,7 +204,7 @@
             "castShadow": true,
             "receiveShadow": true,
             "renderStatic": false,
-            "visible": true
+            "visible": false
           },
           "type": "ModelComponent"
         },

@@ -3,6 +3,7 @@
 #include <string>
 
 #include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Project/VfxTypes.h"
 
 namespace Project_TD2_2 {
 
@@ -14,6 +15,8 @@ struct BossBodySettings {
     // 外形の模型の資産（GUID）。空なら何も出さない。
     std::string model{"b1a52cf03fe7473cbbe74c310e9c5c29"};
     bool visible = true;
+    // 外形の模型が影を落とすか。切ると軽くなるが、鎧の影が地面と鎧自身に落ちなくなる。
+    bool castShadow = true;
     // 刀の模型の、握りの中央（ノードの原点）から剣先までの長さ。剣の長さ（Boss.swordLength）に合うように拡大する。
     // 模型を作るスクリプトが出す値（KATANA_LENGTH）に合わせる。
     float swordModelLength = 2.305f;
@@ -54,6 +57,27 @@ struct BossBodySettings {
     float tassetRadiusSide = 0.57f;
     float tassetRadiusFront = 0.50f;
     float tassetFlareDegrees = 15.0f;
+
+    // 胴の煙：ボスの足元に付いて動く流体のエフェクト（鎧の中を満たし、裾から流れ落ちる）。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference smokeEffect{"7c41e9d2a05b4f6e9b3d8a1f2c6e5d04",
+                                                     "Assets/Vfx/BossBodySmoke.hvfx"};
+    // 煙の量（倍率）と、フェーズ 2 で煙を熱くする倍率（熱い煙は橙に光る。1 で光らない）。
+    float smokeAmount = 1.0f;
+    float smokeHeatPhaseTwo = 5.0f;
+    // 気絶している間の煙の量（倍率。煙が薄れて、鎧がからっぽに見える）。
+    float smokeAmountStunned = 0.35f;
+
+    // 垂れた部品（大袖・草摺）の揺れ。体が動くと、動きと反対へ遅れて振れ、止まると行き過ぎて戻る。
+    // 体の速さ 1 m/s あたりの振れ（度）、振れの上限（度）、戻る速さ（1 秒あたりの揺れの回数）、収まりの強さ（1 で揺れ戻さない）。
+    float swayDegreesPerSpeed = 4.0f;
+    float swayMaxDegrees = 40.0f;
+    float swayFrequency = 1.6f;
+    float swayDamping = 0.38f;
+    // 止まっている時の小さな揺らぎ（度）と速さ（1 秒あたりの回数）。
+    float flutterDegrees = 1.5f;
+    float flutterFrequency = 0.45f;
+    // 撃たれた時に、後ろへ弾かれる振れ（度）。
+    float hitKickDegrees = 16.0f;
 };
 
 // 草摺の枚数の上限（表示の番号を先に取っておく数）。
@@ -63,6 +87,15 @@ inline constexpr int kBossBodyTassetCapacity = 12;
 struct BossBodyState {
     // 模型を出せなかった知らせは、1 回だけ記録に出す（毎フレーム出さない）。
     bool submitWarned = false;
+    HIKARI::GameProjectVfxPlaybackHandle smokeVfx{};
+    // 垂れた部品の振れ（度。世界座標の x・z が水平の向き、y が持ち上がり）と、その速さ。
+    HIKARI::GameProjectFloat3 sway{};
+    HIKARI::GameProjectFloat3 swayVelocity{};
+    HIKARI::GameProjectFloat3 previousPosition{};
+    bool swayReady = false;
+    float clock = 0.0f;
+    // 撃たれた数（増えたら、振れを弾く）。
+    uint64_t seenHits = 0;
 };
 
 } // namespace Project_TD2_2

@@ -9,7 +9,9 @@ namespace Project_TD2_2 {
 // 毎フレーム頼むだけ（物体・当たり・動画は作らない。頼まなかったフレームは消える）。
 class BossBodyVisuals final {
 public:
-    static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss);
+    static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds);
+    // 出し続けているエフェクト（胴の煙）を止める。
+    static void Stop(HIKARI::WorldView& world, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

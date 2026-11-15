@@ -559,7 +559,7 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                               if (!boss.initialized)
                                                   return;
                                               BossVisuals::Update(world, object, boss, frame.gameDt);
-                                              BossBodyVisuals::Update(world, object, boss);
+                                              BossBodyVisuals::Update(world, object, boss, frame.gameDt);
                                               BossFeedback::Update(world, object, boss, frame);
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });
@@ -594,6 +594,7 @@ void BossSystem::OnWorldDetached(HIKARI::WorldView& world) {
     world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType),
                                           [&](HIKARI::ObjectView, BossComponent& boss) {
                                               BossVisuals::Stop(world, boss);
+                                              BossBodyVisuals::Stop(world, boss);
                                               BossWaves::Clear(boss);
                                           });
 }

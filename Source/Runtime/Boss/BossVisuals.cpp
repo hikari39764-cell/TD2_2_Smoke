@@ -273,7 +273,10 @@ void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss) {
     // 薙ぐ間だけ、剣先の霞のエフェクトを大剣の上に置いて一緒に動かし、通った所に霞の跡を残す。
     const bool conjured = boss.greatsword.phase != BossGreatswordPhase::None;
     const bool trailing = boss.greatsword.phase == BossGreatswordPhase::Sweep && boss.greatswordTrailAmount > 0.0f;
-    if ((conjured && !trailing) || (!swinging && !kamae && !lit && !charging && !trailing)) {
+    // 外形の刀が出ている間は、「燃えているだけ」の剣先の光は出さない：灼けた刀身（模型）が見えるので要らず、
+    // 待機では剣先より先の地面に光の玉が出てしまう。
+    const bool litGlow = lit && !(boss.body.visible && !boss.body.model.empty());
+    if ((conjured && !trailing) || (!swinging && !kamae && !litGlow && !charging && !trailing)) {
         StopHandle(world, boss.swordVfx);
         return;
     }

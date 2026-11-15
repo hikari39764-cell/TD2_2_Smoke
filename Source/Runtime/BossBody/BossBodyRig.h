@@ -32,8 +32,9 @@ struct BossBodyPose {
     std::array<BossBodyPlacement, 2> sode;
     std::array<BossBodyPlacement, kBossBodyTassetCapacity> tassets;
     int tassetCount = 0;
-    // 目の光を火の色で出す（フェーズ 2）。
+    // 目の光を火の色で出す（フェーズ 2）。気絶・撃破の間は目の光を出さない。
     bool eyesFire = false;
+    bool eyesLit = true;
 };
 
 // 外形の部品の置き場所を決める規則。ボスの状態（剣の姿勢・向き・高さ）と体の物体の変換から計算するだけで、
@@ -44,6 +45,8 @@ struct BossBodyPose {
 // - 胴・兜：向きは体と同じ。大袖・草摺：原点＝吊る所、+Z＝外向き、-Y へ垂れる。
 class BossBodyRig final {
 public:
+    // 垂れた部品の振れを 1 フレーム進める（体の動きに遅れて振れ、行き過ぎて戻る。撃たれたら弾かれる）。
+    static void StepSway(BossComponent& boss, const HIKARI::GameProjectTransform& body, float seconds);
     // body は体の物体の世界の変換（傾き・屈みが入っている。鎧はこれに付いて動く）。
     static BossBodyPose Solve(const BossComponent& boss, const HIKARI::GameProjectTransform& body);
 };

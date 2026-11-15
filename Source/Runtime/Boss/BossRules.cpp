@@ -61,7 +61,9 @@ size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
     const BossMove* move = GetMove(boss, boss.move);
     const bool kicking =
         boss.state == BossState::Act && move != nullptr && move->type == BossMoveType::Kick && !boss.ringVfx.IsValid();
-    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0));
+    // 胴の煙は出し続ける域なので、斬撃の枠の上限とは別に数える。
+    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0)) +
+           (boss.bodyState.smokeVfx.IsValid() ? 1 : 0);
 }
 
 bool BossRules::IsBladeLit(const BossComponent& boss) {
