@@ -13,9 +13,6 @@ struct BossBodyPlacement {
     float scale = 1.0f;
 };
 
-// 左手の形（模型のノードを差し替える。指の骨は無い）。
-enum class BossBodyHandShape { Fist, Open, Seal };
-
 // 外形の部品の置き場所の一式。
 struct BossBodyPose {
     BossBodyPlacement sword;

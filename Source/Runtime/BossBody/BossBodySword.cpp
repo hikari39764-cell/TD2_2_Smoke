@@ -4,20 +4,17 @@
 #include <cmath>
 #include <cstdio>
 
+#include "BossBodyLeftHand.h"
+#include "BossBodyMath.h"
 #include "../Boss/BossFrame.h"
-#include "../Boss/BossMath.h"
 #include "../Boss/BossMoveTable.h"
-#include "../Boss/BossPose.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-using namespace BossMath;
+using namespace BossBodyMath;
 using Transform = HIKARI::GameProjectTransform;
 
-// ばねを 1 刻みで進める角の上限（角速度 × 刻み）。粗いと、陽に進めるばねが暴れる。刻みの数の上限。
-constexpr float kMaxSpringStep = 0.5f;
-constexpr int kMaxSubsteps = 64;
 // 1 フレームの長さの上限 (秒)。止まった後の長いフレームでも一度に進めすぎない（その分ゆっくり見える）。
 constexpr float kMaxFrameSeconds = 0.1f;
 // 足元がこの速さ (m/秒) より速く動いたら瞬間移動と見なし、刀を目標へそろえる（突進の出現・霞隠れ）。
@@ -34,72 +31,17 @@ constexpr float kMinTipLength = 0.1f;
 // 溜めの震えの 2 本目の揺れ：速さの比と位相（縦と横が同じ揺れに揃わないように）。
 constexpr float kTremorRatio = 1.37f;
 constexpr float kTremorPhase = 1.1f;
-// 割る数・時間の下限（0 で割らない）。
-constexpr float kTiny = 1e-4f;
-
-Vec3 ProjectOut(Vec3 v, Vec3 axis) { return Sub(v, Mul(axis, Dot(v, axis))); }
-
-float AngleBetween(Vec3 a, Vec3 b) { return std::atan2(Length(Cross(a, b)), Dot(a, b)); }
-
-// a から b への大円の接ベクトル（長さ＝角度 rad）。真逆の時は向きが決まらないので 0。
-Vec3 LogMap(Vec3 a, Vec3 b) {
-    const Vec3 tangent = ProjectOut(b, a);
-    const float s = Length(tangent);
-    if (s < 1e-6f)
-        return {};
-    return Mul(tangent, std::atan2(s, std::clamp(Dot(a, b), -1.0f, 1.0f)) / s);
-}
-
-// a から接ベクトル v（長さ＝角度）だけ大円に沿って進んだ向き。
-Vec3 ExpMap(Vec3 a, Vec3 v) {
-    const float angle = Length(v);
-    if (angle < 1e-6f)
-        return a;
-    return Normalize(Add(Mul(a, std::cos(angle)), Mul(v, std::sin(angle) / angle)), a);
-}
-
-Vec3 Slerp(Vec3 a, Vec3 b, float t) { return ExpMap(a, Mul(LogMap(a, b), t)); }
-
-Vec3 ClampLength(Vec3 v, float maximum) {
-    const float length = Length(v);
-    return length > maximum && length > kTiny ? Mul(v, maximum / length) : v;
-}
-
-// 時間 seconds で追う時の、1 フレームで縮める割合。
-float Follow(float dt, float seconds) { return 1.0f - std::exp(-dt / std::max(kTiny, seconds)); }
-
-// 刀に直交する向き（刃・棟）。直交する成分が無ければ、刀に直交する何かの向きを返す。
-Vec3 Perpendicular(Vec3 v, Vec3 axis) {
-    const Vec3 fallback = std::abs(axis.y) < 0.9f ? Vec3{0.0f, -1.0f, 0.0f} : Vec3{0.0f, 0.0f, 1.0f};
-    return Normalize(ProjectOut(v, axis), Normalize(ProjectOut(fallback, axis)));
-}
+// 霞の大剣の横薙ぎの刃：剣が立っている（薙ぐ向きが決まらない）ほど、刃を前（これから薙ぐ所）へ向ける割合。
+constexpr float kUprightEdgeForward = 0.6f;
+// 大剣の刃を向けたい先がこれより短い時は、前の向きを保つ。
+constexpr float kGreatEdgeMinLength = 0.1f;
+// 確かめ用：大剣の向きが 1 tick にこの角度 (rad) より動いた時だけ、刃と動きの向きを比べる。
+constexpr float kGreatTraceMinStep = 1e-3f;
 
 // edge を axis まわりに goal の方へ、近い回り（180 度以内）で share の割合だけ回す。
 Vec3 TurnAbout(Vec3 edge, Vec3 goal, Vec3 axis, float share) {
     const float angle = std::atan2(Dot(Cross(edge, goal), axis), Dot(edge, goal)) * share;
     return Normalize(Add(Mul(edge, std::cos(angle)), Mul(Cross(axis, edge), std::sin(angle))), edge);
-}
-
-// 局所 +Z を direction、+Y を spine（direction に直交する成分）へ向ける回転。
-Quat AimZ(Vec3 direction, Vec3 spine) {
-    const Vec3 side = Normalize(Cross(spine, direction), {1.0f, 0.0f, 0.0f});
-    return BasisRotation(side, Cross(direction, side));
-}
-
-// 手首に付く籠手の筒：筒は手首から肘の向き（局所 -Z）へ伸び、腕の甲（局所 +Y）は手の甲の側を向く。
-BossBodyPlacement Cuff(Vec3 wrist, Vec3 elbow, Vec3 back, float scale) {
-    BossBodyPlacement cuff;
-    cuff.position = wrist;
-    cuff.rotation = AimZ(Mul(Normalize(elbow), -1.0f), back);
-    cuff.scale = scale;
-    return cuff;
-}
-
-const BossMove* CurrentMove(const BossComponent& boss) {
-    const auto& moves = boss.table.GetMoves();
-    if (boss.state != BossState::Act || boss.move < 0 || static_cast<size_t>(boss.move) >= moves.size())
-        return nullptr;
-    return &moves[static_cast<size_t>(boss.move)];
 }
 
 // 次の振り（命中の窓）が始まるまでの F。もう振らない時は -1。
@@ -140,7 +82,34 @@ struct MotionTargets {
     bool window = false;
     // 溜めている（前隙・連撃の間の構え）。
     bool charging = false;
+    // 霞の大剣が出ている（phase が None でない）。その間に重ねる刀の向き・握り・刃を向けたい先（局所）。
+    bool great = false;
+    Vec3 greatDirection{0.0f, 1.0f, 0.0f};
+    Vec3 greatGrip{};
+    Vec3 greatEdge{};
 };
+
+// 霞の大剣：見せる刀を大剣の柄と向きに重ねる（大剣は刀を包む霧になり、両手で握るのも同じ刀）。刃は、横薙ぎでは
+// 薙ぐ向き（ボスの上下の軸まわりに角度が増える向き）、縦割りでは振り下ろす向き（縦割りの面の中で、上→前→下）。
+// 構え・振りかぶりの間も同じ向き＝これから斬る向き。大剣の当たりは規則の角度で決まり、ここは読むだけ。
+void GreatTargets(const BossComponent& boss, MotionTargets& t) {
+    const BossGreatswordState& sword = boss.greatsword;
+    if (sword.phase == BossGreatswordPhase::None)
+        return;
+    const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
+    const Vec3 up{0.0f, 1.0f, 0.0f};
+    t.great = true;
+    t.greatDirection = Normalize(RotateY(sword.direction, -boss.yaw), up);
+    t.greatGrip =
+        Add(RotateY(Sub(sword.hilt, root), -boss.yaw), Mul(t.greatDirection, boss.body.motion.greatswordGripAlong));
+    if (sword.cleave) {
+        const Vec3 forward = RotateY(Forward(sword.cleaveYaw), -boss.yaw);
+        t.greatEdge = Cross(Cross(up, forward), t.greatDirection);
+        return;
+    }
+    const Vec3 sweep = Cross(up, t.greatDirection);
+    t.greatEdge = Add(sweep, Vec3{0.0f, 0.0f, kUprightEdgeForward * std::max(0.0f, 1.0f - Length(sweep))});
+}
 
 // 待機の構え：下段で、息に合わせて握りと剣先が少し上下する。
 void Kamae(const BossComponent& boss, Vec3& direction, Vec3& grip) {
@@ -203,6 +172,7 @@ MotionTargets Targets(const BossComponent& boss) {
     // 溜め：規則の振り上げの上で、握りを剣の向きへさらに送り出し、持ち上げる（手が高く・遠く、輪郭が大きく見える）。
     const Vec3 charged = Add(Mul(t.ruleDirection, s.chargeReach), Vec3{0.0f, s.chargeLift, 0.0f});
     t.grip = Add(Lerp(ruleGrip, kamaeGrip, t.calm), Mul(charged, t.charge));
+    GreatTargets(boss, t);
     return t;
 }
 
@@ -236,18 +206,6 @@ void SpringOnSphere(Vec3& direction, Vec3& velocity, Vec3 target, float frequenc
     }
 }
 
-// 位置のばね（StepSway と同じ形）。
-void SpringPoint(Vec3& position, Vec3& velocity, Vec3 target, float frequency, float damping, float dt) {
-    const float omega = 2.0f * kPi * frequency;
-    const int steps = std::clamp(static_cast<int>(std::ceil(dt * omega / kMaxSpringStep)), 1, kMaxSubsteps);
-    const float h = dt / static_cast<float>(steps);
-    for (int i = 0; i < steps; ++i) {
-        const Vec3 pull = Sub(Mul(Sub(target, position), omega * omega), Mul(velocity, 2.0f * damping * omega));
-        velocity = Add(velocity, Mul(pull, h));
-        position = Add(position, Mul(velocity, h));
-    }
-}
-
 void StepDirection(const BossBodyMotionSettings& s, const MotionTargets& t, BossBodyMotionState& m, float dt) {
     if (t.window) {
         // 振っている間：規則の剣の速さで進め、規則の線へ引き寄せ、許すずれの内へ収める。速さも規則の剣に揃える
@@ -273,7 +231,10 @@ void StepDirection(const BossBodyMotionSettings& s, const MotionTargets& t, Boss
 void StepEdge(const BossBodyMotionSettings& s, const MotionTargets& t, BossBodyMotionState& m, float dt) {
     m.edge = Perpendicular(m.edge, m.direction);
     float seconds = s.edgeTurnSeconds;
-    if (t.window) {
+    if (t.great) {
+        if (Length(t.greatEdge) > kGreatEdgeMinLength)
+            m.edgeGoal = Normalize(t.greatEdge);
+    } else if (t.window) {
         if (Length(m.velocity) > s.edgeMinDegreesPerSecond * kRadiansPerDegree)
             m.edgeGoal = Normalize(m.velocity);
     } else if (t.charging && t.calm < kCalmEdgeShare) {
@@ -322,17 +283,51 @@ float HeadTarget(const BossComponent& boss) {
     return std::clamp(WrapPi(YawOf(offset) - (boss.yaw + boss.spin)), -limit, limit);
 }
 
-Vec3 LeftTarget(const BossBodyMotionSettings& s, Vec3 direction) {
-    return ClampLength(Mul(Sub(direction, Normalize(s.idleDirection)), -s.leftBalanceMeters), s.leftBalanceMax);
-}
-
 void StepBody(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState& m, float dt) {
     const BossBodyMotionSettings& s = boss.body.motion;
-    m.lock = t.window ? 1.0f : std::max(t.lead, m.lock - dt / std::max(kTiny, s.bodyBlendSeconds));
+    // 霞の大剣に重ねている間も、規則の線の枠（足元と体の向きだけ）で置く（大剣の柄・向きはその枠の値）。
+    m.lock = t.window ? 1.0f : std::max({t.lead, m.great, m.lock - dt / std::max(kTiny, s.bodyBlendSeconds)});
     m.charge = t.charge;
     m.twist = Lerp(m.twist, TwistTarget(s, m.direction), Follow(dt, s.twistSeconds));
     m.headYaw = Lerp(m.headYaw, HeadTarget(boss), Follow(dt, s.headTurnSeconds));
-    m.leftOffset = Lerp(m.leftOffset, LeftTarget(s, m.direction), Follow(dt, s.leftBalanceSeconds));
+}
+
+// 霞の大剣に重ねる：重みを時間で上げ下げし、ばねで動いた刀を重みの分だけ大剣の柄・向きへそろえる（入る・出る時に
+// 跳ばない）。重ねている間は、ばねの勢いを捨てる（離した時に溜まった勢いで暴れない）。
+void StepGreat(const BossBodyMotionSettings& s, const MotionTargets& t, BossBodyMotionState& m, float dt) {
+    m.great = std::clamp(m.great + (t.great ? dt : -dt) / std::max(kTiny, s.greatswordBlendSeconds), 0.0f, 1.0f);
+    if (!t.great || m.great <= 0.0f)
+        return;
+    m.direction = Slerp(m.direction, t.greatDirection, m.great);
+    m.grip = Lerp(m.grip, t.greatGrip, m.great);
+    m.velocity = ProjectOut(Mul(m.velocity, 1.0f - m.great), m.direction);
+    m.gripVelocity = Mul(m.gripVelocity, 1.0f - m.great);
+}
+
+// 確かめ用（bodyTraceMotion）：大剣に重ねている間、tick ごとに、見せる刀と大剣の向きの差（度）・握りのずれ (m)・
+// 刃と大剣の剣先の動きの向きの内積を記録に出す。
+void TraceGreat(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState& m) {
+    if (!t.great || boss.tick == m.greatTick) {
+        m.greatPrevious = t.greatDirection;
+        return;
+    }
+    const Vec3 motion = ProjectOut(Sub(t.greatDirection, m.greatPrevious), t.greatDirection);
+    const bool moving = Length(motion) > kGreatTraceMinStep;
+    m.greatPrevious = t.greatDirection;
+    m.greatTick = boss.tick;
+    if (!boss.body.motion.traceMotion)
+        return;
+    char message[256]{};
+    std::snprintf(message, sizeof(message),
+                  "[BossBody] GreatTrace tick=%llu phase=%d cleave=%d weight=%.2f angle=%.2f gripGap=%.4f dot=%.3f "
+                  "moving=%d",
+                  static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.greatsword.phase),
+                  static_cast<int>(boss.greatsword.cleave), static_cast<double>(m.great),
+                  static_cast<double>(AngleBetween(m.direction, t.greatDirection) / kRadiansPerDegree),
+                  static_cast<double>(Length(Sub(m.grip, t.greatGrip))),
+                  static_cast<double>(moving ? Dot(Perpendicular(m.edge, m.direction), Normalize(motion)) : 0.0f),
+                  moving ? 1 : 0);
+    BossLog::Write(message);
 }
 
 // 最初のフレーム・隠れている間・瞬間移動：ばねを進めず、目標へそろえる。
@@ -348,41 +343,15 @@ void Snap(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState
     m.charge = t.charge;
     m.twist = TwistTarget(s, m.direction);
     m.headYaw = HeadTarget(boss);
-    m.leftOffset = LeftTarget(s, m.direction);
+    m.great = t.great ? 1.0f : 0.0f;
+    if (t.great) {
+        m.direction = t.greatDirection;
+        m.grip = t.greatGrip;
+        m.edgeGoal = m.edge = Perpendicular(t.greatEdge, m.direction);
+        m.lock = 1.0f;
+    }
     m.wasWindow = t.window;
     m.ready = true;
-}
-
-// 局所（体の向きの枠。足元が原点）の点・向きを世界へ移す。lock で「体の物体の変換（傾き・屈み込み）」と
-// 「規則の線の枠（足元と体の向きだけ）」を混ぜる。
-struct MotionFrame {
-    const BossComponent& boss;
-    const Transform& body;
-    float lock;
-
-    Vec3 Point(Vec3 local) const {
-        const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
-        const Vec3 rule = Add(root, RotateY(local, boss.yaw));
-        const Vec3 centered{local.x * body.scale.x, (local.y - boss.bodyHalfHeight) * body.scale.y,
-                            local.z * body.scale.z};
-        return Lerp(Add(body.position, Rotate(body.rotation, centered)), rule, lock);
-    }
-    Vec3 Direction(Vec3 local) const {
-        return Normalize(Lerp(Rotate(body.rotation, local), RotateY(local, boss.yaw), lock), local);
-    }
-};
-
-// 左手：待機の置き場所から、刀と反対へ少し動く。手の甲は待機の向き（外・上）のまま。体の傾きに付く。
-void SolveLeft(const BossComponent& boss, const Transform& body, float handScale, BossBodyPose& pose) {
-    const BossBodySettings& settings = boss.body;
-    const BossBodyMotionState& m = boss.bodyState.motion;
-    const MotionFrame frame{boss, body, 0.0f};
-    const Vec3 shoulder = RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, m.twist);
-    const Vec3 back = frame.Direction(RotateY(settings.leftRestBack, m.twist));
-    pose.leftHand.position = frame.Point(RotateY(Add(settings.leftRestWrist, m.leftOffset), m.twist));
-    pose.leftHand.rotation = AimZ(frame.Direction(RotateY(settings.leftRestFingers, m.twist)), back);
-    pose.leftHand.scale = handScale;
-    pose.leftCuff = Cuff(pose.leftHand.position, Sub(frame.Point(shoulder), pose.leftHand.position), back, handScale);
 }
 
 } // namespace
@@ -395,15 +364,20 @@ void BossBodySword::Step(BossComponent& boss, float seconds) {
     m.ground = boss.ground;
     if (!m.ready || boss.hidden || teleported) {
         Snap(boss, t, m);
+        // 左手は刀の後で決める（両手持ち・刀身をなぞる手は、見せる刀に付く）。
+        BossBodyLeftHand::Step(boss, 0.0f, true);
         return;
     }
     if (seconds <= 0.0f)
         return;
     const float dt = std::min(seconds, kMaxFrameSeconds);
     StepDirection(boss.body.motion, t, m, dt);
-    StepEdge(boss.body.motion, t, m, dt);
     StepGrip(boss, t, m, dt);
+    StepGreat(boss.body.motion, t, m, dt);
+    StepEdge(boss.body.motion, t, m, dt);
     StepBody(boss, t, m, dt);
+    TraceGreat(boss, t, m);
+    BossBodyLeftHand::Step(boss, dt, false);
     m.wasWindow = t.window;
 }
 
@@ -420,9 +394,8 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     const Vec3 grip = Add(m.grip, Mul(tremor, s.chargeTremorMeters * m.charge));
     const Vec3 worldDirection = frame.Direction(direction);
     const Vec3 worldEdge = frame.Direction(Perpendicular(m.edge, direction));
-    const float scale =
-        std::max(0.01f, boss.swordLength - settings.swordGripAlong) / std::max(0.01f, settings.swordModelLength);
-    const float handScale = scale * settings.handScale;
+    const float scale = SwordScale(boss);
+    const float handScale = HandScale(boss);
     // 刀と握りの右手は同じ置き場所（原点・向き・刃の向きが同じ）。模型の +Z＝剣先、+Y＝棟＝刃の反対。
     pose.sword.position = frame.Point(grip);
     pose.sword.rotation = AimZ(worldDirection, Mul(worldEdge, -1.0f));
@@ -437,7 +410,7 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     const Vec3 rightElbow =
         Lerp(Normalize(Sub(rightShoulder, rightWrist), gripElbow), gripElbow, settings.cuffGripBlend);
     pose.rightCuff = Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, settings.gripBack), handScale);
-    SolveLeft(boss, body, handScale, pose);
+    BossBodyLeftHand::Solve(boss, body, pose);
 }
 
 void BossBodySword::Trace(const BossComponent& boss, const BossBodyPose& pose) {

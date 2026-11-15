@@ -7,6 +7,56 @@ namespace Project_TD2_2 {
 void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
     DescribeShape(fields);
     motion.Describe(fields);
+    leftHand.Describe(fields);
+}
+
+void BossBodyLeftHandSettings::Describe(HIKARI::PropertyFields& fields) {
+    if (!fields.Section("外形：左手の手振り（見た目だけ）", false))
+        return;
+    fields.Note("位置は体の足元から局所 m（+X が左、+Z が前）。向きは局所。左手の模型は +Z＝指先、+Y＝手の甲"
+                "（掌は -Y）、親指は -X の側です。");
+    fields.Float("bodyLeftFrequency", "手のばね：速さ (1 秒あたりの揺れの回数)", frequency, 0.2f, 30.0f);
+    fields.Float("bodyLeftDamping", "手のばね：収まりの強さ", damping, 0.05f, 2.0f);
+    fields.Float("bodyLeftSnapFrequency", "手のばね：投げる・拳を落とす時の速さ (1 秒あたりの回数)", snapFrequency,
+                 0.2f, 40.0f);
+    fields.Float("bodyLeftTurnSeconds", "手の向きを追う時間 (秒)", turnSeconds, 0.01f, 1.0f);
+    fields.Float("bodyLeftAttachSeconds", "刀に手を添える・離す時間 (秒)", attachSeconds, 0.01f, 1.0f);
+    fields.Float3("bodyLeftDetonateRaise", "引爆：掲げた手首の位置", detonateRaise);
+    fields.Float3("bodyLeftDetonateChest", "引爆：溜めの終わりの手首の位置（胸の前）", detonateChest);
+    fields.Float3("bodyLeftDetonateFist", "引爆：爆ぜ始めに拳を落とす手首の位置", detonateFist);
+    fields.Float3("bodyLeftDetonateFingers", "引爆：指先の向き", detonateFingers);
+    fields.Float3("bodyLeftDetonateBack", "引爆：手の甲の向き（掌はその反対＝プレイヤーへ）", detonateBack);
+    fields.Float("bodyLeftDetonateRaiseShare", "引爆：前隙のこの割合で手を上げ切る (0〜1)", detonateRaiseShare, 0.01f,
+                 1.0f);
+    fields.Int("bodyLeftDetonateFistHoldFrames", "引爆：後隙へ入った後も拳を握ったままにする長さ (F)",
+               detonateFistHoldFrames, 0, 120);
+    fields.Float3("bodyLeftKnifePull", "投げナイフ：前隙に引く手首の位置", knifePull);
+    fields.Float3("bodyLeftKnifePullFingers", "投げナイフ：引いた時の指先の向き", knifePullFingers);
+    fields.Float3("bodyLeftKnifePullBack", "投げナイフ：引いた時の手の甲の向き", knifePullBack);
+    fields.Float3("bodyLeftKnifeThrow", "投げナイフ：振り出した手首の位置", knifeThrow);
+    fields.Float3("bodyLeftKnifeThrowFingers", "投げナイフ：振り出した指先の向き", knifeThrowFingers);
+    fields.Float3("bodyLeftKnifeThrowBack", "投げナイフ：振り出した手の甲の向き", knifeThrowBack);
+    fields.Float3("bodyLeftSealWrist", "印（霞分身・霞隠れ）：手首の位置", sealWrist);
+    fields.Float3("bodyLeftSealFingers", "印：指先の向き", sealFingers);
+    fields.Float3("bodyLeftSealBack", "印：手の甲の向き", sealBack);
+    fields.Float("bodyLeftWipeStartShare", "炎走り：刀身をなぞり始める前隙の割合 (0〜1)", wipeStartShare, 0.0f, 1.0f);
+    fields.Float("bodyLeftWipeEndShare", "炎走り：なぞり終える前隙の割合 (0〜1)", wipeEndShare, 0.0f, 1.0f);
+    fields.Float("bodyLeftWipeFrom", "炎走り：なぞり始める刀身の割合（鍔が 0、剣先が 1）", wipeFrom, 0.0f, 1.0f);
+    fields.Float("bodyLeftWipeTo", "炎走り：なぞり終える刀身の割合", wipeTo, 0.0f, 1.0f);
+    fields.Float("bodyLeftBladeStart", "刀身の始まり（鍔）：握りから剣先の向きへ (m)", bladeStart, 0.0f, 2.0f);
+    fields.Float3("bodyLeftPalmCenter", "左手の模型の掌の真ん中（模型の座標・実寸 m。刀身に付ける所）", palmCenter);
+    fields.Float3("bodyLeftAimWrist", "退き溜め：手首の位置", aimWrist);
+    fields.Float3("bodyLeftAimFingers", "退き溜め：指先の向き", aimFingers);
+    fields.Float3("bodyLeftAimBack", "退き溜め：手の甲の向き（掌はその反対＝プレイヤーへ）", aimBack);
+    fields.Float("bodyLeftTwoHandBehind", "両手持ち：握りから柄頭の側へ拳を置く距離 (m)", twoHandBehind, 0.0f, 2.0f);
+    fields.Float3("bodyLeftTwoHandBack", "両手持ち：手の甲の向き（刀の座標。+X が刀の左、+Y が棟）", twoHandBack);
+    fields.Float3("bodyLeftFistCenter", "左手の拳の真ん中（模型の座標・実寸 m。柄が通る所）", fistCenter);
+    fields.Float3("bodyLeftKickWrist", "回し蹴り：手首の位置", kickWrist);
+    fields.Float3("bodyLeftKickFingers", "回し蹴り：指先の向き", kickFingers);
+    fields.Float3("bodyLeftKickBack", "回し蹴り：手の甲の向き", kickBack);
+    fields.Float3("bodyLeftLimpWrist", "気絶・撃破：手首の位置", limpWrist);
+    fields.Float3("bodyLeftLimpFingers", "気絶・撃破：指先の向き", limpFingers);
+    fields.Float3("bodyLeftLimpBack", "気絶・撃破：手の甲の向き", limpBack);
 }
 
 void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
@@ -59,6 +109,10 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
                  leftBalanceMeters, 0.0f, 2.0f);
     fields.Float("bodyLeftBalanceMax", "左手の釣り合い：動く長さの上限 (m)", leftBalanceMax, 0.0f, 2.0f);
     fields.Float("bodyLeftBalanceSeconds", "左手の釣り合い：追う時間 (秒)", leftBalanceSeconds, 0.01f, 2.0f);
+    fields.Float("bodyGreatswordGripAlong", "霞の大剣の間：握りを大剣の柄から剣の向きへずらす長さ (m)",
+                 greatswordGripAlong, -2.0f, 5.0f);
+    fields.Float("bodyGreatswordBlendSeconds", "霞の大剣の間：刀を大剣へ重ねる・離す時間 (秒)", greatswordBlendSeconds,
+                 0.01f, 2.0f);
     fields.Bool("bodyTraceMotion", "確かめ用：振っている間、刃の向きと規則の線とのずれを毎フレーム記録に出す",
                 traceMotion);
     fields.Note("刀は「見せる構え」をばねで追い、振っている間だけ規則の剣の線（当たり）へ重なります。"

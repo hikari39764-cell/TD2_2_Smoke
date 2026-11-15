@@ -7,6 +7,75 @@
 
 namespace Project_TD2_2 {
 
+// 左手の形（模型のノードを差し替える。指の骨は無い）。
+enum class BossBodyHandShape { Fist, Open, Seal };
+
+// 左手の手振り（技の型ごとに決める。BossBodyLeftHand の表）。
+enum class BossBodyLeftGesture { Balance, Detonate, Knife, Seal, FlameWipe, Aim, TwoHand, Kick, Limp };
+
+// 左手の手振り（見た目だけ。当たり・F 数は変えない）。位置は体の足元から局所 m（+X が左、+Z が前）。
+// 向きは局所の向き（長さは問わない）。模型の左手：+Z＝指先、+Y＝手の甲（掌は -Y）、親指は -X の側。
+struct BossBodyLeftHandSettings {
+    void Describe(HIKARI::PropertyFields& fields);
+
+    // 手の位置のばね（1 秒あたりの揺れの回数・収まりの強さ）、素早い動き（投げる・拳を落とす）のばねの速さ、
+    // 手の向きを追う時間 (秒)、刀に手を添える（両手持ち・刀身をなぞる）重みを上げ下げする時間 (秒)。
+    float frequency = 4.0f;
+    float damping = 0.75f;
+    float snapFrequency = 10.0f;
+    float turnSeconds = 0.08f;
+    float attachSeconds = 0.08f;
+
+    // 引爆：開いた手を顔の前へ掲げ（前隙のこの割合で上げ切る）、溜めの間に胸へ寄せ、爆ぜ始めに拳を握って下へ落とす。
+    // 掌はプレイヤーへ（手の甲が自分の側）、指先は上。
+    HIKARI::GameProjectFloat3 detonateRaise{0.45f, 2.9f, 0.9f};
+    HIKARI::GameProjectFloat3 detonateChest{0.30f, 2.55f, 0.85f};
+    HIKARI::GameProjectFloat3 detonateFist{0.30f, 2.25f, 0.90f};
+    HIKARI::GameProjectFloat3 detonateFingers{0.0f, 1.0f, 0.1f};
+    HIKARI::GameProjectFloat3 detonateBack{0.0f, 0.1f, -1.0f};
+    float detonateRaiseShare = 0.35f;
+    // 引爆：爆ぜ終わって後隙へ入った後も、拳を握ったままにする F。
+    int detonateFistHoldFrames = 12;
+    // 投げナイフ：前隙は刀印で左肩の後ろ上へ引き（指先は上、手の甲は外）、攻撃中に前へ素早く振り出して開く
+    // （指先は前、手の甲は上）。
+    HIKARI::GameProjectFloat3 knifePull{0.9f, 3.0f, -0.3f};
+    HIKARI::GameProjectFloat3 knifePullFingers{0.1f, 1.0f, -0.2f};
+    HIKARI::GameProjectFloat3 knifePullBack{1.0f, 0.0f, 0.1f};
+    HIKARI::GameProjectFloat3 knifeThrow{0.55f, 2.8f, 1.4f};
+    HIKARI::GameProjectFloat3 knifeThrowFingers{0.0f, 0.1f, 1.0f};
+    HIKARI::GameProjectFloat3 knifeThrowBack{0.15f, 1.0f, 0.0f};
+    // 霞分身・霞隠れの前隙：顔の前で刀印を立てる。指先は上、手の甲は左（外）、親指の側は顔へ。
+    HIKARI::GameProjectFloat3 sealWrist{0.18f, 2.95f, 0.85f};
+    HIKARI::GameProjectFloat3 sealFingers{0.0f, 1.0f, 0.0f};
+    HIKARI::GameProjectFloat3 sealBack{1.0f, 0.0f, 0.0f};
+    // 炎走り：前隙の wipeStartShare〜wipeEndShare の間に、開いた手で刀身を鍔の側から剣先へなぞる（刀身の wipeFrom〜wipeTo の
+    // 割合の所。鍔は握りから bladeStart m 先）。掌は刀身の平らな面に付け、指先は剣先の向き。
+    float wipeStartShare = 0.10f;
+    float wipeEndShare = 0.70f;
+    float wipeFrom = 0.15f;
+    float wipeTo = 0.85f;
+    float bladeStart = 0.20f;
+    // 左手の模型の掌の真ん中（模型の座標・実寸 m）。刀身をなぞる時、ここが刀身に付く。
+    HIKARI::GameProjectFloat3 palmCenter{0.0f, -0.04f, 0.13f};
+    // 退き溜め（溜めている間）：手を前へ伸ばしてプレイヤーへ掌を向ける（指先は上）。
+    HIKARI::GameProjectFloat3 aimWrist{0.35f, 2.6f, 1.3f};
+    HIKARI::GameProjectFloat3 aimFingers{0.0f, 1.0f, 0.15f};
+    HIKARI::GameProjectFloat3 aimBack{0.0f, 0.0f, -1.0f};
+    // 両手持ち（霞の大剣・天降り斬り）：拳を右手の後ろ（柄頭の側。握りから刀の -Z へ twoHandBehind m）に握る。
+    // 親指の側は剣先へ、手の甲は twoHandBack（刀の座標：+X が刀の左、+Y が棟）。拳の真ん中（模型の座標・実寸 m）が柄に乗る。
+    float twoHandBehind = 0.28f;
+    HIKARI::GameProjectFloat3 twoHandBack{0.4f, 0.92f, 0.0f};
+    HIKARI::GameProjectFloat3 fistCenter{0.0f, -0.09f, 0.21f};
+    // 回し蹴り：左の外へ手を上げて釣り合いを取る（指先は外、手の甲は上）。
+    HIKARI::GameProjectFloat3 kickWrist{1.35f, 2.5f, 0.1f};
+    HIKARI::GameProjectFloat3 kickFingers{1.0f, 0.15f, 0.0f};
+    HIKARI::GameProjectFloat3 kickBack{0.0f, 1.0f, 0.0f};
+    // 気絶・撃破：体の近くに垂らす（指先は下、手の甲は外）。
+    HIKARI::GameProjectFloat3 limpWrist{0.75f, 1.55f, 0.15f};
+    HIKARI::GameProjectFloat3 limpFingers{0.0f, -1.0f, 0.1f};
+    HIKARI::GameProjectFloat3 limpBack{1.0f, 0.0f, 0.0f};
+};
+
 // 刀と手の動き（見た目だけ）。規則の剣の線（BossPose）・当たり・F 数は読むだけで変えない。
 // 刀は「見せる構え」を目標にばねで追い、振っている間（命中の窓）だけ規則の剣の線へ重ねる（見える刀＝当たる刀）。
 // 位置は体の足元から、局所 m（+X が左、+Z が前）。向きは局所の向き（長さは問わない）。
@@ -74,6 +143,11 @@ struct BossBodyMotionSettings {
     float leftBalanceMeters = 0.30f;
     float leftBalanceMax = 0.30f;
     float leftBalanceSeconds = 0.15f;
+
+    // 霞の大剣が出ている間は、見せる刀を大剣の柄と向きに重ねる（霧の大剣が刀を包む）。握りを柄から剣の向きへ
+    // ずらす長さ (m) と、重ね始める・離す時間 (秒)。
+    float greatswordGripAlong = 0.10f;
+    float greatswordBlendSeconds = 0.15f;
 
     // 確かめ用：命中の窓の間、毎フレーム刃の向き・規則の線とのずれを記録に出す。
     bool traceMotion = false;
@@ -153,6 +227,8 @@ struct BossBodySettings {
 
     // 刀と手の動き。
     BossBodyMotionSettings motion;
+    // 左手の手振り。
+    BossBodyLeftHandSettings leftHand;
 
 private:
     void DescribeShape(HIKARI::PropertyFields& fields);
@@ -186,6 +262,18 @@ struct BossBodyMotionState {
     float twist = 0.0f;
     float headYaw = 0.0f;
     HIKARI::GameProjectFloat3 leftOffset{};
+    // 左手：手首の位置と速さ・指先と手の甲の向き（局所）、刀に添える重み、いまの形と手振り。
+    HIKARI::GameProjectFloat3 leftWrist{};
+    HIKARI::GameProjectFloat3 leftVelocity{};
+    HIKARI::GameProjectFloat3 leftFingers{0.0f, -1.0f, 0.0f};
+    HIKARI::GameProjectFloat3 leftBack{1.0f, 0.0f, 0.0f};
+    float leftAttach = 0.0f;
+    BossBodyHandShape leftShape = BossBodyHandShape::Open;
+    BossBodyLeftGesture leftGesture = BossBodyLeftGesture::Balance;
+    // 霞の大剣に重ねる重み（0〜1）と、確かめ用に覚える前の tick の大剣の向き（局所）・その tick。
+    float great = 0.0f;
+    HIKARI::GameProjectFloat3 greatPrevious{0.0f, 1.0f, 0.0f};
+    uint64_t greatTick = 0;
     // 瞬間移動を見分ける、前のフレームの足元。
     HIKARI::GameProjectFloat3 ground{};
 };
