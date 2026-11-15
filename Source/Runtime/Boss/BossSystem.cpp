@@ -21,6 +21,7 @@
 #include "BossSmoke.h"
 #include "BossVisuals.h"
 #include "BossWaves.h"
+#include "../BossBody/BossBodyVisuals.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
 #include "../Gourd/GourdShotComponent.h"
@@ -558,6 +559,7 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                               if (!boss.initialized)
                                                   return;
                                               BossVisuals::Update(world, object, boss, frame.gameDt);
+                                              BossBodyVisuals::Update(world, object, boss);
                                               BossFeedback::Update(world, object, boss, frame);
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });

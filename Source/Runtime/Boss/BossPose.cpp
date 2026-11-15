@@ -288,16 +288,19 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
 
 float BossPose::RootHeight(const BossComponent& boss) { return boss.height + boss.floatHeight - boss.sink; }
 
-BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, BossSwordPose pose) {
+BossSwordLine BossPose::SwordLine(const BossComponent& boss, BossSwordPose pose) {
     const float px = pose.x * kRadiansPerDegree, py = pose.y * kRadiansPerDegree;
     const Vec3 local{std::cos(px) * std::sin(py), -std::sin(px), std::cos(px) * std::cos(py)};
-    const Vec3 direction = RotateY(local, boss.yaw);
     const Vec3 root{boss.ground.x, boss.ground.y + RootHeight(boss), boss.ground.z};
-    const Vec3 shoulder = Add(root, RotateY(boss.swordShoulder, boss.yaw));
+    return {Add(root, RotateY(boss.swordShoulder, boss.yaw)), RotateY(local, boss.yaw)};
+}
+
+BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, BossSwordPose pose) {
+    const BossSwordLine line = SwordLine(boss, pose);
     BossSwordPoints points;
-    points.base = Add(shoulder, Mul(direction, boss.swordLength * kSwordBaseShare));
-    points.inner = Add(shoulder, Mul(direction, boss.swordLength * kSwordInnerShare));
-    points.outer = Add(shoulder, Mul(direction, boss.swordLength + boss.swordHazeLength));
+    points.base = Add(line.root, Mul(line.direction, boss.swordLength * kSwordBaseShare));
+    points.inner = Add(line.root, Mul(line.direction, boss.swordLength * kSwordInnerShare));
+    points.outer = Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength));
     return points;
 }
 

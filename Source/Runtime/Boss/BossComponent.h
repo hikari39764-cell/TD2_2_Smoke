@@ -8,6 +8,7 @@
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossMoveTable.h"
+#include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
 
@@ -750,7 +751,9 @@ public:
     float absorbCatchRange = 5.0f;
     float absorbCatchAngle = 60.0f;
     float absorbCatchNear = 1.5f;
-    // 剣（いまは見えない剣。当たりと煙の位置だけに使う）
+    // 外形（刀・手・鎧の模型）。置き場所の規則は BossBodyRig、出す所は BossBodyVisuals。
+    BossBodySettings body;
+    // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
     HIKARI::GameProjectFloat3 swordShoulder{-0.727f, 2.372f, 0.158f};
     float swordLength = 2.253f;
     float swordHazeLength = 0.6f;
@@ -993,6 +996,7 @@ public:
     HIKARI::GameProjectVfxPlaybackHandle gatherVfx{};
     BossSkyfallVisualState skyfallVisual;
     BossGreatswordVisualState greatswordVisual;
+    BossBodyState bodyState;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
 };

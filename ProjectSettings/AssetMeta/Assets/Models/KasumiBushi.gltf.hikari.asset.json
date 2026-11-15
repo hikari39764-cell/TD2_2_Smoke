@@ -1,0 +1,24 @@
+{
+  "displayName": "KasumiBushi",
+  "guid": "b1a52cf03fe7473cbbe74c310e9c5c29",
+  "importSettings": {
+    "clusterGeometry": {
+      "enabled": true,
+      "maxLodCount": 5,
+      "profile": "Scene"
+    },
+    "lightmapUv": {
+      "mode": "GenerateIfMissingOrInvalid",
+      "padding": 8,
+      "resolution": 64
+    },
+    "meshFormat": "HCMESH",
+    "outputFormat": "HMODEL",
+    "sourceFormat": ".gltf"
+  },
+  "importerId": "ModelImporter",
+  "importerVersion": 50,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi.gltf",
+  "type": "Model"
+}
