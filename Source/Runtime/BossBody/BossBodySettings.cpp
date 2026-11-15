@@ -14,8 +14,20 @@ void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
                  swordModelLength, 0.1f, 20.0f);
     fields.Float("bodySwordGripAlong", "握りの位置：剣の付け根から剣の向きへ (m)", swordGripAlong, -1.0f, 2.0f);
     fields.Float("bodyHandScale", "手の大きさ（刀の拡大に掛ける倍率）", handScale, 0.1f, 5.0f);
-    fields.Note("刀と手は、剣の姿勢（剣の付け根 Boss.swordShoulder と剣の向き）に付いて動きます。"
-                "剣の長さは Boss.swordLength です。");
+    fields.Float3("bodyGripWrist", "握りの右手の模型：手首の位置（刀の座標、模型の実寸 m）", gripWrist);
+    fields.Float3("bodyGripElbow", "握りの右手の模型：肘の向き（刀の座標）", gripElbow);
+    fields.Float3("bodyGripBack", "握りの右手の模型：手の甲の向き（刀の座標）", gripBack);
+    fields.Float3("bodyLeftRestWrist", "左手の待機：手首の位置（体の足元から、局所 m。+X が左、+Z が前）",
+                  leftRestWrist);
+    fields.Float3("bodyLeftRestFingers", "左手の待機：指先の向き（局所）", leftRestFingers);
+    fields.Float3("bodyLeftRestBack", "左手の待機：手の甲の向き（局所）", leftRestBack);
+    fields.Float3("bodyShoulder", "肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転）：籠手の筒が向く先",
+                  shoulder);
+    fields.Float("bodyCuffGripBlend", "右の籠手の筒の向きに、握りの手の模型の肘の向きを混ぜる割合", cuffGripBlend, 0.0f,
+                 1.0f);
+    fields.Note("刀と右手は、剣の姿勢（剣の付け根 Boss.swordShoulder と剣の向き）に付いて動きます。"
+                "剣の長さは Boss.swordLength です。「握りの右手の模型」の 3 つは、模型を作り直した時にだけ、"
+                "作るスクリプトが出す値へ合わせます。");
 }
 
 } // namespace Project_TD2_2

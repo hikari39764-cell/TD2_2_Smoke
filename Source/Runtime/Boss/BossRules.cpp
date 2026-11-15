@@ -64,6 +64,12 @@ size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
     return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0));
 }
 
+bool BossRules::IsBladeLit(const BossComponent& boss) {
+    const bool acting = boss.state == BossState::Act;
+    return (boss.bladeLit && acting) ||
+           (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
+}
+
 float BossRules::GetStun(const BossComponent& boss) { return boss.stun; }
 
 float BossRules::GetStunThreshold(const BossComponent& boss) {
