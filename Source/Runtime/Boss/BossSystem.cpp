@@ -466,6 +466,9 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
                 BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing};
                 BossObserver::Observe(world, boss, player, playerCenter, inhaling);
+                // 兜が向く先（見た目だけが読む。規則は使わない）。
+                boss.bodyState.lookTarget = playerCenter;
+                boss.bodyState.lookTargetSeen = player != nullptr;
                 BossMoveExecutor::StepFloat(boss);
                 BossBrainContext context{boss, object.GetHandle()};
                 if (player != nullptr)

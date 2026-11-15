@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/PresentationViews.h"
 #include "BossBodyRig.h"
+#include "BossBodySword.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
 #include "../Boss/BossVfx.h"
@@ -97,7 +98,9 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     if (boss.body.model.empty())
         return;
     BossBodyRig::StepSway(boss, body, seconds);
+    BossBodySword::Step(boss, seconds);
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
+    BossBodySword::Trace(boss, pose);
     Submit(world, object, boss, kHilt, pose.sword);
     Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
     Submit(world, object, boss, kRightHand, pose.rightHand);
