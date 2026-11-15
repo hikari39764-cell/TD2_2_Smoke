@@ -14,23 +14,23 @@ from mathutils import Matrix, Vector
 import bb_common as bb
 
 # ---- 形の値（m。体 4.0 m のボスが片手で持つ大きさ）----
-GRIP_TO_GUARD = 0.19      # 握りの中央から鍔まで
+GRIP_TO_GUARD = 0.215     # 握りの中央から鍔まで
 BLADE_LENGTH = 2.08       # はばきの元から剣先まで（反りに沿わない直線の長さに近い）
-SORI = 0.060              # 反り（弦からの最大の離れ）
-WIDTH_BASE = 0.125        # 元幅（刃先から棟まで）。実物の比率より太い：遠くの遊びのカメラから刀が読めるように
-WIDTH_YOKOTE = 0.092      # 先幅
-THICK_BASE = 0.028        # 元重ね
-THICK_YOKOTE = 0.018      # 先重ね
-KISSAKI = 0.20            # 切先の長さ
+SORI = 0.072              # 反り（弦からの最大の離れ）
+WIDTH_BASE = 0.160        # 元幅（刃先から棟まで）。実物の比率より太い：遠くの遊びのカメラから刀が読めるように
+WIDTH_YOKOTE = 0.120      # 先幅
+THICK_BASE = 0.036        # 元重ね
+THICK_YOKOTE = 0.023      # 先重ね
+KISSAKI = 0.25            # 切先の長さ
 HAMON_HEIGHT = 0.26       # 刃文の高さ（幅に対する割合）
 HAMON_WAVE = 0.07         # 刃文のうねりの幅（幅に対する割合）
 HAMON_COUNT = 26          # 刃文の山の数
-TSUKA_LENGTH = 0.62       # 柄の長さ
-TSUKA_HALF_Y = 0.055      # 柄の太さ（刃〜棟の方向の半分）
-TSUKA_HALF_X = 0.038      # 柄の太さ（平の方向の半分）
-TSUBA_RADIUS = 0.135      # 鍔の半径
-TSUBA_THICK = 0.018
-ITO_DIAMONDS = 12         # 柄巻の菱の数
+TSUKA_LENGTH = 0.76       # 柄の長さ
+TSUKA_HALF_Y = 0.064      # 柄の太さ（刃〜棟の方向の半分）
+TSUKA_HALF_X = 0.045      # 柄の太さ（平の方向の半分）
+TSUBA_RADIUS = 0.165      # 鍔の半径
+TSUBA_THICK = 0.022
+ITO_DIAMONDS = 14         # 柄巻の菱の数
 
 
 def E(x, y, z):

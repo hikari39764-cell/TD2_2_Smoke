@@ -104,9 +104,20 @@ inline float TwistTarget(const BossBodyMotionSettings& s, Vec3 direction) {
     return std::clamp(direction.x * s.twistDegrees * kRadiansPerDegree, -limit, limit);
 }
 
-// 刀の模型の拡大（剣の長さに合わせる）と、手の模型の拡大。
+// 見える刀の、剣の付け根から剣先までの長さ。当たりの線（剣の長さ＋剣先の霞）より先へは伸ばさない。
+inline float VisibleSwordLength(const BossComponent& boss) {
+    const float authored = boss.body.swordVisibleLength > 0.0f ? boss.body.swordVisibleLength : boss.swordLength;
+    return std::min(authored, boss.swordLength + boss.swordHazeLength);
+}
+
+// 見える刀の、握りの中央から剣先までの長さ。
+inline float VisibleBladeReach(const BossComponent& boss) {
+    return std::max(0.01f, VisibleSwordLength(boss) - boss.body.swordGripAlong);
+}
+
+// 刀の模型の拡大（見える刀の長さに合わせる）と、手の模型の拡大。
 inline float SwordScale(const BossComponent& boss) {
-    return std::max(0.01f, boss.swordLength - boss.body.swordGripAlong) / std::max(0.01f, boss.body.swordModelLength);
+    return VisibleBladeReach(boss) / std::max(0.01f, boss.body.swordModelLength);
 }
 inline float HandScale(const BossComponent& boss) { return SwordScale(boss) * boss.body.handScale; }
 

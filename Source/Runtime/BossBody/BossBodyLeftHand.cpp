@@ -128,7 +128,7 @@ bool FlameWipe(const BossComponent& boss, const BossMove& move, LeftTarget& t) {
     if (p < s.wipeStartShare || p > s.wipeEndShare)
         return false;
     const float q = Smooth((p - s.wipeStartShare) / std::max(kTiny, s.wipeEndShare - s.wipeStartShare));
-    const float blade = std::max(0.0f, boss.swordLength - boss.body.swordGripAlong - s.bladeStart);
+    const float blade = std::max(0.0f, VisibleBladeReach(boss) - s.bladeStart);
     const SwordAxes sword = Axes(m);
     const Vec3 point = Add(m.grip, Mul(sword.z, s.bladeStart + blade * Lerp(s.wipeFrom, s.wipeTo, q)));
     // 手の甲は刀身から離れる向き（掌が刀身へ向く）。体の側の面を選ぶ。

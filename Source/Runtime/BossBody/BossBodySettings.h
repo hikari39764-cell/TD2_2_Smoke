@@ -54,18 +54,18 @@ struct BossBodyLeftHandSettings {
     float wipeEndShare = 0.70f;
     float wipeFrom = 0.15f;
     float wipeTo = 0.85f;
-    float bladeStart = 0.20f;
+    float bladeStart = 0.30f;
     // 左手の模型の掌の真ん中（模型の座標・実寸 m）。刀身をなぞる時、ここが刀身に付く。
-    HIKARI::GameProjectFloat3 palmCenter{0.0f, -0.04f, 0.13f};
+    HIKARI::GameProjectFloat3 palmCenter{0.0f, -0.045f, 0.148f};
     // 退き溜め（溜めている間）：手を前へ伸ばしてプレイヤーへ掌を向ける（指先は上）。
     HIKARI::GameProjectFloat3 aimWrist{0.35f, 2.6f, 1.3f};
     HIKARI::GameProjectFloat3 aimFingers{0.0f, 1.0f, 0.15f};
     HIKARI::GameProjectFloat3 aimBack{0.0f, 0.0f, -1.0f};
     // 両手持ち（霞の大剣・天降り斬り）：拳を右手の後ろ（柄頭の側。握りから刀の -Z へ twoHandBehind m）に握る。
     // 親指の側は剣先へ、手の甲は twoHandBack（刀の座標：+X が刀の左、+Y が棟）。拳の真ん中（模型の座標・実寸 m）が柄に乗る。
-    float twoHandBehind = 0.28f;
+    float twoHandBehind = 0.44f;
     HIKARI::GameProjectFloat3 twoHandBack{0.4f, 0.92f, 0.0f};
-    HIKARI::GameProjectFloat3 fistCenter{0.0f, -0.09f, 0.21f};
+    HIKARI::GameProjectFloat3 fistCenter{0.0f, -0.102f, 0.239f};
     // 回し蹴り：左の外へ手を上げて釣り合いを取る（指先は外、手の甲は上）。
     HIKARI::GameProjectFloat3 kickWrist{1.35f, 2.5f, 0.1f};
     HIKARI::GameProjectFloat3 kickFingers{1.0f, 0.15f, 0.0f};
@@ -97,10 +97,10 @@ struct BossBodyMotionSettings {
     // 窓が閉じた後、手と刀を体の傾きへ戻す時間 (秒)。
     float bodyBlendSeconds = 0.10f;
 
-    // 待機の構え（下段）：握りの位置と刀の向き。規則の剣が下ろした構えからこの角度 (度) 離れるまでは、
+    // 待機の構え（下段を右の外へ開く。正面のプレイヤーから刀の長さが見える）：握りの位置と刀の向き。規則の剣が下ろした構えからこの角度 (度) 離れるまでは、
     // この構えを混ぜる（待機・溜めの始め・後隙の後半）。
-    HIKARI::GameProjectFloat3 idleGrip{-0.55f, 1.75f, 0.55f};
-    HIKARI::GameProjectFloat3 idleDirection{0.30f, -0.40f, 0.87f};
+    HIKARI::GameProjectFloat3 idleGrip{-0.62f, 1.70f, 0.50f};
+    HIKARI::GameProjectFloat3 idleDirection{-0.60f, -0.36f, 0.71f};
     float restBlendDegrees = 40.0f;
     // 待機の息：握りの上下 (m)、剣先の上下 (度)、速さ (1 秒あたりの回数)。
     float breathMeters = 0.025f;
@@ -163,16 +163,19 @@ struct BossBodySettings {
     bool visible = true;
     // 外形の模型が影を落とすか。切ると軽くなるが、鎧の影が地面と鎧自身に落ちなくなる。
     bool castShadow = true;
-    // 刀の模型の、握りの中央（ノードの原点）から剣先までの長さ。剣の長さ（Boss.swordLength）に合うように拡大する。
+    // 刀の模型の、握りの中央（ノードの原点）から剣先までの長さ。見える刀の長さ（swordVisibleLength）に合うように拡大する。
     // 模型を作るスクリプトが出す値（KATANA_LENGTH）に合わせる。
-    float swordModelLength = 2.305f;
+    float swordModelLength = 2.3411f;
+    // 見える刀の、剣の付け根（Boss.swordShoulder）から剣先までの長さ。刀も手もこの長さに合わせて大きくなる。
+    // 当たりの線（Boss.swordLength＋swordHazeLength）より先へは伸ばさない（当たらない刃を見せない）。0 なら Boss.swordLength。
+    float swordVisibleLength = 3.0f;
     // 握りの中央を、剣の付け根（Boss.swordShoulder）から剣の向きへどれだけ先に置くか。
     float swordGripAlong = 0.07f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
     float handScale = 1.0f;
     // 握りの右手の模型の形（刀の座標、模型の実寸）：手首の位置・肘の向き・手の甲の向き。籠手の筒を手首に付けるのに使う。
     // 模型を作るスクリプトが出す値（GRIP_WRIST・GRIP_ELBOW・GRIP_BACK）に合わせる。
-    HIKARI::GameProjectFloat3 gripWrist{-0.0249f, 0.2105f, -0.0907f};
+    HIKARI::GameProjectFloat3 gripWrist{-0.0289f, 0.2395f, -0.1030f};
     HIKARI::GameProjectFloat3 gripElbow{0.3367f, 0.8333f, -0.4384f};
     HIKARI::GameProjectFloat3 gripBack{-0.9272f, 0.3746f, 0.0f};
     // 肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転）。籠手の筒は、手首からこの肩の方へ伸びる

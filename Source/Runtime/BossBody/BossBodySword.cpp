@@ -159,7 +159,7 @@ MotionTargets Targets(const BossComponent& boss) {
         if (t.window)
             t.reach = s.armReach * Smooth(g.progress / std::max(0.05f, s.armReachPeak));
     }
-    t.tipLength = std::max(kMinTipLength, boss.swordLength + t.reach);
+    t.tipLength = std::max(kMinTipLength, VisibleSwordLength(boss) + t.reach);
     Vec3 kamaeDirection{}, kamaeGrip{};
     Kamae(boss, kamaeDirection, kamaeGrip);
     t.direction = Slerp(t.ruleDirection, kamaeDirection, t.calm);
@@ -413,7 +413,7 @@ void BossBodySword::Trace(const BossComponent& boss, const BossBodyPose& pose) {
     const Vec3 motion = RotateY(m.velocity, boss.yaw);
     const float speed = Length(motion);
     const BossSwordLine line = BossPose::SwordLine(boss, BossPose::Target(boss));
-    const Vec3 tip = Add(pose.sword.position, Mul(direction, boss.swordLength - boss.body.swordGripAlong));
+    const Vec3 tip = Add(pose.sword.position, Mul(direction, VisibleBladeReach(boss)));
     const Vec3 far =
         Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength + boss.body.motion.armReach));
     char message[256]{};

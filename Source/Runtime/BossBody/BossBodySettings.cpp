@@ -126,8 +126,11 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  HIKARI::GameProjectAssetKind::Model, model);
     fields.Bool("bodyVisible", "外形の模型を出す", visible);
     fields.Bool("bodyCastShadow", "外形の模型が影を落とす（切ると軽くなる）", castShadow);
-    fields.Float("bodySwordModelLength", "刀の模型の、握りの中央から剣先までの長さ (m。剣の長さに合うよう拡大する)",
+    fields.Float("bodySwordModelLength", "刀の模型の、握りの中央から剣先までの長さ (m。見える刀の長さに合うよう拡大する)",
                  swordModelLength, 0.1f, 20.0f);
+    fields.Float("bodySwordVisibleLength",
+                 "見える刀の長さ：剣の付け根から剣先まで (m。刀と手の大きさが決まる。当たりの線より先へは伸びない。0 で剣の長さ)",
+                 swordVisibleLength, 0.0f, 20.0f);
     fields.Float("bodySwordGripAlong", "握りの位置：剣の付け根から剣の向きへ (m)", swordGripAlong, -1.0f, 2.0f);
     fields.Float("bodyHandScale", "手の大きさ（刀の拡大に掛ける倍率）", handScale, 0.1f, 5.0f);
     fields.Float3("bodyGripWrist", "握りの右手の模型：手首の位置（刀の座標、模型の実寸 m）", gripWrist);

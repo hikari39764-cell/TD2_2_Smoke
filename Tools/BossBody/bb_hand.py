@@ -14,8 +14,8 @@ from mathutils import Matrix, Vector
 import bb_common as bb
 
 # ---- 大きさ（m）。下の値は実寸の約 1.35 倍で書いてあり、最後に HAND_SCALE を掛ける（体 4.0 m に対して実寸の約 1.2 倍。
-# 遠くから読めるよう少しだけ大きい）。----
-HAND_SCALE = 0.88
+# 遠くから読めるよう大きめ。2026-11-15：0.88 → 1.0）。----
+HAND_SCALE = 1.0
 PALM_LENGTH = 0.30
 PALM_WIDTH_WRIST = 0.215
 PALM_WIDTH_KNUCKLE = 0.275
@@ -28,7 +28,7 @@ FINGERS = {
     "pinky": (-0.094, 0.280, (0.088, 0.056, 0.050), 0.054),
 }
 THUMB_THICK = 0.072
-HANDLE_RADIUS = 0.061      # 握る柄の半径（柄の太い方。bb_katana の TSUKA_HALF_Y＋柄巻）
+HANDLE_RADIUS = 0.070      # 握る柄の半径（柄の太い方。bb_katana の TSUKA_HALF_Y＋柄巻）
 GRIP_DIAGONAL = math.radians(26.0)   # 柄が掌を斜めに通る角度（S の向きから F の側へ）
 GRIP_ROLL = math.radians(22.0)       # 手の甲が、刀の右（-X）から棟の側（+Y）へ回っている角度
 GRIP_AXIS_F = 0.235        # 柄の軸が通る所（掌の中央の s=0 での f）
