@@ -208,6 +208,26 @@ struct BossBodyAccentSettings {
     float smokeLitHeat = 5.0f;
     float smokeSwingPuff = 2.5f;
     float smokeSwingPuffSeconds = 0.30f;
+
+    // 衝撃の輪：重い一撃が当たった瞬間に、地面に沿って広がるゆがみと光の輪（1 回きりのエフェクト）。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference shockEffect{"e1a7c3f05b2d4d96a8c4f7b16d0e3a29", "Assets/Vfx/BossShock.hvfx"};
+    HIKARI::GameProjectFloat3 shockMistColor{0.80f, 1.10f, 1.70f};
+    HIKARI::GameProjectFloat3 shockFireColor{2.00f, 0.85f, 0.30f};
+    // 輪の大きさ（倍率。1 で半径 約 3.4 m まで広がる。0 で出さない）：天降り斬りの着地、霞の大剣の叩きつけ、回し蹴り、
+    // 引爆の爆ぜ始め、溜めた一撃を放つ瞬間（退き溜め）。
+    float shockSkyfall = 1.6f;
+    float shockCleave = 1.4f;
+    float shockKick = 1.0f;
+    float shockDetonate = 1.8f;
+    float shockRelease = 0.9f;
+
+    // 突進の尾：体が速く動く間、肩と背から流れる光の帯と、空気のゆがみの尾を引く。空なら出さない。
+    HIKARI::GameProjectVfxAssetReference dashEffect{"2c9f6b1e8a7d43f0b5e3d1c0a9f84726", "Assets/Vfx/BossDash.hvfx"};
+    HIKARI::GameProjectFloat3 dashMistColor{0.60f, 0.90f, 1.50f};
+    HIKARI::GameProjectFloat3 dashFireColor{1.80f, 0.70f, 0.20f};
+    // 尾が出始める体の速さと、出切る速さ (m/秒)。
+    float dashMinSpeed = 9.0f;
+    float dashFullSpeed = 18.0f;
 };
 
 // 技の演出の実行時の状態（保存しない）。
@@ -231,6 +251,17 @@ struct BossBodyAccentState {
     float smokeHeat = 1.0f;
     float puff = 0.0f;
     bool wasWindow = false;
+    // 突進の尾の再生と明るさ（0〜1）、前のフレームの足元（速さを出す）。
+    HIKARI::GameProjectVfxPlaybackHandle dashVfx{};
+    float dash = 0.0f;
+    HIKARI::GameProjectFloat3 previousFeet{};
+    bool feetSeen = false;
+    // 衝撃の輪を出す瞬間を見分ける、前のフレームの様子（-1＝まだ見ていない）。
+    int previousSkyfall = -1;
+    int previousGreatsword = -1;
+    int previousActPhase = -1;
+    uint64_t previousRing = 0;
+    float previousCharge = 0.0f;
 };
 
 // ボスの外形（模型の部品）の、人が調整する値。ボスの部品（BossComponent）が持ち、項目は「外形」の節に出る。

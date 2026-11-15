@@ -1,0 +1,14 @@
+{
+  "displayName": "BossDash",
+  "guid": "2c9f6b1e8a7d43f0b5e3d1c0a9f84726",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossDash.hvfx",
+  "type": "VfxEffect"
+}

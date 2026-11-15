@@ -56,6 +56,20 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
                  1.0f, 8.0f);
     fields.Float("bodySmokeSwingPuffSeconds", "胴の煙：吹き出しが収まるまでの時間 (秒)", smokeSwingPuffSeconds, 0.01f,
                  3.0f);
+    fields.Vfx("bodyShockEffect", "衝撃の輪のエフェクト（重い一撃が当たった瞬間、地面に沿って広がる。空なら出さない）",
+               shockEffect);
+    fields.Float3("bodyShockMistColor", "衝撃の輪：霞の技の色と明るさ", shockMistColor);
+    fields.Float3("bodyShockFireColor", "衝撃の輪：刀が燃えている技の色と明るさ", shockFireColor);
+    fields.Float("bodyShockSkyfall", "衝撃の輪の大きさ：天降り斬りの着地（倍率。0 で出さない）", shockSkyfall, 0.0f, 6.0f);
+    fields.Float("bodyShockCleave", "衝撃の輪の大きさ：霞の大剣の叩きつけ", shockCleave, 0.0f, 6.0f);
+    fields.Float("bodyShockKick", "衝撃の輪の大きさ：回し蹴り", shockKick, 0.0f, 6.0f);
+    fields.Float("bodyShockDetonate", "衝撃の輪の大きさ：引爆の爆ぜ始め", shockDetonate, 0.0f, 6.0f);
+    fields.Float("bodyShockRelease", "衝撃の輪の大きさ：溜めた一撃を放つ瞬間（退き溜め）", shockRelease, 0.0f, 6.0f);
+    fields.Vfx("bodyDashEffect", "突進の尾のエフェクト（体が速く動く間の光の帯とゆがみ。空なら出さない）", dashEffect);
+    fields.Float3("bodyDashMistColor", "突進の尾：ふだんの色と明るさ", dashMistColor);
+    fields.Float3("bodyDashFireColor", "突進の尾：刀が燃えている間の色と明るさ", dashFireColor);
+    fields.Float("bodyDashMinSpeed", "突進の尾：出始める体の速さ (m/秒)", dashMinSpeed, 0.0f, 100.0f);
+    fields.Float("bodyDashFullSpeed", "突進の尾：出切る体の速さ (m/秒)", dashFullSpeed, 0.1f, 100.0f);
 }
 
 void BossBodyLeftHandSettings::Describe(HIKARI::PropertyFields& fields) {

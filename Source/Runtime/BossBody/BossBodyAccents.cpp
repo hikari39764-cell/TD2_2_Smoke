@@ -22,6 +22,13 @@ constexpr const char* kEyesInput = "input.eyes";   // 目の光の色と明る�
 constexpr const char* kFlareInput = "input.flare"; // 目の閃きの色と明るさ
 constexpr const char* kColorInput = "input.color"; // 刀身を走る光の色
 constexpr const char* kAuraInput = "input.aura";   // 溜めの気配の色と強さ
+constexpr const char* kDashInput = "input.dash";   // 突進の尾の色と明るさ
+// これより速い 1 フレームの動きは、瞬間移動と見て速さに数えない (m/秒)。
+constexpr float kTeleportSpeed = 300.0f;
+// 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
+constexpr float kReleaseCharge = 0.85f;
+// 突進の尾の明るさを追う時間 (秒)。
+constexpr float kDashFollowSeconds = 0.06f;
 // 刀光が立ち上がる・引く時間 (秒)。出ている帯は、エフェクト側の時間で消える。
 constexpr float kTrailRiseSeconds = 0.02f;
 // 胴の煙の量・熱さを追う時間 (秒)。
@@ -31,6 +38,11 @@ HIKARI::GameProjectVfxParameterOverrides Color(const char* input, Vec3 color) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetColor(parameters, input, color);
     return parameters;
+}
+
+// 体の足元（世界座標）。
+Vec3 Feet(const BossComponent& boss, const HIKARI::GameProjectTransform& body) {
+    return Add(body.position, Rotate(body.rotation, {0.0f, -boss.bodyHalfHeight * body.scale.y, 0.0f}));
 }
 
 // 刀を振って当てる技か（刀身を走る光を出す技）。蹴り・投げ・分身・歩きなどは違う。
@@ -166,9 +178,83 @@ void UpdateAura(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Gam
         return;
     }
     a.aura = Lerp(a.aura, ChargeAmount(boss), Follow(seconds, s.auraSeconds));
-    const Vec3 feet = Add(body.position, Rotate(body.rotation, {0.0f, -boss.bodyHalfHeight * body.scale.y, 0.0f}));
-    StartOrSend(world, boss, a.auraVfx, s.auraEffect, Placed(feet, 1.0f, body.rotation),
+    StartOrSend(world, boss, a.auraVfx, s.auraEffect, Placed(Feet(boss, body), 1.0f, body.rotation),
                 Color(kAuraInput, Mul(pose.bladeHot ? s.auraFireColor : s.auraMistColor, a.aura)));
+}
+
+// 衝撃の輪を 1 つ出す（1 回きり）。at は地面の上の点、size は大きさの倍率。
+void PlayShock(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, Vec3 at, float size) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    if (!(size > 0.0f) || s.shockEffect.IsEmpty())
+        return;
+    HIKARI::GameProjectVfxPlayRequest play{};
+    play.asset = s.shockEffect;
+    play.transform = Placed({at.x, boss.ground.y, at.z}, size);
+    play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+    play.parameters = Color(kColorInput, pose.bladeHot ? s.shockFireColor : s.shockMistColor);
+    BossVfx::Start(world, boss, play);
+}
+
+// 重い一撃が当たった瞬間を、規則が書く様子の変わり目から見分けて、衝撃の輪を出す（当たった後だけ。予告はしない）。
+void UpdateShock(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body,
+                 const BossBodyPose& pose) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    BossBodyAccentState& a = boss.bodyState.accents;
+    const Vec3 feet = Feet(boss, body);
+    const BossMove* move = CurrentMove(boss);
+    const int skyfall = static_cast<int>(boss.skyfall.phase);
+    const int great = static_cast<int>(boss.greatsword.phase);
+    const int phase = move != nullptr ? static_cast<int>(boss.phase) : -1;
+    if (a.previousSkyfall >= 0) {
+        // 天降り斬り：落ちて来て着地した。
+        if (a.previousSkyfall == static_cast<int>(BossSkyfallPhase::Dive) && boss.skyfall.phase == BossSkyfallPhase::Landed)
+            PlayShock(world, boss, pose, feet, s.shockSkyfall);
+        // 霞の大剣の縦割り：叩きつけた剣が地面に刺さった。
+        if (a.previousGreatsword == static_cast<int>(BossGreatswordPhase::Slam) &&
+            boss.greatsword.phase == BossGreatswordPhase::Stuck)
+            PlayShock(world, boss, pose,
+                      Add(boss.greatsword.hilt, Mul(boss.greatsword.direction, boss.greatsword.length)), s.shockCleave);
+        // 回し蹴り：霞の輪が出た。
+        if (boss.ringVfxId != a.previousRing && boss.ringVfxId != 0)
+            PlayShock(world, boss, pose, feet, s.shockKick);
+        if (move != nullptr && a.previousActPhase == static_cast<int>(BossActPhase::Pre) &&
+            boss.phase == BossActPhase::Act) {
+            // 引爆：爆ぜ始め。
+            if (move->type == BossMoveType::Detonate)
+                PlayShock(world, boss, pose, feet, s.shockDetonate);
+            // 退き溜め：溜め切った一撃を放つ。
+            if (move->type == BossMoveType::Retreat && a.previousCharge >= kReleaseCharge)
+                PlayShock(world, boss, pose, feet, s.shockRelease);
+        }
+    }
+    a.previousSkyfall = skyfall;
+    a.previousGreatsword = great;
+    a.previousActPhase = phase;
+    a.previousRing = boss.ringVfxId;
+    a.previousCharge = boss.chargeVisual;
+}
+
+// 突進の尾：体が速く動く間だけ、肩と背から流れる光の帯と、空気のゆがみの尾を引く。
+void UpdateDash(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body,
+                const BossBodyPose& pose, float seconds) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    BossBodyAccentState& a = boss.bodyState.accents;
+    if (s.dashEffect.IsEmpty()) {
+        StopHandle(world, a.dashVfx);
+        return;
+    }
+    const Vec3 feet = Feet(boss, body);
+    float speed = a.feetSeen && seconds > kTiny ? Length(Sub(feet, a.previousFeet)) / seconds : 0.0f;
+    // 瞬間移動（霞隠れ・分身）と、霧へ沈んでいる間は出さない。
+    if (speed > kTeleportSpeed || BossPose::RootHeight(boss) < -kTiny)
+        speed = 0.0f;
+    a.previousFeet = feet;
+    a.feetSeen = true;
+    const float target =
+        std::clamp((speed - s.dashMinSpeed) / std::max(kTiny, s.dashFullSpeed - s.dashMinSpeed), 0.0f, 1.0f);
+    a.dash = Lerp(a.dash, target, Follow(seconds, kDashFollowSeconds));
+    StartOrSend(world, boss, a.dashVfx, s.dashEffect, Placed(feet, 1.0f, body.rotation),
+                Color(kDashInput, Mul(pose.bladeHot ? s.dashFireColor : s.dashMistColor, a.dash)));
 }
 
 } // namespace
@@ -195,6 +281,8 @@ void BossBodyAccents::Update(HIKARI::WorldView& world, BossComponent& boss, cons
     UpdateCommit(world, boss, pose, seconds);
     UpdateEyes(world, boss, pose);
     UpdateAura(world, boss, body, pose, seconds);
+    UpdateShock(world, boss, body, pose);
+    UpdateDash(world, boss, body, pose, seconds);
 }
 
 void BossBodyAccents::Stop(HIKARI::WorldView& world, BossComponent& boss) {
@@ -203,6 +291,7 @@ void BossBodyAccents::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     StopHandle(world, a.eyesVfx);
     StopHandle(world, a.glintVfx);
     StopHandle(world, a.auraVfx);
+    StopHandle(world, a.dashVfx);
     a = {};
 }
 
