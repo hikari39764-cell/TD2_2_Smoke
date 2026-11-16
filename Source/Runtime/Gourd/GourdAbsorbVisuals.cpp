@@ -14,8 +14,8 @@ namespace Project_TD2_2 {
 namespace {
 
 constexpr float kFramesPerSecond = 60.0f;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 縦の震えを横と違う周期にして、同じ円を描き続けないようにする。
 constexpr float kShakeVerticalRatio = 1.37f;
 constexpr uint64_t kCameraSource = 0x5444324801ull;

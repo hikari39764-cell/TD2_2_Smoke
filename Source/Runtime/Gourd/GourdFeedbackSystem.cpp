@@ -9,16 +9,18 @@
 #include "GourdShotComponent.h"
 #include "GourdComponent.h"
 #include "GourdRules.h"
+#include "../Common/GameSession.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
+#include "../Common/VectorMath.h"
 #include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
 
 constexpr float kFramesPerSecond = Feedback::kFramesPerSecond;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 constexpr uint64_t kCameraSource = 0x5444324701ull;
 constexpr int kCameraPriority = 310;
 constexpr uint64_t kCatchHitStopSource = 0x5444324703ull;
@@ -161,7 +163,7 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
 } // namespace
 
 void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused)
+    if (!GameSession::IsPlaying(world, frame))
         return;
     world.ForEachComponent<GourdShotComponent>(
         HIKARI::MakeComponentTypeId(kGourdShotType),
@@ -172,7 +174,7 @@ void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::Fra
 }
 
 void GourdFeedbackSystem::PostRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused)
+    if (!GameSession::IsPlaying(world, frame))
         return;
     world.ForEachComponent<GourdShotComponent>(
         HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView, GourdShotComponent& shot) {

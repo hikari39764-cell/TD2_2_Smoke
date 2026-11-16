@@ -13,6 +13,8 @@ class GourdRules final {
     // 煙の量 ÷ 吸った霧の量（密度 × m³）。霧へ戻す煙の量を、同じ換算で霧の量へ直すために使う。
     static float GetSmokePerVolume(const GourdComponent& gourd);
     static bool IsFull(const GourdComponent& gourd);
+    // まだ吸い込める空きがあるか（空きが kAbsorbRoomEpsilon より多い）。飛ぶ斬撃を吸う時と、火を吸う時の満杯の判定。
+    static bool HasRoomToAbsorb(const GourdComponent& gourd);
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
     // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
     static float AddSmoke(GourdComponent& gourd, float amount);

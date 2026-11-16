@@ -23,7 +23,7 @@ constexpr float kSmokeSourceRate = 24.0f;
 constexpr float kSmokeSourceRadius = 0.25f;
 // 足元の霧を外へ押す向きの数。向きのある押しを輪に並べる（向きの無い膨張は、上にある炎の域まで持ち上げて潰す）。
 constexpr int kGroundPushCount = 6;
-constexpr float kTau = 6.28318530718f;
+using VectorMath::kTau;
 // 弾が足元の霧を割る力の提出 ID（弾 1 つにつき左右 2 個）と、外向きに対する前向きの割合。
 constexpr uint64_t kWakeInstanceBase = 700;
 constexpr float kWakeForwardShare = 0.6f;

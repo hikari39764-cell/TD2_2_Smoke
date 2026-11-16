@@ -33,9 +33,11 @@ HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, f
     return parameters;
 }
 
+// 当たった斬撃は、当たった tick に終わる（active が落ちる）。砕けさせる見た目のために、当たって終わった斬撃も探す
+// （枠は次の斬撃が新しい id で使うまで、終わった時のデータを持っている）。
 const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
     for (const auto& wave : boss.waves) {
-        if (wave.active && !wave.knife && !wave.ring && wave.id == id)
+        if ((wave.active || wave.struck) && !wave.knife && !wave.ring && wave.id == id)
             return &wave;
     }
     return nullptr;
@@ -225,7 +227,8 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss) {
         const BossWave& wave = boss.waves[i];
         auto& handle = boss.waveVfx[i];
         auto& knife = boss.knifeVfx[i];
-        if (!wave.active || boss.waveVfxId[i] != wave.id) {
+        // 枠がナイフでなくなった（描画の間に斬撃が同じ枠を取り、waveVfxId を先に書き換えた時も）なら止める。
+        if (!wave.active || !wave.knife || boss.waveVfxId[i] != wave.id) {
             StopHandle(world, handle);
             StopHandle(world, knife);
         }

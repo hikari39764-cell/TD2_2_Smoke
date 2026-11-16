@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "../Common/FireObstacle.h"
+#include "../Common/FluidEmit.h"
 #include "BossMath.h"
 #include "BossPose.h"
 
@@ -40,16 +41,7 @@ constexpr float kSwordOuterShare = 0.65f;
 constexpr float kStrengthLimit = 10000.0f;
 constexpr float kFramesPerSecond = 60.0f;
 
-// 注入（Emit）が 1 秒に足す量 [密度 × m³] ÷ 強さ。重みは中心から (1 - r/R)²、床より下（中心から height 下）は
-// 域の外なので数えない。GourdShotFogReturn の EmitVolume と同じ式（エンジンの注入の式が変わったら両方直す）。
-float EmitVolume(float radius, float height) {
-    const float h = std::clamp(height, 0.0f, radius);
-    const float upper = kPi * radius * radius * radius / 15.0f;
-    const float lower = 2.0f * kPi *
-                        (radius * radius * h / 12.0f - h * h * h / 6.0f + h * h * h * h / (6.0f * radius) -
-                         h * h * h * h * h / (20.0f * radius * radius));
-    return upper + lower;
-}
+using FluidEmit::EmitVolume;
 
 struct Emitter {
     HIKARI::WorldView& world;

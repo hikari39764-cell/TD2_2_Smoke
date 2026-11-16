@@ -7,6 +7,7 @@
 
 #include "BossBurnMarks.h"
 #include "BossMath.h"
+#include "BossRules.h"
 #include "../Burn/BurnFieldRules.h"
 #include "../Player/PlayerRules.h"
 
@@ -28,11 +29,6 @@ constexpr float kFramesPerSecond = 60.0f;
 constexpr int kRingResiduePoints = 6;
 constexpr float kTau = 6.28318530718f;
 
-const BossMove* MoveOf(const BossComponent& boss, int index) {
-    const auto& moves = boss.table.GetMoves();
-    return index >= 0 && static_cast<size_t>(index) < moves.size() ? &moves[static_cast<size_t>(index)] : nullptr;
-}
-
 BossWave* FreeWave(BossComponent& boss) {
     for (auto& wave : boss.waves) {
         if (!wave.active)
@@ -45,7 +41,7 @@ BossWave* FreeWave(BossComponent& boss) {
 }
 
 void LogWave(const BossComponent& boss, const BossWave& wave, const char* event) {
-    const BossMove* move = MoveOf(boss, wave.move);
+    const BossMove* move = BossRules::GetMove(boss, wave.move);
     char message[512]{};
     std::snprintf(
         message, sizeof(message),
@@ -104,7 +100,7 @@ void StepRing(BossFrame& frame, BossWave& wave) {
         BossWaves::AddDeposit(boss, {at.x, boss.ground.y + boss.depositHeight, at.z},
                               boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius);
     }
-    if (const BossMove* move = MoveOf(boss, wave.move))
+    if (const BossMove* move = BossRules::GetMove(boss, wave.move))
         BossBurnMarks::RingEnded(frame, *move, wave);
     if (boss.traceEveryFrames > 0)
         LogWave(boss, wave, "RingEnd");
@@ -127,7 +123,7 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     if (frame.player == nullptr || !PlayerRules::IsAlive(*frame.player))
         return false;
     BossComponent& boss = frame.boss;
-    const BossMove* row = MoveOf(boss, move);
+    const BossMove* row = BossRules::GetMove(boss, move);
     char message[320]{};
     if (PlayerRules::IsInvulnerable(*frame.player)) {
         // 無敵で抜けた斬撃はもう当たらない（吹っ飛び・ダウン中の無敵も同じ）。
@@ -175,7 +171,7 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
 
 void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
     BossComponent& boss = frame.boss;
-    const BossMove* move = MoveOf(boss, launch.move);
+    const BossMove* move = BossRules::GetMove(boss, launch.move);
     if (move == nullptr)
         return;
     const BossStrikeData& strike = BossMoveTable::Strike(*move, launch.strike);
@@ -206,7 +202,7 @@ void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
 
 void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim) {
     BossComponent& boss = frame.boss;
-    const BossMove* move = MoveOf(boss, moveIndex);
+    const BossMove* move = BossRules::GetMove(boss, moveIndex);
     if (move == nullptr)
         return;
     // 判定サイズ＝本数。扇状に同時に投げる。
@@ -238,7 +234,7 @@ void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim
 
 void BossWaves::SpawnRing(BossFrame& frame, int moveIndex) {
     BossComponent& boss = frame.boss;
-    const BossMove* move = MoveOf(boss, moveIndex);
+    const BossMove* move = BossRules::GetMove(boss, moveIndex);
     if (move == nullptr)
         return;
     const BossStrikeData& strike = BossMoveTable::Strike(*move, 0);
@@ -322,7 +318,7 @@ void BossWaves::Step(BossFrame& frame) {
         }
         // 「交差」を待つ斬撃：狙った所へ届いた・当たった・飛びきった時に、そこで爆ぜて X の火を残す。
         if (wave.crossPending && (ending || wave.travelled >= wave.crossReach)) {
-            if (const BossMove* move = MoveOf(boss, wave.move))
+            if (const BossMove* move = BossRules::GetMove(boss, wave.move))
                 BossBurnMarks::WaveLanded(frame, *move, wave);
         }
         // 斬撃は霞：通った跡に煙が残る（2 m 進むごとに residuePerTwoMeters）。ナイフは消えた所だけ。

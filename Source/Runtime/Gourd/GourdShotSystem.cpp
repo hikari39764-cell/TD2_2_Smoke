@@ -12,6 +12,7 @@
 #include "GourdShotRules.h"
 #include "GourdShotVisuals.h"
 #include "GourdRules.h"
+#include "../Common/GameSession.h"
 #include "../Combat/DamageableRules.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
@@ -24,11 +25,9 @@ using VectorMath::Difference;
 using VectorMath::Normalize;
 using VectorMath::Scale;
 using Vec3 = HIKARI::GameProjectFloat3;
-constexpr float kPi = 3.14159265358979323846f;
+using VectorMath::kPi;
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
+using GameSession::IsPlaying;
 
 template <class Callback>
 bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callback&& callback) {

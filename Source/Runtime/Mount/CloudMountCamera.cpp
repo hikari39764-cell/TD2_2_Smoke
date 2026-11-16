@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "../Common/VectorMath.h"
+
 namespace Project_TD2_2 {
 namespace {
 
@@ -17,12 +19,9 @@ constexpr float kMinimumSpan = 0.01f;
 // これより弱いぼかしは出さない（ならしの尾を切る）。
 constexpr float kBlurOffWeight = 0.001f;
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
-float Lerp(float from, float to, float amount) { return from + (to - from) * amount; }
-float SmoothStep(float value) {
-    const float t = Clamp01(value);
-    return t * t * (3.0f - 2.0f * t);
-}
+using VectorMath::Clamp01;
+using VectorMath::Lerp;
+using VectorMath::Smoothstep;
 
 // 段階（0〜2）での値：止まっている → 巡航 → ブースト。
 float StageValue(float stage, float stop, float cruise, float boost) {
@@ -132,8 +131,8 @@ float CloudMountCamera::FovKick(const CloudMountComponent& mount, float age) {
         return 0.0f;
     const float progress = age / duration;
     const float share = progress < kFovKickAttackShare
-                            ? SmoothStep(progress / kFovKickAttackShare)
-                            : 1.0f - SmoothStep((progress - kFovKickAttackShare) / (1.0f - kFovKickAttackShare));
+                            ? Smoothstep(progress / kFovKickAttackShare)
+                            : 1.0f - Smoothstep((progress - kFovKickAttackShare) / (1.0f - kFovKickAttackShare));
     return mount.cameraBoostFovKick * share;
 }
 

@@ -8,6 +8,7 @@
 #include "HIKARI/Project/CameraViewSnapshot.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "../Common/GameSession.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
 #include "../Common/VectorMath.h"
@@ -57,16 +58,8 @@ constexpr float kRideJumpSpeed = 1.0f;
 // 提出する落下の速さの上限を、下降の速さよりこれだけ大きくする (m/s)。上限で縦の速さが切られないようにする。
 constexpr float kFallSpeedMargin = 1.0f;
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
-
-HIKARI::GameProjectInputActionState ReadAction(HIKARI::InputView input, std::string_view id) {
-    HIKARI::GameProjectInputActionState action{};
-    if (!input.GetAction(id, action))
-        return {};
-    return action;
-}
+using GameSession::IsPlaying;
+using GameSession::ReadAction;
 
 // CloudMount と、同じ物体の Player の組ごとに callback(object, mount, player) を呼ぶ。Player が無ければ何もしない。
 template <class Callback>

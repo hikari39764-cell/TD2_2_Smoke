@@ -5,6 +5,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/GameSession.h"
 #include "../Common/ObjectVariables.h"
 #include "PlayerDebugComponent.h"
 #include "PlayerRules.h"
@@ -123,7 +124,7 @@ void TracePlayer(const HIKARI::WorldView& world, HIKARI::ObjectView object, cons
 } // namespace
 
 void PlayerDebugSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused) {
+    if (!GameSession::IsPlaying(world, frame)) {
         return;
     }
     world.ForEachComponent<PlayerDebugComponent>(
@@ -143,7 +144,7 @@ void PlayerDebugSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Fram
 }
 
 void PlayerDebugSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused) {
+    if (!GameSession::IsPlaying(world, frame)) {
         return;
     }
     world.ForEachComponent<PlayerDebugComponent>(

@@ -5,11 +5,12 @@
 #include <cmath>
 
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-constexpr float kPi = 3.14159265f;
+using VectorMath::kPi;
 // 1 tick に爆ぜたセルを升ごとに足し合わせる作業場所の数。前線の輪は細いので、闘技場いっぱいの火でも
 // 1 tick に通る升はこれより少ない。あふれたセルは塊にせず、捨てた塊として数える。
 constexpr size_t kBlastBlockWork = 64;

@@ -5,6 +5,8 @@
 #include <cstdio>
 
 #include "../Common/FireObstacle.h"
+#include "../Common/GameSession.h"
+#include "../Common/VectorMath.h"
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
@@ -24,24 +26,15 @@ constexpr uint64_t kRollFireInstance = 2;
 constexpr uint64_t kFireObstacleInstance = 3;
 constexpr uint64_t kKnockbackLandFogInstance = 4;
 constexpr int kPlayerPriority = 300;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 向きを変える入力として扱う最小の倒し量。スティックの遊びで向きが震えないようにする。
 constexpr float kTurnInputDeadZone = 0.1f;
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
-
-HIKARI::GameProjectInputActionState ReadAction(HIKARI::InputView input, std::string_view id) {
-    HIKARI::GameProjectInputActionState action{};
-    if (!input.GetAction(id, action)) {
-        return {};
-    }
-    return action;
-}
+using GameSession::IsPlaying;
+using GameSession::ReadAction;
 
 void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
     const auto input = world.GetInput();

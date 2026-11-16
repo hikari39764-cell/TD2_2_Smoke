@@ -10,13 +10,15 @@
 #include "DamageableComponent.h"
 #include "Feedback.h"
 #include "FeedbackCamera.h"
+#include "../Common/GameSession.h"
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace {
 
 constexpr float kFramesPerSecond = Feedback::kFramesPerSecond;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 constexpr uint64_t kHitStopSource = 0x5444324401ull;
 constexpr uint64_t kCameraSource = 0x5444324402ull;
 constexpr int kFeedbackPriority = 320;
@@ -193,7 +195,7 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageabl
 } // namespace
 
 void DamageableSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused)
+    if (!GameSession::IsPlaying(world, frame))
         return;
     world.ForEachComponent<DamageableComponent>(
         HIKARI::MakeComponentTypeId(kDamageableType),
@@ -207,7 +209,7 @@ void DamageableSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
 }
 
 void DamageableSystem::PostRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused)
+    if (!GameSession::IsPlaying(world, frame))
         return;
     world.ForEachComponent<DamageableComponent>(
         HIKARI::MakeComponentTypeId(kDamageableType), [&](HIKARI::ObjectView object, DamageableComponent& target) {

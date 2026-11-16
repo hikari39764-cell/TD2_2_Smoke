@@ -12,8 +12,8 @@ namespace {
 using Vec3 = HIKARI::GameProjectFloat3;
 using namespace VectorMath;
 
-constexpr float kPi = 3.14159265358979f;
-constexpr float kRadiansPerDegree = kPi / 180.0f;
+using VectorMath::kPi;
+using VectorMath::kRadiansPerDegree;
 // 曲がりを決める点を、飛び始めの水平の位置のどれだけの所に置くか。足元の手前で道が水平（受け止めでは上向き）になり、
 // 雲が足元へ滑り込む。
 constexpr float kBendReach = 0.3f;
@@ -21,13 +21,6 @@ constexpr float kBendReach = 0.3f;
 constexpr float kMinimumFlySeconds = 1.0f / Feedback::kFramesPerSecond;
 // 上り下りの角度を測る時の水平の長さの下限（真上・真下の向きで角度が飛ばないように）。
 constexpr float kMinimumHorizontal = 1e-4f;
-
-float Length(Vec3 v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }
-
-float Smoothstep(float x) {
-    const float t = std::clamp(x, 0.0f, 1.0f);
-    return t * t * (3.0f - 2.0f * t);
-}
 
 } // namespace
 

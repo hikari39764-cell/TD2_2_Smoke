@@ -22,6 +22,7 @@
 #include "BossSmoke.h"
 #include "BossVisuals.h"
 #include "BossWaves.h"
+#include "../Common/GameSession.h"
 #include "../BossBody/BossBodyVisuals.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
@@ -54,14 +55,10 @@ constexpr float kStunWobbleRate = 1.7f;
 constexpr float kStunWobble = 0.05f;
 // 煙の量の換算が取れないとき（ヒョウタンがいない）の値。ヒョウタンの既定値と同じ。
 constexpr float kFallbackSmokePerVolume = 4.0f;
-// ヒョウタンの空きがこれより少なければ、斬撃・ナイフは吸えない（試作の 0.01）。
-constexpr float kAbsorbRoomEpsilon = 0.01f;
 // 体がこの高さ（m）より上にある間は、通った跡の煙を地面に残さない。
 constexpr float kTrailMaxHeight = 0.5f;
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
+using GameSession::IsPlaying;
 
 class TextSink final : public HIKARI::IProjectDataTextSink {
 public:
@@ -309,8 +306,18 @@ void StartRequested(BossFrame& frame, int chain) {
     const int index = boss.requestedMove;
     BossRules::CancelRequest(boss);
     const BossMove* move = BossRules::GetMove(boss, index);
-    if (move == nullptr || !move->executable)
+    if (move == nullptr || !move->executable) {
+        // Play 中に表を保存して読み直した時、いまの技の行が無くなった・区間の数が変わったなら、古い番号のまま続けず
+        // （次の tick に表の外や区間の外を読む）、打ち切って待機へ戻す。
+        if (boss.state == BossState::Act) {
+            const BossMove* current = BossRules::GetMove(boss, boss.move);
+            if (current == nullptr || current->segments.size() != boss.segmentDone.size()) {
+                BossMoveExecutor::Interrupt(boss);
+                BossMoveExecutor::EnterIdle(boss);
+            }
+        }
         return;
+    }
     BossMoveExecutor::Start(frame, index, chain);
     BossSelection::NoteStarted(boss, index, chain);
 }
@@ -470,7 +477,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
         absorbing = absorbing ||
                     (GourdRules::IsAbsorbing(gourd) &&
                      (gourd.absorbWhenFull ||
-                      GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd) > kAbsorbRoomEpsilon));
+                      GourdRules::HasRoomToAbsorb(gourd)));
     });
     float absorbed = 0.0f;
     int caught = 0;

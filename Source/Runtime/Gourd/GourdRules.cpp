@@ -23,6 +23,12 @@ bool GourdRules::IsFull(const GourdComponent& gourd) {
     return GetCapacity(gourd) > 0.0f && GetSmoke(gourd) >= GetCapacity(gourd);
 }
 
+bool GourdRules::HasRoomToAbsorb(const GourdComponent& gourd) {
+    // 空きがこれより少なければ満杯と見る（煙の足し引きの丸めで、ほぼ満杯のまま吸い続けないように）。
+    constexpr float kAbsorbRoomEpsilon = 0.01f;
+    return GetCapacity(gourd) - GetSmoke(gourd) > kAbsorbRoomEpsilon;
+}
+
 bool GourdRules::TryConsumeSmoke(GourdComponent& gourd, float amount) {
     Initialize(gourd);
     if (!std::isfinite(amount) || amount < 0.0f || GetSmoke(gourd) < amount)

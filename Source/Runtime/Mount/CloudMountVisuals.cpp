@@ -33,8 +33,8 @@ constexpr const char* kGlowInput = "input.glow";
 constexpr const char* kStreakInput = "input.streak";
 constexpr const char* kHazeInput = "input.haze";
 constexpr const char* kConeInput = "input.cone";
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 上り下りの角度を測る時の水平の速さの下限 (m/s)。止まっている時に角度が飛ばないように。
 constexpr float kMinimumHorizontalSpeed = 0.01f;
 // 雲の芯は資産の原点（足元）の下 0.3 m（make_nimbus_cloud.py の Core）。着いた・散る飾りはここに出す。

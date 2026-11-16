@@ -7,6 +7,7 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
+#include "../Common/FluidEmit.h"
 #include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
@@ -16,7 +17,6 @@ using VectorMath::Add;
 using VectorMath::Scale;
 using Vec3 = HIKARI::GameProjectFloat3;
 
-constexpr float kPi = 3.14159265358979323846f;
 constexpr float kFramesPerSecond = 60.0f;
 // 通り道に落とす点の上限（1 発あたり）。射程 15 m・間隔 2.5 m で 4〜5 点。
 constexpr int kTrailPointLimit = 6;
@@ -38,15 +38,7 @@ float FlatDistance(Vec3 a, Vec3 b) {
     return std::sqrt(x * x + z * z);
 }
 
-// 注入（Emit）が 1 秒に足す量 [密度 × m³] ÷ 強さ。重みは中心から (1 - r/R)² で、床（中心から height 下）より下は域の外 なので数えない。球全体は 2πR³/15、中心より下の厚さ h の層は 2π(R²h/12 − h³/6 + h⁴/6R − h⁵/20R²)。
-float EmitVolume(float radius, float height) {
-    const float h = std::clamp(height, 0.0f, radius);
-    const float upper = kPi * radius * radius * radius / 15.0f;
-    const float lower = 2.0f * kPi *
-                        (radius * radius * h / 12.0f - h * h * h / 6.0f + h * h * h * h / (6.0f * radius) -
-                         h * h * h * h * h / (20.0f * radius * radius));
-    return upper + lower;
-}
+using FluidEmit::EmitVolume;
 
 bool NearFire(const GourdShotComponent& shot, Vec3 point) {
     for (const auto& zone : shot.fireZones) {

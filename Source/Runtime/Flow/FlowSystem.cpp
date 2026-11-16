@@ -7,6 +7,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/GameSession.h"
 #include "../Boss/BossRules.h"
 #include "../Common/ObjectVariables.h"
 #include "../Gourd/GourdComponent.h"
@@ -21,9 +22,7 @@ namespace {
 // 世界変数の書き手の名前。
 constexpr std::string_view kWriterId = "Project_TD2_2.Flow";
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
+using GameSession::IsPlaying;
 
 void Log(HIKARI::GameProjectLogLevel level, const char* message) { HIKARI::WriteProjectLog(level, "Flow", message); }
 

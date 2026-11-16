@@ -59,6 +59,18 @@ uint64_t HitCountOf(HIKARI::WorldView& world, HIKARI::ObjectView object) {
     return hits;
 }
 
+// 出し直す分身の体力を最大へ戻す。戻さないと、何度か出るうちに受けた当たりで体力が尽き、ApplyDamage が当たりを
+// 断るようになる（当たりの数が増えず、撃っても消せない・「分身を撃たれた」が出ない）。
+void RestoreHealth(HIKARI::WorldView& world, HIKARI::ObjectView object) {
+    world.ForEachComponent<DamageableComponent>(HIKARI::MakeComponentTypeId(kDamageableType),
+                                                [&](HIKARI::ObjectView other, DamageableComponent& health) {
+                                                    if (other.GetHandle().value != object.GetHandle().value)
+                                                        return;
+                                                    DamageableRules::Initialize(health);
+                                                    health.currentHealth = DamageableRules::GetMaxHealth(health);
+                                                });
+}
+
 void Remove(BossComponent& boss, BossCloneComponent& clone, bool puff, const char* why) {
     if (!clone.active)
         return;
@@ -202,6 +214,7 @@ void BossClones::Step(HIKARI::WorldView& world, HIKARI::ObjectView bossObject, B
                     clone.untilSeconds = boss.clockSeconds + boss.cloneLifeSeconds;
                     clone.age = 0;
                     clone.seenHits = hits;
+                    RestoreHealth(world, object);
                 }
                 ++index;
             }

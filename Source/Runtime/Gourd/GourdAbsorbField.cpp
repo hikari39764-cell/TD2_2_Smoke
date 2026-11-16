@@ -24,8 +24,8 @@ constexpr uint64_t kSinkInstance = 1;
 constexpr uint64_t kGatherInstanceBase = 2;
 // 消した量を読む枠：0 は口元、1 は口の上、2 からは霧を運ぶ力（輪 4 つで 3 + 5 × 3 + 足元 + 持ち上げ = 20 個）。
 constexpr size_t kRemovedFixedSlots = 2;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 奥の輪ほど、運ぶ流れを少し太くする（輪 1 つごとの増し分）。
 constexpr float kRingGrowth = 0.15f;
 // いちばん手前の輪の筋の数（片側）と、それより奥の輪の筋の数（片側）。奥ほど扇が広いので筋を増やす。

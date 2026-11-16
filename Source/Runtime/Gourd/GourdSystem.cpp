@@ -11,6 +11,7 @@
 #include "GourdAbsorbField.h"
 #include "GourdAbsorbVisuals.h"
 #include "GourdRules.h"
+#include "../Common/GameSession.h"
 #include "../Common/ObjectVariables.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
@@ -24,13 +25,11 @@ using Vec3 = HIKARI::GameProjectFloat3;
 // 外形の基準は正式シーンのメッシュ契約。
 constexpr float kMeshHeight = 0.5f;
 constexpr float kMeshRadius = 0.18f;
-constexpr float kTau = 6.28318530718f;
+using VectorMath::kTau;
 // 吸えている速さをならす時間 (秒)。回読は 1〜3 フレーム遅れて塊で届くので、そのままでは演出がちらつく。
 constexpr float kIntakeSmoothSeconds = 0.2f;
 
-bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
+using GameSession::IsPlaying;
 
 Vec3 CameraForward(HIKARI::WorldView& world, const GourdComponent& gourd, Vec3 fallback) {
     HIKARI::GameProjectCameraPose pose{};

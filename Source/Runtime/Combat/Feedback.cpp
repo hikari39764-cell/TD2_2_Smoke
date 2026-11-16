@@ -5,13 +5,14 @@
 
 #include "HIKARI/Project/ActionViews.h"
 #include "FeedbackCamera.h"
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace Feedback {
 namespace {
 
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 
 } // namespace
 

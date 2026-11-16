@@ -4,10 +4,13 @@
 #include <optional>
 #include <string>
 
+#include "BossCsv.h"
+
 namespace Project_TD2_2 {
 namespace {
 
-bool StartsWith(std::string_view text, std::string_view part) { return text.substr(0, part.size()) == part; }
+using BossCsv::Contains;
+using BossCsv::StartsWith;
 bool IsDigit(char ch) { return ch >= '0' && ch <= '9'; }
 
 // 半角の空白・タブと全角の空白を飛ばす。
@@ -51,8 +54,6 @@ std::optional<double> NumberBetween(std::string_view text, std::string_view keyw
     }
     return std::nullopt;
 }
-
-bool Contains(std::string_view text, std::string_view part) { return text.find(part) != std::string_view::npos; }
 
 } // namespace
 

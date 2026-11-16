@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -10,7 +11,7 @@ namespace {
 constexpr int kMaxCellsPerSide = 1024;
 // 割り算の丸め誤差で、ちょうど割り切れる大きさ（48 m ÷ 0.5 m）が 1 セル増えたり減ったりしないための余裕。
 constexpr float kRoundingSlack = 1e-4f;
-constexpr float kPi = 3.14159265f;
+using VectorMath::kPi;
 
 bool Finite(HIKARI::GameProjectFloat3 point) {
     return std::isfinite(point.x) && std::isfinite(point.y) && std::isfinite(point.z);

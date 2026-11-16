@@ -11,15 +11,15 @@
 #include "BurnFieldComponent.h"
 #include "BurnFieldRules.h"
 #include "BurnFieldVisuals.h"
+#include "../Common/GameSession.h"
+#include "../Common/VectorMath.h"
 #include "../Gourd/GourdRules.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-constexpr float kRadiansPerDegree = 3.14159265f / 180.0f;
-// ヒョウタンの空きがこれより少なければ満杯と見る（飛ぶ斬撃を吸う時と同じ値。BossSystem の kAbsorbRoomEpsilon）。
-constexpr float kAbsorbRoomEpsilon = 0.01f;
+using VectorMath::kRadiansPerDegree;
 // 1/60 秒を足し続けた時の丸め誤差で、手傷の始まりが 1 tick 遅れないための余裕 (秒)。
 constexpr float kContactSlack = 1e-4f;
 
@@ -75,7 +75,7 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
                 return;
             handled = true;
             const float room = GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd);
-            const bool full = room <= kAbsorbRoomEpsilon;
+            const bool full = !GourdRules::HasRoomToAbsorb(gourd);
             if (!player.found || !GourdRules::IsAbsorbing(gourd) || (full && !gourd.absorbWhenFull)) {
                 field.absorbBudget = 0.0f;
                 return;
@@ -143,7 +143,7 @@ BurnBody SeeBody(HIKARI::WorldView& world) {
 } // namespace
 
 void BurnFieldSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || frame.paused || frame.fixedDt <= 0.0f)
+    if (!GameSession::IsPlayingFixed(world, frame))
         return;
     bool done = false;
     world.ForEachComponent<BurnFieldComponent>(HIKARI::MakeComponentTypeId(kBurnFieldType),

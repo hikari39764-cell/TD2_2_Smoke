@@ -2,14 +2,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace {
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 飛ぶ向きの上り下りの限度（度）。真上・真下では左右の向きが決まらないので少し手前で止める。
 constexpr float kMaximumFlightPitch = 89.0f;
 // これより遅い間は体の向きを変えない (m/s)。止まり際に向きが震えないようにする。速度の向きも、これより遅い間は
@@ -23,11 +24,11 @@ constexpr float kAchievedSpeedMargin = 1.0f;
 // 向きが真逆かを決める長さの下限。
 constexpr float kParallelEpsilon = 1.0e-4f;
 
-float Length(Vec3 value) { return std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z); }
-float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-Vec3 Cross(Vec3 a, Vec3 b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}; }
-Vec3 Scale(Vec3 value, float scale) { return {value.x * scale, value.y * scale, value.z * scale}; }
-Vec3 Add(Vec3 a, Vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
+using VectorMath::Add;
+using VectorMath::Cross;
+using VectorMath::Dot;
+using VectorMath::Length;
+using VectorMath::Scale;
 
 bool HasDirectionalInput(const CloudMountInput& input) {
     return std::hypot(input.strafe, input.forward) > kDirectionalInputDeadZone;

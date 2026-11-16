@@ -6,6 +6,7 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "../Common/FluidChannels.h"
+#include "../Common/VectorMath.h"
 #include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
@@ -37,7 +38,7 @@ constexpr float kMaximumStrength = 10000.0f;
 constexpr float kMinimumRadius = 0.45f;
 constexpr float kMaximumRadius = 3.0f;
 
-float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+using VectorMath::Lerp;
 
 // 升目（タイル）の大きさを決め、持ち越しと作業場所を、その数に合わせる（大きさが変わった時だけ確保し直す）。
 void LayoutTiles(BurnFieldComponent& field) {

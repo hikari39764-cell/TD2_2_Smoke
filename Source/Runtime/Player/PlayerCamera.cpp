@@ -9,6 +9,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "PlayerComponent.h"
 #include "PlayerRules.h"
+#include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -16,8 +17,8 @@ namespace {
 // 競合の優先順位と識別子はゲームの規則であり、見た目の調整値ではない。エンジンの追従カメラ（優先度 0）より上。
 constexpr uint64_t kPoseSource = 0x5444325002ull;
 constexpr int kPosePriority = 300;
-constexpr float kTau = 6.28318530718f;
-constexpr float kRadiansPerDegree = kTau / 360.0f;
+using VectorMath::kTau;
+using VectorMath::kRadiansPerDegree;
 // 描画が止まった後の最初のフレームなどで、ならしが飛ばないようにする 1 回の上限（秒）。
 constexpr float kMaximumStep = 0.05f;
 // 対象がほぼ真上・真下にいる間は水平の向きが決まらないので、これより近い間は向きを変えない (m)。

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 #include "HIKARI/Project/ValueTypes.h"
@@ -8,9 +9,24 @@ namespace Project_TD2_2::VectorMath {
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
+// 角度の定数（各ファイルで書き方の違う同じ値を持っていたものをまとめた。どの書き方も float では同じ値）。
+inline constexpr float kPi = 3.14159265358979323846f;
+inline constexpr float kTau = 2.0f * kPi;
+inline constexpr float kRadiansPerDegree = kPi / 180.0f;
+
 inline Vec3 Add(Vec3 a, Vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
 inline Vec3 Difference(Vec3 a, Vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
 inline Vec3 Scale(Vec3 a, float value) { return {a.x * value, a.y * value, a.z * value}; }
+inline float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+inline Vec3 Cross(Vec3 a, Vec3 b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}; }
+inline float Length(Vec3 a) { return std::sqrt(Dot(a, a)); }
+inline float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+inline float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
+// 0〜1 の外は抑え、両端でゆるむ 3 次の曲線。
+inline float Smoothstep(float x) {
+    const float t = Clamp01(x);
+    return t * t * (3.0f - 2.0f * t);
+}
 
 inline Vec3 Normalize(Vec3 vector, Vec3 fallback) {
     const float length = std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
