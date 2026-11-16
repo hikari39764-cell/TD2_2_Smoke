@@ -30,6 +30,8 @@ const char* StateName(PlayerState state) {
         return "GetUp";
     case PlayerState::Dead:
         return "Dead";
+    case PlayerState::Ride:
+        return "Ride";
     }
     return "Unknown";
 }

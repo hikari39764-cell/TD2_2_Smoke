@@ -29,6 +29,26 @@ constexpr float kNoSpeedLimit = std::numeric_limits<float>::infinity();
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
+// このフレームのカメラの追い方と見上げの限度（度）。外部の要求（騎乗中など）があればそれ、無ければ Player の値。
+struct CameraLimits {
+    float verticalSeconds = 0.0f;
+    float verticalDeadZone = 0.0f;
+    float minPitch = 0.0f;
+    float maxPitch = 0.0f;
+};
+
+// 要求はこのフレームだけ使い、消す（要求した側が消えても次のフレームへ残さない）。
+CameraLimits TakeLimits(PlayerComponent& player) {
+    CameraLimits limits{player.cameraVerticalSeconds, player.cameraVerticalDeadZone, player.cameraMinPitch,
+                        player.cameraMaxPitch};
+    if (player.cameraRequestPending) {
+        const PlayerCameraRequest& request = player.cameraRequest;
+        limits = {request.verticalSeconds, request.verticalDeadZone, request.minPitch, request.maxPitch};
+    }
+    player.cameraRequestPending = false;
+    return limits;
+}
+
 // 臨界減衰のばね。目標が急に動いても、出だしも止まり際もなめらかに追う。maximumSpeed は追う速さの上限。
 float SmoothDamp(float current, float target, float& velocity, float smoothSeconds, float maximumSpeed, float dt) {
     if (dt <= 0.0f)
@@ -88,7 +108,7 @@ void Start(HIKARI::WorldView& world, HIKARI::ObjectView camera, PlayerComponent&
 
 // 軸（プレイヤーの少し上）を追う。水平は速く追い、上下は遊びの幅を超えた分だけゆっくり追う。
 // 吹っ飛びの放物線は追わない（跳ね上がって落ちるだけなので、追うと画面が上下に揺れる）。
-void FollowPivot(PlayerComponent& player, Vec3 goal, float dt) {
+void FollowPivot(PlayerComponent& player, const CameraLimits& limits, Vec3 goal, float dt) {
     Vec3& pivot = player.cameraPivot;
     Vec3& velocity = player.cameraPivotVelocity;
     pivot.x = SmoothDamp(pivot.x, goal.x, velocity.x, player.cameraFollowSeconds, kNoSpeedLimit, dt);
@@ -96,16 +116,16 @@ void FollowPivot(PlayerComponent& player, Vec3 goal, float dt) {
     float wantedHeight = pivot.y;
     if (player.state != PlayerState::Knockback) {
         const float rise = goal.y - pivot.y;
-        const float excess = std::abs(rise) - std::max(0.0f, player.cameraVerticalDeadZone);
+        const float excess = std::abs(rise) - std::max(0.0f, limits.verticalDeadZone);
         if (excess > 0.0f)
             wantedHeight = pivot.y + std::copysign(excess, rise);
     }
-    pivot.y = SmoothDamp(pivot.y, wantedHeight, velocity.y, player.cameraVerticalSeconds, kNoSpeedLimit, dt);
+    pivot.y = SmoothDamp(pivot.y, wantedHeight, velocity.y, limits.verticalSeconds, kNoSpeedLimit, dt);
 }
 
 // ロックオン中：対象の向きへ回る。回る速さに上限を付け、対象が背後へ現れても振り回さない。
 // 対象が高い所にいる時（ボスの跳躍）は、その分だけ見上げる。
-void TrackTarget(PlayerComponent& player, Vec3 targetPoint, float dt) {
+void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targetPoint, float dt) {
     const Vec3& pivot = player.cameraPivot;
     const float offsetX = targetPoint.x - pivot.x;
     const float offsetZ = targetPoint.z - pivot.z;
@@ -114,15 +134,14 @@ void TrackTarget(PlayerComponent& player, Vec3 targetPoint, float dt) {
         player.cameraYaw = SmoothDampAngle(player.cameraYaw, std::atan2(offsetX, offsetZ), player.cameraYawVelocity,
                                            player.lockYawSeconds, player.lockYawMaxSpeed * kRadiansPerDegree, dt);
     const float elevation = std::atan2(targetPoint.y - pivot.y, flatDistance + player.cameraDistance);
-    const float wantedPitch =
-        std::clamp(player.lockPitch * kRadiansPerDegree - elevation * player.lockPitchFollow,
-                   player.cameraMinPitch * kRadiansPerDegree, player.cameraMaxPitch * kRadiansPerDegree);
+    const float wantedPitch = std::clamp(player.lockPitch * kRadiansPerDegree - elevation * player.lockPitchFollow,
+                                         limits.minPitch * kRadiansPerDegree, limits.maxPitch * kRadiansPerDegree);
     player.cameraPitchNow = SmoothDamp(player.cameraPitchNow, wantedPitch, player.cameraPitchVelocity,
                                        player.lockPitchSeconds, kNoSpeedLimit, dt);
 }
 
 // 自由視点：視点の入力をそのまま角度に足す（ならさない。マウスに遅れると酔う）。
-void FreeLook(HIKARI::WorldView& world, PlayerComponent& player, float dt) {
+void FreeLook(HIKARI::WorldView& world, PlayerComponent& player, const CameraLimits& limits, float dt) {
     player.cameraYawVelocity = 0.0f;
     player.cameraPitchVelocity = 0.0f;
     const auto input = world.GetInput();
@@ -135,9 +154,8 @@ void FreeLook(HIKARI::WorldView& world, PlayerComponent& player, float dt) {
     const float pitchStep = gamepad ? player.cameraStickPitchSpeed * dt : player.cameraMouseSensitivity;
     // 右へ動かすと右を向く（yaw は減る）。下へ動かすと見下ろす。
     player.cameraYaw = std::remainder(player.cameraYaw - look.x * yawStep * kRadiansPerDegree, kTau);
-    player.cameraPitchNow =
-        std::clamp(player.cameraPitchNow + look.y * pitchStep * kRadiansPerDegree,
-                   player.cameraMinPitch * kRadiansPerDegree, player.cameraMaxPitch * kRadiansPerDegree);
+    player.cameraPitchNow = std::clamp(player.cameraPitchNow + look.y * pitchStep * kRadiansPerDegree,
+                                       limits.minPitch * kRadiansPerDegree, limits.maxPitch * kRadiansPerDegree);
 }
 
 void Trace(HIKARI::WorldView& world, Vec3 body, bool locked) {
@@ -157,6 +175,7 @@ void Trace(HIKARI::WorldView& world, Vec3 body, bool locked) {
 } // namespace
 
 void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt) {
+    const CameraLimits limits = TakeLimits(player);
     const auto camera = world.FindSceneObject(player.cameraId);
     HIKARI::GameProjectTransform body{};
     if (!camera.IsValid() || !object.GetWorldTransform(body)) {
@@ -167,13 +186,13 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     const Vec3 goal{body.position.x, body.position.y + player.cameraPivotHeight, body.position.z};
     if (!player.cameraReady)
         Start(world, camera, player, goal);
-    FollowPivot(player, goal, dt);
+    FollowPivot(player, limits, goal, dt);
     Vec3 targetPoint{};
     const bool locked = LockPoint(world, player, targetPoint);
     if (locked)
-        TrackTarget(player, targetPoint, dt);
+        TrackTarget(player, limits, targetPoint, dt);
     else
-        FreeLook(world, player, dt);
+        FreeLook(world, player, limits, dt);
 
     const float pitchCos = std::cos(player.cameraPitchNow);
     const float pitchSin = std::sin(player.cameraPitchNow);
@@ -182,6 +201,7 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     const Vec3 right{-flatForward.z, 0.0f, flatForward.x};
     // 移動の入力は、この向きを基準にする（前を押すと画面の奥へ進む）。
     player.cameraForward = flatForward;
+    player.cameraLook = forward;
     // 見上げる向きでは視点が軸より下がる。地面へ潜らない所まで寄せる。
     float distance = std::max(0.1f, player.cameraDistance);
     if (pitchSin < 0.0f)

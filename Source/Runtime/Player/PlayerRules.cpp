@@ -259,6 +259,43 @@ void PlayerRules::AddRecoil(PlayerComponent& player, HIKARI::GameProjectFloat3 d
     player.recoilFramesLeft = frames;
 }
 
+bool PlayerRules::BeginRide(PlayerComponent& player) {
+    Initialize(player);
+    if (!CanStartAction(player))
+        return false;
+    EnterState(player, PlayerState::Ride);
+    player.rollBuffer = 0;
+    player.healBuffer = 0;
+    player.recoilFramesLeft = 0;
+    player.moveVelocity = {};
+    return true;
+}
+
+void PlayerRules::EndRide(PlayerComponent& player) {
+    if (player.state != PlayerState::Ride)
+        return;
+    EnterState(player, PlayerState::Normal);
+    player.moveVelocity = {};
+}
+
+bool PlayerRules::IsRiding(const PlayerComponent& player) { return player.state == PlayerState::Ride; }
+
+void PlayerRules::StepRide(PlayerComponent& player) {
+    player.rollBuffer = 0;
+    player.healBuffer = 0;
+    player.moveVelocity = {};
+}
+
+void PlayerRules::RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request) {
+    if (!std::isfinite(request.verticalSeconds) || !std::isfinite(request.verticalDeadZone) ||
+        !std::isfinite(request.minPitch) || !std::isfinite(request.maxPitch))
+        return;
+    player.cameraRequest = request;
+    player.cameraRequestPending = true;
+}
+
+HIKARI::GameProjectFloat3 PlayerRules::GetCameraLook(const PlayerComponent& player) { return player.cameraLook; }
+
 HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) { return player.facing; }
 HIKARI::GameProjectObjectHandle PlayerRules::GetLockTarget(const PlayerComponent& player) { return player.lockTarget; }
 uint64_t PlayerRules::GetLockCandidateId(const PlayerComponent& player) { return player.lockTargetId; }

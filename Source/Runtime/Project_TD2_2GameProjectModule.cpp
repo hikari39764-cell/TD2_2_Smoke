@@ -23,6 +23,8 @@
 #include "Burn/BurnFieldSystem.h"
 #include "Flow/FlowComponent.h"
 #include "Flow/FlowSystem.h"
+#include "Mount/CloudMountComponent.h"
+#include "Mount/CloudMountSystem.h"
 
 namespace Project_TD2_2 {
 
@@ -96,6 +98,12 @@ public:
                    {.systemId = kPlayerDebugSystem, .displayName = "プレイヤー検証"}) &&
                context.BindComponentSystem(
                    {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90}) &&
+               context.RegisterComponent<CloudMountComponent>({.typeName = kCloudMountType, .displayName = "筋斗雲"}) &&
+               context.RegisterSystem<CloudMountSystem>({.systemId = kCloudMountSystem, .displayName = "筋斗雲"}) &&
+               // 乗る・降りるを、同じ tick のプレイヤー（100）の状態の進みの後、移動の前に決めるので、プレイヤーの後・
+               // ヒョウタン砲撃（105）の前に動かす。
+               context.BindComponentSystem(
+                   {.componentType = kCloudMountType, .systemId = kCloudMountSystem, .defaultExecutionOrder = 102}) &&
                context.RegisterComponent<GourdComponent>({.typeName = kGourdType, .displayName = "ヒョウタン"}) &&
                context.RegisterSystem<GourdSystem>({.systemId = kGourdSystem, .displayName = "ヒョウタン"}) &&
                context.BindComponentSystem(

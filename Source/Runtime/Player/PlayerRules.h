@@ -77,6 +77,18 @@ public:
     // ロック中のカメラが見る点のずれ（世界 m）。外部が入れた値を次に入れ直すまで使う。
     static void SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset);
     static HIKARI::GameProjectFloat3 GetLockPivotOffset(const PlayerComponent& player);
+    // 筋斗雲に乗る（Ride へ移す）。通常の状態で動作ロックが無い時だけ（地上でも落下中でも）。乗れたら true。
+    // 押されていた回避・回復の先行入力と、歩きの速度・反動は捨てる。
+    static bool BeginRide(PlayerComponent& player);
+    // 筋斗雲から降りる（通常へ戻す）。Ride でなければ何もしない（被弾・死亡で既に別の状態になっている時）。
+    static void EndRide(PlayerComponent& player);
+    static bool IsRiding(const PlayerComponent& player);
+    // 騎乗中の 1 固定 tick：回避・回復の先行入力を捨てる（手柄の B・キーボードの Space は下降・上昇と回避で同じ。
+    // 押した回避を降りた後へ持ち越さない）。
+    static void StepRide(PlayerComponent& player);
+    // その描画フレームだけカメラの追い方・見上げの限度を差し替える。続ける間は毎フレーム要求する。
+    static void RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request);
+    static HIKARI::GameProjectFloat3 GetCameraLook(const PlayerComponent& player);
     static float GetHealth(const PlayerComponent& player);
     static float GetStamina(const PlayerComponent& player);
     static int GetHealCharges(const PlayerComponent& player);

@@ -19,7 +19,8 @@ inline constexpr std::string_view kPlayerStateVariable = "Player.State";
 // 炎上の残り秒数（燃えていなければ 0）。HUD が HP の条の色を変えるのに読む。
 inline constexpr std::string_view kPlayerBurnVariable = "Player.Burn";
 
-enum class PlayerState { Normal, Roll, Heal, Stagger, Knockback, Down, GetUp, Dead };
+// 番号は物体変数 Player.State の値。足す時は末尾へ（Ride＝8 は筋斗雲に乗っている間。動きは CloudMountSystem が出す）。
+enum class PlayerState { Normal, Roll, Heal, Stagger, Knockback, Down, GetUp, Dead, Ride };
 // 食らった時の体の反応（のけぞり・吹っ飛び）。ダメージの種類（PlayerDamageType）とは別に選ぶ。
 enum class PlayerDamageKind { Stagger, Knockback };
 // ダメージの種類。ログと、炎上の起こり方・見た目（次のカードの炎）を分けるために持つ。
@@ -32,6 +33,16 @@ enum class PlayerBurnEnd { None, Roll, Absorb, Timeout, Death };
 // 外部の動作（砲撃）が、その固定 tick のローリングをどう扱うか。
 // Hold は押されたローリングを消さずに待たせ、Cancel は動作ロック中でもローリングで打ち切らせる。
 enum class PlayerRollGate { None, Hold, Cancel };
+// 外部（筋斗雲など）が PlayerRules::RequestCamera で出す、1 描画フレームぶんのカメラの要求。
+// 要求が無いフレームは Player の「カメラ」の値をそのまま使う。角度は度。
+struct PlayerCameraRequest {
+    // 上下に追うならし（秒）と、上下を追わない幅 (m)。
+    float verticalSeconds = 0.35f;
+    float verticalDeadZone = 0.5f;
+    // 見上げ（負）・見下ろしの限度。
+    float minPitch = -15.0f;
+    float maxPitch = 55.0f;
+};
 // 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
 inline constexpr size_t kPlayerLockCandidateCapacity = 8;
 
@@ -260,6 +271,11 @@ public:
     float cameraFovRadians = 0.0f;
     HIKARI::GameProjectFloat3 cameraPivot{};
     HIKARI::GameProjectFloat3 cameraPivotVelocity{};
+    // カメラの見ている向き（見上げ・見下ろしを含む単位ベクトル。揺れ・肩越しのずらしは含まない）。筋斗雲が進む向きに使う。
+    HIKARI::GameProjectFloat3 cameraLook{0.0f, 0.0f, 1.0f};
+    // 外部のカメラの要求。PlayerCamera が使ったら消す（要求した側が消えても残さない）。
+    bool cameraRequestPending = false;
+    PlayerCameraRequest cameraRequest{};
 };
 
 } // namespace Project_TD2_2

@@ -512,18 +512,9 @@ void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HI
     }
 }
 
-void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
-                const HIKARI::FrameContext& frame) {
-    PlayerRules::Initialize(player);
-    if (player.pendingHitStopFrames > 0) {
-        player.hitStopAccepted =
-            Feedback::RequestHitStop(world, kHitStopSource, kPlayerPriority, player.pendingHitStopFrames, 0.0f) != 0;
-        player.pendingHitStopFrames = 0;
-        // ヒットストップを出す tick は止まるだけにし、吹っ飛びの跳ね上げは止まった後の最初の F に回す。
-        SubmitMovement(world, object, player, frame, {}, true);
-        return;
-    }
-    StepSprint(player, frame.fixedDt, frame.fixedTickIndex);
+// 自分の足での 1 固定 tick の向きと移動（騎乗中は呼ばない）。
+void StepMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
+                  const HIKARI::FrameContext& frame) {
     UpdateFacing(world, object, player, frame.fixedDt);
     StepKnockbackEvents(object, player, frame.fixedTickIndex);
     Vec3 velocity = StateVelocity(player, frame.fixedDt);
@@ -537,6 +528,25 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
         --player.recoilFramesLeft;
     }
     SubmitMovement(world, object, player, frame, velocity);
+}
+
+void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
+                const HIKARI::FrameContext& frame) {
+    PlayerRules::Initialize(player);
+    if (player.pendingHitStopFrames > 0) {
+        player.hitStopAccepted =
+            Feedback::RequestHitStop(world, kHitStopSource, kPlayerPriority, player.pendingHitStopFrames, 0.0f) != 0;
+        player.pendingHitStopFrames = 0;
+        // ヒットストップを出す tick は止まるだけにし、吹っ飛びの跳ね上げは止まった後の最初の F に回す。
+        SubmitMovement(world, object, player, frame, {}, true);
+        return;
+    }
+    StepSprint(player, frame.fixedDt, frame.fixedTickIndex);
+    // 騎乗中の向きと動きは CloudMountSystem が出す。ここでは移動を提出しない（二つの移動が取り合わない）。
+    if (PlayerRules::IsRiding(player))
+        PlayerRules::StepRide(player);
+    else
+        StepMovement(world, object, player, frame);
     if (PlayerRules::IsAlive(player)) {
         if (player.state != PlayerState::Roll && player.staminaAge >= player.staminaDelayFrames) {
             player.stamina = std::min(player.maxStamina, player.stamina + player.staminaPerSecond * frame.fixedDt);
