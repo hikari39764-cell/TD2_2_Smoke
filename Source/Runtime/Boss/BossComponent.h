@@ -785,7 +785,8 @@ public:
     HIKARI::GameProjectFloat3 swordShoulder{-0.855f, 2.372f, 0.186f};
     // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（Boss.bodySwordVisibleLength）に
     // 合わせる：両手の斬りで当たりを見える刀に合わせた時（c-8c8d95）に、刀を 3.4 m へ大きくし、霞を剣先の少し先までにした。
-    float swordLength = 3.0f;
+    // 刀をもう一回り大きくした時（c-be27a9、見える刀 3.8 m）に、当たりの線も同じだけ伸ばした。
+    float swordLength = 3.4f;
     float swordHazeLength = 0.45f;
     // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
     BossSwingSettings swing;
