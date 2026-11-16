@@ -17,8 +17,9 @@ public:
     static void Step(BossComponent& boss, float seconds);
     // 刀・握りの右手・籠手・左手の置き場所を決める。
     static void Solve(const BossComponent& boss, const HIKARI::GameProjectTransform& body, BossBodyPose& pose);
-    // 確かめ用（Boss の bodyTraceMotion）：振っている間、刃の向きと規則の線とのずれを記録に出す。
-    static void Trace(const BossComponent& boss, const BossBodyPose& pose);
+    // 確かめ用（Boss の bodyTraceMotion）：振っている間、刃の向きと規則の線とのずれを記録に出す。斬りの技の間は、
+    // 刀身・握りと鎧の近似との隙間、手首から肩までの距離、剣先の高さも出す。
+    static void Trace(const BossComponent& boss, const HIKARI::GameProjectTransform& body, const BossBodyPose& pose);
 };
 
 } // namespace Project_TD2_2

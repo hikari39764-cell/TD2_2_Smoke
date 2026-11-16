@@ -29,6 +29,8 @@ constexpr GestureRow kGestureTable[] = {
 
 // 体の中心の高さ（局所 m）。刀身をなぞる手を、刀身のどちらの面に付けるか（体の側の面）を決めるのに使う。
 constexpr float kBodyCenterHeight = 2.5f;
+// 規則の構えの両手の重みがこれを超えたら、左手で柄を握る（握る・離すは attachSeconds で混ぜる）。
+constexpr float kTwoHandShare = 0.5f;
 
 // 1 フレームの手の目標（局所）。attach の時は、ばねの遅れを残さず手を刀に付ける。
 struct LeftTarget {
@@ -142,12 +144,23 @@ bool FlameWipe(const BossComponent& boss, const BossMove& move, LeftTarget& t) {
 }
 
 // 両手持ち：拳を右手の後ろ（柄頭の側）に握る。親指の側（模型の -X）を剣先へ、掌を柄へ、手の甲を外へ。
-LeftTarget TwoHand(const BossComponent& boss) {
-    const BossBodyLeftHandSettings& s = boss.body.leftHand;
+// towardShoulder（両手の斬りの型）の時は、手首が左肩の側に来るように柄のまわりで拳を回す（刃の向きで決まる手の甲の
+// 向きのままだと、振り終わりで手首が肩と反対の側へ回り、肩から遠く離れる）。
+LeftTarget TwoHand(const BossComponent& boss, bool towardShoulder) {
+    const BossBodySettings& settings = boss.body;
+    const BossBodyLeftHandSettings& s = settings.leftHand;
     const BossBodyMotionState& m = boss.bodyState.motion;
     const SwordAxes sword = Axes(m);
     const Vec3 handX = Mul(sword.z, -1.0f);
-    const Vec3 back = Perpendicular(HandPoint(sword.x, sword.y, sword.z, s.twoHandBack), sword.z);
+    Vec3 back = Perpendicular(HandPoint(sword.x, sword.y, sword.z, s.twoHandBack), sword.z);
+    if (towardShoulder) {
+        // 肩は胴の捻りに付き、腰を落とした分だけ下がる（握りは規則の線の枠なので、体の傾きは見ない）。
+        const Vec3 shoulder = Sub(RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, m.twist),
+                                  {0.0f, boss.poseCrouch, 0.0f});
+        const Vec3 toShoulder = ProjectOut(Sub(shoulder, m.grip), sword.z);
+        if (Length(toShoulder) > kTiny)
+            back = Cross(Mul(Normalize(toShoulder), -1.0f), handX);
+    }
     const Vec3 fingers = Cross(handX, back);
     const Vec3 hilt = Sub(m.grip, Mul(sword.z, s.twoHandBehind));
     const Vec3 wrist = Sub(hilt, Mul(HandPoint(handX, back, fingers, s.fistCenter), HandScale(boss)));
@@ -191,7 +204,7 @@ LeftTarget Target(const BossComponent& boss) {
         break;
     case Gesture::TwoHand:
         active = HoldingGreatSword(boss, *move);
-        t = TwoHand(boss);
+        t = TwoHand(boss, false);
         break;
     case Gesture::Kick:
         active = boss.phase != BossActPhase::Post;
@@ -199,7 +212,10 @@ LeftTarget Target(const BossComponent& boss) {
         break;
     default: break;
     }
-    return active ? t : Balance(boss);
+    if (active)
+        return t;
+    // 両手の斬りの型の間は、所作の無い技でも両手で柄を握る。
+    return boss.swordPose.twoHand > kTwoHandShare ? TwoHand(boss, true) : Balance(boss);
 }
 
 Vec3 BalanceOffset(const BossComponent& boss) {

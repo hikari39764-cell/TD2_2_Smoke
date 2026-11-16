@@ -128,7 +128,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossBodyRig::StepSway(boss, body, seconds);
     BossBodySword::Step(boss, seconds);
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
-    BossBodySword::Trace(boss, pose);
+    BossBodySword::Trace(boss, body, pose);
     SubmitPose(world, object, boss, pose);
     BossBodyAccents::Update(world, boss, body, pose, seconds);
 }

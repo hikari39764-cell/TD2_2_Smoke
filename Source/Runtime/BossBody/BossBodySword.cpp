@@ -68,6 +68,9 @@ int FramesToWindow(const BossComponent& boss, const BossMove& move) {
 struct MotionTargets {
     Vec3 ruleDirection{};
     Vec3 ruleRoot{};
+    // 規則の構えが決めた斬る向き（両手の型の間。0 は決まっていない）と、両手の型の重み（0〜1）。
+    Vec3 ruleEdge{};
+    float twoHand = 0.0f;
     Vec3 direction{};
     Vec3 grip{};
     // 規則の線へ寄せる重み（振りの直前 0→1、窓の間 1）・溜めの誇張の重み・待機の構えの重み・窓の間の腕の伸び (m)。
@@ -132,9 +135,10 @@ MotionTargets Targets(const BossComponent& boss) {
     const BossBodyMotionSettings& s = boss.body.motion;
     MotionTargets t;
     t.ruleDirection = RotateY(BossPose::SwordLine(boss, boss.swordPose).direction, -boss.yaw);
-    // BossSwordPose の既定値は、規則の「下ろした構え」（BossPose の kRest）と同じ。
-    const Vec3 rest = RotateY(BossPose::SwordLine(boss, BossSwordPose{}).direction, -boss.yaw);
-    t.ruleRoot = boss.swordShoulder;
+    const Vec3 rest = RotateY(BossPose::SwordLine(boss, BossPose::Rest(boss)).direction, -boss.yaw);
+    t.ruleRoot = boss.swordPose.grip;
+    t.ruleEdge = boss.swordPose.edge;
+    t.twoHand = std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f);
     t.window = boss.swordSmoke;
     const float restWeight =
         1.0f - Smooth(AngleBetween(t.ruleDirection, rest) / std::max(kTiny, s.restBlendDegrees * kRadiansPerDegree));
@@ -144,7 +148,8 @@ MotionTargets Targets(const BossComponent& boss) {
     BossSegmentProgress g{};
     if (move != nullptr && boss.phase == BossActPhase::Act)
         g = BossPose::Progress(boss, *move);
-    t.calm = CalmWeight(boss, move, swing, restWeight);
+    // 両手の型の間は、待機の構えへ混ぜない（体の屈み・前傾は規則の構えが戻すので、刀だけ先に戻すと手が胴に入る）。
+    t.calm = CalmWeight(boss, move, swing, restWeight) * (1.0f - t.twoHand);
     if (swing) {
         const int frames = t.window ? 0 : FramesToWindow(boss, *move);
         t.lead = frames < 0
@@ -154,8 +159,9 @@ MotionTargets Targets(const BossComponent& boss) {
         t.charging = !t.window && (boss.phase == BossActPhase::Pre || (boss.phase == BossActPhase::Act && !g.hit));
         if (t.charging)
             t.charge = (1.0f - restWeight) * (1.0f - t.lead);
+        // 腕を伸ばす・溜めで握りを送り出すのは片手の振りだけ（両手の型は、型の握りの通り道が腕の動きそのもの）。
         if (t.window)
-            t.reach = s.armReach * Smooth(g.progress / std::max(0.05f, s.armReachPeak));
+            t.reach = s.armReach * Smooth(g.progress / std::max(0.05f, s.armReachPeak)) * (1.0f - t.twoHand);
     }
     t.tipLength = std::max(kMinTipLength, VisibleSwordLength(boss) + t.reach);
     Vec3 kamaeDirection{}, kamaeGrip{};
@@ -164,7 +170,7 @@ MotionTargets Targets(const BossComponent& boss) {
     const Vec3 ruleGrip = Add(t.ruleRoot, Mul(t.ruleDirection, boss.body.swordGripAlong));
     // 溜め：規則の振り上げの上で、握りを剣の向きへさらに送り出し、持ち上げる（手が高く・遠く、輪郭が大きく見える）。
     const Vec3 charged = Add(Mul(t.ruleDirection, s.chargeReach), Vec3{0.0f, s.chargeLift, 0.0f});
-    t.grip = Add(Lerp(ruleGrip, kamaeGrip, t.calm), Mul(charged, t.charge));
+    t.grip = Add(LerpAroundY(ruleGrip, kamaeGrip, t.calm), Mul(charged, t.charge * (1.0f - t.twoHand)));
     GreatTargets(boss, t);
     return t;
 }
@@ -231,7 +237,9 @@ void StepEdge(const BossBodyMotionSettings& s, const MotionTargets& t, BossBodyM
         if (Length(m.velocity) > s.edgeMinDegreesPerSecond * kRadiansPerDegree)
             m.edgeGoal = Normalize(m.velocity);
     } else if (t.charging && t.calm < kCalmEdgeShare) {
-        const Vec3 toward = ProjectOut(Normalize(s.chargeEdgeToward), m.direction);
+        // 両手の型は、型が決めた斬る向き（振りの軸のまわりに回る向き）へ。片手の振りは決まった向きへ。
+        const Vec3 goal = Length(t.ruleEdge) > kEdgeGoalMinLength ? t.ruleEdge : Normalize(s.chargeEdgeToward);
+        const Vec3 toward = ProjectOut(goal, m.direction);
         if (Length(toward) > kEdgeGoalMinLength)
             m.edgeGoal = Normalize(toward);
     } else if (t.calm > kCalmEdgeShare) {
@@ -271,12 +279,19 @@ float HeadTarget(const BossComponent& boss) {
     return std::clamp(WrapPi(YawOf(offset) - (boss.yaw + boss.spin)), -limit, limit);
 }
 
+// 胴の捻りの目標 (rad)：両手の型は型の捻り、片手の振りは刀の横の向きから。
+float TwistGoal(const BossComponent& boss, const MotionTargets& t, Vec3 direction) {
+    return Lerp(TwistTarget(boss.body.motion, direction), boss.swordPose.twist * kRadiansPerDegree, t.twoHand);
+}
+
 void StepBody(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState& m, float dt) {
     const BossBodyMotionSettings& s = boss.body.motion;
     // 霞の大剣に重ねている間も、規則の線の枠（足元と体の向きだけ）で置く（大剣の柄・向きはその枠の値）。
-    m.lock = t.window ? 1.0f : std::max({t.lead, m.great, m.lock - dt / std::max(kTiny, s.bodyBlendSeconds)});
+    // 両手の型の握りは規則の線の枠で書いてあるので、型の重みの分も規則の線の枠で置く（体の屈みで二重に下げない）。
+    m.lock =
+        t.window ? 1.0f : std::max({t.lead, m.great, t.twoHand, m.lock - dt / std::max(kTiny, s.bodyBlendSeconds)});
     m.charge = t.charge;
-    m.twist = Lerp(m.twist, TwistTarget(s, m.direction), Follow(dt, s.twistSeconds));
+    m.twist = Lerp(m.twist, TwistGoal(boss, t, m.direction), Follow(dt, s.twistSeconds));
     m.headYaw = Lerp(m.headYaw, HeadTarget(boss), Follow(dt, s.headTurnSeconds));
 }
 
@@ -318,6 +333,85 @@ void TraceGreat(const BossComponent& boss, const MotionTargets& t, BossBodyMotio
     BossLog::Write(message);
 }
 
+// 確かめ用の鎧の近似（半径 m）：胴（胴の中心から上下 kTorsoHalf の線）、草摺（裾へ開くので上下 2 段：胴の中心の
+// kTassetTop から kTassetMiddle 下までと、そこから kTassetBottom 下まで）、兜（球）、大袖（吊る所から垂れる向きへ
+// kSodeLength の線）、握りの拳。数値は模型の大きさの目安。
+constexpr float kTorsoHalf = 0.5f;
+constexpr float kTorsoRadius = 0.70f;
+constexpr float kTassetTop = 0.5f;
+constexpr float kTassetMiddle = 0.9f;
+constexpr float kTassetBottom = 1.25f;
+constexpr float kTassetUpperRadius = 0.64f;
+constexpr float kTassetLowerRadius = 0.74f;
+constexpr float kHeadRadius = 0.55f;
+constexpr float kSodeLength = 0.65f;
+constexpr float kSodeRadius = 0.26f;
+constexpr float kFistRadius = 0.12f;
+
+// 線分 a〜b と、鎧の近似のいちばん近い隙間 (m)。who にどの部品かを入れる。
+float ArmorGap(const BossBodyPose& pose, Vec3 a, Vec3 b, float pad, const char*& who) {
+    const Vec3 up = Rotate(pose.torso.rotation, {0.0f, 1.0f, 0.0f});
+    const Vec3 torso = pose.torso.position;
+    struct Part {
+        const char* name;
+        Vec3 from, to;
+        float radius;
+    };
+    const auto hang = [](const BossBodyPlacement& p) {
+        return Add(p.position, Rotate(p.rotation, {0.0f, -kSodeLength, 0.0f}));
+    };
+    const Part parts[] = {
+        {"torso", Add(torso, Mul(up, -kTorsoHalf)), Add(torso, Mul(up, kTorsoHalf)), kTorsoRadius},
+        {"tassetUp", Add(torso, Mul(up, -kTassetMiddle)), Add(torso, Mul(up, -kTassetTop)), kTassetUpperRadius},
+        {"tassetLow", Add(torso, Mul(up, -kTassetBottom)), Add(torso, Mul(up, -kTassetMiddle)), kTassetLowerRadius},
+        {"head", pose.head.position, pose.head.position, kHeadRadius},
+        {"sodeR", pose.sode[0].position, hang(pose.sode[0]), kSodeRadius},
+        {"sodeL", pose.sode[1].position, hang(pose.sode[1]), kSodeRadius},
+    };
+    float best = 1000.0f;
+    for (const Part& part : parts) {
+        const float gap = SegmentDistance(a, b, part.from, part.to) - part.radius - pad;
+        if (gap < best) {
+            best = gap;
+            who = part.name;
+        }
+    }
+    return best;
+}
+
+// 確かめ用（bodyTraceMotion）：斬りの技の間、毎フレーム、刀身（鍔〜剣先）と握りの拳が鎧の近似からどれだけ離れているか、
+// 手首から肩（胴の捻りに付く）までの距離、剣先の地面からの高さ、両手の重みを記録に出す。
+void TraceClearance(const BossComponent& boss, const Transform& body, const BossBodyPose& pose) {
+    const BossMove* move = CurrentMove(boss);
+    if (!boss.body.motion.traceMotion || move == nullptr || !BossMoveTable::IsSwingType(move->type))
+        return;
+    const BossBodySettings& settings = boss.body;
+    const Vec3 direction = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
+    const Vec3 guard = Add(pose.sword.position, Mul(direction, settings.leftHand.bladeStart));
+    const Vec3 tip = Add(pose.sword.position, Mul(direction, VisibleBladeReach(boss)));
+    const char* bladeWho = "";
+    const char* handWho = "";
+    const float blade = ArmorGap(pose, guard, tip, 0.0f, bladeWho);
+    const float hand = ArmorGap(pose, pose.sword.position, pose.sword.position, kFistRadius, handWho);
+    const MotionFrame frame{boss, body, 0.0f};
+    const float twist = boss.bodyState.motion.twist;
+    const Vec3 rightShoulder = frame.Point(RotateY(settings.shoulder, twist));
+    const Vec3 leftShoulder =
+        frame.Point(RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, twist));
+    char message[320]{};
+    std::snprintf(
+        message, sizeof(message),
+        "[BossBody] Clearance tick=%llu move=%d phase=%d stateFrame=%d window=%d blade=%.3f(%s) hand=%.3f(%s) "
+        "armR=%.3f armL=%.3f tipY=%.3f twoHand=%.2f twist=%.1f",
+        static_cast<unsigned long long>(boss.tick), boss.move, static_cast<int>(boss.phase), boss.stateFrame,
+        boss.swordSmoke ? 1 : 0, static_cast<double>(blade), bladeWho, static_cast<double>(hand), handWho,
+        static_cast<double>(Length(Sub(pose.rightHand.position, rightShoulder))),
+        static_cast<double>(Length(Sub(pose.leftHand.position, leftShoulder))),
+        static_cast<double>(tip.y - boss.ground.y), static_cast<double>(boss.swordPose.twoHand),
+        static_cast<double>(twist / kRadiansPerDegree));
+    BossLog::Write(message);
+}
+
 // 確かめ用（bodyTraceMotion）：ばねを進めず目標へそろえたフレームと、その理由（first・hidden・teleport）・
 // 足元の速さ (m/秒)・技の相を記録に出す。
 void TraceSnap(const BossComponent& boss, const char* reason, float speed) {
@@ -342,7 +436,7 @@ void Snap(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState
     m.gripVelocity = {};
     m.lock = t.window ? 1.0f : t.lead;
     m.charge = t.charge;
-    m.twist = TwistTarget(s, m.direction);
+    m.twist = TwistGoal(boss, t, m.direction);
     m.headYaw = HeadTarget(boss);
     m.great = t.great ? 1.0f : 0.0f;
     if (t.great) {
@@ -429,7 +523,8 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     BossBodyLeftHand::Solve(boss, body, pose);
 }
 
-void BossBodySword::Trace(const BossComponent& boss, const BossBodyPose& pose) {
+void BossBodySword::Trace(const BossComponent& boss, const Transform& body, const BossBodyPose& pose) {
+    TraceClearance(boss, body, pose);
     if (!boss.body.motion.traceMotion || !boss.swordSmoke)
         return;
     const BossBodyMotionState& m = boss.bodyState.motion;

@@ -18,29 +18,6 @@ inline constexpr int kMaxSubsteps = 64;
 // 割る数・時間の下限（0 で割らない）。
 inline constexpr float kTiny = 1e-4f;
 
-inline Vec3 ProjectOut(Vec3 v, Vec3 axis) { return Sub(v, Mul(axis, Dot(v, axis))); }
-
-inline float AngleBetween(Vec3 a, Vec3 b) { return std::atan2(Length(Cross(a, b)), Dot(a, b)); }
-
-// a から b への大円の接ベクトル（長さ＝角度 rad）。真逆の時は向きが決まらないので 0。
-inline Vec3 LogMap(Vec3 a, Vec3 b) {
-    const Vec3 tangent = ProjectOut(b, a);
-    const float s = Length(tangent);
-    if (s < 1e-6f)
-        return {};
-    return Mul(tangent, std::atan2(s, std::clamp(Dot(a, b), -1.0f, 1.0f)) / s);
-}
-
-// a から接ベクトル v（長さ＝角度）だけ大円に沿って進んだ向き。
-inline Vec3 ExpMap(Vec3 a, Vec3 v) {
-    const float angle = Length(v);
-    if (angle < 1e-6f)
-        return a;
-    return Normalize(Add(Mul(a, std::cos(angle)), Mul(v, std::sin(angle) / angle)), a);
-}
-
-inline Vec3 Slerp(Vec3 a, Vec3 b, float t) { return ExpMap(a, Mul(LogMap(a, b), t)); }
-
 inline Vec3 ClampLength(Vec3 v, float maximum) {
     const float length = Length(v);
     return length > maximum && length > kTiny ? Mul(v, maximum / length) : v;

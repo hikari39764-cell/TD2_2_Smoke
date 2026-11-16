@@ -8,6 +8,7 @@
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossMoveTable.h"
+#include "BossSwingShapes.h"
 #include "BossSwordPose.h"
 #include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
@@ -767,6 +768,8 @@ public:
     HIKARI::GameProjectFloat3 swordShoulder{-0.855f, 2.372f, 0.186f};
     float swordLength = 2.651f;
     float swordHazeLength = 0.706f;
+    // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
+    BossSwingSettings swing;
     float waveForward = 1.059f;
     float waveMinHeight = 0.941f;
     float waveMaxHeight = 2.788f;
@@ -912,6 +915,9 @@ public:
     float leanSide = 0.0f;
     float poseX = 70.0f;
     float poseY = -10.0f;
+    // 両手の斬りの前傾 (rad) と腰の落とし (m)。構えの値を追う（見た目だけ）。
+    float poseLean = 0.0f;
+    float poseCrouch = 0.0f;
     // 規則の剣の向き（BossPose::Target）。固定 tick の終わりに BossSystem が 1 度だけ書き、煙・外形・見た目・記録は
     // これを読む。tick の途中（振りの最中の BossMoveExecutor）は、状態が変わる前の向きが要るので現場で求める。
     BossSwordPose swordPose;

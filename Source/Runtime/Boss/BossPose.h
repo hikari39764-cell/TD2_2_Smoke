@@ -12,7 +12,7 @@ struct BossSwordPoints {
     HIKARI::GameProjectFloat3 outer{};
 };
 
-// 剣の線：付け根（体の向きで回した Boss.swordShoulder。世界座標）と、剣の向き（長さ 1）。
+// 剣の線：付け根（構えの grip を体の向きで回した所。世界座標）と、剣の向き（長さ 1）。
 struct BossSwordLine {
     HIKARI::GameProjectFloat3 root{};
     HIKARI::GameProjectFloat3 direction{};
@@ -33,8 +33,10 @@ class BossPose final {
 public:
     static BossSegmentProgress Progress(const BossComponent& boss, const BossMove& move);
     static BossSwordPose Target(const BossComponent& boss);
-    static BossSwordLine SwordLine(const BossComponent& boss, BossSwordPose pose);
-    static BossSwordPoints SwordPoints(const BossComponent& boss, BossSwordPose pose);
+    // 下ろした構え（待機・後隙の戻り先）。
+    static BossSwordPose Rest(const BossComponent& boss);
+    static BossSwordLine SwordLine(const BossComponent& boss, const BossSwordPose& pose);
+    static BossSwordPoints SwordPoints(const BossComponent& boss, const BossSwordPose& pose);
     // 地面から足元までの高さ（跳躍・浮遊から、霧へ沈んだ深さを引く。見た目の上下のゆれは含めない）。
     static float RootHeight(const BossComponent& boss);
 };

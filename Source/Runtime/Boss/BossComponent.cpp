@@ -392,6 +392,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbCatchNear", "吸い込み：向きを問わず吸える近さ (m)", absorbCatchNear, 0.0f, 10.0f);
     }
     body.Describe(fields);
+    swing.Describe(fields);
     if (fields.Section("剣と斬撃の出方")) {
         fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", swordShoulder);
         fields.Float("swordLength", "剣の長さ (m)", swordLength, 0.1f, 20.0f);

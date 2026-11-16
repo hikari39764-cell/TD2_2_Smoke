@@ -131,4 +131,48 @@ inline float SegmentDistance(Vec3 p1, Vec3 q1, Vec3 p2, Vec3 q2) {
     return static_cast<float>(std::sqrt(dot(gap, gap)));
 }
 
+// 向き（長さ 1 のベクトル）の計算。規則の剣の構えの混ぜ合わせと、外形の刀のばねが使う。
+inline Vec3 ProjectOut(Vec3 v, Vec3 axis) { return Sub(v, Mul(axis, Dot(v, axis))); }
+
+inline float AngleBetween(Vec3 a, Vec3 b) { return std::atan2(Length(Cross(a, b)), Dot(a, b)); }
+
+// a から b への大円の接ベクトル（長さ＝角度 rad）。真逆の時は向きが決まらないので 0。
+inline Vec3 LogMap(Vec3 a, Vec3 b) {
+    const Vec3 tangent = ProjectOut(b, a);
+    const float s = Length(tangent);
+    if (s < 1e-6f)
+        return {};
+    return Mul(tangent, std::atan2(s, std::clamp(Dot(a, b), -1.0f, 1.0f)) / s);
+}
+
+// a から接ベクトル v（長さ＝角度）だけ大円に沿って進んだ向き。
+inline Vec3 ExpMap(Vec3 a, Vec3 v) {
+    const float angle = Length(v);
+    if (angle < 1e-6f)
+        return a;
+    return Normalize(Add(Mul(a, std::cos(angle)), Mul(v, std::sin(angle) / angle)), a);
+}
+
+inline Vec3 Slerp(Vec3 a, Vec3 b, float t) { return ExpMap(a, Mul(LogMap(a, b), t)); }
+
+// 体の局所（足元が原点）の点を混ぜる：縦の軸のまわりに回して寄せ、軸からの距離と高さは直線で寄せる（手の位置を
+// 直線で寄せると、体の右と左の間で胴の中を通る）。軸にほとんど乗っている点は直線で寄せる。
+inline Vec3 LerpAroundY(Vec3 a, Vec3 b, float t) {
+    constexpr float kMinRadius = 0.05f;
+    const float ra = std::sqrt(a.x * a.x + a.z * a.z), rb = std::sqrt(b.x * b.x + b.z * b.z);
+    if (ra < kMinRadius || rb < kMinRadius)
+        return Lerp(a, b, t);
+    const float from = std::atan2(a.x, a.z);
+    const float angle = from + WrapPi(std::atan2(b.x, b.z) - from) * t;
+    const float radius = Lerp(ra, rb, t);
+    return {std::sin(angle) * radius, Lerp(a.y, b.y, t), std::cos(angle) * radius};
+}
+
+// v を、軸 axis（長さは問わない）のまわりに angle (rad) 回す（右手の向き）。
+inline Vec3 RotateAbout(Vec3 v, Vec3 axis, float angle) {
+    const Vec3 k = Normalize(axis, {0.0f, 1.0f, 0.0f});
+    const float c = std::cos(angle), s = std::sin(angle);
+    return Add(Add(Mul(v, c), Mul(Cross(k, v), s)), Mul(k, Dot(k, v) * (1.0f - c)));
+}
+
 } // namespace Project_TD2_2::BossMath

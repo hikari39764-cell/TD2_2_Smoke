@@ -381,11 +381,17 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     boss.leanSide = Lerp(
         boss.leanSide,
         speedGate * std::clamp(-sideSpeed * boss.leanFromSpeed, -boss.leanMaxRadians, boss.leanMaxRadians), kLeanBlend);
-    const BossSwordPose target = boss.swordPose;
+    // 剣の上下（前後の傾き、度）・左右（度）。下へ向けるほど前へ、左へ向けるほど右へ体を傾ける。
+    const Vec3 direction = Normalize(boss.swordPose.direction, {0.0f, -1.0f, 0.0f});
+    const float pitch = std::asin(std::clamp(-direction.y, -1.0f, 1.0f)) / kRadiansPerDegree;
+    const float side = std::atan2(direction.x, direction.z) / kRadiansPerDegree;
     const float blend = boss.state == BossState::Act && boss.phase == BossActPhase::Act ? kPoseBlendFast : kPoseBlend;
-    boss.poseX = Lerp(boss.poseX, target.x, blend);
-    boss.poseY = Lerp(boss.poseY, target.y, blend);
-    float lean = boss.leanForward + boss.poseLeanDegrees * kRadiansPerDegree * (boss.poseX - kPoseLeanNeutral) / 100.0f;
+    boss.poseX = Lerp(boss.poseX, pitch, blend);
+    boss.poseY = Lerp(boss.poseY, side, blend);
+    boss.poseLean = Lerp(boss.poseLean, boss.swordPose.lean * kRadiansPerDegree, blend);
+    boss.poseCrouch = Lerp(boss.poseCrouch, boss.swordPose.crouch, blend);
+    float lean = boss.leanForward +
+                 boss.poseLeanDegrees * kRadiansPerDegree * (boss.poseX - kPoseLeanNeutral) / 100.0f + boss.poseLean;
     const float sway = boss.leanSide - boss.poseSwayDegrees * kRadiansPerDegree * boss.poseY / 100.0f;
     if (boss.state == BossState::Stunned)
         lean += boss.stunLeanRadians + std::sin(boss.floatClock * kStunWobbleRate) * kStunWobble;
@@ -393,7 +399,8 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
         lean += boss.stunLeanRadians * 2.0f;
     const float squash = 1.0f - std::clamp(boss.crouch, 0.0f, 1.0f) * boss.crouchSquash;
     const float bob = std::sin(boss.floatClock * kBobRate) * boss.floatBob;
-    const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss) + bob, boss.ground.z};
+    // 両手の斬りで腰を落とす分だけ体を下げる（見た目だけ。剣の線は構えの握りの高さのまま）。
+    const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss) + bob - boss.poseCrouch, boss.ground.z};
     HIKARI::GameProjectTransform transform{};
     transform.rotation = YawLeanSway(boss.yaw + boss.spin, lean, sway);
     // 足元を支点に傾ける（中心で回すと足が反対へ流れる）。
@@ -414,13 +421,13 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
 void Trace(const BossComponent& boss, const DamageableComponent* health) {
     if (boss.traceEveryFrames <= 0 || boss.tick % static_cast<uint64_t>(boss.traceEveryFrames) != 0)
         return;
-    // 規則の剣の向き（度）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
-    const BossSwordPose sword = boss.swordPose;
-    char message[448]{};
+    // 規則の剣の構え（握り・向き）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
+    const BossSwordPose& sword = boss.swordPose;
+    char message[512]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu state=%d phase=%d move=%d stateFrame=%d ground=(%.3f,%.3f,%.3f) yaw=%.3f "
                   "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d sink=%.3f hidden=%d "
-                  "clones=%d chargeVisual=%.3f swordX=%.4f swordY=%.4f",
+                  "clones=%d chargeVisual=%.3f grip=(%.3f,%.3f,%.3f) sword=(%.4f,%.4f,%.4f) twoHand=%.2f",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.state),
                   static_cast<int>(boss.phase), boss.move, boss.stateFrame, static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.y), static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw),
@@ -428,8 +435,10 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
                   static_cast<double>(boss.crouch), static_cast<double>(boss.stun), boss.stunCount,
                   health ? static_cast<double>(DamageableRules::GetHealth(*health)) : -1.0,
                   static_cast<int>(boss.fluidAccepted), static_cast<double>(boss.sink), static_cast<int>(boss.hidden),
-                  boss.activeClones, static_cast<double>(boss.chargeVisual), static_cast<double>(sword.x),
-                  static_cast<double>(sword.y));
+                  boss.activeClones, static_cast<double>(boss.chargeVisual), static_cast<double>(sword.grip.x),
+                  static_cast<double>(sword.grip.y), static_cast<double>(sword.grip.z),
+                  static_cast<double>(sword.direction.x), static_cast<double>(sword.direction.y),
+                  static_cast<double>(sword.direction.z), static_cast<double>(sword.twoHand));
     BossLog::Write(message);
 }
 
