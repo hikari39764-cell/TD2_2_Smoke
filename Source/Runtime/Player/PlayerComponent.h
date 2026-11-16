@@ -117,6 +117,8 @@ public:
     int downFrames = 40;
     int downRollFrame = 14;
     int getUpFrames = 22;
+    // 起き上がりのこの F 目から、ローリングで起き上がりを打ち切って転がれる（0 は起き上がり始めから）。
+    int getUpRollFrame = 0;
     // 炎上：付いてから消えるまでの秒数と、燃える地面の外で減る HP（/秒）。燃える地面の上では BurnField の値で減る。
     float burnSeconds = 4.0f;
     float burnDamagePerSecond = 6.0f;

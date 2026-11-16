@@ -96,6 +96,7 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("downFrames", "ダウン (F)", downFrames, 1, 600);
         fields.Int("downRollFrame", "ダウン回避開始 (F)", downRollFrame, 0, 600);
         fields.Int("getUpFrames", "起き上がり (F)", getUpFrames, 1, 600);
+        fields.Int("getUpRollFrame", "起き上がり回避開始 (F。ここからローリングで打ち切れる)", getUpRollFrame, 0, 600);
     }
     if (fields.Section("炎上")) {
         fields.Note(

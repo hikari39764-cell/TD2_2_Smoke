@@ -135,13 +135,23 @@ bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, 
     return true;
 }
 
+// 吹っ飛び中と、ダウンでローリングを受け付ける前：押したローリングは受け付ける F まで保つ（吹っ飛ばされてすぐ押した
+// ローリングが、先行入力の長さで消えて出ないことが無いように）。
+bool HoldsRollBuffer(const PlayerComponent& player) {
+    return player.state == PlayerState::Knockback ||
+           (player.state == PlayerState::Down && player.stateFrame < std::min(player.downRollFrame, player.downFrames));
+}
+
 void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
     // ローリングは外部の動作（吸い込み）の最中でも出せて、吸い込みの方が打ち切られる。
     // 回復だけは外部の要求で止める。先行入力は残り、明けた時に通る。
     // 砲撃の動作ロック中でも、打ち切れる F からはローリングで抜けられる。
+    // 起き上がりもローリングで打ち切れる（起き上がりには無敵が無いので、追い打ちをよけられるように）。
     const bool canRoll =
         PlayerRules::CanStartAction(player) ||
         (player.state == PlayerState::Down && player.stateFrame >= std::min(player.downRollFrame, player.downFrames) &&
+         player.actionLockFrames == 0) ||
+        (player.state == PlayerState::GetUp && player.stateFrame >= player.getUpRollFrame &&
          player.actionLockFrames == 0) ||
         (player.external.rollGate == PlayerRollGate::Cancel && PlayerRules::IsAlive(player) &&
          player.state == PlayerState::Normal);
@@ -535,7 +545,7 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
     }
     player.advanceStateNextTick = StateDuration(player) > 0;
     // まだ打ち切れない動作（砲撃の構え・後隙の前半）の間に押したローリングは、打ち切れる F まで減らさない。
-    if (player.external.rollGate != PlayerRollGate::Hold)
+    if (player.external.rollGate != PlayerRollGate::Hold && !HoldsRollBuffer(player))
         player.rollBuffer = std::max(0, player.rollBuffer - 1);
     player.healBuffer = std::max(0, player.healBuffer - 1);
     player.actionLockFrames = std::max(0, player.actionLockFrames - 1);
