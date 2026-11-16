@@ -324,14 +324,17 @@ void CloudMountRules::RecordPosition(CloudMountComponent& mount, Vec3 position, 
 void CloudMountRules::TrackFall(CloudMountComponent& mount, bool grounded, float y) {
     if (grounded) {
         mount.fallPeakY = y;
+        mount.fallPeakKnown = true;
         mount.catchArmed = true;
+        mount.fallingFromMount = false;
         return;
     }
-    mount.fallPeakY = std::max(mount.fallPeakY, y);
+    mount.fallPeakY = mount.fallPeakKnown ? std::max(mount.fallPeakY, y) : y;
+    mount.fallPeakKnown = true;
 }
 
 bool CloudMountRules::ShouldCatch(const CloudMountComponent& mount, float y) {
-    return mount.autoCatch && mount.state == CloudMountState::None && mount.catchArmed &&
+    return mount.autoCatch && mount.state == CloudMountState::None && mount.catchArmed && mount.fallPeakKnown &&
            mount.fallPeakY - y >= std::max(0.0f, mount.catchFallMeters);
 }
 
@@ -358,7 +361,9 @@ void CloudMountRules::OnDismounted(CloudMountComponent& mount, float y, bool del
     mount.catching = false;
     mount.groundSkimHoldLeft = 0.0f;
     mount.fallPeakY = y;
+    mount.fallPeakKnown = true;
     mount.catchArmed = !deliberate || mount.catchAfterDismiss;
+    mount.fallingFromMount = true;
 }
 
 float CloudMountRules::VerticalSpeed(const CloudMountComponent& mount, float dt) {

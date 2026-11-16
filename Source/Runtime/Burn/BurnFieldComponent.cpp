@@ -16,6 +16,9 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("contactRadius",
                      "火に触れたとみなす体の半径 (m。足元からこの円に燃えているセルが掛かれば触れている)",
                      contactRadius, 0.0f, 2.0f);
+        fields.Float("fireReachHeight",
+                     "火と引爆が届く高さ (m。体の中心が床からこれより高いと当たらない。筋斗雲で飛んでいる時など)",
+                     fireReachHeight, 0.0f, 100.0f);
         fields.Float("damageDelay", "火に触れ続けてから燃え移るまで (秒)", damageDelay, 0.0f, 5.0f);
         fields.Float("damagePerSecond", "火の中にいる間に減る HP (/秒。プレイヤーの炎上の減り方の代わりに使う)",
                      damagePerSecond, 0.0f, 1000.0f);

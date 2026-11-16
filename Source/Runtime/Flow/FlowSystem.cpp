@@ -79,8 +79,9 @@ FlowObservation Observe(const HIKARI::WorldView& world, const Actors& actors) {
         observation.playerPresent = true;
         observation.playerHeight = playerPosition.y;
         int64_t state = 0;
-        observation.playerDead = ObjectVariables::ReadInt(world, actors.player, kPlayerStateVariable, state) &&
-                                 state == static_cast<int64_t>(PlayerState::Dead);
+        const bool known = ObjectVariables::ReadInt(world, actors.player, kPlayerStateVariable, state);
+        observation.playerDead = known && state == static_cast<int64_t>(PlayerState::Dead);
+        observation.playerRiding = known && state == static_cast<int64_t>(PlayerState::Ride);
     }
     HIKARI::GameProjectFloat3 bossPosition{};
     if (GetPosition(world, actors.boss, bossPosition)) {

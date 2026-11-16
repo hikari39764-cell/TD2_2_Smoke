@@ -7,7 +7,8 @@ namespace Project_TD2_2 {
 namespace {
 
 bool HasFallen(const FlowComponent& flow, const FlowObservation& observation) {
-    return flow.startHeightKnown && observation.playerHeight < flow.startHeight - flow.fallDepth;
+    return flow.startHeightKnown && !observation.playerRiding &&
+           observation.playerHeight < flow.startHeight - flow.fallDepth;
 }
 
 bool IsPlayerLost(const FlowComponent& flow, const FlowObservation& observation) {

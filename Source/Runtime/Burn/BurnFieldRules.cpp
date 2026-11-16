@@ -156,6 +156,8 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
         size_t blockCount = 0;
         const float block = std::max(field.map.CellSize(), field.blastBlockSize);
         float nearestSquared = -1.0f;
+        // 床から fireReachHeight より高い所（筋斗雲で飛んでいる時など）の体には当てない。
+        const bool playerInReach = player != nullptr && player->y - field.map.FloorY() <= field.fireReachHeight;
         if (innerRadius <= 0.0f && outerRadius > 0.0f) {
             field.blastPlan = PlanBlasts(field, origin, outerRadius, block, planReach);
             field.blastOrder = 0;
@@ -165,8 +167,8 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
                 const float distance = std::hypot(c.x - origin.x, c.z - origin.z);
                 result.nearest = result.nearest < 0.0f ? distance : std::min(result.nearest, distance);
                 result.farthest = std::max(result.farthest, distance);
-                // 当たりは高さを見ない：プレイヤーの足元と、爆ぜたセルの中心の水平距離。
-                if (player != nullptr) {
+                // 当たりは、届く高さの内なら水平距離だけで見る：プレイヤーの体と、爆ぜたセルの中心の水平距離。
+                if (playerInReach) {
                     const float d2 = (c.x - player->x) * (c.x - player->x) + (c.z - player->z) * (c.z - player->z);
                     nearestSquared = nearestSquared < 0.0f ? d2 : std::min(nearestSquared, d2);
                 }

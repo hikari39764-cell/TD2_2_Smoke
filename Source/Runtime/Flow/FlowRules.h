@@ -10,6 +10,8 @@ struct FlowObservation {
     bool playerDead = false;
     // プレイヤーの世界の高さ (m)。
     float playerHeight = 0.0f;
+    // 筋斗雲に乗っている（飛んでいる間は、始めの高さより下へ行っても落ちたと見ない）。
+    bool playerRiding = false;
     // プレイヤーとボスの水平の距離 (m)。どちらかがいなければ負。
     float distanceToBoss = -1.0f;
     bool bossPresent = false;

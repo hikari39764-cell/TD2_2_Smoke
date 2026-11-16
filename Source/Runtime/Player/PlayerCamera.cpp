@@ -1,6 +1,7 @@
 #include "PlayerCamera.h"
 
 #include <algorithm>
+#include <utility>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -82,6 +83,9 @@ CameraLimits TakeLimits(PlayerComponent& player) {
         player.cameraReleaseSeconds = std::max(0.0f, request.releaseSeconds);
     }
     player.cameraRequestPending = false;
+    // 見上げ・見下ろしの限度は別々に変えられるので、逆に入っていたら並べ替える（std::clamp は下限 > 上限で未定義）。
+    if (limits.minPitch > limits.maxPitch)
+        std::swap(limits.minPitch, limits.maxPitch);
     return limits;
 }
 

@@ -356,6 +356,10 @@ public:
     // 落下の受け止め：足場を離れてからの一番高い体の中心の高さ。受け止める落下か（自分で降りた後は catchAfterDismiss）。
     float fallPeakY = 0.0f;
     bool catchArmed = true;
+    // 一番高い所を一度でも測ったか（測る前は受け止めない：場面の始めの 1 tick に、高さ 0 から落ちたと見なさない）。
+    bool fallPeakKnown = false;
+    // 降りてから（解除・被弾で解けた後）地面に着くまでの落下の間。この間は上下を素早く追うカメラを要求し続ける。
+    bool fallingFromMount = false;
     // 受け止めた時の下向きの速さ (m/s、正) と、ならしの残り (秒)。catching は受け止めの召喚の間（縦は持ち上げの輪郭
     // ではなく、落ちる勢いのならしで出す）。
     float catchFallSpeed = 0.0f;

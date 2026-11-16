@@ -46,7 +46,9 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             seen.component = &player;
             field.fireDamageTotal = player.burnDamageTotal;
             // 無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず 0 に戻す：転がって火を抜ければ燃え移らない。
+            // 床から fireReachHeight より高い所（筋斗雲で飛んでいる時など）は触れていない。
             if (!PlayerRules::IsAlive(player) || PlayerRules::IsInvulnerable(player) ||
+                transform.position.y - field.map.FloorY() > field.fireReachHeight ||
                 !field.map.AnyBurningWithin(transform.position, field.contactRadius)) {
                 field.contactSeconds = 0.0f;
                 return;

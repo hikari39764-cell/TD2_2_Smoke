@@ -101,6 +101,20 @@ PlayerCameraRequest CloudMountCamera::BuildRequest(CloudMountComponent& mount, f
     return request;
 }
 
+PlayerCameraRequest CloudMountCamera::BuildFallRequest(const CloudMountComponent& mount) {
+    PlayerCameraRequest request{};
+    request.verticalSeconds = std::max(0.0f, mount.cameraVerticalSeconds);
+    request.verticalDeadZone = mount.cameraVerticalDeadZone;
+    request.minPitch = mount.cameraMinPitch;
+    request.maxPitch = mount.cameraMaxPitch;
+    const float release = std::max(0.0f, mount.cameraReleaseSeconds);
+    request.shapeSeconds = release;
+    request.fovSeconds = release;
+    request.rollSeconds = release;
+    request.releaseSeconds = release;
+    return request;
+}
+
 void CloudMountCamera::Reset(CloudMountComponent& mount) {
     mount.cameraFollowNow = -1.0f;
     mount.cameraKickAge = -1.0f;

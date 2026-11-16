@@ -14,6 +14,10 @@ public:
     static PlayerCameraRequest BuildRequest(CloudMountComponent& mount, float dt);
     // 乗っていない間に呼ぶ。次に乗った時に、前の騎乗の加速の遅れ・出だしの画角を持ち越さない。
     static void Reset(CloudMountComponent& mount);
+    // 降りた後、地面に着くまでの落下のカメラ：上下は騎乗中と同じく素早く追い（いつもの 0.35 秒では落ちる体に置いて
+    // 行かれて、体が画面の下へ外れる）、見上げ・見下ろしの限度も騎乗中のまま。距離・画角・傾きは Player の値へ、
+    // 要求が終わった時と同じならしで戻す。
+    static PlayerCameraRequest BuildFallRequest(const CloudMountComponent& mount);
     // 動きのぼかしの強さ（0〜1）を、ブースト中と急降下の度合いへ cameraBlurSeconds でならして返す。乗っていない間も
     // 呼ぶ（降りた後は消えていく）。
     static float StepBlur(CloudMountComponent& mount, float dt);

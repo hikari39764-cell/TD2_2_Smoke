@@ -516,10 +516,14 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
         mount.input.boost = ReadAction(input, "Gameplay.Sprint").down != 0u;
         // 騎乗中のカメラ：上下の遊びを無くして素早く追い、見上げ・見下ろしを広げ、速さで引く・画角・傾きなどの見せ方を
         // 要求する。同じフレームの LateUpdate（PlayerCamera）が使う。降りると要求をやめ、PlayerCamera が普段へ戻す。
-        if (CloudMountRules::IsMounted(mount))
+        if (CloudMountRules::IsMounted(mount)) {
             PlayerRules::RequestCamera(player, CloudMountCamera::BuildRequest(mount, std::max(0.0f, frame.unscaledDt)));
-        else
+        } else {
             CloudMountCamera::Reset(mount);
+            // 降りた後の落下は、地面に着くまで上下を素早く追う（体が画面の下へ外れないように）。
+            if (mount.fallingFromMount)
+                PlayerRules::RequestCamera(player, CloudMountCamera::BuildFallRequest(mount));
+        }
     });
 }
 

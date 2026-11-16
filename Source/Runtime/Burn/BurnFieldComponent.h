@@ -86,6 +86,8 @@ public:
     float arenaRadius = 22.0f;
     // 足元からこの半径の円に燃えているセルが掛かれば、火に触れている。
     float contactRadius = 0.3f;
+    // 体の中心が床からこれより高いと、地面の火に触れず、引爆・爆発も当たらない (m)。跳んでも届き、筋斗雲で飛べば届かない。
+    float fireReachHeight = 4.0f;
     // 触れ続けて燃え移るまでの秒数と、火の中にいる間の炎上の減り方（/秒）。
     float damageDelay = 0.2f;
     float damagePerSecond = 14.0f;
