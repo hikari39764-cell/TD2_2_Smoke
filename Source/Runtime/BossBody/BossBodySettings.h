@@ -92,6 +92,9 @@ struct BossBodyMotionSettings {
     float hitMaxTipGap = 0.06f;
     // 振り抜いた勢いを、窓の後へ持ち越す割合（大きいほど振り抜いた先へ行き過ぎる）。
     float overshootCarry = 0.30f;
+    // 両手の型の間（規則の構えの twoHand の重み）は、窓の外も刀と握りを行き過ぎずに追う（規則の振りが速さの途切れない
+    // 曲線になったので、ばねで行き過ぎ・戻りを足さない）。その追う速さ（1 秒あたりの回数）。
+    float followFrequency = 7.0f;
     // 振りの何 F 前から規則の線へ寄せ始めるか（溜めの誇張もこの間に消す）。
     int lockLeadFrames = 8;
     // 窓が閉じた後、手と刀を体の傾きへ戻す時間 (秒)。

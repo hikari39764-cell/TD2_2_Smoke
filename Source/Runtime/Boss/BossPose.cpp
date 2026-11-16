@@ -33,8 +33,10 @@ constexpr float kPlungeTurnSpeed = 2.0f;
 // 高い所へ斬り上げ（縦の型を逆に回す）、放つ間隔のこの割合で上げ切って、残りで低い構えへ戻す。
 constexpr Angles kDrag{60.0f, -160.0f};
 constexpr float kFlameRunUpShare = 0.6f;
-// 振り出しの割合、フェイントで引き戻す長さ (F)、溜めの震え（角度 度・1 F あたりの位相 rad）。
-constexpr float kSwingInShare = 0.16f;
+// 炎走りの前隙のこの割合から、引きずった構えを両手に持ち替えて斬り上げの低い構えへ寄せる（左手で刀身をなぞり終えた後）。
+constexpr float kFlameRunGripShare = 0.8f;
+// フェイントで見せる振り出しの進み（振りの 0〜1）、引き戻す長さ (F)、溜めの震え（角度 度・1 F あたりの位相 rad）。
+constexpr float kFeintShowShare = 0.16f;
 constexpr int kFeintPullbackFrames = 7;
 constexpr float kFeintTremorDegrees = 2.0f;
 constexpr float kFeintTremorRate = 0.8f;
@@ -124,20 +126,17 @@ BossSwordPose StrikeAt(const Strike& strike, float e) {
 BossSwordPose StrikeCocked(const Strike& strike) { return StrikeAt(strike, 0.0f); }
 BossSwordPose StrikeEnd(const Strike& strike) { return StrikeAt(strike, 1.0f); }
 
-// 振り：最初の振り出しはゆっくり動き始め（振り出しが見える）、残りで一気に振り抜く。
+// 振りの進み：ゆっくり動き始めて加速し、swingPeakShare で最も速く、振り終わりへ減速して止まる。速さは途中で途切れない
+// （進みを peak で速さが最大になるように曲げてから、両端で速さ 0 の 5 次の曲線に通す）。
+float SwingProgress(const BossComponent& boss, int tIn, int length) {
+    const float u = std::clamp(static_cast<float>(tIn) / static_cast<float>(std::max(1, length)), 0.0f, 1.0f);
+    const float peak = std::clamp(boss.swingPeakShare, 0.5f, 0.9f);
+    const float x = std::pow(u, std::log(0.5f) / std::log(peak));
+    return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
+}
+
 BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, int length) {
-    const int swingIn = std::min(boss.swingInFrames, std::max(0, length - 2));
-    float e = 0.0f;
-    if (tIn <= swingIn) {
-        const float u = static_cast<float>(tIn) / static_cast<float>(std::max(1, swingIn));
-        e = kSwingInShare * u * u;
-    } else {
-        const float u = std::clamp(
-            static_cast<float>(tIn - swingIn) / static_cast<float>(std::max(1, length - swingIn)), 0.0f, 1.0f);
-        e = std::min(1.0f, kSwingInShare + (1.0f - kSwingInShare) *
-                                               (2.0f * kSwingInShare * u + (1.0f - 2.0f * kSwingInShare) * u * u));
-    }
-    return StrikeAt(strike, e);
+    return StrikeAt(strike, SwingProgress(boss, tIn, length));
 }
 
 // 振り上げ：今の構え previous から一撃の構えへ（k は 0〜1）。型の raiseVia が 0 より大きければ、前半で型の途中の構えへ
@@ -178,10 +177,10 @@ BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, c
         return cocked;
     }
     const int t = tIn - base;
-    const int swingIn = boss.swingInFrames;
+    const int swingIn = std::max(1, boss.swingInFrames);
     if (t <= swingIn)
-        return Swing(boss, strike, t, swingIn + boss.swingFrames);
-    const BossSwordPose fake = Swing(boss, strike, swingIn, swingIn + boss.swingFrames);
+        return StrikeAt(strike, kFeintShowShare * Smooth(static_cast<float>(t) / static_cast<float>(swingIn)));
+    const BossSwordPose fake = StrikeAt(strike, kFeintShowShare);
     if (t <= swingIn + kFeintPullbackFrames)
         return Sweep(fake, cocked, static_cast<float>(t - swingIn) / static_cast<float>(kFeintPullbackFrames));
     return Tremble(cocked, t);
@@ -308,7 +307,8 @@ BossSwordPose RetreatPose(const BossComponent& boss, const BossMove& move) {
                  static_cast<float>(boss.retreat.chargeElapsed) / static_cast<float>(std::max(1, boss.raiseFrames)));
 }
 
-// 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
+// 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の当たりの無い区間で、1 撃目の振り終わりから 2 撃目の構えへ
+// 振り上げる（前は間の区間も 2 撃目の振りで、間に入る tick に構えが跳んでいた）。
 BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
     const Strike first = ShapeStrike(boss.swing.kesa, false);
     const Strike second = ShapeStrike(boss.swing.kesa, true);
@@ -317,10 +317,9 @@ BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
     if (boss.phase == BossActPhase::Post)
         return BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post);
     const auto g = BossPose::Progress(boss, move);
-    if (g.hitIndex % 2 == 0)
-        return g.hit ? Swing(boss, first, g.tIn, g.swingLength)
-                     : Sweep(StrikeEnd(first), StrikeCocked(second), g.progress);
-    return Swing(boss, second, g.tIn, g.swingLength);
+    if (g.hit)
+        return Swing(boss, g.hitIndex % 2 == 0 ? first : second, g.tIn, g.swingLength);
+    return Raise(StrikeEnd(first), second, g.progress);
 }
 
 // 剣を頭上へ掲げ、切っ先を下へ向けて地面へ突き立て、溜めの間・爆ぜる間は突き立てたまま。後隙で抜いて戻す。
@@ -344,21 +343,22 @@ BossSwordPose FlameRunPose(const BossComponent& boss, const BossMove& move) {
     const BossSwordPose drag = FromAngles(boss, kDrag);
     const Strike rise = RiseStrike(boss);
     const BossSwordPose low = StrikeCocked(rise), up = StrikeEnd(rise);
-    if (boss.phase == BossActPhase::Pre)
+    if (boss.phase == BossActPhase::Pre) {
+        const float share = Share(t, move.pre);
+        if (share >= kFlameRunGripShare)
+            return Sweep(drag, low, (share - kFlameRunGripShare) / (1.0f - kFlameRunGripShare));
         return Sweep(boss.moveStartPose, drag,
                      static_cast<float>(t) / static_cast<float>(std::max(1, boss.raiseFrames)));
+    }
     if (boss.phase == BossActPhase::Post)
         return HoldThenRest(boss, up, move.post);
     // 攻撃中：いちばん新しく放った前線を放った tick（stateFrame 1＋間隔×番号）からの F で斬り上げる。
-    // 1 本目は引きずった構えから両手に持ち替えつつ斬り上げる。最後の 1 本は斬り上げたまま後隙へ。
+    // 最後の 1 本は斬り上げたまま後隙へ。
     const int interval = std::max(1, boss.flameRunIntervalFrames);
     const int since = std::max(0, t - 1 - interval * std::max(0, boss.flameRun.released - 1));
     const int span = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
-    if (since <= span) {
-        const float e = static_cast<float>(since) / static_cast<float>(span);
-        const BossSwordPose rising = StrikeAt(rise, Smooth(e));
-        return boss.flameRun.released <= 1 ? Blend(drag, rising, Smooth(std::min(1.0f, e * 2.0f))) : rising;
-    }
+    if (since <= span)
+        return StrikeAt(rise, Smooth(static_cast<float>(since) / static_cast<float>(span)));
     if (boss.flameRun.released >= boss.flameRun.count)
         return up;
     return Sweep(up, low, static_cast<float>(since - span) / static_cast<float>(std::max(1, interval - span)));

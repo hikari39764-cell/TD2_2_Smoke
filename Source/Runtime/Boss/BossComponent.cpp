@@ -22,6 +22,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("kamaeFrames", "振る前の構え（剣を止めて溜める）(F)", kamaeFrames, 1, 300);
         fields.Int("raiseFrames", "振り上げ（構えの前に剣を引く）(F)", raiseFrames, 0, 300);
         fields.Int("swingInFrames", "振り出し（ゆっくり動き始める）(F)", swingInFrames, 0, 60);
+        fields.Float("swingPeakShare",
+                     "振りの速さがいちばん速くなる所（窓の進み 0〜1。そこから振り終わりへ減速して止まる）",
+                     swingPeakShare, 0.5f, 0.9f);
         fields.Int("poseRecoverFrames",
                    "技の終わりの構えから、待機の下ろした構え・気絶の崩れた構えへ移る (F。0 は一気に切り替える)",
                    poseRecoverFrames, 0, 60);

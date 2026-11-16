@@ -220,9 +220,12 @@ void StepDirection(const BossBodyMotionSettings& s, const MotionTargets& t, Boss
         return;
     }
     if (m.wasWindow)
-        m.velocity = Mul(m.velocity, s.overshootCarry);
-    SpringOnSphere(m.direction, m.velocity, t.direction, Lerp(s.swordFrequency, s.swordHitFrequency, t.lead),
-                   Lerp(s.swordDamping, s.swordHitDamping, t.lead), dt);
+        m.velocity = Mul(m.velocity, s.overshootCarry * (1.0f - t.twoHand));
+    // 両手の型の間は、規則の構えを行き過ぎずに（収まりの強さ 1 で）追う。片手の構えは前のばね。
+    const float frequency = Lerp(s.swordFrequency, s.swordHitFrequency, t.lead);
+    const float damping = Lerp(s.swordDamping, s.swordHitDamping, t.lead);
+    SpringOnSphere(m.direction, m.velocity, t.direction, Lerp(frequency, s.followFrequency, t.twoHand),
+                   Lerp(damping, 1.0f, t.twoHand), dt);
 }
 
 // 刃の向き：振る間は剣先の動きの先、溜めの間はこれから斬る向き、待機では待機の向き。ほかは前の向きを保つ
@@ -260,8 +263,9 @@ void StepGrip(const BossComponent& boss, const MotionTargets& t, BossBodyMotionS
         return;
     }
     if (m.wasWindow)
-        m.gripVelocity = Mul(m.gripVelocity, s.overshootCarry);
-    SpringPoint(m.grip, m.gripVelocity, t.grip, s.gripFrequency, s.gripDamping, dt);
+        m.gripVelocity = Mul(m.gripVelocity, s.overshootCarry * (1.0f - t.twoHand));
+    SpringPoint(m.grip, m.gripVelocity, t.grip, Lerp(s.gripFrequency, s.followFrequency, t.twoHand),
+                Lerp(s.gripDamping, 1.0f, t.twoHand), dt);
     // 振りの直前：握りを規則の線の上へ寄せる（窓が開く時に跳ばない）。
     if (t.lead > 0.0f)
         m.grip = Lerp(m.grip, Add(t.ruleRoot, Mul(m.direction, along)), t.lead);

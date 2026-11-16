@@ -144,6 +144,9 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
                  swordHitFrequency, 1.0f, 40.0f);
     fields.Float("bodySwordHitDamping", "刀のばね：振る直前の収まりの強さ", swordHitDamping, 0.1f, 2.0f);
     fields.Float("bodyHitMaxTipGap", "振っている間に許す、剣先と規則の線のずれ (m)", hitMaxTipGap, 0.0f, 0.5f);
+    fields.Float("bodyFollowFrequency",
+                 "両手の斬りの間、刀と握りが規則の構えを追う速さ (1 秒あたりの回数。行き過ぎない)", followFrequency,
+                 0.5f, 30.0f);
     fields.Float("bodyOvershootCarry", "振り抜いた勢いを持ち越す割合 (0〜1。大きいほど振り抜いた先へ行き過ぎる)",
                  overshootCarry, 0.0f, 1.0f);
     fields.Int("bodyLockLeadFrames", "振りの何 F 前から規則の線へ寄せるか (F。溜めの誇張もこの間に消す)",
