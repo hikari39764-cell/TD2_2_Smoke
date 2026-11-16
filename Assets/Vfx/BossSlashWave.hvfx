@@ -281,7 +281,7 @@
             0.12
           ],
           "emissionHotTemperature": 3.2,
-          "emissionIntensity": 300000.0,
+          "emissionIntensity": 600000.0,
           "emissionTemperature": 0.5,
           "expansionPerBurn": 0.3,
           "extinction": 9.0,
@@ -512,7 +512,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -1344,7 +1344,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -2188,7 +2188,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -3032,7 +3032,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -3876,7 +3876,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -4720,7 +4720,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -5564,7 +5564,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -6408,7 +6408,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -7252,7 +7252,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -8096,7 +8096,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.15000000596046448
         },
         "renderShape": {
@@ -10063,7 +10063,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -13060,7 +13060,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -16140,7 +16140,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "engine.vfx.texture.noise_fractal_1",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -19302,7 +19302,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "engine.vfx.texture.noise_fractal_1",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -22341,7 +22341,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -25338,7 +25338,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -28418,7 +28418,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "engine.vfx.texture.noise_fractal_1",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -31580,7 +31580,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "engine.vfx.texture.noise_fractal_1",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -34577,7 +34577,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -37574,7 +37574,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -40571,7 +40571,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -43568,7 +43568,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -46730,7 +46730,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "engine.vfx.texture.noise_fractal_1",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {
@@ -49727,7 +49727,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.25
         },
         "renderShape": {

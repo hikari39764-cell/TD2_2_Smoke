@@ -285,10 +285,10 @@
             0.2
           ],
           "emissionHotTemperature": 7.0,
-          "emissionIntensity": 100000.0,
+          "emissionIntensity": 280000.0,
           "emissionTemperature": 1.5,
           "expansionPerBurn": 0.1,
-          "extinction": 3.0,
+          "extinction": 4.0,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 5.0,
           "id": "module.fluidDomain.27bdd06311adf28a2e0ad2b531f3ae2d",
@@ -305,7 +305,7 @@
             0.045,
             0.04
           ],
-          "smokePerBurn": 0.4,
+          "smokePerBurn": 0.25,
           "substepRate": 60.0,
           "temperatureDissipation": 5.0,
           "vorticity": 6.0,

@@ -108,8 +108,8 @@ public:
     float fuelWave = 0.3f;
     float fuelWaveHz = 0.8f;
     float fadeSeconds = 2.0f;
-    float fogBurnAbsorption = 3.0f;
-    float fogBurnRadiusScale = 1.4f;
+    float fogBurnAbsorption = 5.0f;
+    float fogBurnRadiusScale = 1.8f;
     float fogUpdraft = 10.0f;
     float chargeTemperature = 12.0f;
     float chargeShrink = 0.55f;

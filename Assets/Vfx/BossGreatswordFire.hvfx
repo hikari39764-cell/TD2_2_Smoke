@@ -298,7 +298,7 @@
             0.12
           ],
           "emissionHotTemperature": 3.2,
-          "emissionIntensity": 200000.0,
+          "emissionIntensity": 500000.0,
           "emissionTemperature": 0.5,
           "expansionPerBurn": 0.3,
           "extinction": 9.0,

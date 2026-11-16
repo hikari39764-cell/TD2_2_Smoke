@@ -1567,7 +1567,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.5
         },
         "renderShape": {
@@ -3547,7 +3547,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.5
         },
         "renderShape": {
@@ -5547,7 +5547,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.3
         },
         "renderShape": {
@@ -7506,7 +7506,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.1
         },
         "renderShape": {
@@ -8439,7 +8439,7 @@
           "materialAssetGuid": "",
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
-          "postProcessMode": "Scene",
+          "postProcessMode": "PreserveColor",
           "softIntersectionDistance": 0.6
         },
         "renderShape": {
