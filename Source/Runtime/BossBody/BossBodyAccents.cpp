@@ -18,6 +18,7 @@ using BossVfx::StopHandle;
 // エフェクトの入力（資産側の契約）。どれも Color で、0 にするとその飾りが出ない。
 constexpr const char* kTrailInput = "input.trail"; // 刀光の色と明るさ
 constexpr const char* kHeatInput = "input.heat";   // 刀身の炎の明るさ
+constexpr const char* kHazeInput = "input.haze";   // 振りのゆがみ（R が強さ。G・B は 1）
 constexpr const char* kEyesInput = "input.eyes";   // 目の光の色と明るさ
 constexpr const char* kFlareInput = "input.flare"; // 目の閃きの色と明るさ
 constexpr const char* kColorInput = "input.color"; // 刀身を走る光の色
@@ -100,6 +101,14 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
     const bool swinging = s.trail && !great && !grounded &&
                           (boss.swordSmoke || (a.trailHold > 0.0f && tipSpeed >= s.trailMinTipSpeed));
     a.trailGain = grounded ? 0.0f : Lerp(a.trailGain, swinging ? 1.0f : 0.0f, Follow(seconds, kTrailRiseSeconds));
+    // 振りのゆがみ：刀光の間と、刀を振る技の打ち込みで剣先が速い間（命中の窓の少し前の振り出しから）。振りかぶりでは
+    // 出さない。地面に沿う剣先では切る。
+    const BossMove* move = CurrentMove(boss);
+    const bool striking = boss.state == BossState::Act && boss.phase == BossActPhase::Act;
+    const bool fast = s.swingHazeMinTipSpeed > 0.0f && striking && move != nullptr && UsesSword(move->type) &&
+                      tipSpeed >= s.swingHazeMinTipSpeed;
+    const bool hazing = s.trail && !great && !grounded && (swinging || fast);
+    a.hazeGain = grounded ? 0.0f : Lerp(a.hazeGain, hazing ? 1.0f : 0.0f, Follow(seconds, kTrailRiseSeconds));
     // 刀身の炎：灼けた刀身（模型）が出ている間。
     const bool burning = pose.bladeHot && !great;
     a.heatGain = Lerp(a.heatGain, burning ? 1.0f : 0.0f, Follow(seconds, s.bladeHeatSeconds));
@@ -109,6 +118,7 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
                             Mul(pose.bladeHot ? s.trailFireColor : s.trailMistColor, a.trailGain));
     const float heat = s.bladeHeat * a.heatGain;
     VfxParameters::SetColor(parameters, kHeatInput, {heat, heat, heat});
+    VfxParameters::SetColor(parameters, kHazeInput, {s.swingHaze * a.hazeGain, 1.0f, 1.0f});
     StartOrSend(world, boss, a.bladeVfx, s.bladeEffect, BladeTransform(boss, pose), parameters);
 }
 

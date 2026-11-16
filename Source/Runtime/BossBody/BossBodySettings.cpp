@@ -29,6 +29,11 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
                  3.0f);
     fields.Float3("bodyTrailMistColor", "刀光：霞の技の色と明るさ（1 を超えると光る）", trailMistColor);
     fields.Float3("bodyTrailFireColor", "刀光：刀が燃えている技の色と明るさ", trailFireColor);
+    fields.Float("bodySwingHaze", "振りのゆがみ（屈折）の強さ（0.1〜0.3。0.3 を超えると段が見える。0 で出さない）",
+                 swingHaze, 0.0f, 0.5f);
+    fields.Float("bodySwingHazeMinTipSpeed",
+                 "振りのゆがみ：刀光より前から出し始める剣先の速さ (m/秒。打ち込みの間だけ。0 で刀光と同じ間)",
+                 swingHazeMinTipSpeed, 0.0f, 300.0f);
     fields.Float("bodyBladeHeat", "燃える刀身：炎の明るさ（倍率。0 で出さない）", bladeHeat, 0.0f, 8.0f);
     fields.Float("bodyBladeHeatSeconds", "燃える刀身：火が付く・消える時間 (秒)", bladeHeatSeconds, 0.01f, 3.0f);
     fields.Vfx("bodyEyesEffect", "目の光のエフェクト（兜に付く。尾を引く光・暈・閃き。空なら出さない）", eyesEffect);

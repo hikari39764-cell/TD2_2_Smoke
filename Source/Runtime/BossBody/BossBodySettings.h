@@ -177,6 +177,12 @@ struct BossBodyAccentSettings {
     // 刀光の色と明るさ（1 を超えると光る）：霞の技（刀が燃えていない）と、刀が燃えている技。
     HIKARI::GameProjectFloat3 trailMistColor{0.80f, 1.20f, 2.20f};
     HIKARI::GameProjectFloat3 trailFireColor{2.40f, 1.00f, 0.30f};
+    // 振りのゆがみ（屈折）の強さ（画面の 6% × この値ずらす。0.3 を超えると段が見える。0 で出さない）。刀光と同じ間に出し、
+    // 刀光の色とは別なので、霞の技でも火の技でも同じ強さ。出たゆがみはエフェクト側の時間（0.4 秒）で消える。
+    float swingHaze = 0.3f;
+    // 振りのゆがみを、刀光より前から出し始める剣先の速さ (m/秒)。刀を振る技の打ち込み（攻撃中）の間だけ見る（構えへ上げる
+    // 振りかぶりも同じくらい速いが、そこでは出さない）。0 で刀光と同じ間だけ。
+    float swingHazeMinTipSpeed = 30.0f;
     // 燃える刀身：炎の明るさ（倍率。0 で出さない）と、火が付く・消える時間 (秒)。
     float bladeHeat = 1.0f;
     float bladeHeatSeconds = 0.25f;
@@ -273,6 +279,8 @@ struct BossBodyAccentState {
     float trailHold = 0.0f;
     float trailGain = 0.0f;
     float heatGain = 0.0f;
+    // 振りのゆがみの強さ（0〜1）。
+    float hazeGain = 0.0f;
     // 刀身の輪郭の光のいまの強さ（材質の効果の rimStrength）。
     float bladeRim = 0.0f;
     // 目の光・刀身を走る光・溜めの気配の再生。
