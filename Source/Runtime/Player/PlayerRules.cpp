@@ -293,9 +293,14 @@ void PlayerRules::StepRide(PlayerComponent& player) {
 }
 
 void PlayerRules::RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request) {
-    if (!std::isfinite(request.verticalSeconds) || !std::isfinite(request.verticalDeadZone) ||
-        !std::isfinite(request.minPitch) || !std::isfinite(request.maxPitch))
-        return;
+    const float values[] = {request.verticalSeconds, request.verticalDeadZone, request.minPitch,
+                            request.maxPitch,        request.followSeconds,    request.distance,
+                            request.fovDegrees,      request.eyeFloor,         request.fovKickDegrees,
+                            request.rollDegrees,     request.lookDownDegrees,  request.shapeSeconds,
+                            request.fovSeconds,      request.rollSeconds,      request.releaseSeconds};
+    for (const float value : values)
+        if (!std::isfinite(value))
+            return;
     player.cameraRequest = request;
     player.cameraRequestPending = true;
 }

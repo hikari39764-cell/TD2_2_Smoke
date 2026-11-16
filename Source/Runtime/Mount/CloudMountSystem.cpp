@@ -7,7 +7,10 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "../Combat/Feedback.h"
+#include "../Combat/FeedbackCamera.h"
 #include "../Player/PlayerRules.h"
+#include "CloudMountCamera.h"
 #include "CloudMountComponent.h"
 #include "CloudMountPlaceholder.h"
 #include "CloudMountRules.h"
@@ -21,6 +24,16 @@ using Vec3 = HIKARI::GameProjectFloat3;
 constexpr uint64_t kMotionSource = 0x5444324D01ull;
 // プレイヤーの移動（300）より上。
 constexpr int kMotionPriority = 310;
+// ブースト中の震えと動きのぼかしの送り手。優先度はプレイヤーの手応え（300）と同じ段（揺れは足し合わされ、ぼかしは
+// この送り手だけ）。
+constexpr uint64_t kShakeSource = 0x5444324D02ull;
+constexpr uint64_t kBlurSource = 0x5444324D03ull;
+constexpr int kCameraEffectPriority = 300;
+// 動きのぼかしの、エンジンが受け付ける範囲（シャッター角は度、ぼかしの長さは 1080p の画素）。
+constexpr float kMaximumShutterDegrees = 360.0f;
+constexpr float kMaximumBlurPixels = 64.0f;
+// 震えを続ける間、弱まりを割り戻す時の包絡の下限（割り算が大きくなりすぎないように）。
+constexpr float kMinimumShakeEnvelope = 0.05f;
 // 騎乗中は毎 tick ソルバーの跳躍として出す時の初速 (m/s)。初速は同じ tick の重力の差し替えで打ち消すので、
 // 正の値なら何でもよい（縦の速さは変わらない）。
 constexpr float kRideJumpSpeed = 1.0f;
@@ -283,6 +296,63 @@ void StepFlight(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountC
     CloudMountRules::AdvanceFrame(mount);
 }
 
+// ブースト中だけの細かい震え（Combat/Feedback の揺れ）。続ける間は、位相が飛ばないよう 1 周期ずつ時間を巻き戻し、
+// 弱まった分を揺れ幅で割り戻して一定に保つ。離すと、そのまま cameraBoostShakeFadeSeconds で消えていく。
+// 出した揺れのずれの大きさ (m) を返す（出していなければ 0）。
+float StepBoostShake(HIKARI::WorldView& world, CloudMountComponent& mount, const PlayerComponent& player, float dt) {
+    Feedback::CameraShake& shake = mount.cameraShake;
+    if (mount.flight.boosting && mount.cameraBoostShake > 0.0f && mount.cameraBoostShakeFrequency > 0.0f) {
+        const float period = 1.0f / mount.cameraBoostShakeFrequency;
+        // 1 周期より短いと、巻き戻す前に消えてしまう。
+        const float fade = std::max(mount.cameraBoostShakeFadeSeconds, period);
+        if (!shake.active) {
+            Feedback::CameraShakeParams params{};
+            params.sourceId = kShakeSource;
+            params.priority = kCameraEffectPriority;
+            params.frames = std::max(1, static_cast<int>(std::ceil(fade * Feedback::kFramesPerSecond)));
+            params.amplitude = mount.cameraBoostShake;
+            params.frequency = mount.cameraBoostShakeFrequency;
+            Feedback::StartCameraShake(shake, params);
+        }
+        shake.ageSeconds = std::fmod(shake.ageSeconds, period);
+        const float envelope = 1.0f - shake.ageSeconds / shake.durationSeconds;
+        shake.params.amplitude = mount.cameraBoostShake / std::max(envelope * envelope, kMinimumShakeEnvelope);
+        shake.params.frequency = mount.cameraBoostShakeFrequency;
+    }
+    HIKARI::GameProjectFloat3 offset{};
+    if (!Feedback::SubmitCameraShake(world, shake, player.cameraId, dt, &offset))
+        return 0.0f;
+    return std::hypot(offset.x, offset.y);
+}
+
+// 動きのぼかしと震え。姿勢には触れず（姿勢は PlayerCamera が出す）、その上に掛ける。降りた後も消え終わるまで出す。
+void SubmitCameraEffects(HIKARI::WorldView& world, CloudMountComponent& mount, const PlayerComponent& player,
+                         const HIKARI::FrameContext& frame) {
+    const float dt = std::max(0.0f, frame.unscaledDt);
+    const float weight = CloudMountCamera::StepBlur(mount, dt);
+    bool blurAccepted = false;
+    if (weight > 0.0f && mount.cameraBlurShutterDegrees > 0.0f) {
+        HIKARI::GameProjectCameraMotionBlurRequest blur{};
+        blur.cameraObjectHandle = FeedbackCamera::Resolve(world, player.cameraId);
+        blur.sourceId = kBlurSource;
+        blur.priority = kCameraEffectPriority;
+        // 重みはカメラの元の設定（無効なら 0°）からのシャッター角と長さの補間。
+        blur.weight = weight;
+        blur.settings.enabled = 1;
+        blur.settings.shutterAngleDegrees = std::clamp(mount.cameraBlurShutterDegrees, 0.0f, kMaximumShutterDegrees);
+        blur.settings.maxBlur1080pPixels = std::clamp(mount.cameraBlurMaxPixels, 0.0f, kMaximumBlurPixels);
+        blurAccepted = blur.cameraObjectHandle != 0 && world.GetCamera().SubmitMotionBlur(blur);
+    }
+    const float shake = StepBoostShake(world, mount, player, dt);
+    if (mount.traceEveryFrames <= 0 || (weight <= 0.0f && shake <= 0.0f))
+        return;
+    char message[160]{};
+    std::snprintf(message, sizeof(message), "CameraFx frame=%llu blur=%.4f blurAccepted=%d shake=%.5f",
+                  static_cast<unsigned long long>(frame.frameIndex), static_cast<double>(weight),
+                  static_cast<int>(blurAccepted), static_cast<double>(shake));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
+}
+
 } // namespace
 
 void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
@@ -298,15 +368,12 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
         mount.input.ascend = ReadAction(input, "Gameplay.Jump").down != 0u;
         mount.input.descend = ReadAction(input, "Gameplay.Descend").down != 0u;
         mount.input.boost = ReadAction(input, "Gameplay.Sprint").down != 0u;
-        // 騎乗中のカメラ：上下の遊びを無くして素早く追い、見上げ・見下ろしを広げる。同じフレームの LateUpdate が使う。
-        if (CloudMountRules::IsMounted(mount)) {
-            PlayerCameraRequest request{};
-            request.verticalSeconds = mount.cameraVerticalSeconds;
-            request.verticalDeadZone = mount.cameraVerticalDeadZone;
-            request.minPitch = mount.cameraMinPitch;
-            request.maxPitch = mount.cameraMaxPitch;
-            PlayerRules::RequestCamera(player, request);
-        }
+        // 騎乗中のカメラ：上下の遊びを無くして素早く追い、見上げ・見下ろしを広げ、速さで引く・画角・傾きなどの見せ方を
+        // 要求する。同じフレームの LateUpdate（PlayerCamera）が使う。降りると要求をやめ、PlayerCamera が普段へ戻す。
+        if (CloudMountRules::IsMounted(mount))
+            PlayerRules::RequestCamera(player, CloudMountCamera::BuildRequest(mount, std::max(0.0f, frame.unscaledDt)));
+        else
+            CloudMountCamera::Reset(mount);
     });
 }
 
@@ -329,8 +396,9 @@ void CloudMountSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Frame
 void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent&) {
+    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
         CloudMountPlaceholder::Update(world, object, mount);
+        SubmitCameraEffects(world, mount, player, frame);
     });
 }
 

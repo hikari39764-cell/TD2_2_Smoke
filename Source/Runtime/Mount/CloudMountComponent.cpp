@@ -85,13 +85,62 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("boundsMaxY", "上の限度 (世界の Y)", boundsMaxY, -100000.0f, 100000.0f);
         fields.Float("boundsSoftMeters", "外向きの速さを弱め始める距離 (m)", boundsSoftMeters, 1.0f, 1000.0f);
     }
-    if (fields.Section("騎乗中のカメラ")) {
-        fields.Note("騎乗中だけ、Player の「カメラ」の上下の追い方と見上げの限度をこの値に差し替えます。"
-                    "距離・画角などは変えません。");
-        fields.Float("cameraVerticalSeconds", "上下に追うならし (秒)", cameraVerticalSeconds, 0.0f, 3.0f);
+    if (fields.Section("カメラ")) {
+        fields.Note("騎乗中だけ、Player のカメラへ値を渡します（姿勢を作るのは Player のカメラのまま）。降りると "
+                    "cameraReleaseSeconds で普段の値へ戻ります。");
+        fields.Float("cameraDistanceStop", "距離：止まっている (m)", cameraDistanceStop, 0.5f, 50.0f);
+        fields.Float("cameraDistanceCruise", "距離：巡航 (m)", cameraDistanceCruise, 0.5f, 50.0f);
+        fields.Float("cameraDistanceBoost", "距離：ブースト (m)", cameraDistanceBoost, 0.5f, 50.0f);
+        fields.Float("cameraZoomSeconds", "距離・見下ろしのならし (秒)", cameraZoomSeconds, 0.0f, 3.0f);
+        fields.Float("cameraFovStop", "画角：止まっている (度)", cameraFovStop, 10.0f, 120.0f);
+        fields.Float("cameraFovCruise", "画角：巡航 (度)", cameraFovCruise, 10.0f, 120.0f);
+        fields.Float("cameraFovBoost", "画角：ブースト (度)", cameraFovBoost, 10.0f, 120.0f);
+        fields.Float("cameraFovSeconds", "画角のならし (秒)", cameraFovSeconds, 0.0f, 3.0f);
+        fields.Note("止まっている → 巡航の速さ → ブーストの速さの間は速さで補間します。ブースト中はすぐブーストの値を"
+                    "目標にし、急降下などで速い時もブーストの値です。");
+        fields.Float("cameraBoostFovKick", "ブーストの出だしに行き過ぎる画角 (度、0 で無し)", cameraBoostFovKick, 0.0f,
+                     30.0f);
+        fields.Float("cameraBoostFovKickSeconds", "出だしの画角が戻るまで (秒)", cameraBoostFovKickSeconds, 0.0f, 2.0f);
+        fields.Bool("cameraRollEnabled", "旋回で画面を傾ける", cameraRollEnabled);
+        fields.Float("cameraRollCruise", "傾きの上限：巡航 (度、0 で傾けない)", cameraRollCruise, 0.0f, 45.0f);
+        fields.Float("cameraRollBoost", "傾きの上限：ブースト (度、0 で傾けない)", cameraRollBoost, 0.0f, 45.0f);
+        fields.Float("cameraRollSeconds", "傾きのならし (秒)", cameraRollSeconds, 0.0f, 3.0f);
+        fields.Note(
+            "傾き＝旋回の強さ（−1〜1。右へ回ると右へ傾く）× 上限。巡航より遅い時は速さに比例して小さくなります。"
+            "酔いやすい人は切るか上限を 0 に。");
+        fields.Float("cameraFollowSeconds", "水平に追うならし (秒)", cameraFollowSeconds, 0.0f, 1.0f);
+        fields.Float("cameraFollowAccelSeconds", "加速中に伸ばすならし (秒)", cameraFollowAccelSeconds, 0.0f, 1.0f);
+        fields.Float("cameraFollowBrakeSeconds", "減速中に縮めるならし (秒)", cameraFollowBrakeSeconds, 0.0f, 1.0f);
+        fields.Float("cameraFollowFullAccel", "伸ばし切る加速 (m/s²)", cameraFollowFullAccel, 1.0f, 500.0f);
+        fields.Float("cameraFollowRecoverSeconds", "伸ばした分を戻すならし (秒)", cameraFollowRecoverSeconds, 0.0f,
+                     2.0f);
+        fields.Note("速さが増えている間だけ水平に追うならしを伸ばし、体が先に画面の奥へ出てからカメラが追いつきます"
+                    "（ブーストの弾き出しは約 80 m/s²、止まった所から巡航へは約 46 m/s²、急降下は 12 m/s²）。");
+        fields.Float("cameraVerticalSeconds", "上下に追うならし：止まっている時 (秒)", cameraVerticalSeconds, 0.0f,
+                     3.0f);
         fields.Float("cameraVerticalDeadZone", "上下を追わない幅 (m)", cameraVerticalDeadZone, 0.0f, 10.0f);
+        fields.Note(
+            "上下のならしは、水平の速さが巡航へ近づくほど水平のならしに寄せます（遅れが飛ぶ向きに沿い、体が画面の"
+            "上下へずれずに奥へ離れます）。");
+        fields.Float("diveLookDegrees", "急降下で足す見下ろし (度。見せるだけで進む向きは変えない)", diveLookDegrees,
+                     0.0f, 30.0f);
         fields.Float("cameraMinPitch", "見上げる限度 (度、負で見上げ)", cameraMinPitch, -89.0f, 89.0f);
         fields.Float("cameraMaxPitch", "見下ろす限度 (度)", cameraMaxPitch, -89.0f, 89.0f);
+        fields.Float("cameraEyeFloor", "見上げた時に視点が軸から下がれる限度 (m)", cameraEyeFloor, 0.0f, 50.0f);
+        fields.Float("cameraBlurShutterDegrees", "動きのぼかしのシャッター角 (度、0 で切る)", cameraBlurShutterDegrees,
+                     0.0f, 360.0f);
+        fields.Float("cameraBlurMaxPixels", "ぼかしの長さの上限 (1080p の画素)", cameraBlurMaxPixels, 0.0f, 64.0f);
+        fields.Float("cameraBlurSeconds", "ぼかしの強まり・弱まりのならし (秒)", cameraBlurSeconds, 0.0f, 3.0f);
+        fields.Note("ぼかしはブースト中と急降下の度合いに合わせて強めます。TAA／DLAA／DLSS の時だけ効きます。"
+                    "全画面の流れ（⑦）と重なるので控えめから。");
+        fields.Float("cameraBoostShake", "ブースト中の震えの揺れ幅 (m、0 で切る)", cameraBoostShake, 0.0f, 0.1f);
+        fields.Float("cameraBoostShakeFrequency", "震えの速さ (Hz)", cameraBoostShakeFrequency, 1.0f, 60.0f);
+        fields.Float("cameraBoostShakeFadeSeconds", "離した後に震えが消えるまで (秒)", cameraBoostShakeFadeSeconds,
+                     0.0f, 1.0f);
+        fields.Float("cameraReleaseSeconds", "降りた後に普段のカメラへ戻すならし (秒)", cameraReleaseSeconds, 0.0f,
+                     3.0f);
+        fields.Note("降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろし（普段の限度の外）を一度に戻さず、"
+                    "このならしで戻します。");
     }
     if (fields.Section("仮の雲")) {
         fields.Note("流体の雲ができるまでの仮の見た目です。当たりの無い物体を足元へ動かし、"

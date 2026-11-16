@@ -276,7 +276,9 @@ void CloudMountRules::StepFlight(CloudMountComponent& mount, Vec3 cameraLook, Ve
     const float limit = std::max(mount.maxFlightSpeed, 0.0f);
     if (speed > limit && speed > 0.0f)
         mount.velocity = Scale(mount.velocity, limit / speed);
+    const float previousSpeed = mount.flight.speed;
     mount.flight.speed = std::min(speed, limit);
+    mount.flight.acceleration = dt > 0.0f ? (mount.flight.speed - previousSpeed) / dt : 0.0f;
     mount.flight.overspeed = std::max(0.0f, mount.flight.speed - BaseSpeed(mount));
     mount.flight.boostKick = mount.boostKickSeconds > 0.0f ? mount.boostKickLeft / mount.boostKickSeconds : 0.0f;
 }

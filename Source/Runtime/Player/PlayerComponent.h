@@ -34,7 +34,8 @@ enum class PlayerBurnEnd { None, Roll, Absorb, Timeout, Death };
 // Hold は押されたローリングを消さずに待たせ、Cancel は動作ロック中でもローリングで打ち切らせる。
 enum class PlayerRollGate { None, Hold, Cancel };
 // 外部（筋斗雲など）が PlayerRules::RequestCamera で出す、1 描画フレームぶんのカメラの要求。
-// 要求が無いフレームは Player の「カメラ」の値をそのまま使う。角度は度。
+// 要求が無いフレームは Player の「カメラ」の値をそのまま使う。角度は度。姿勢を出すのは PlayerCamera だけで、
+// 要求は値を渡すだけ（距離・画角・傾き・見下ろしのならしも PlayerCamera が持つ）。負の値は「Player の値のまま」。
 struct PlayerCameraRequest {
     // 上下に追うならし（秒）と、上下を追わない幅 (m)。
     float verticalSeconds = 0.35f;
@@ -42,6 +43,31 @@ struct PlayerCameraRequest {
     // 見上げ（負）・見下ろしの限度。
     float minPitch = -15.0f;
     float maxPitch = 55.0f;
+    // 水平に追うならし（秒）。
+    float followSeconds = -1.0f;
+    // 軸から視点までの距離 (m)、縦の画角、見上げた時に視点が軸から下がれる限度 (m)。
+    float distance = -1.0f;
+    float fovDegrees = -1.0f;
+    float eyeFloor = -1.0f;
+    // ならさずに足す画角（ブーストの出だしの行き過ぎ）。
+    float fovKickDegrees = 0.0f;
+    // 傾き（右へ傾くのが正）と、見せるだけの見下ろし（移動の向きには入れない）。
+    float rollDegrees = 0.0f;
+    float lookDownDegrees = 0.0f;
+    // ならし（秒）：距離・見下ろし・視点の下限、画角、傾き。
+    float shapeSeconds = 0.35f;
+    float fovSeconds = 0.35f;
+    float rollSeconds = 0.25f;
+    // 要求が終わった後、距離・画角・傾き・見下ろしと、限度の外の見上げ・見下ろしを Player の値へ戻すならし（秒）。
+    float releaseSeconds = 0.4f;
+};
+// 要求で変わる見せ方の、いまの値（PlayerCamera が持つ）。角度は rad。
+struct PlayerCameraShape {
+    float distance = 0.0f;
+    float fovRadians = 0.0f;
+    float eyeFloor = 0.0f;
+    float rollRadians = 0.0f;
+    float lookDownRadians = 0.0f;
 };
 // 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
 inline constexpr size_t kPlayerLockCandidateCapacity = 8;
@@ -276,6 +302,15 @@ public:
     // 外部のカメラの要求。PlayerCamera が使ったら消す（要求した側が消えても残さない）。
     bool cameraRequestPending = false;
     PlayerCameraRequest cameraRequest{};
+    // 要求で変えた見せ方と、そのならしの速さ。cameraShaped は要求の値から Player の値へ戻り切るまで true
+    // （要求が一度も無ければ見せ方は Player の値そのまま）。戻すならしは最後の要求の releaseSeconds。
+    PlayerCameraShape cameraShape{};
+    PlayerCameraShape cameraShapeVelocity{};
+    bool cameraShaped = false;
+    float cameraReleaseSeconds = 0.4f;
+    // 確かめ用（cameraTrace）：前のフレームに出した視点。GetControlPose は前のフレームに解決した姿勢を返すので、その差が
+    // 揺れなどの補正の大きさ。
+    HIKARI::GameProjectFloat3 cameraTraceEye{};
 };
 
 } // namespace Project_TD2_2

@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "HIKARI/Project/GameComponent.h"
+#include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -28,6 +29,8 @@ struct CloudMountInput {
 struct CloudMountFlightReadout {
     // いまの速さ (m/s)。騎乗していなければ 0。
     float speed = 0.0f;
+    // この tick の速さの変わり方 (m/s²。速くなる時が正)。カメラの加速の遅れに使う。
+    float acceleration = 0.0f;
     // ブースト中（Gameplay.Sprint を押し、精力が残っている間）。
     bool boosting = false;
     // ブーストの弾き出しの残り（押した瞬間 1、boostKickSeconds で 0）。
@@ -108,11 +111,57 @@ public:
     float boundsMinY = 3250.0f;
     float boundsMaxY = 3700.0f;
     float boundsSoftMeters = 30.0f;
-    // 騎乗中のカメラの要求（Player の「カメラ」の値の代わりに使う）。
+    // 騎乗中のカメラ（PlayerCamera への要求。姿勢を作るのは PlayerCamera だけ）。上下の追い方と見上げの限度は
+    // Player の「カメラ」の値の代わりに使う。cameraVerticalSeconds は止まっている時の上下のならしで、水平の速さが巡航へ
+    // 近づくほど水平のならし（加速の遅れを含む）へ寄せる（体が飛ぶ向きのまま画面の奥へ離れ、上下へ外れない）。
     float cameraVerticalSeconds = 0.08f;
     float cameraVerticalDeadZone = 0.0f;
     float cameraMinPitch = -70.0f;
     float cameraMaxPitch = 75.0f;
+    // 見上げた時に、視点が軸からどこまで下がってよいか (m)。Player の値（1.5）のままだと、見上げて上る時に距離が
+    // 縮んで引きが効かない。
+    float cameraEyeFloor = 4.0f;
+    // 距離 (m) と縦の画角（度）：止まっている・巡航・ブースト。間は速さで補間し、ブースト中はブーストの値。
+    // 巡航・ブーストより速い時（急降下）はブーストの値。距離は cameraZoomSeconds、画角は cameraFovSeconds でならす。
+    float cameraDistanceStop = 6.0f;
+    float cameraDistanceCruise = 7.5f;
+    float cameraDistanceBoost = 9.5f;
+    float cameraZoomSeconds = 0.35f;
+    float cameraFovStop = 60.0f;
+    float cameraFovCruise = 68.0f;
+    float cameraFovBoost = 82.0f;
+    float cameraFovSeconds = 0.15f;
+    // ブーストの出だしに、ならさずに足す画角（度）と、その長さ（秒）。初めの半分で上がり、残りで戻る。その間は画角の
+    // ならしを短くしてブーストの画角へ素早く届かせるので、ブーストの画角を一度これだけ行き過ぎて戻る。
+    float cameraBoostFovKick = 6.0f;
+    float cameraBoostFovKickSeconds = 0.25f;
+    // 傾き：旋回の強さ（−1〜1）× 上限（度）。上限は巡航の速さで cameraRollCruise、ブーストで cameraRollBoost、
+    // 巡航より遅い時は速さに比例して小さくする。cameraRollSeconds でならす。
+    bool cameraRollEnabled = true;
+    float cameraRollCruise = 12.0f;
+    float cameraRollBoost = 20.0f;
+    float cameraRollSeconds = 0.25f;
+    // 水平に追うならし（秒）。速さが増えている間は、増え方が cameraFollowFullAccel (m/s²) で cameraFollowAccelSeconds
+    // まで伸ばし（体が先に画面の奥へ出る）、減っている間は cameraFollowBrakeSeconds まで縮める。伸ばした分は
+    // cameraFollowRecoverSeconds で戻す（カメラが追いつく）。
+    float cameraFollowSeconds = 0.09f;
+    float cameraFollowAccelSeconds = 0.22f;
+    float cameraFollowBrakeSeconds = 0.06f;
+    float cameraFollowFullAccel = 60.0f;
+    float cameraFollowRecoverSeconds = 0.05f;
+    // 急降下の度合い 1 で足す、見せるだけの見下ろし（度。進む向きは変えない）。
+    float diveLookDegrees = 6.0f;
+    // 動きのぼかし：ブースト中と急降下の度合いに合わせて強める（TAA／DLAA／DLSS の時だけ効く）。強さは cameraBlurSeconds
+    // でならす。シャッター角 0 で切る。
+    float cameraBlurShutterDegrees = 90.0f;
+    float cameraBlurMaxPixels = 8.0f;
+    float cameraBlurSeconds = 0.2f;
+    // ブースト中だけの細かい震え：揺れ幅 (m)・速さ (Hz)。離すと cameraBoostShakeFadeSeconds で消える。0 で切る。
+    float cameraBoostShake = 0.015f;
+    float cameraBoostShakeFrequency = 26.0f;
+    float cameraBoostShakeFadeSeconds = 0.15f;
+    // 降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろしを普段の値へ戻すならし（秒）。
+    float cameraReleaseSeconds = 0.4f;
     // 仮の雲（流体の雲ができるまで）。シーンの物体（Procedural Mesh の球）を足元へ動かし、乗っていない間は地面の下へしまう。
     uint64_t cloudObjectId = 0;
     float cloudDiameter = 2.2f;
@@ -155,6 +204,13 @@ public:
     bool catching = false;
     // 地面すれすれの持ち上げの後、下へ向かわない残り (秒)。
     float groundSkimHoldLeft = 0.0f;
+    // カメラの演出（CloudMountCamera が描画フレームごとに進める）。いまの水平に追うならし（負は騎乗の始め）、
+    // ブーストの出だしからの秒（負は無し）、前のフレームのブースト、動きのぼかしの強さ（0〜1）、震え。
+    float cameraFollowNow = -1.0f;
+    float cameraKickAge = -1.0f;
+    bool cameraWasBoosting = false;
+    float cameraBlurWeight = 0.0f;
+    Feedback::CameraShake cameraShake{};
     // 召喚の始めと終わりの体の中心の高さ。
     float summonStartY = 0.0f;
     float summonTargetY = 0.0f;

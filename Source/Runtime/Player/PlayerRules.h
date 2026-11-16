@@ -89,7 +89,8 @@ public:
     // 騎乗中の 1 固定 tick：回避・回復の先行入力を捨てる（手柄の B・キーボードの Space は下降・上昇と回避で同じ。
     // 押した回避を降りた後へ持ち越さない）。
     static void StepRide(PlayerComponent& player);
-    // その描画フレームだけカメラの追い方・見上げの限度を差し替える。続ける間は毎フレーム要求する。
+    // その描画フレームだけカメラの追い方・見上げの限度・見せ方（距離・画角・傾きなど）を差し替える。続ける間は毎フレーム
+    // 要求する。止めると、見せ方と限度の外の見上げは要求の releaseSeconds で Player の値へ戻る。
     static void RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request);
     static HIKARI::GameProjectFloat3 GetCameraLook(const PlayerComponent& player);
     static float GetHealth(const PlayerComponent& player);
