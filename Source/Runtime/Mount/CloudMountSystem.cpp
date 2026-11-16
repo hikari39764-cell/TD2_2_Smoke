@@ -116,15 +116,40 @@ void Toggle(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCompo
     StartSummon(world, object, mount, tick);
 }
 
+// 落下を受け止める：乗っていない時、足場を離れて catchFallMeters 落ちたら自動で召喚する。プレイヤーが通常の状態で
+// なければ（吹っ飛びで縁から落ちた時の吹っ飛び・ダウン・起き上がりの間など）乗れないので、次の tick にまた試す。
+void TryCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
+              uint64_t tick) {
+    HIKARI::GameProjectTransform transform{};
+    object.GetWorldTransform(transform);
+    if (!CloudMountRules::ShouldCatch(mount, transform.position.y))
+        return;
+    HIKARI::GameProjectKinematicState state{};
+    const float fallSpeed =
+        world.GetMotion().GetKinematicState(object.GetHandle().value, state) ? std::max(0.0f, -state.velocity.y) : 0.0f;
+    // 空中の横の勢いは残して受け止める（乗る時に歩きの速度は消える）。
+    const Vec3 drift = player.moveVelocity;
+    if (!PlayerRules::BeginRide(player))
+        return;
+    const float fallen = mount.fallPeakY - transform.position.y;
+    CloudMountRules::BeginCatch(mount, transform.position.y, fallSpeed, drift);
+    char extra[128]{};
+    std::snprintf(extra, sizeof(extra), "fallen=%.3f fallSpeed=%.3f brake=%.3f", static_cast<double>(fallen),
+                  static_cast<double>(fallSpeed), static_cast<double>(mount.catchBrakeLeft));
+    Log(object, mount, "Catch", tick, extra);
+}
+
 // 乗る・降りるを決める。PlayerSystem の PreFixedUpdate（状態の F を進める・先行入力）の後、FixedUpdate の前。
 void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
                uint64_t tick) {
-    // 被弾・死亡で Ride でなくなった：雲は消え、いつもの被弾の動きは PlayerSystem が出す。
+    HIKARI::GameProjectTransform transform{};
+    object.GetWorldTransform(transform);
+    // 被弾・死亡で Ride でなくなった：雲は消え、いつもの被弾の動きは PlayerSystem が出す。この後の落下は受け止める。
     if (CloudMountRules::IsMounted(mount) && !PlayerRules::IsRiding(player)) {
         char extra[64]{};
         std::snprintf(extra, sizeof(extra), "playerState=%d", static_cast<int>(player.state));
         CloudMountRules::Enter(mount, CloudMountState::None);
-        mount.velocity = {};
+        CloudMountRules::OnDismounted(mount, transform.position.y, false);
         Log(object, mount, "Interrupted", tick, extra);
     }
     const CloudMountState next = CloudMountRules::TimedNext(mount);
@@ -133,7 +158,7 @@ void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCo
         if (next == CloudMountState::None) {
             // 降りた：この tick から PlayerSystem がいつもの重力で動かす。
             PlayerRules::EndRide(player);
-            mount.velocity = {};
+            CloudMountRules::OnDismounted(mount, transform.position.y, true);
             Log(object, mount, "End", tick);
         } else {
             Log(object, mount, "Ride", tick);
@@ -143,6 +168,7 @@ void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCo
         mount.mountPressed = false;
         Toggle(world, object, mount, player, tick);
     }
+    TryCatch(world, object, mount, player, tick);
 }
 
 void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HIKARI::GameProjectKinematicState& state,
@@ -151,12 +177,13 @@ void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HI
         return;
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
-    char message[384]{};
+    char message[512]{};
     std::snprintf(
         message, sizeof(message),
         "Trace tick=%llu state=%s frame=%d position=(%.4f,%.4f,%.4f) velocity=(%.4f,%.4f,%.4f) "
         "solverVelocityY=%.4f vertical=%.4f gravity=%.3f grounded=%d groundNormalY=%.3f hitWall=%d maxHits=%d "
-        "accepted=%d",
+        "accepted=%d speed=%.4f boost=%d kick=%.3f turn=%.4f dive=%.4f overspeed=%.4f achieved=%.4f exhausted=%d "
+        "skim=%d",
         static_cast<unsigned long long>(tick), CloudMountRules::StateName(mount.state), mount.stateFrame,
         static_cast<double>(transform.position.x), static_cast<double>(transform.position.y),
         static_cast<double>(transform.position.z), static_cast<double>(mount.velocity.x),
@@ -164,7 +191,12 @@ void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HI
         static_cast<double>(state.velocity.y), static_cast<double>(mount.submittedVertical),
         static_cast<double>(mount.submittedGravity), static_cast<int>(state.grounded),
         static_cast<double>(state.groundNormal.y), static_cast<int>(state.hitWall),
-        static_cast<int>(state.maximumHitsExceeded), static_cast<int>(mount.motionAccepted));
+        static_cast<int>(state.maximumHitsExceeded), static_cast<int>(mount.motionAccepted),
+        static_cast<double>(mount.flight.speed), static_cast<int>(mount.flight.boosting),
+        static_cast<double>(mount.flight.boostKick), static_cast<double>(mount.flight.turn),
+        static_cast<double>(mount.flight.dive), static_cast<double>(mount.flight.overspeed),
+        static_cast<double>(mount.achievedSpeed), static_cast<int>(mount.boostExhausted),
+        static_cast<int>(mount.flight.groundSkim));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
 }
 
@@ -177,28 +209,51 @@ void MeasureStandOffset(CloudMountComponent& mount, const HIKARI::GameProjectKin
         mount.standOffset = offset;
 }
 
+// ブーストの 1 固定 tick：精力の残りでブーストできるかを決め、ブースト中は精力を使う（PlayerRules を通す）。
+// 尽きた tick まではブーストし、入力を離すまでブーストしない（走りと同じ決まり）。
+void StepBoost(HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
+               const HIKARI::FrameContext& frame) {
+    const bool unlimited = mount.boostStaminaPerSecond <= 0.0f;
+    const bool changed = CloudMountRules::StepBoost(mount, unlimited || PlayerRules::GetStamina(player) > 0.0f);
+    if (mount.flight.boosting && !unlimited &&
+        !PlayerRules::DrainStamina(player, mount.boostStaminaPerSecond, frame.fixedDt))
+        CloudMountRules::ExhaustBoost(mount);
+    if (!changed)
+        return;
+    char extra[96]{};
+    std::snprintf(extra, sizeof(extra), "stamina=%.3f exhausted=%d",
+                  static_cast<double>(PlayerRules::GetStamina(player)), static_cast<int>(mount.boostExhausted));
+    Log(object, mount, mount.flight.boosting ? "BoostStart" : "BoostEnd", frame.fixedTickIndex, extra);
+}
+
 // 騎乗中の 1 固定 tick の運動。縦の速さは、跳躍の初速とこの tick の重力の差し替えで決める（ソルバーは提出した速度の
 // 縦を使わない）。
 void StepFlight(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount,
                 PlayerComponent& player, const HIKARI::FrameContext& frame) {
     HIKARI::GameProjectKinematicState state{};
     const bool hasState = world.GetMotion().GetKinematicState(object.GetHandle().value, state);
+    const float dt = frame.fixedDt;
+    HIKARI::GameProjectTransform transform{};
+    object.GetWorldTransform(transform);
+    CloudMountRules::RecordPosition(mount, transform.position, dt);
     if (!CloudMountRules::IsMounted(mount)) {
-        if (hasState)
+        if (hasState) {
             MeasureStandOffset(mount, state);
+            CloudMountRules::TrackFall(mount, state.grounded != 0u, transform.position.y);
+        }
         return;
     }
     if (!PlayerRules::IsRiding(player))
         return;
-    const float dt = frame.fixedDt;
-    CloudMountRules::StepVelocity(mount, CloudMountRules::WantedVelocity(mount, PlayerRules::GetCameraLook(player)),
-                                  dt);
+    StepBoost(object, mount, player, frame);
+    CloudMountRules::StepFlight(mount, PlayerRules::GetCameraLook(player), transform.position, dt);
     PlayerRules::FaceDirection(
         player, CloudMountRules::TurnFacing(PlayerRules::GetFacing(player), mount.velocity, mount.turnSpeed, dt));
-    const float vertical = CloudMountRules::VerticalSpeed(mount, dt);
     // 毎 tick 跳躍として出すので、ソルバーが重力を足す前の縦の速さは「初速＋（地面に着いていれば）地面の縦の速さ」。
     // 前の tick の速さには寄らない。
     const bool grounded = hasState && state.grounded != 0u;
+    const float vertical =
+        CloudMountRules::ApplyGroundSkim(mount, CloudMountRules::VerticalSpeed(mount, dt), grounded, dt);
     const float baseVertical = kRideJumpSpeed + (grounded ? state.groundVelocity.y : 0.0f);
     const float gravity = CloudMountRules::GravityForVerticalSpeed(vertical, baseVertical, dt);
 
@@ -242,6 +297,7 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
         mount.input.forward = std::isfinite(move.y) ? move.y : 0.0f;
         mount.input.ascend = ReadAction(input, "Gameplay.Jump").down != 0u;
         mount.input.descend = ReadAction(input, "Gameplay.Descend").down != 0u;
+        mount.input.boost = ReadAction(input, "Gameplay.Sprint").down != 0u;
         // 騎乗中のカメラ：上下の遊びを無くして素早く追い、見上げ・見下ろしを広げる。同じフレームの LateUpdate が使う。
         if (CloudMountRules::IsMounted(mount)) {
             PlayerCameraRequest request{};

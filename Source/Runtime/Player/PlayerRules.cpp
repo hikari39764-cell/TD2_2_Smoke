@@ -192,6 +192,12 @@ bool PlayerRules::TryConsumeStamina(PlayerComponent& player, float amount, bool 
     return true;
 }
 
+bool PlayerRules::DrainStamina(PlayerComponent& player, float perSecond, float dt) {
+    if (!std::isfinite(perSecond) || !std::isfinite(dt) || perSecond < 0.0f || dt < 0.0f)
+        return false;
+    return TryConsumeStamina(player, perSecond * dt, true) && player.stamina > 0.0f;
+}
+
 void PlayerRules::LockActions(PlayerComponent& player, int frames) {
     player.actionLockFrames = std::max(player.actionLockFrames, std::max(0, frames));
 }

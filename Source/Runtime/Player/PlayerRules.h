@@ -31,6 +31,9 @@ public:
     static void StepBurn(PlayerComponent& player, float dt, uint64_t tick);
     // allowInsufficient は残量が正なら不足分を認める。残量 0 では射撃できない。
     static bool TryConsumeStamina(PlayerComponent& player, float amount, bool allowInsufficient = false);
+    // 続けて使う精力（筋斗雲のブーストなど）：perSecond × dt を減らし、回復を止める（使うのをやめてから
+    // staminaDelayFrames 待って回復する）。残量が 0 なら何もしない。使った後も残っていれば true、尽きたら false。
+    static bool DrainStamina(PlayerComponent& player, float perSecond, float dt);
     static void LockActions(PlayerComponent& player, int frames);
     // 射撃の後隙を吸い込みで取り消すときなど、残っている動作ロックをその場で解く。
     static void ReleaseActionLock(PlayerComponent& player);

@@ -28,6 +28,62 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      45.0f);
         fields.Note("前を押した時の上り下りの角度＝カメラの見下ろし角度 − この値。始めのカメラ（16 度見下ろす）で"
                     "水平に飛ぶよう 16 にしています。");
+        fields.Float("maxFlightSpeed", "どの状態でも超えない速さ (m/s)", maxFlightSpeed, 1.0f, 100.0f);
+        fields.Note("雲の流体（⑤）は 1 フレームに 60 m/s を超える動きを瞬間移動と見なすので、60 未満にしてください。");
+        fields.Float("groundSkimSpeed", "地面に触れたまま速く進む時に上へ出す速さ (m/s、0 で切る)", groundSkimSpeed,
+                     0.0f, 20.0f);
+        fields.Float("groundSkimMinSpeed", "上へ出し始める水平の速さ (m/s)", groundSkimMinSpeed, 0.0f, 100.0f);
+        fields.Float("groundSkimHoldSeconds", "上へ出した後、下へ向かわない長さ (秒)", groundSkimHoldSeconds, 0.0f,
+                     2.0f);
+        fields.Note("地面に触れたまま速く進むと、平らに近い所でも止まってしまう（エンジンの件）ので、騎乗中に地面に"
+                    "触れたら下向きの速さを捨てて少し上へ出し、起伏を滑るように越えます。");
+    }
+    if (fields.Section("ブースト", true)) {
+        fields.Note("Gameplay.Sprint（Shift／L3）を押している間、前後左右の入力があればブーストします。押した瞬間に"
+                    "弾き出し、その後はブーストの速さで安定します。精力が尽きたら、入力を離すまでブーストしません。");
+        fields.Float("boostSpeed", "ブーストの速さ (m/s)", boostSpeed, 0.0f, 100.0f);
+        fields.Float("boostKickSpeed", "弾き出しの速さ (m/s。押した瞬間にここまで一気に上げる)", boostKickSpeed, 0.0f,
+                     100.0f);
+        fields.Float("boostKickSeconds", "弾き出しの長さ (秒、0 で一瞬)", boostKickSeconds, 0.0f, 2.0f);
+        fields.Float("boostStaminaPerSecond", "使う精力 (/秒、0 で使い放題)", boostStaminaPerSecond, 0.0f, 200.0f);
+    }
+    if (fields.Section("急降下", true)) {
+        fields.Note("前後左右の入力で下向きに進んでいる間、下向きの度合いに応じて速さが伸びます。引き起こした後は、"
+                    "巡航（ブースト中はブースト）より速い分がゆっくり戻るので、速いまま上へ抜けられます。"
+                    "Descend だけの下降は伸びません（降りる場所を選ぶ時の、決まった速さの下降）。");
+        fields.Float("diveAccel", "度合い 1 の時の伸び (m/s²)", diveAccel, 0.0f, 100.0f);
+        fields.Float("diveMaxSpeed", "急降下の最高速 (m/s)", diveMaxSpeed, 0.0f, 100.0f);
+        fields.Float("diveStartDegrees", "伸び始める下向きの角度 (度。これより浅い下りは伸びない)", diveStartDegrees,
+                     0.0f, 89.0f);
+        fields.Float("diveFullDegrees", "度合いが 1 になる下向きの角度 (度)", diveFullDegrees, 1.0f, 90.0f);
+        fields.Note("前で飛べる一番急な下りは、騎乗中のカメラの見下ろす限度 − levelPitch（既定 75 − 16 = 59 度）。"
+                    "Descend を足すともっと急になります。");
+        fields.Float("overspeedDecaySeconds", "速い分が戻るまで (秒、0 で一瞬)", overspeedDecaySeconds, 0.0f, 10.0f);
+    }
+    if (fields.Section("旋回", true)) {
+        fields.Note("進む向きを入力の向きへ、毎秒この角度まで回します。巡航の速さ以下は巡航の値、ブーストの速さ以上は"
+                    "ブーストの値、間は速さで補間します。旋回の半径＝速さ ÷ 回る速さ（巡航 16 m/s・180 度で約 5.1 m、"
+                    "ブースト 32 m/s・90 度で約 20.4 m）。止まり方は「飛行」の値のままです。");
+        fields.Float("turnRateCruise", "巡航の回る速さ (度/s)", turnRateCruise, 1.0f, 2000.0f);
+        fields.Float("turnRateBoost", "ブーストの回る速さ (度/s)", turnRateBoost, 1.0f, 2000.0f);
+    }
+    if (fields.Section("受け止め", true)) {
+        fields.Note("乗っていない時に足場を離れて落ちると、自動で筋斗雲を呼んで受け止めます（通常の状態の時）。"
+                    "落ちた高さは足場を離れてから一番高い所から数えます。");
+        fields.Bool("autoCatch", "落下を自動で受け止める", autoCatch);
+        fields.Float("catchFallMeters", "受け止めるまでに落ちる高さ (m)", catchFallMeters, 0.0f, 500.0f);
+        fields.Float("catchBrakeSeconds", "受け止めた後、落ちる勢いを止めるまで (秒、0 で一瞬)", catchBrakeSeconds,
+                     0.0f, 5.0f);
+        fields.Bool("catchAfterDismiss", "自分で降りた後の落下も受け止める", catchAfterDismiss);
+    }
+    if (fields.Section("範囲", true)) {
+        fields.Note("騎乗中に飛べる範囲です。境界の手前から外向きの速さを弱め、境界の上で 0 にします。"
+                    "境界に沿う向きの速さはそのまま残ります。高さは世界の Y（NimbusSky の島の床は 3400）。"
+                    "下の限度は雲海の上端より上に置いてください。");
+        fields.Float("boundsRadius", "場の原点からの水平の半径 (m)", boundsRadius, 1.0f, 100000.0f);
+        fields.Float("boundsMinY", "下の限度 (世界の Y)", boundsMinY, -100000.0f, 100000.0f);
+        fields.Float("boundsMaxY", "上の限度 (世界の Y)", boundsMaxY, -100000.0f, 100000.0f);
+        fields.Float("boundsSoftMeters", "外向きの速さを弱め始める距離 (m)", boundsSoftMeters, 1.0f, 1000.0f);
     }
     if (fields.Section("騎乗中のカメラ")) {
         fields.Note("騎乗中だけ、Player の「カメラ」の上下の追い方と見上げの限度をこの値に差し替えます。"
