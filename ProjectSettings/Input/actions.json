@@ -122,6 +122,18 @@
     },
     {
       "clamp": true,
+      "displayName": "Mount Nimbus",
+      "id": "Gameplay.Mount",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
+      "displayName": "Descend",
+      "id": "Gameplay.Descend",
+      "valueType": "Button"
+    },
+    {
+      "clamp": true,
       "displayName": "Camera Move",
       "id": "Editor.CameraMove",
       "valueType": "Axis2D"

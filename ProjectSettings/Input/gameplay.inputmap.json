@@ -248,6 +248,34 @@
       "control": "X",
       "scale": 1.0,
       "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.Mount",
+      "component": 0,
+      "control": "F",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Mount",
+      "component": 0,
+      "control": "LeftShoulder",
+      "scale": 1.0,
+      "source": "GamepadButton"
+    },
+    {
+      "action": "Gameplay.Descend",
+      "component": 0,
+      "control": "LeftCtrl",
+      "scale": 1.0,
+      "source": "Keyboard"
+    },
+    {
+      "action": "Gameplay.Descend",
+      "component": 0,
+      "control": "B",
+      "scale": 1.0,
+      "source": "GamepadButton"
     }
   ],
   "consumeInput": false,
