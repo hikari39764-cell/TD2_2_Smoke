@@ -20,6 +20,8 @@ void BossSwingShape::Describe(HIKARI::PropertyFields& fields, std::string_view k
     fields.Float(k + "TwistToDegrees", l + "：振り終わりの胴の捻り（度）", twistToDegrees, -90.0f, 90.0f);
     fields.Float(k + "Crouch", l + "：腰を落とす量 (m。見た目だけ)", crouch, 0.0f, 1.0f);
     fields.Float(k + "Lean", l + "：前へ傾ける角度 (度。見た目だけ)", lean, -30.0f, 30.0f);
+    fields.Float(k + "CrouchTo", l + "：振り終わりの腰の落とし (m。構えから寄せる。見た目だけ)", crouchTo, 0.0f, 1.0f);
+    fields.Float(k + "LeanTo", l + "：振り終わりの前傾 (度。構えから寄せる。見た目だけ)", leanTo, -30.0f, 30.0f);
     fields.Float(k + "RaiseVia", l + "：振り上げの道（型の振りのこの進みを通って構えへ。0 は直に）", raiseVia, 0.0f,
                  1.0f);
 }

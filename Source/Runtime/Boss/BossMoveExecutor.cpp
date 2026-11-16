@@ -15,6 +15,9 @@
 namespace Project_TD2_2 {
 namespace {
 
+// 剣の当たりを、前の tick の剣からいまの剣までの間で何か所に分けて確かめるか（速い振りが体を飛び越えないように）。
+constexpr int kSwordSweepSteps = 4;
+
 using namespace BossMath;
 
 // 体の動きをなめらかにする追従の割合（1 tick あたり）。試作の値。
@@ -310,9 +313,13 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     // tick の途中の向き：攻撃中の最後の tick は、この後で後隙・次の技へ状態が変わる。tick の終わりに求める swordPose は
     // 変わった後の向きなので、当たりには使えない。
     const BossSwordPoints sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
-    if (swing.samples == 0)
+    const bool first = swing.samples == 0;
+    const Vec3 previousBase = first ? sword.base : swing.lastBase;
+    const Vec3 previousOuter = first ? sword.outer : swing.lastOuter;
+    if (first)
         swing.firstOuter = sword.outer;
     swing.lastOuter = sword.outer;
+    swing.lastBase = sword.base;
     swing.heightSum += sword.outer.y - boss.ground.y;
     ++swing.samples;
     // 剣が描く霞（場の霧へ入れる。描画フレームで注入する）。
@@ -320,8 +327,15 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     boss.swordInner = sword.inner;
     boss.swordOuter = sword.outer;
     boss.swordSmokeRate = boss.swingSmoke / static_cast<float>(std::max(1, g.swingLength)) / frame.dt;
-    // 振っている剣そのものの当たり：剣が描いている霞の弧と同じ一撃（当たる・抜けるは 1 回だけ）。
-    if (!swing.done && BossWaves::Touches(frame, sword.base, sword.outer, boss.thickness)) {
+    // 振っている剣そのものの当たり：剣が描いている霞の弧と同じ一撃（当たる・抜けるは 1 回だけ）。速い振りは 1 tick に
+    // 40 度ほど回り、プレイヤーの体を tick の間で飛び越えるので、前の tick の剣からいまの剣までを分けて確かめる。
+    bool touched = false;
+    for (int k = 1; k <= kSwordSweepSteps && !swing.done && !touched; ++k) {
+        const float u = static_cast<float>(k) / static_cast<float>(kSwordSweepSteps);
+        touched = BossWaves::Touches(frame, Lerp(previousBase, sword.base, u), Lerp(previousOuter, sword.outer, u),
+                                     boss.thickness);
+    }
+    if (!swing.done && touched) {
         const BossStrikeData& strike = BossMoveTable::Strike(move, g.hitIndex);
         BossWaves::HitPlayer(frame, strike.damage, Sub(PlayerGround(frame), boss.ground), strike.blow, boss.move,
                              g.hitIndex, "sword", PlayerDamageType::Slash, boss.bladeLit);

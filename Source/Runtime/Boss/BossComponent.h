@@ -148,6 +148,8 @@ struct BossSwing {
     float heightSum = 0.0f;
     HIKARI::GameProjectFloat3 firstOuter{};
     HIKARI::GameProjectFloat3 lastOuter{};
+    // 前の tick の剣の根元（剣の当たりを、前の tick から今の tick までの間でも確かめる）。
+    HIKARI::GameProjectFloat3 lastBase{};
 };
 
 // 引爆の 1 回ぶん。攻撃中に入った tick に始め、前線が火を通り過ぎたら（または打ち切られたら）終える。
@@ -477,7 +479,7 @@ public:
     int swingInFrames = 6;
     // 振りの速さがいちばん速くなる所（当たりの窓の進み 0〜1）。ゆっくり動き始めて加速し、ここで最も速く、振り終わりへ
     // 減速して止まる（窓の途中で速さが落ちる・最速のまま止まることがない）。大きいほど溜めて遅く当たる。
-    float swingPeakShare = 0.7f;
+    float swingPeakShare = 0.6f;
     // 技・気絶の終わりの構えを保ったまま待機へ入った時に下ろした構えへ戻る F と、技を打ち切られて気絶に入る時に
     // 崩れた構えへ移る F（0 は最初の tick で切り替える）。
     // 既定の 11 は、待機へ戻る時に規則の剣が 1 tick に 15 度以上動かない長さ（気絶に入る時は、振り上げた構えからだと

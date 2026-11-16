@@ -93,8 +93,10 @@ BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees,
     // 斬る向き：構えから振り終わりへ回る向き。
     const Vec3 sweep = Mul(Cross(axis, pose.direction), sense);
     pose.edge = Normalize(ProjectOut(sweep, pose.direction), {0.0f, -1.0f, 0.0f});
-    pose.crouch = shape.crouch;
-    pose.lean = shape.lean;
+    // 振り込むほど沈み、前へ傾く（構えの値から振り終わりの値へ、振りの進みで寄せる）。
+    const float weight = Smooth(share);
+    pose.crouch = Lerp(shape.crouch, shape.crouchTo, weight);
+    pose.lean = Lerp(shape.lean, shape.leanTo, weight);
     pose.twist = (mirror ? -1.0f : 1.0f) * Lerp(shape.twistFromDegrees, shape.twistToDegrees, share);
     pose.twoHand = 1.0f;
     return pose;
