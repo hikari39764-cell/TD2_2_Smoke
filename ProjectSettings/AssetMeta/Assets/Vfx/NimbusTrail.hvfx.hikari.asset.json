@@ -1,0 +1,14 @@
+{
+  "displayName": "NimbusTrail",
+  "guid": "3e8b1c94d27f4a05b6c0e9a7f15d2b48",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/NimbusTrail.hvfx",
+  "type": "VfxEffect"
+}

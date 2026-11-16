@@ -1,0 +1,4023 @@
+{
+  "durationSeconds": 0.5,
+  "loop": false,
+  "version": 15,
+  "name": "Nimbus Boost",
+  "emitters": [
+    {
+      "activeDuration": 0.45,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.28ac9a9682a6ff96e11feff328309326",
+      "inputLinks": [
+        {
+          "bias": 0.0,
+          "id": "emitter.28ac9a9682a6ff96e11feff328309326.link.input.ring.valueMultiplier",
+          "inputId": "input.ring",
+          "scale": 1.0,
+          "target": {
+            "emitterId": "emitter.28ac9a9682a6ff96e11feff328309326",
+            "moduleId": "module.f7c3f7517aa74fbbdf0ebd721019ea6d",
+            "propertyId": "valueMultiplier"
+          }
+        }
+      ],
+      "kind": "Shape",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.0af41efe2db1b41be060a83006167645",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.225e90b17741769884bea23a0cc08ccf",
+          "lifetime": {
+            "maximum": 0.45,
+            "minimum": 0.45,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.f7c3f7517aa74fbbdf0ebd721019ea6d",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.f81c0c4c3b09b84a721b06ad881ecc2f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.88e8c6650f6ccf803de8ba1e4408e834",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.11999999731779099,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.b7606d6715b6d2ff1f35d6f0c952f51c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8199999928474426,
+                    "value": 0.800000011920929
+                  },
+                  {
+                    "id": "emitter.8b6349d1706353fb73028f9cd7a9f980",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.2ab8c37a43002712419460524ba15a2b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "emitter.324bd9d147f9a64e63fb013e437ea892",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.d2893fd0cd26183ec0133795f0251218",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 4.199999809265137
+                  },
+                  {
+                    "id": "emitter.6655ed3fc74a534240804166c698da75",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 4.199999809265137
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.8fc9de741022b35bdcf6645c879a1a13",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 2.5
+                  },
+                  {
+                    "id": "emitter.d700976ecee3bfffe6eeb1690fbb0f84",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 2.5
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    0.28,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "id": "emitter.BoostRing.c0",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    0.28,
+                    0.0,
+                    0.0,
+                    1.0
+                  ],
+                  "id": "emitter.BoostRing.c1",
+                  "time": 0.1
+                },
+                {
+                  "color": [
+                    0.28,
+                    0.0,
+                    0.0,
+                    0.6
+                  ],
+                  "id": "emitter.BoostRing.c2",
+                  "time": 0.5
+                },
+                {
+                  "color": [
+                    0.28,
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "id": "emitter.BoostRing.c3",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Gradient"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.a4b71c89f211c50d5c991eeae0dbb603",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.30000001192092896,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.e8e78c1adf3ba578c3cd0ff28e7eae1b",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.20aef5d87d4846f95fa7d74f2575f680",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Distortion",
+          "colorTextureAssetGuid": "engine.vfx.texture.glow_halo",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.8a19dbbbd75e8b188966e4b7d14411a9",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.3
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "RotatedBillboard",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.370771ab80bc7552dd692b84b26ec42c",
+          "ribbonSegmentCount": 48,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 64,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.fe879f45c7803b2953587ceec47900e4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.23cc5ac489e26bcf0fe07037f6525824",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ec8648946b0aa1ec6d46580f83b83eda",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a32d1b28e27135c7a3c40454f28b3d0e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.71a3c179001cc9e875df2b4283bf369b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c49a683f240b4b801a17c76f11242c52",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5a656b06ff9f546926660016b035d078",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ee3486cc7543f76f96a6454927e19037",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cd3872b02a7805fdfdd426303dc91eb1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.03bda954ce7e70e455ac47ae22bc57cc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.803aedcb9ba0534a001a6517eed6881e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2413354aa33f1056f8725da3df15b9c2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.244cb3edb59b0aed93420e25e44aec56",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ec4083682bdf2b69940619593c1bf3a0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.46dd2bed4e1f3262efbc6f3a4727c65a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.71830f9df5f25770b1bd5622e3e0a39c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7af038823c8e07bf4d46befd84ea1c07",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e5b2669d7d17b37539082cbeda65d6a2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7439a13d7b0e6aded9059d0a737b22df",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3ac0b1673d4c03bb6a64c7289819dd3b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4a65789d6a075813bcfae649a76b445a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.256576db72059f63dbe0e4f1d0afcc0b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.dc277f667a115eda766ba3f11587da8e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6984ab94b75560767caa84db95cc23e3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ce8100adec3175e1101e25916ab208e2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ea5824cf0ac539a3595d63bf9cb07231",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8e27e9e2f4db5c56192103d9ac2048d3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5b7b6b645896c252911277ac1ca423a6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c7876ffb7c1ef16180c591c0c35c677d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b6214131a8c64260fccfbcb42c85640a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9a87cb2e75ccd1f0a4a1b97b3de77ebe",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3eedfd7d96b9a99083c5e8e05da6202a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8730c13f14f29bbeaed20083775cb615",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3bae203106359683fec64d80fa2f96b1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7c7dce0ed8c7f99cddf6ed7eeb47c623",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f516781499c76cf646f3c2e3158656d6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e847c42956043b43d117c16922a939c5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.159e723c21aded5c19200dd61faa29ff",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a924fa38dea5ab17f9918827dee27d11",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b473213c04b78e40fa14ec853755b346",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cba8a8879b954fbece6d26d6700359e8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.f340ae0bcb67348e97bf64bfb1edbab7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.93350bcb773b52834291ca6d055152de",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.35a0405bc82256ddfab1145bdffdade8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e5892555711105ae08dd24bc4c8c1f47",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7ffd0cb635414ee8e2760ae3ec42c108",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.db5d1f82c1dd2aed0706228880247216",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d7e013b01481a38e1de2345d55d84a0a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.24b70c8cf12e5715c8d7a58c318ee4f3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.c27a207113de5172a202cf42d24f93b3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.93e38a7b62acefb13aa3aafad3185883",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d8c91f1212580870981759505275f3fd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.612ee1772ec04232739697f41b1a851b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.35ce6fc69756a97a2efd64b778e0f505",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a122ddb200d9f8ba9764cbcc14f102f0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ea8b7fade1d745a9ec1987cdcd5cc1ac",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1d27ba99a56c191bc3ba2d4be6c7a9bf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4c8a635daeebd656593a544faeda9e20",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.23d72e0f310fbd7d558d5f0ff0d5867c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.352feddb244539b863522e775db703ba",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.55022c95da0678bd231520926abccbee",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fa82c0cd9fa7ed106bae60293c54cc7b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8944f796514ce1db293c549fc52ddfa1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e45b0fd89cd919fb3cc31770332622d8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ee4c8f3a39880930aaeb7676c67a167f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.bbc656868f6e9a6ad9b1a3f9e582349f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3a6c99924f879c9f61c8efc47b1b5a8f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5605d34a97440a740ad877f96e233d74",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.52dde7b1ac8f66ec4da66738bd2c98a4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b06c6f3ae61d32d856463113eacc906a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.53adae4f2f5421a0eedc5d07e7b019d1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.97e3964524d5910f55aabb3955104a7a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.917c3495087888294bff9c1e0653aeed",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9226d9b59503387a9157da4af3f5e7b4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8b4878f6c7297647ed97c6f3a436f4e3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cce7cb1ef9bc655339a7d5dd08f6e7b9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.795c28ad72c02bcf105571ab6ec07a48",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b315ac2e7fa80b8111e16f7eaa5beb76",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.86a27be3e1c60a6a57fa45d3661e38a4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.dbd6a63b252f188b926843ffc96d6075",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0a195da6217110cda61530178d3082ad",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8450107075c2cf49bf3bf50c09050171",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1ba89d33d0faa61ad4003752bc5f4181",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.81e7061ba83be2e736a90ce60ae0d7a5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.49d955367bc9db5fc354d6e52606c985",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b001cf3c8395c35452e2729d26dffa5f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.12df4bff72171dc13f9c27620e6a9ea7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.21fae880b21e058dfeaf850df621a37d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.aba45af7eab71890c29e75c07decde92",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.cd014d1d3448e11272ea73547c59215f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3dcfd44812b284af671a7b76f243f798",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7be62a2879bc7b4784bc0f5862970659",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e01209a9ffddc6cba95b50c2da582dcb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2f87d01cf9854d6afd22b42bef77aa03",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a50f6a575f6a2c450d789fd867ef7d2f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1f70468f5c1ba16ddc5eb9e85a703d5d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9d758482504642c8a082b5eebfd2a738",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2c548844e94a373bab5f43067ab2076f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.b9ae1f6cdfc0f4efcc62ae384b2a12b8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": -155.0
+                  },
+                  {
+                    "id": "emitter.50116ec82b910d5809545736300dc0ce",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": -153.00108337402344
+                  },
+                  {
+                    "id": "emitter.6a80dd623a00d0f77bf7b8a417ab10b5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": -148.05087280273438
+                  },
+                  {
+                    "id": "emitter.ea8150880dc7af1bcbd7f1b0736dd686",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": -141.71920776367188
+                  },
+                  {
+                    "id": "emitter.a90f22e3a3e69458780eaef8e79affcd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": -135.57591247558594
+                  },
+                  {
+                    "id": "emitter.4322396566c639f94e74864b161d9c6a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": -131.1908416748047
+                  },
+                  {
+                    "id": "emitter.25e1e4d42cb32bd001acab139dd7aa5a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": -129.89129638671875
+                  },
+                  {
+                    "id": "emitter.810d8b580f9c0e430aea44caf96ac2f5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": -127.24390411376953
+                  },
+                  {
+                    "id": "emitter.134900e36aa5690c7fe111b52dbbd860",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": -121.48147583007812
+                  },
+                  {
+                    "id": "emitter.5e1633f1d9feb9aaf7c2441087ca2672",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": -113.17247009277344
+                  },
+                  {
+                    "id": "emitter.a9ec3a2711b5bb8da56b242c7edbac77",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": -102.88529968261719
+                  },
+                  {
+                    "id": "emitter.e3f8f7410367fc438c94f1c3f62b59f2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": -91.18840026855469
+                  },
+                  {
+                    "id": "emitter.a4ddf7d79baa79ce371d9e8e62f37928",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": -78.65023803710938
+                  },
+                  {
+                    "id": "emitter.f831099be0b469b3392d97ad4ee8f2e3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": -65.8392105102539
+                  },
+                  {
+                    "id": "emitter.17c78ebb47e7bd8c4588ee1aa34d7b7f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": -53.32379150390625
+                  },
+                  {
+                    "id": "emitter.856dc18938a6d753bc71d4853e087a5c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": -41.67236328125
+                  },
+                  {
+                    "id": "emitter.7a3ca5627cd09aeed5a0d692ae7eef91",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": -31.453407287597656
+                  },
+                  {
+                    "id": "emitter.2d1e670d8a0af844796af23d71d67c5d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": -23.2353515625
+                  },
+                  {
+                    "id": "emitter.a8ec2521c1d78d50652577a2244fa093",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": -17.58661651611328
+                  },
+                  {
+                    "id": "emitter.7ecac5d37dd4821f216ffe86f569e13e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": -15.075645446777344
+                  },
+                  {
+                    "id": "emitter.2f1962d48064d20c1640407147f3a544",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": -14.071123123168945
+                  },
+                  {
+                    "id": "emitter.dd3168fe5cb43cad44331ab8ff98b9df",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": -10.540449142456055
+                  },
+                  {
+                    "id": "emitter.1f359d945fb7c7c4a4a096fc9cc781b3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": -4.796730041503906
+                  },
+                  {
+                    "id": "emitter.962a28a2560b5654f7b2877d9fd32413",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 2.7102184295654297
+                  },
+                  {
+                    "id": "emitter.5b2c6f557ab69e27ee472e398624283a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 11.530607223510742
+                  },
+                  {
+                    "id": "emitter.a29a57c2ab0eb32cfda5b64ee2de2054",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 21.214614868164062
+                  },
+                  {
+                    "id": "emitter.c625bf82f7e8821a9eb5e2276c054912",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 31.312469482421875
+                  },
+                  {
+                    "id": "emitter.ab69faaa22d801c298d3dd785917ecdf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 41.37430953979492
+                  },
+                  {
+                    "id": "emitter.0e8beacedfc702aca3761242356b3be5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 50.95036315917969
+                  },
+                  {
+                    "id": "emitter.52b53e32f0e46b1ce89004ca8cecb264",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 59.590843200683594
+                  },
+                  {
+                    "id": "emitter.28d0c47aaa875a13bb2842b7e5a86300",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 66.84590148925781
+                  },
+                  {
+                    "id": "emitter.ae4c540de9716f78af8593e720ce098b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 72.26575469970703
+                  },
+                  {
+                    "id": "emitter.aba60bd556677ec2d5f7bf04ae1576bb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 75.4006118774414
+                  },
+                  {
+                    "id": "emitter.e756ad7b52f7857573cfb1d77a487bf8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 76.0438003540039
+                  },
+                  {
+                    "id": "emitter.8c0efa36063884c3dd2792bbd194b585",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 76.59752655029297
+                  },
+                  {
+                    "id": "emitter.be54b9bd01eaac6f0cca403cd566b42a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 77.71630859375
+                  },
+                  {
+                    "id": "emitter.a9f56bd472186e60b58941cb29f29fc5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 79.31072998046875
+                  },
+                  {
+                    "id": "emitter.7f9ab514be327f9ed29ef71c083afbbb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 81.29138946533203
+                  },
+                  {
+                    "id": "emitter.443194751d8f501e88d3470377d6ff69",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 83.56888580322266
+                  },
+                  {
+                    "id": "emitter.89c254d3a7a806bc1ecc7cf06ae82e5a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 86.05380249023438
+                  },
+                  {
+                    "id": "emitter.e40d4a63498b78090b7b7ec966f46ae7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 88.65673828125
+                  },
+                  {
+                    "id": "emitter.a58b28b2044d064e89cd91aff6ffb071",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 91.28828430175781
+                  },
+                  {
+                    "id": "emitter.0223a615f4b998436f74e108d29444e4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 93.8590316772461
+                  },
+                  {
+                    "id": "emitter.30dea50b83596f00785f005255f4b9a9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 96.27957153320312
+                  },
+                  {
+                    "id": "emitter.10a50394f2fd8ceb17c5eddda7db810a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 98.46051025390625
+                  },
+                  {
+                    "id": "emitter.99502137a1bf0f03b9b219f5521f4ee0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 100.31242370605469
+                  },
+                  {
+                    "id": "emitter.22d384050b30410187fb9582fb736c94",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 101.74591827392578
+                  },
+                  {
+                    "id": "emitter.81f1c1316f457b5338a30950fa57774f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 102.67157745361328
+                  },
+                  {
+                    "id": "emitter.c3c4f8d1fa0b92f28e999b627ad340f8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 103.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.df73548e1de2df38c69c4e1de3c444bb"
+        },
+        "scale": {
+          "id": "module.5b0c8b0e825f0772954b719b1f68175a",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRing.x.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.5
+                  },
+                  {
+                    "id": "key.BoostRing.x.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "key.BoostRing.x.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 7.0
+                  }
+                ]
+              },
+              "y": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRing.y.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.5
+                  },
+                  {
+                    "id": "key.BoostRing.y.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "key.BoostRing.y.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 7.0
+                  }
+                ]
+              },
+              "z": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRing.z.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.5
+                  },
+                  {
+                    "id": "key.BoostRing.z.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "key.BoostRing.z.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 7.0
+                  }
+                ]
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Curve",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.6ddc298b97d40f1b46cf39aeb54ba11f",
+          "radius": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Point"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.e14522573d2fbc17cb916861990e0ac4",
+          "maximumParticles": 1,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Boost Ring",
+      "order": 0,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    },
+    {
+      "activeDuration": 0.35,
+      "anchor": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "animationTiming": {
+        "offset": 0.0,
+        "rate": 1.0,
+        "sourceDuration": 0.0
+      },
+      "connectTarget": {
+        "endOffset": 0.0,
+        "lengthScale": 1.0,
+        "localPosition": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "mode": "None",
+        "orient": true,
+        "pivot": 0.5,
+        "startOffset": 0.0,
+        "stretch": true,
+        "targetLayerId": ""
+      },
+      "effects": [],
+      "history": {
+        "breakDistance": 2.5,
+        "duration": 0.20000000298023224,
+        "fadePower": 1.0,
+        "mode": "None",
+        "samples": 12,
+        "tailColor": [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "tailWidth": 1.0
+      },
+      "id": "emitter.a2828442b3cb63daa4885e427911a642",
+      "inputLinks": [
+        {
+          "bias": 0.0,
+          "id": "emitter.a2828442b3cb63daa4885e427911a642.link.input.ring.valueMultiplier",
+          "inputId": "input.ring",
+          "scale": 1.0,
+          "target": {
+            "emitterId": "emitter.a2828442b3cb63daa4885e427911a642",
+            "moduleId": "module.e7076cd17cd958ce86d91e9f6b2109f6",
+            "propertyId": "valueMultiplier"
+          }
+        }
+      ],
+      "kind": "Shape",
+      "matte": {
+        "inverted": false,
+        "luminance": false,
+        "sourceLayerId": "",
+        "sourceOnly": false
+      },
+      "meshOutput": {
+        "castShadows": false,
+        "enabled": false,
+        "meshAssetGuid": "",
+        "receiveShadow": false
+      },
+      "modules": {
+        "attachment": {
+          "follow": "None",
+          "id": "module.6bb36a837dd82c0ea6d2f24541955491",
+          "mode": "World",
+          "offset": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          },
+          "socketName": ""
+        },
+        "basic": {
+          "enabled": true,
+          "id": "module.e302d9b39338acbc53b615b8b51562a1",
+          "lifetime": {
+            "maximum": 0.35,
+            "minimum": 0.35,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "localSimulation": false
+        },
+        "color": {
+          "id": "module.e7076cd17cd958ce86d91e9f6b2109f6",
+          "value": {
+            "curve": {
+              "a": {
+                "interpolation": "Smooth",
+                "keys": [
+                  {
+                    "id": "emitter.7499c130559cb5da931eda640d772059",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.87994ca47e9d6c44488ba33b09c6b8be",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.11999999731779099,
+                    "value": 1.0
+                  },
+                  {
+                    "id": "emitter.5afacc90ed9563d85aef6301d6134c11",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8199999928474426,
+                    "value": 0.800000011920929
+                  },
+                  {
+                    "id": "emitter.8fcdb7c600de6f45be352a376f5400f9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "b": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.de2a99e62443d9333c6dc9ed128e9507",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 5.0
+                  },
+                  {
+                    "id": "emitter.3b79f44de46189056be73a85c77b966e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "g": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.c6f31509bb8a4ac2f5b942f3c5917b77",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 4.199999809265137
+                  },
+                  {
+                    "id": "emitter.e7fee2e86fa43207a55deb890ce1067d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 4.199999809265137
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "r": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.2b8899383b7284c09316c6221d8f66c0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 2.5
+                  },
+                  {
+                    "id": "emitter.8b4ba221249463425362ad308951412c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 2.5
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "gradient": {
+              "stops": [
+                {
+                  "color": [
+                    1.0,
+                    0.97,
+                    0.9,
+                    0.0
+                  ],
+                  "id": "emitter.BoostRingWhite.c0",
+                  "time": 0.0
+                },
+                {
+                  "color": [
+                    1.0,
+                    0.97,
+                    0.9,
+                    0.22
+                  ],
+                  "id": "emitter.BoostRingWhite.c1",
+                  "time": 0.12
+                },
+                {
+                  "color": [
+                    1.0,
+                    0.9,
+                    0.7,
+                    0.0
+                  ],
+                  "id": "emitter.BoostRingWhite.c2",
+                  "time": 1.0
+                }
+              ]
+            },
+            "mode": "Gradient"
+          }
+        },
+        "emitterTransform": {
+          "id": "module.8309788cc03227561adaaa668735452e",
+          "transform": {
+            "position": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "rotationEulerDegrees": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ]
+          }
+        },
+        "forces": {
+          "collisionPlaneEnabled": false,
+          "collisionPlaneHeight": 0.0,
+          "drag": 0.0,
+          "field": {
+            "attraction": 0.0,
+            "axis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "evolution": 0.30000001192092896,
+            "frequency": 1.0,
+            "radius": 0.0,
+            "turbulence": 0.0,
+            "vortex": 0.0
+          },
+          "friction": 0.20000000298023224,
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "id": "module.350ef61d537a569ec0a9a338a1f18747",
+          "restitution": 0.3499999940395355
+        },
+        "position": {
+          "id": "module.68a5a149c33ebc4814e23001616ba3b8",
+          "orientAlongPath": false,
+          "radialSpeed": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "renderCommon": {
+          "blendMode": "Additive",
+          "colorTextureAssetGuid": "engine.vfx.texture.glow_halo",
+          "depthBias": 0.0003499999875202775,
+          "depthMode": "WorldOccluded",
+          "detailNoiseTextureAssetGuid": "",
+          "flipbookColumns": 1,
+          "flipbookFrameCount": 1,
+          "flipbookFramesPerSecond": 0.0,
+          "flipbookLoop": true,
+          "flipbookRandomStart": false,
+          "flipbookRows": 1,
+          "flowMapTextureAssetGuid": "",
+          "id": "module.3398b860623ed99508895d6e15832d47",
+          "maskTextureAssetGuid": "",
+          "materialAssetGuid": "",
+          "materialMode": "StandardUnlit",
+          "noiseTextureAssetGuid": "",
+          "postProcessMode": "Scene",
+          "softIntersectionDistance": 0.3
+        },
+        "renderShape": {
+          "bendAmount": 0.0,
+          "billboardAxis": "LocalX",
+          "billboardMode": "RotatedBillboard",
+          "capsuleRadius": 0.3499999940395355,
+          "coneBaseRadius": 0.5,
+          "cylinderBottomRadius": 0.5,
+          "cylinderTopRadius": 0.5,
+          "id": "module.15f830a1277b5e3a04ed592a9d9fdc06",
+          "ribbonSegmentCount": 48,
+          "ribbonWidth": 0.10000000149011612,
+          "ringEndAngleDegrees": 360.0,
+          "ringInnerRadius": 0.5,
+          "ringOuterRadius": 1.0,
+          "ringSegmentCount": 64,
+          "ringStartAngleDegrees": 0.0,
+          "taperEnd": 1.0,
+          "taperStart": 1.0,
+          "torusMajorRadius": 0.4000000059604645,
+          "torusMinorRadius": 0.11999999731779099,
+          "twistDegrees": 0.0,
+          "type": "Sprite",
+          "uvMode": "Parameter",
+          "uvRotationDegrees": 0.0,
+          "uvSwapAxes": false,
+          "uvTileLength": 1.0,
+          "uvTilingU": 1.0,
+          "uvTilingV": 1.0
+        },
+        "rotation": {
+          "eulerDegrees": {
+            "curve": {
+              "x": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.a8466aeb5c12c7915468359efb1fd5d2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fa3e54d97262b66da9ebe6014759e4ed",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b76c8956dfa50cdb567dec4313c41585",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.74f1b5697acaf6ef380c85b238e668ef",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.402aa694e285704adfd7f359d0d858a8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6362019cd9d9c5d2c53d8c574dcb4068",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.db8f654b681cfcd6da13eda5884f7306",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c119ec92da1054dcca79d688540f793c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9e2ee4a998ed9e8693e3b5476b4d55ad",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e413954804bc791217b7f93183b6ba22",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9ebc42d12bd614acac05bc778aa0caca",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.773c6905570df3f6c06d9d89bbcd93bc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.025f1911d64d61c38d940d5b9fe8f59a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ee94ebaa0689e422cb4078b5237bc64e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.dd13738a237e8bd6fb61415a27f74dcd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1aa14e70778b28cccf2207a323111877",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c4493d766813460cecfd0fe06240893d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c0700e48d2f25537e35271686658fe58",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.46bd88baf685f168955c465fa8434361",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3afb9c659ca2fbf0e1f366deef60c107",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c79f7fe4da94098109cfd259f0efccbe",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9a0e50b0760ec358cee8d8de0cd89f86",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a915f742a46f31a8d58dfbd32a9a9e8d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7810c18d4ea0f4388b739972494289de",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d32328dff60989208bed4ab03cbdf435",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.31a8ed9faeea07e1af82e4bb3de0a8d9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8aaff966e08aa2a440ebe78582ab6635",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c4dc61b9fbaf7486cde03fc64e09b160",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.97110bd08e4907b1fa22bf835a6fd4bc",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d4cd22db41b417af55ffa2c8774decbf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a324941b640334271df1c4e59d97dc92",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.654d3dde1c0cd53aad771694a57268ac",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ab4f3f323420f56680b992d08791db42",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5d7590c5780b35be3107e923a3cbc47f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.eec87a88c47567a7aa7ff9e9482326a3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8d85451705e95a29ef688501c00a32ec",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.e961069edd6decfbf61c488371b6bc30",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.781a8e5c6c2faa3fa9aae5cb05b1fa99",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.154f8e2b10095dd780ba1b10baf73232",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0a0bff1dc6b87ba60f22bb1106c9cc73",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9f505f83509038c1de765533d1ca5722",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ff3df8a49f6a948296a2de84b80eacda",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.01c6031d7dcc078e96f4cc3cd607d616",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.15673539a209ce1b5ae232095b744aa1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.a725b948b55d35a48755df069ae23f5f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c638a3214d3f85ca72cc683a690d160f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.eef7f8ff2cbe80d304df2bfe901887b4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.40a25ecdaef6778e8edcaba01bb59817",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9bdd7e8b16f75505ac91eaffa335f93c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "y": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.b0845f378f4c7579b5de3056f22fd7b9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9ecf707ec8cb5cbe06200deb2e5453f2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7f851431a09b128dbaf6cc2f381fa99c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6192882bb5f3656eab7401621e0ecf1b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.5e0523a89988589f6879b194477cbe47",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ada698bd9fcfaf3042afcebdab6f5c2d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9d3d803b280d545a42bb0449410bf405",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.2268cc81f86721a0d4ed500db3fa0c15",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.91defdb31ffb7df53b3839915d7f9e85",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.34c93aa73d65a8e973376f6f02450c2b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.036281179d1910118bffe65c7a02d5bd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.52e6c3e6af669f6261f017576f3d208e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1a1d4e4c944ada92879e2d7776af019d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1a85037f49e456e0fe1546e69cb2453e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.881566cb5bbe8147817fc527d25cb2d8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.d960baaa1ecdf22bbabf7fdf7c2956af",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6e37cb875534ecc18820bd3080ebcccd",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.dbd81f65ab1e2450542feb0de8eee375",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.9c8dceb46d5d391e7e0aed42abd1bc0b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6d22c10d46e304f44764bec83d8619f1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.fbeb6c3da13161bf8d5f4e74628c0274",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.c2f10e44b852ac555e4fadd88404a2c5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ecc627cc7d2f1c04a8f20fc1920176cb",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3ac13c97ccb8ea9b85c2bf67e7ac87c6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8beb959a4d7cfa6cfe250879ceb4c992",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ab3c0340026032f4ea79d06bbcac5a12",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3f0ca726b9b49b82cb6115740c210c11",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.ae4c37739a3427caaff81c1a9f9c9a81",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.1409b61fd7b66dd18a1bb5820ddd7bf5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.12a05ad095de24f94ece2bf7bd6b3b18",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.56dad12958b1239b33bc71de7e462683",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0a11952708242cbe26dd005be6595ad3",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.edb5ae5e5e8672ba2bd14147ee3eff4b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8df2130910db51c1ec01e311d11fe658",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0868f24aa78ebb30479cb844f83ce09f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.41a7c45e1dab9febd635b74a6bdde4e7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.81e6bb69aed69ff3047b529c5a8ed4d9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.09eadc36ff008ffb08217acef5bba897",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.63d506e5172b615fc561a4af0e9280e5",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.6cfb9458f8dc12e68121455aba57c683",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.0f0bd6793ee07858f5de54a5ae3dcf0c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.df565512ac6bd99457d5a2ffc42afb78",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.28117cf6390b871f4ab5a0aa286a6ef0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b4538d2ea44c839485baf48c8fb3ed77",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.8c6cc7de7441718c9703563725334087",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.7e67c9749d4bde89224518de4358e8a4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.4fb5e9240aaa0abb9fe0d3376fd9fbaf",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.3bcc85af003599b2e0760bc94b5df2a1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 0.0
+                  },
+                  {
+                    "id": "emitter.b695212f4199b4cb85fc54ee28a8f626",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 0.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              },
+              "z": {
+                "interpolation": "Linear",
+                "keys": [
+                  {
+                    "id": "emitter.3b7badecae334f89eb0b3a033a8f8965",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": -155.0
+                  },
+                  {
+                    "id": "emitter.d003cfbf51448a341b69b3c730fe55b6",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.02083333395421505,
+                    "value": -153.00108337402344
+                  },
+                  {
+                    "id": "emitter.35fc7f80d6a3707200a2deabcc3ae03c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0416666679084301,
+                    "value": -148.05087280273438
+                  },
+                  {
+                    "id": "emitter.a6f68bae3735906741afbe858fded3f9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0625,
+                    "value": -141.71920776367188
+                  },
+                  {
+                    "id": "emitter.ff13525c177f429ee9630058a31a4a2f",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0833333358168602,
+                    "value": -135.57591247558594
+                  },
+                  {
+                    "id": "emitter.4d2203950c3e45953b64c72ba3672253",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1041666641831398,
+                    "value": -131.1908416748047
+                  },
+                  {
+                    "id": "emitter.aa00055fb9fd93d3c2dd216235b0300b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.125,
+                    "value": -129.89129638671875
+                  },
+                  {
+                    "id": "emitter.99ab9877c5d4ec4b4ec78de5449a11c9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1458333283662796,
+                    "value": -127.24390411376953
+                  },
+                  {
+                    "id": "emitter.3730b2200e9f7ed1715147872499342c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1666666716337204,
+                    "value": -121.48147583007812
+                  },
+                  {
+                    "id": "emitter.0db3cad77f7ae477623cac6a015840fa",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.1875,
+                    "value": -113.17247009277344
+                  },
+                  {
+                    "id": "emitter.0c87139e2e3e77c1641dc188258c7ae7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2083333283662796,
+                    "value": -102.88529968261719
+                  },
+                  {
+                    "id": "emitter.35aab1a3a39a82d1db8554c4370b2420",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2291666716337204,
+                    "value": -91.18840026855469
+                  },
+                  {
+                    "id": "emitter.51c66c6529ad5aa064115b42cea2f2b0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.25,
+                    "value": -78.65023803710938
+                  },
+                  {
+                    "id": "emitter.e6325e15668a3506576b9871c9278a4a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2708333432674408,
+                    "value": -65.8392105102539
+                  },
+                  {
+                    "id": "emitter.5b61f17bf52f92e844606f06c3fe3254",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.2916666567325592,
+                    "value": -53.32379150390625
+                  },
+                  {
+                    "id": "emitter.fb7babc9b3617b7b66b3034590de998c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3125,
+                    "value": -41.67236328125
+                  },
+                  {
+                    "id": "emitter.3421b816888bb97f20ff26ee77782a6b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3333333432674408,
+                    "value": -31.453407287597656
+                  },
+                  {
+                    "id": "emitter.0dd586352c1a7d8dfc6820752b73fdd0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3541666567325592,
+                    "value": -23.2353515625
+                  },
+                  {
+                    "id": "emitter.12e99044e1774e77213044aa545b6791",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.375,
+                    "value": -17.58661651611328
+                  },
+                  {
+                    "id": "emitter.6be53d82376cd286646d135ed0f2ed7e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.3958333432674408,
+                    "value": -15.075645446777344
+                  },
+                  {
+                    "id": "emitter.e156085b6a34df9a4802a717e5d02141",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4166666567325592,
+                    "value": -14.071123123168945
+                  },
+                  {
+                    "id": "emitter.8c6e64aa270d5bd35de747af873115ff",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4375,
+                    "value": -10.540449142456055
+                  },
+                  {
+                    "id": "emitter.bb0ea3881b71ec5a384d0a0930086867",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4583333432674408,
+                    "value": -4.796730041503906
+                  },
+                  {
+                    "id": "emitter.723107b88e1f371530f99a13e0db9cd8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4791666567325592,
+                    "value": 2.7102184295654297
+                  },
+                  {
+                    "id": "emitter.5e096148a7567438bfe501f27b4e5b44",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5,
+                    "value": 11.530607223510742
+                  },
+                  {
+                    "id": "emitter.76fb18b3c81d893defddac4d27ef728c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5208333134651184,
+                    "value": 21.214614868164062
+                  },
+                  {
+                    "id": "emitter.4788a995c9028abe45d09c0fe9da7303",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5416666865348816,
+                    "value": 31.312469482421875
+                  },
+                  {
+                    "id": "emitter.ee5ffe59966f0d70bf5621678979b752",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5625,
+                    "value": 41.37430953979492
+                  },
+                  {
+                    "id": "emitter.5cf9c3be1c48825d3dffc808500bc93e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.5833333134651184,
+                    "value": 50.95036315917969
+                  },
+                  {
+                    "id": "emitter.88b3fc613c965a737c2f5a90b1fa35d8",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6041666865348816,
+                    "value": 59.590843200683594
+                  },
+                  {
+                    "id": "emitter.e8789f8bf1fb3cb262df67cfa7595fb4",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.625,
+                    "value": 66.84590148925781
+                  },
+                  {
+                    "id": "emitter.df00394938bd05d179f6bd9153b36b43",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6458333134651184,
+                    "value": 72.26575469970703
+                  },
+                  {
+                    "id": "emitter.9350571f164488f2d3fd7c2678439fde",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6666666865348816,
+                    "value": 75.4006118774414
+                  },
+                  {
+                    "id": "emitter.c4784e8cebc3e0c74ff1cf946699fbb7",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.6875,
+                    "value": 76.0438003540039
+                  },
+                  {
+                    "id": "emitter.e56845d383b539aa9d82c57afbc21ace",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7083333134651184,
+                    "value": 76.59752655029297
+                  },
+                  {
+                    "id": "emitter.1fc7beff487fc6e863f5d6710933c7e9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7291666865348816,
+                    "value": 77.71630859375
+                  },
+                  {
+                    "id": "emitter.3168ddf0a4fa5e756b4aa968728a4440",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.75,
+                    "value": 79.31072998046875
+                  },
+                  {
+                    "id": "emitter.a1716eefd9742b8a1340682817bf8b1b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7708333134651184,
+                    "value": 81.29138946533203
+                  },
+                  {
+                    "id": "emitter.3db78ac5b0840ea231872ccbd3eaf85b",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.7916666865348816,
+                    "value": 83.56888580322266
+                  },
+                  {
+                    "id": "emitter.7c85a6f2a731211f8d565f03a4675a36",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8125,
+                    "value": 86.05380249023438
+                  },
+                  {
+                    "id": "emitter.e61db6b31556c0308b476c17504bfde9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8333333134651184,
+                    "value": 88.65673828125
+                  },
+                  {
+                    "id": "emitter.8d16266892ed1010c37603f73d8cb6c9",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8541666865348816,
+                    "value": 91.28828430175781
+                  },
+                  {
+                    "id": "emitter.c8f6f1c5d7198d7d34000bda7a03e62d",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.875,
+                    "value": 93.8590316772461
+                  },
+                  {
+                    "id": "emitter.6d5288084cf60548ddd6a2b58e586390",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.8958333134651184,
+                    "value": 96.27957153320312
+                  },
+                  {
+                    "id": "emitter.1589a7e3b25fc59fa7dc446217f8f7da",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9166666865348816,
+                    "value": 98.46051025390625
+                  },
+                  {
+                    "id": "emitter.0cb6394c9c57e54365880bf6c0bbdc44",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9375,
+                    "value": 100.31242370605469
+                  },
+                  {
+                    "id": "emitter.9cea8328f2b76fb081c3c28574b3bd3c",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9583333134651184,
+                    "value": 101.74591827392578
+                  },
+                  {
+                    "id": "emitter.dd9cebd3b84db15ae19a5402f72a209e",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.9791666865348816,
+                    "value": 102.67157745361328
+                  },
+                  {
+                    "id": "emitter.8e7c35b47b13c4942badbb816543367a",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 103.0
+                  }
+                ],
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                }
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "minimum": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Fixed",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          },
+          "id": "module.522deb913a618e9d1caa91df1f3bf911"
+        },
+        "scale": {
+          "id": "module.f7e3225cb6bffcde3bd291600a9fc444",
+          "value": {
+            "curve": {
+              "x": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRingWhite.x.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.2
+                  },
+                  {
+                    "id": "key.BoostRingWhite.x.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 3.8
+                  },
+                  {
+                    "id": "key.BoostRingWhite.x.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.2
+                  }
+                ]
+              },
+              "y": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRingWhite.y.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.2
+                  },
+                  {
+                    "id": "key.BoostRingWhite.y.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 3.8
+                  },
+                  {
+                    "id": "key.BoostRingWhite.y.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.2
+                  }
+                ]
+              },
+              "z": {
+                "interpolation": "Smooth",
+                "randomOffset": {
+                  "maximum": 0.0,
+                  "minimum": 0.0,
+                  "mode": "Constant",
+                  "randomGroup": 0
+                },
+                "keys": [
+                  {
+                    "id": "key.BoostRingWhite.z.0",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.0,
+                    "value": 1.2
+                  },
+                  {
+                    "id": "key.BoostRingWhite.z.1",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 0.4,
+                    "value": 3.8
+                  },
+                  {
+                    "id": "key.BoostRingWhite.z.2",
+                    "inTangent": 0.0,
+                    "outTangent": 0.0,
+                    "time": 1.0,
+                    "value": 5.2
+                  }
+                ]
+              }
+            },
+            "easing": {
+              "end": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "function": "EaseInOut",
+              "middle": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "start": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "useMiddle": false
+            },
+            "fixed": {
+              "maximum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "minimum": [
+                1.0,
+                1.0,
+                1.0
+              ],
+              "mode": "Constant",
+              "randomGroup": 0
+            },
+            "mode": "Curve",
+            "pva": {
+              "acceleration": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "initial": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              },
+              "velocity": {
+                "maximum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "minimum": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "mode": "Constant",
+                "randomGroup": 0
+              }
+            }
+          }
+        },
+        "shape": {
+          "boxHalfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "circleArcDegrees": 360.0,
+          "circleEmitOnEdge": false,
+          "circleInnerRadius": 0.0,
+          "coneAngleDegrees": 30.0,
+          "cylinderHeight": 1.0,
+          "edgeLength": 1.0,
+          "id": "module.3c82c9824fe923ec34d285c540bcade4",
+          "radius": {
+            "maximum": 0.0,
+            "minimum": 0.0,
+            "mode": "Constant",
+            "randomGroup": 0
+          },
+          "type": "Point"
+        },
+        "spawn": {
+          "burstTimeline": [],
+          "capacityMode": "Automatic",
+          "id": "module.ded9d7b164d3bfd47e6db5774fb9883b",
+          "maximumParticles": 1,
+          "ratePerSecond": 0.0
+        }
+      },
+      "name": "Boost Ring White",
+      "order": 1,
+      "parameterTracks": [],
+      "parentEmitterId": "",
+      "specialOutputs": [],
+      "startDelay": 0.0
+    }
+  ],
+  "inputs": [
+    {
+      "defaultValue": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "id": "input.ring",
+      "name": "ring",
+      "type": "Color"
+    }
+  ]
+}

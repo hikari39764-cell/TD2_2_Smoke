@@ -254,6 +254,30 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      -5.0f, 5.0f);
         fields.Note("動きのぼかし（節：カメラ）と重なります。流れを強める時は両方を見て決めてください。");
     }
+    if (fields.Section("飾り")) {
+        fields.Note("騎乗中に、雲の左右の端から後ろへ伸びる長い尾の帯、雲の後ろの空気のゆがみ、速い時に体のまわりを"
+                    "前から後ろへ流れる気流の錐を出します（シェーダーの層だけ）。量は速さで決まり、0 にすると出ません。"
+                    "帯の長さ・幅・色、ゆがみの強さ、錐の筋の置き場所は効果資産（NimbusTrail）の値です。");
+        fields.Vfx("trimEffect", "飛行の飾り（NimbusTrail。空なら出さない）", trimEffect);
+        fields.Float("trimStreakAmount", "尾の帯の明るさ（巡航の速さで。0 で出さない）", trimStreakAmount, 0.0f, 5.0f);
+        fields.Float("trimStreakBoostAmount", "ブースト中の尾の帯の明るさ", trimStreakBoostAmount, 0.0f, 5.0f);
+        fields.Float("trimStreakStartSpeed", "尾の帯が出始める速さ (m/s)", trimStreakStartSpeed, 0.0f, 100.0f);
+        fields.Float("trimStreakFullSpeed", "尾の帯が明るさに届く速さ (m/s)", trimStreakFullSpeed, 0.0f, 100.0f);
+        fields.Float("trimHazeAmount", "空気のゆがみの強さ（倍率。資産の強さに掛かる。0 で出さない）", trimHazeAmount, 0.0f,
+                     1.5f);
+        fields.Float("trimHazeStartSpeed", "ゆがみが出始める速さ (m/s)", trimHazeStartSpeed, 0.0f, 100.0f);
+        fields.Float("trimHazeFullSpeed", "ゆがみが強さに届く速さ (m/s)", trimHazeFullSpeed, 0.0f, 100.0f);
+        fields.Float("trimConeAmount", "高速の気流の錐の明るさ（0 で出さない）", trimConeAmount, 0.0f, 5.0f);
+        fields.Float("trimConeStartSpeed", "錐が出始める速さ (m/s。巡航 16・ブースト 32・急降下の上限 45)",
+                     trimConeStartSpeed, 0.0f, 100.0f);
+        fields.Float("trimConeFullSpeed", "錐が明るさに届く速さ (m/s)", trimConeFullSpeed, 0.0f, 100.0f);
+        fields.Float("trimRiseSeconds", "飾りが強まる時のならし (秒)", trimRiseSeconds, 0.0f, 3.0f);
+        fields.Float("trimFallSeconds", "飾りが弱まる時のならし (秒)", trimFallSeconds, 0.0f, 3.0f);
+        fields.Vfx("boostRingEffect", "ブーストを押した瞬間の衝撃の輪（NimbusBoost。空なら出さない）", boostRingEffect);
+        fields.Float("boostRingStrength", "衝撃の輪のゆがみの強さ（倍率。1.25 くらいまで。上げすぎると段が出る）",
+                     boostRingStrength, 0.0f, 3.0f);
+        fields.Float("boostRingScale", "衝撃の輪の大きさ（倍率）", boostRingScale, 0.1f, 5.0f);
+    }
     if (fields.Section("確かめ")) {
         fields.Int("traceEveryFrames", "位置と速度をログに出す間隔 (F、0 は出さない)", traceEveryFrames, 0, 7200);
     }

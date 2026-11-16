@@ -29,6 +29,10 @@ constexpr const char* kTrailInput = "input.trail";
 constexpr const char* kSwirlInput = "input.swirl";
 constexpr const char* kRingInput = "input.ring";
 constexpr const char* kGlowInput = "input.glow";
+// 飛行の飾りの資産の入力（Tools/Nimbus/make_nimbus_trims.py と同じ名前）。衝撃の輪は kRingInput。
+constexpr const char* kStreakInput = "input.streak";
+constexpr const char* kHazeInput = "input.haze";
+constexpr const char* kConeInput = "input.cone";
 constexpr float kTau = 6.28318530718f;
 constexpr float kRadiansPerDegree = kTau / 360.0f;
 // 上り下りの角度を測る時の水平の速さの下限 (m/s)。止まっている時に角度が飛ばないように。
@@ -299,11 +303,11 @@ void Trace(const CloudMountComponent& mount, const HIKARI::GameProjectVfxParamet
     if (mount.traceEveryFrames <= 0 || frame.frameIndex % static_cast<uint64_t>(mount.traceEveryFrames) != 0)
         return;
     const CloudMountArrivalState& state = mount.arrival;
-    char message[384]{};
+    char message[512]{};
     std::snprintf(message, sizeof(message),
                   "Cloud frame=%llu tick=%llu playing=%d appear=%.3f speedInput=%.3f boostInput=%.3f scatter=%d "
                   "trail=%.2f bank=%.2f pitch=%.2f fly=%d age=%.3f rootSpeed=%.1f landed=%.3f sink=%.3f "
-                  "root=(%.2f,%.2f,%.2f) accepted=%d",
+                  "root=(%.2f,%.2f,%.2f) accepted=%d streak=%.3f haze=%.3f cone=%.3f rings=%d trimAccepted=%d",
                   static_cast<unsigned long long>(frame.frameIndex),
                   static_cast<unsigned long long>(frame.fixedTickIndex), static_cast<int>(mount.cloudVfx.IsValid()),
                   static_cast<double>(parameters.values[0].value.numeric[0]),
@@ -315,7 +319,9 @@ void Trace(const CloudMountComponent& mount, const HIKARI::GameProjectVfxParamet
                   static_cast<double>(state.rootSpeed), static_cast<double>(state.landedAge),
                   static_cast<double>(CloudMountArrival::Sink(mount, state)), static_cast<double>(transform.position.x),
                   static_cast<double>(transform.position.y), static_cast<double>(transform.position.z),
-                  static_cast<int>(mount.cloudAccepted));
+                  static_cast<int>(mount.cloudAccepted), static_cast<double>(mount.trimStreak),
+                  static_cast<double>(mount.trimHaze), static_cast<double>(mount.trimCone), mount.boostRings,
+                  static_cast<int>(mount.trimAccepted && mount.trimVfx.IsValid()));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
 }
 
@@ -331,10 +337,93 @@ void Prewarm(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 root) {
     PlayAccent(world, mount.arriveEffect, root, 1.0f, hidden);
 }
 
+// 速さが start で 0、full で 1 になる割合（full ≤ start の時は start を超えたら 1）。
+float SpeedShare(float speed, float start, float full) {
+    if (full <= start)
+        return speed > start ? 1.0f : 0.0f;
+    return std::clamp((speed - start) / (full - start), 0.0f, 1.0f);
+}
+
+// 飛行の飾りの量を 1 描画フレーム進める。騎乗中で、飛んで来ても散ってもいない時だけ速さで出す。ブーストの押し始めに
+// 体の中心へ衝撃の輪を出す。
+void StepTrims(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 bodyCenter, float dt,
+               const HIKARI::FrameContext& frame) {
+    const CloudMountFlightReadout& flight = mount.flight;
+    const bool riding = mount.state == CloudMountState::Riding && !mount.arrival.flying && mount.arrival.scatterAge < 0.0f;
+    const float speed = riding ? flight.speed : 0.0f;
+    const float streakShare = SpeedShare(speed, mount.trimStreakStartSpeed, mount.trimStreakFullSpeed);
+    const float streak = std::max(0.0f, riding && flight.boosting ? mount.trimStreakBoostAmount * streakShare
+                                                                   : mount.trimStreakAmount * streakShare);
+    const float haze = std::max(0.0f, mount.trimHazeAmount) *
+                       SpeedShare(speed, mount.trimHazeStartSpeed, mount.trimHazeFullSpeed);
+    const float cone = std::max(0.0f, mount.trimConeAmount) *
+                       SpeedShare(speed, mount.trimConeStartSpeed, mount.trimConeFullSpeed);
+    const auto step = [&](float current, float target) {
+        return Smooth(current, target, target > current ? mount.trimRiseSeconds : mount.trimFallSeconds, dt);
+    };
+    mount.trimStreak = step(mount.trimStreak, streak);
+    mount.trimHaze = step(mount.trimHaze, haze);
+    mount.trimCone = step(mount.trimCone, cone);
+    const bool boosting = riding && flight.boosting;
+    if (boosting && !mount.trimWasBoosting && !mount.boostRingEffect.IsEmpty()) {
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = mount.boostRingEffect;
+        play.transform.position = bodyCenter;
+        const float scale = std::max(0.0f, mount.boostRingScale);
+        play.transform.scale = {scale, scale, scale};
+        play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+        const float strength = std::max(0.0f, mount.boostRingStrength);
+        VfxParameters::SetColor(play.parameters, kRingInput, {strength, strength, strength});
+        const bool accepted = world.GetVfx().Play(play).IsValid();
+        ++mount.boostRings;
+        char extra[96]{};
+        std::snprintf(extra, sizeof(extra), "speed=%.1f accepted=%d count=%d", static_cast<double>(flight.speed),
+                      static_cast<int>(accepted), mount.boostRings);
+        LogEvent("BoostRing", frame, extra);
+    }
+    mount.trimWasBoosting = boosting;
+}
+
+HIKARI::GameProjectVfxParameterOverrides TrimParameters(const CloudMountComponent& mount) {
+    HIKARI::GameProjectVfxParameterOverrides parameters{};
+    VfxParameters::SetColor(parameters, kStreakInput, {mount.trimStreak, mount.trimStreak, mount.trimStreak});
+    // ゆがみの色：R＝強さの倍率、B＝1（貼図の向きを使う）のまま。
+    VfxParameters::SetColor(parameters, kHazeInput, {mount.trimHaze, 1.0f, 1.0f});
+    VfxParameters::SetColor(parameters, kConeInput, {mount.trimCone, mount.trimCone, mount.trimCone});
+    return parameters;
+}
+
+// 飛行の飾りを雲の根と同じ変換で出し続ける（場面の作り直しで消えたら出し直す）。
+void UpdateTrims(HIKARI::WorldView& world, CloudMountComponent& mount, const HIKARI::GameProjectTransform& transform) {
+    if (mount.trimEffect.IsEmpty())
+        return;
+    const HIKARI::GameProjectVfxParameterOverrides parameters = TrimParameters(mount);
+    if (mount.trimVfx.IsValid()) {
+        HIKARI::GameProjectVfxUpdateRequest update{};
+        update.updateTransform = 1u;
+        update.updateParameters = 1u;
+        update.transform = transform;
+        update.parameters = parameters;
+        mount.trimAccepted = world.GetVfx().Update(mount.trimVfx, update);
+        if (!mount.trimAccepted)
+            mount.trimVfx = {};
+        return;
+    }
+    HIKARI::GameProjectVfxPlayRequest play{};
+    play.asset = mount.trimEffect;
+    play.transform = transform;
+    play.parameters = parameters;
+    mount.trimVfx = world.GetVfx().Play(play);
+    mount.trimAccepted = mount.trimVfx.IsValid();
+}
+
 void Stop(HIKARI::WorldView& world, CloudMountComponent& mount) {
     if (mount.cloudVfx.IsValid())
         world.GetVfx().Stop(mount.cloudVfx);
     mount.cloudVfx = {};
+    if (mount.trimVfx.IsValid())
+        world.GetVfx().Stop(mount.trimVfx);
+    mount.trimVfx = {};
 }
 
 } // namespace
@@ -378,6 +467,8 @@ void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body
         mount.cloudAccepted = mount.cloudVfx.IsValid();
         Prewarm(world, mount, transform.position);
     }
+    StepTrims(world, mount, bodyTransform.position, dt, frame);
+    UpdateTrims(world, mount, transform);
     Trace(mount, parameters, transform, frame);
 }
 

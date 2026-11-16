@@ -305,6 +305,30 @@ public:
     // 内は流さない（縁のぼかし具合は効果資産の guardFeather）。半径 0 で守らない。
     float speedFxGuardRadius = 1.5f;
     float speedFxGuardDrop = 0.35f;
+    // 飛行の飾り（シェーダーの層だけ。流体の域は使わない）。trimEffect（NimbusTrail）を雲の根と同じ変換で出し続け、
+    // 入力で出し入れする：長い尾の帯は、速さが trimStreakStartSpeed で 0 → trimStreakFullSpeed（巡航）で
+    // trimStreakAmount、ブースト中は trimStreakBoostAmount（帯の長さは資産の秒 × 速さで、速いほど長い）。
+    // 空気のゆがみと高速の気流の錐は、それぞれの StartSpeed で 0 → FullSpeed で量。どれも強まる時 trimRiseSeconds、
+    // 弱まる時 trimFallSeconds でならす（秒の時定数）。騎乗中だけ出す（召喚の飛来・解除の散りの間は 0）。
+    HIKARI::GameProjectVfxAssetReference trimEffect{"3e8b1c94d27f4a05b6c0e9a7f15d2b48", "Assets/Vfx/NimbusTrail.hvfx"};
+    float trimStreakAmount = 1.0f;
+    float trimStreakBoostAmount = 1.8f;
+    float trimStreakStartSpeed = 6.0f;
+    float trimStreakFullSpeed = 16.0f;
+    float trimHazeAmount = 1.0f;
+    float trimHazeStartSpeed = 14.0f;
+    float trimHazeFullSpeed = 32.0f;
+    float trimConeAmount = 1.0f;
+    float trimConeStartSpeed = 24.0f;
+    float trimConeFullSpeed = 38.0f;
+    float trimRiseSeconds = 0.15f;
+    float trimFallSeconds = 0.35f;
+    // ブーストの衝撃の輪：ブーストを押した瞬間（騎乗中）に、体の中心へ boostRingEffect（NimbusBoost）を一度だけ出す。
+    // 世界に置くので、前へ飛ぶ体から見て後ろへ抜ける。強さ（倍率。資産の 0.28 に掛かる。0.35 を超えると段が出る）と大きさ。
+    HIKARI::GameProjectVfxAssetReference boostRingEffect{"c72f05a1e94b4d3a8e6b1f0d2a7c9e53",
+                                                         "Assets/Vfx/NimbusBoost.hvfx"};
+    float boostRingStrength = 1.0f;
+    float boostRingScale = 1.0f;
     // 確かめ用：この F ごとに位置・速度をログに出す（0 は出さない）。
     int traceEveryFrames = 0;
 
@@ -367,6 +391,15 @@ public:
     bool cloudAccepted = true;
     // 召喚と解除の演出（CloudMountVisuals が描画フレームごとに進める）。
     CloudMountArrivalState arrival{};
+    // 飛行の飾り（CloudMountVisuals が描画フレームごとに進める）：再生、ならした帯・ゆがみ・錐の量、前のフレームの
+    // ブースト、出した衝撃の輪の数（確かめ用）、送った入力が受け付けられたか。
+    HIKARI::GameProjectVfxPlaybackHandle trimVfx{};
+    float trimStreak = 0.0f;
+    float trimHaze = 0.0f;
+    float trimCone = 0.0f;
+    bool trimWasBoosting = false;
+    int boostRings = 0;
+    bool trimAccepted = true;
     // 速度感（CloudMountSystem が描画フレームごとに進める）：ならした強さ（上限の前）、流れの中心（UV）と置いたか、
     // 前へ向かう度合い、最後の提出が受け付けられたか、受け付けられた提出の数と、出していない所から出し始めた数
     // （確かめ用）。
