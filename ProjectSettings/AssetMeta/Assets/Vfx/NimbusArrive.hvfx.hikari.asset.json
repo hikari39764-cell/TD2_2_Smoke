@@ -1,0 +1,14 @@
+{
+  "displayName": "NimbusArrive",
+  "guid": "5c1e7a3f2b8d4e60a9f4d2c7b1e08a36",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/NimbusArrive.hvfx",
+  "type": "VfxEffect"
+}

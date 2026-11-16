@@ -176,6 +176,58 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("出したままにすると、乗っていない間は中が空で域が眠り、ほぼ重さが無くなります。止めると、"
                     "召喚のたびにエフェクトを出し直す 1 フレームの詰まりが出ます。");
     }
+    if (fields.Section("召喚の演出")) {
+        fields.Note("乗る時（落下の受け止めも）、雲が体の向きの斜め後ろ上から尾を引いて足元へ飛んで来ます。雲は本体の"
+                    "エフェクトをそのまま飛ばすので、流体の域は増えません。着くのは召喚の summonFrames × 割合の時で、"
+                    "体の動き（規則）は変えません。");
+        fields.Float("summonFromDistance", "飛び始め：後ろへの水平の距離 (m)", summonFromDistance, 0.0f, 200.0f);
+        fields.Float("summonFromHeight", "飛び始め：足元からの高さ (m)", summonFromHeight, -50.0f, 100.0f);
+        fields.Float("summonFromSideDegrees", "飛び始め：真後ろから右へ回す角度 (度。負で左)", summonFromSideDegrees,
+                     -180.0f, 180.0f);
+        fields.Float("summonArriveFraction", "着く時（召喚の長さの割合）", summonArriveFraction, 0.05f, 1.0f);
+        fields.Float("summonFlyEasePower", "飛ぶ速さのゆるみ（1 は等速、大きいほど初め速く足元の手前でゆっくり）",
+                     summonFlyEasePower, 1.0f, 4.0f);
+        fields.Float("summonFlySpeedLimit", "飛ぶ速さの上限 (m/s。超える時は飛び始めを近くする。0 で上限なし)",
+                     summonFlySpeedLimit, 0.0f, 200.0f);
+        fields.Note("流体は 1 フレームに 60 m/s を超える動きを瞬間移動と見なし、尾が引けません。既定（30 F の召喚の "
+                    "0.8 で着く＝0.4 秒）では、25 m・10 m からだと速すぎるので、上限 55 m/s に合わせて道を縮め、"
+                    "約 16 m・6 m の所から飛びます。遠くから飛ばすなら summonFrames（召喚）か割合を大きくします。");
+        fields.Float("summonApproachHeight", "地上：足元へ入る手前の道の高さ (m。0 で水平に滑り込む)",
+                     summonApproachHeight, -10.0f, 10.0f);
+        fields.Float("summonCatchDip", "落下中：足元の下へ回り込む深さ (m)", summonCatchDip, 0.0f, 20.0f);
+        fields.Float("summonFlyAmount", "飛んで来る間の雲の量（倍率）", summonFlyAmount, 0.0f, 5.0f);
+        fields.Float("summonFlyTail", "飛んで来る間の尾の量（倍率）", summonFlyTail, 0.0f, 5.0f);
+        fields.Float("summonFlySwirl", "飛んで来る間の渦の強さ（乱流の倍率。1 で普段のまま）", summonFlySwirl, 0.0f,
+                     10.0f);
+        fields.Float("summonTrailAmount", "軌跡の帯の明るさ（0 で出さない）", summonTrailAmount, 0.0f, 5.0f);
+        fields.Float("summonTrailFadeSeconds", "着いてから帯が消えるまで (秒)", summonTrailFadeSeconds, 0.0f, 2.0f);
+        fields.Float("summonSinkMeters", "地上で着いた時に雲が沈む深さ (m。体は動かさない)", summonSinkMeters, 0.0f,
+                     2.0f);
+        fields.Float("summonCatchSinkMeters", "落下を受け止めた時に雲が沈む深さ (m)", summonCatchSinkMeters, 0.0f,
+                     2.0f);
+        fields.Float("summonSinkSeconds", "沈んで戻るまで (秒)", summonSinkSeconds, 0.0f, 2.0f);
+        fields.Float("summonPuffAmount", "着いた瞬間に足す雲の量（膨らみ）", summonPuffAmount, 0.0f, 5.0f);
+        fields.Float("summonPuffSeconds", "膨らみが戻るまで (秒)", summonPuffSeconds, 0.0f, 2.0f);
+        fields.Float("summonSettleSeconds", "飛んで来た向きから体の向きへ戻すまで (秒)", summonSettleSeconds, 0.0f,
+                     2.0f);
+        fields.Vfx("arriveEffect", "着いた瞬間の飾り（空気のゆがみの輪・光の粒。空なら出さない）", arriveEffect);
+        fields.Float("arriveRingStrength", "ゆがみの輪の強さ（倍率）", arriveRingStrength, 0.0f, 3.0f);
+        fields.Float("arriveRingScale", "飾りの大きさ（倍率）", arriveRingScale, 0.1f, 5.0f);
+        fields.Bool("arrivePrewarm", "場面の始めに飾りの下準備をする（最初の召喚の詰まりを防ぐ）", arrivePrewarm);
+        fields.Note("ゆがみの輪は太く柔らかい輪をカメラへ向けて広げます（細い輪はぎざぎざに見えます）。強すぎると像が"
+                    "崩れて段が見えるので、倍率は 1.3 くらいまで。背景が空だけの時はほとんど見えません。");
+        fields.Float("summonCameraDip", "着いた瞬間にカメラを下へ沈める量 (m、0 で切る)", summonCameraDip, 0.0f, 0.5f);
+        fields.Float("summonCameraDipSeconds", "カメラが戻るまで (秒)", summonCameraDipSeconds, 0.0f, 2.0f);
+    }
+    if (fields.Section("解除の演出")) {
+        fields.Note("降りる時（被弾で解けた時も）、雲はその場に残り、外へほどけるように膨らみながら吸われて消えます。"
+                    "残った煙は域の消散（NimbusCloud）でも薄くなります。");
+        fields.Vfx("disperseEffect", "散る瞬間の飾り（光の粒。空なら出さない）", disperseEffect);
+        fields.Float("disperseSeconds", "散らす長さ (秒。外へ押し広げて吸う)", disperseSeconds, 0.0f, 3.0f);
+        fields.Float("disperseHoldSeconds", "雲を降りた所に留める長さ (秒。この後は体の足元へ戻る)",
+                     disperseHoldSeconds, 0.0f, 5.0f);
+        fields.Float("disperseSwirl", "散らす間の渦の強さ（乱流の倍率。煙を筋にちぎる）", disperseSwirl, 0.0f, 10.0f);
+    }
     if (fields.Section("確かめ")) {
         fields.Int("traceEveryFrames", "位置と速度をログに出す間隔 (F、0 は出さない)", traceEveryFrames, 0, 7200);
     }

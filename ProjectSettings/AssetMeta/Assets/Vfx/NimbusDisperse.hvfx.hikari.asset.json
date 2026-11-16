@@ -1,0 +1,14 @@
+{
+  "displayName": "NimbusDisperse",
+  "guid": "a7d93e15c4f2480bb6e1f0a2d95c3b74",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/NimbusDisperse.hvfx",
+  "type": "VfxEffect"
+}

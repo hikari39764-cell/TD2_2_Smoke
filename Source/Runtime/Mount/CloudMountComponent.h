@@ -46,6 +46,43 @@ struct CloudMountFlightReadout {
     bool groundSkim = false;
 };
 
+// 召喚と解除の演出の実行時の状態（CloudMountVisuals が描画フレームごとに進める。保存しない）。
+struct CloudMountArrivalState {
+    // 前の描画フレームに見た段階。段階の変わり目で、飛来・散りを始める。
+    CloudMountState lastState = CloudMountState::None;
+    // 飛んで来ている間か、飛び始めからの秒、飛ぶ長さ（秒）、飛び始めてからの描画フレームの数。
+    bool flying = false;
+    float age = 0.0f;
+    float flySeconds = 0.0f;
+    int flyFrames = 0;
+    // 空中（落下の受け止め・持ち上げの無い召喚）の飛来か。下から受け止め、深く沈む。
+    bool catching = false;
+    // 足元から見た飛び始めの位置と、道の曲がりを決める点（世界の向き、m）。
+    HIKARI::GameProjectFloat3 from{};
+    HIKARI::GameProjectFloat3 bend{};
+    // 前の描画フレームの根の位置と、そこから測った根の速さ (m/s。確かめ用)。
+    HIKARI::GameProjectFloat3 lastRoot{};
+    bool hasLastRoot = false;
+    float rootSpeed = 0.0f;
+    // 飛んでいる間の雲の向き（度）。着いた後はここから体の向きへ戻す。
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+    // 着いてからの秒（負は着いていない）と、その時の沈む深さ (m)。
+    float landedAge = -1.0f;
+    float sinkDepth = 0.0f;
+    // 軌跡の帯の明るさ（0〜1）。
+    float trail = 0.0f;
+    // 散り始めてからの秒（負は散っていない）と、その間に留める根の変換。
+    float scatterAge = -1.0f;
+    HIKARI::GameProjectTransform scatterRoot{};
+    // 前の描画フレームに送った根の変換。
+    HIKARI::GameProjectTransform lastTransform{};
+    // 着いた瞬間のカメラの沈み。
+    Feedback::CameraShake cameraDip{};
+    // 着いた瞬間の飾りの下準備を済ませた。
+    bool prewarmed = false;
+};
+
 // プレイヤーの筋斗雲。Player と同じ物体に付ける。状態と飛行の運動の規則は CloudMountRules、入力を読んで運動を出すのは
 // CloudMountSystem。見た目（CloudMountVisuals）とカメラの要求（CloudMountCamera）は別の所に置く。ここは調整値と実行時の状態だけ。
 class CloudMountComponent final : public HIKARI::IGameComponent {
@@ -198,6 +235,54 @@ public:
     // 雲が消えてから cloudLingerSeconds 後に止める。
     bool cloudKeepAlive = true;
     float cloudLingerSeconds = 1.5f;
+    // 召喚の演出（CloudMountArrival・CloudMountVisuals）：雲（本体のエフェクトの根）が、体の向きの斜め後ろ上（後ろへ
+    // summonFromDistance・上へ summonFromHeight、真後ろから横へ summonFromSideDegrees）から尾を引いて足元へ飛んで来る。
+    // 着くのは召喚の summonArriveFraction（summonFrames の割合）の時。落下中の受け止めでは足元の下へ summonCatchDip 回り
+    // 込んで下から受け止める。飛ぶ速さが summonFlySpeedLimit を超える時は飛び始めを近くする（流体は 1 フレームに 60 m/s を
+    // 超える動きを瞬間移動と見なし、尾が引けない）。
+    float summonFromDistance = 25.0f;
+    float summonFromHeight = 10.0f;
+    float summonFromSideDegrees = 60.0f;
+    float summonArriveFraction = 0.8f;
+    float summonFlyEasePower = 1.3f;
+    float summonFlySpeedLimit = 55.0f;
+    float summonApproachHeight = 1.0f;
+    float summonCatchDip = 1.5f;
+    // 飛んで来る間の雲の量・尾の量（倍率）と、軌跡の帯の明るさ。帯は着いてから summonTrailFadeSeconds で消す。
+    float summonFlyAmount = 0.7f;
+    float summonFlyTail = 0.4f;
+    // 飛んで来る間の渦の強さ（域の乱流の倍率）。相対風でなめらかに伸びる煙を巻いて、綿の縁を保つ。着いた後は膨らみと
+    // 一緒に 1 へ戻る。
+    float summonFlySwirl = 2.5f;
+    float summonTrailAmount = 1.0f;
+    float summonTrailFadeSeconds = 0.15f;
+    // 着いた時：雲だけが沈んで戻る（体は動かさない。地上 summonSinkMeters、受け止め summonCatchSinkMeters を
+    // summonSinkSeconds で）、雲の量を一度 summonPuffAmount 足して膨らませる（summonPuffSeconds で戻る）、向きを飛ぶ向きから
+    // 体の向きへ summonSettleSeconds で戻す。
+    float summonSinkMeters = 0.15f;
+    float summonCatchSinkMeters = 0.4f;
+    float summonSinkSeconds = 0.3f;
+    float summonPuffAmount = 1.0f;
+    float summonPuffSeconds = 0.3f;
+    float summonSettleSeconds = 0.2f;
+    // 着いた瞬間の飾り（空気のゆがみの輪・光・粒。流体の域は持たない）と、輪の強さ・大きさの倍率。
+    HIKARI::GameProjectVfxAssetReference arriveEffect{"5c1e7a3f2b8d4e60a9f4d2c7b1e08a36",
+                                                      "Assets/Vfx/NimbusArrive.hvfx"};
+    float arriveRingStrength = 1.0f;
+    float arriveRingScale = 1.0f;
+    // 場面の始めに飾りを見えない強さで一度出し、画面のゆがみの合成の初回の準備を済ませる（最初の召喚で止まらない）。
+    bool arrivePrewarm = true;
+    // 着いた瞬間のカメラの手応え：下へ summonCameraDip (m) 沈んで summonCameraDipSeconds で戻る。0 で切る。
+    float summonCameraDip = 0.05f;
+    float summonCameraDipSeconds = 0.25f;
+    // 解除の演出：雲はその場に残り（体と一緒に落ちない）、disperseSeconds の間だけ外へ押し広げながら吸って散る。
+    // disperseHoldSeconds 後に根を体の足元へ戻す（その時は空）。散る瞬間に disperseEffect（光の粒）を出す。
+    HIKARI::GameProjectVfxAssetReference disperseEffect{"a7d93e15c4f2480bb6e1f0a2d95c3b74",
+                                                        "Assets/Vfx/NimbusDisperse.hvfx"};
+    float disperseSeconds = 0.5f;
+    float disperseHoldSeconds = 1.0f;
+    // 散らす間の渦の強さ（域の乱流の倍率）。煙を筋にちぎって散らす。
+    float disperseSwirl = 3.0f;
     // 確かめ用：この F ごとに位置・速度をログに出す（0 は出さない）。
     int traceEveryFrames = 0;
 
@@ -258,6 +343,8 @@ public:
     float cloudBobTime = 0.0f;
     float cloudHiddenSeconds = 0.0f;
     bool cloudAccepted = true;
+    // 召喚と解除の演出（CloudMountVisuals が描画フレームごとに進める）。
+    CloudMountArrivalState arrival{};
 };
 
 } // namespace Project_TD2_2

@@ -4,7 +4,9 @@
 - 入力：input.appear（体の雲の量。0〜1 の出し入れ × CloudMount の量）、input.speed（尾の量。速さで 0〜）、
   input.boost（ブーストの吹き出しの量と、金の縁の明るさ）。資産に無い入力は再生を断られるので、コードと名前を合わせる。
 - 尾の長さは域の relativeWind（速いほど空気が後ろへ流れる）と消散で決まり、尾の源の量は input.speed で変わる。
-胴の煙 BossBodySmoke.hvfx の域と源の層を写して作る（描画まわりの値を引き継ぐ）。
+- 召喚と解除の演出（カード c-87d7cd）：input.trail（Color。飛んで来る間の軌跡の帯の明るさ）、input.scatter（Bool。
+  解除で雲を外へ押し広げながら吸って消す）、input.swirl（域の乱流の倍率。既定 1）。雲そのものは CloudMountVisuals が根を飛ばして運ぶ（域を増やさない）。
+胴の煙 BossBodySmoke.hvfx の域と源の層を写して作る（描画まわりの値を引き継ぐ）。軌跡の帯は BossDash.hvfx の帯の層を写す。
 エディタで資産が直されていたら（最後にこのスクリプトが書いた内容と違えば）書かない。上書きするなら force=1。
 引数：[out=<フォルダ>] [meta=<フォルダ>] [force=1] [rate=<全体の倍率>] [d.<域の項目>=値] [<源の名前>.<項目>=値]
 （名前の空白は詰める：Puff1.temperature=0.2 など。値は JSON）"""
@@ -15,6 +17,8 @@ GUID = "467fbd610a584de599d6946884fcdb67"
 NAME = "NimbusCloud"
 STAMP = pathlib.Path(__file__).with_name("nimbus_cloud.last.json")
 src = json.loads((ROOT / "Assets/Vfx/BossBodySmoke.hvfx").read_text(encoding="utf-8"))
+band = next(e for e in json.loads((ROOT / "Assets/Vfx/BossDash.hvfx").read_text(encoding="utf-8"))["emitters"]
+            if e["name"] == "Dash Band Back")
 args = dict(a.split("=", 1) for a in sys.argv[1:] if "=" in a)
 out_dir = pathlib.Path(args.get("out", str(ROOT / "Assets/Vfx")))
 layers = {e["name"]: e for e in src["emitters"]}
@@ -41,6 +45,7 @@ TURBULENCE = dict(turbulence=1.4, frequency=2.6, evolution=1.0)
 DRAG = 0.5
 
 APPEAR, SPEED, BOOST = "input.appear", "input.speed", "input.boost"
+SCATTER, TRAIL, SWIRL = "input.scatter", "input.trail", "input.swirl"
 # ブーストで金の縁の温度を上げる倍率（温度の倍率 = 1 + これ × boost）。
 GLOW_BOOST = 1.5
 
@@ -84,6 +89,10 @@ SOURCES = [
      dict(absorption=6.0, emissionNoise=0.0), None, None),
     ("Fade Far", dict(type="Box", box=[2.6, 1.3, 0.6]), (0.0, CENTER[1], -4.9), (1.0, 1.0, 1.0), 0.0,
      dict(absorption=12.0, emissionNoise=0.0), None, None),
+    # 解除の散り（input.scatter の間だけ有効）：雲の芯を中心に、域のほぼ全体を覆う楕円の中の煙を外へ押し広げ（ほどける・
+    # 膨らむ）、同時に吸って薄くする。煙は出さない。消散（densityDissipation）と合わせて 1 秒以内に消し切る。
+    ("Scatter", dict(type="Sphere", radius=0.5), (0.0, -0.3, 0.0), (5.0, 2.4, 11.0), 0.0,
+     dict(radialSpeed=4.0, absorption=9.0, emissionNoise=0.0), None, None, SCATTER),
 ]
 
 
@@ -110,7 +119,7 @@ def link(layer, input_id, module_id, prop, scale=1.0, bias=0.0):
             "target": {"emitterId": layer["id"], "moduleId": module_id, "propertyId": prop}}
 
 
-def source(name, shape, position, scale, rate, values, rate_input, heat_input, order, domain_id):
+def source(name, shape, position, scale, rate, values, rate_input, heat_input, enable_input=None, *, order, domain_id):
     layer = copy.deepcopy(layers["Core"])
     reid(layer, "nimbus." + name)
     layer["name"] = name
@@ -137,6 +146,46 @@ def source(name, shape, position, scale, rate, values, rate_input, heat_input, o
         layer["inputLinks"].append(link(layer, rate_input, layer["modules"]["spawn"]["id"], "rateMultiplier"))
     if heat_input:
         layer["inputLinks"].append(link(layer, heat_input, settings["id"], "temperatureMultiplier", GLOW_BOOST, 1.0))
+    if enable_input:
+        layer["inputLinks"].append(link(layer, enable_input, layer["modules"]["basic"]["id"], "enabled"))
+    return layer
+
+
+# 軌跡の帯（召喚で飛んで来る間だけ input.trail で明るくする）：名前、局所 Z 回りの角度（0＝水平の帯、90＝立てた帯）、
+# 幅 (m)、混ぜ方、貼図、色（RGBA。帯の頭の色）、尾の色、軌跡の長さ（秒）、尾の幅（頭に対する割合）。
+# 根（足元）から雲の芯（足元の下 0.3 m）へ置く。帯の断面は層の局所 X。水平と立てた帯を十字に重ね、どこから見ても
+# 紙のように細くならない。
+TRAIL_Y = -0.3
+TRAILS = [
+    ("Trail Flat", 0.0, 1.5, "Alpha", "engine.vfx.texture.soft_line", [1.0, 0.98, 0.94, 0.55], [1.0, 0.95, 0.85, 0.0],
+     0.30, 0.25),
+    ("Trail Upright", 90.0, 1.1, "Alpha", "engine.vfx.texture.soft_line", [1.0, 0.98, 0.94, 0.45], [1.0, 0.95, 0.85, 0.0],
+     0.30, 0.25),
+    # 金の芯：細い加算の線。白い帯の真ん中に薄く金を通す（白里透金）。
+    ("Trail Gold", 0.0, 0.45, "Additive", "engine.vfx.texture.soft_line", [1.6, 1.15, 0.55, 0.8], [1.0, 0.7, 0.3, 0.0],
+     0.22, 0.2),
+]
+
+
+def trail(name, roll, width, blend, texture, head, tail, seconds, tail_width, order):
+    layer = copy.deepcopy(band)
+    reid(layer, "nimbus." + name)
+    layer["name"] = name
+    layer["order"] = order
+    layer["parentEmitterId"] = ""
+    layer["modules"]["emitterTransform"]["transform"].update(
+        position=[0.0, TRAIL_Y, 0.0], rotationEulerDegrees=[0.0, 0.0, roll], scale=[1.0, 1.0, 1.0])
+    layer["modules"]["renderShape"]["ribbonWidth"] = width
+    layer["modules"]["renderCommon"].update(blendMode=blend, colorTextureAssetGuid=texture)
+    color = layer["modules"]["color"]["value"]
+    color["mode"] = "Gradient"
+    for stop in color["gradient"]["stops"]:
+        stop["color"] = list(head)
+    # 帯の動きが急に折れる（着いて体の向きへ戻る）所で筋を引かないよう、根が breakDistance より飛んだら切る
+    # （召喚の始めに足元から飛び始めの所へ移る時）。
+    layer["history"].update(mode="Trail", duration=seconds, samples=16, breakDistance=6.0, tailWidth=tail_width,
+                            fadePower=1.3, tailColor=list(tail))
+    layer["inputLinks"] = [link(layer, TRAIL, layer["modules"]["color"]["id"], "valueMultiplier")]
     return layer
 
 
@@ -149,7 +198,8 @@ domain["modules"]["forces"]["drag"] = DRAG
 domain["modules"]["forces"]["gravity"] = [0.0, 0.0, 0.0]
 domain["modules"]["emitterTransform"]["transform"].update(
     position=list(CENTER), rotationEulerDegrees=[0.0, 0.0, 0.0], scale=[1.0, 1.0, 1.0])
-domain["inputLinks"] = []
+# 渦の強さ（input.swirl。乱流の倍率）：飛んで来る間は相対風で煙がなめらかな塊に伸びるので、強く巻いて綿の縁を保つ。
+domain["inputLinks"] = [link(domain, SWIRL, domain["modules"]["forces"]["id"], "turbulenceMultiplier")]
 domain["order"] = 0
 domain["name"] = "Cloud Domain"
 doc = {key: value for key, value in src.items() if key not in ("emitters", "inputs", "name")}
@@ -158,8 +208,12 @@ doc["loop"] = True
 doc["durationSeconds"] = 3600.0
 doc["inputs"] = [{"defaultValue": 1.0, "id": APPEAR, "name": "appear", "type": "Float"},
                  {"defaultValue": 0.0, "id": SPEED, "name": "speed", "type": "Float"},
-                 {"defaultValue": 0.0, "id": BOOST, "name": "boost", "type": "Float"}]
+                 {"defaultValue": 0.0, "id": BOOST, "name": "boost", "type": "Float"},
+                 {"defaultValue": False, "id": SCATTER, "name": "scatter", "type": "Bool"},
+                 {"defaultValue": [0.0, 0.0, 0.0, 1.0], "id": TRAIL, "name": "trail", "type": "Color"},
+                 {"defaultValue": 1.0, "id": SWIRL, "name": "swirl", "type": "Float"}]
 doc["emitters"] = [domain] + [source(*entry, order=i + 1, domain_id=domain["id"]) for i, entry in enumerate(SOURCES)]
+doc["emitters"] += [trail(*entry, order=len(SOURCES) + 1 + i) for i, entry in enumerate(TRAILS)]
 assert len(SOURCES) <= 15, "一つの域の源は 15 個まで"
 payload = (json.dumps(doc, ensure_ascii=False, indent=2) + "\n").replace("\n", "\r\n").encode("utf-8")
 

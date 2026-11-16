@@ -22,6 +22,12 @@ inline void SetFloat(HIKARI::GameProjectVfxParameterOverrides& parameters, const
     Add(parameters, inputId).numeric[0] = value;
 }
 
+inline void SetBool(HIKARI::GameProjectVfxParameterOverrides& parameters, const char* inputId, bool value) {
+    auto& entry = Add(parameters, inputId);
+    entry.type = HIKARI::GameProjectBindingValueType::Bool;
+    entry.boolean = value;
+}
+
 inline void SetColor(HIKARI::GameProjectVfxParameterOverrides& parameters, const char* inputId,
                      HIKARI::GameProjectFloat3 color) {
     auto& entry = Add(parameters, inputId);
