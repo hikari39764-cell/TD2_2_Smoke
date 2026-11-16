@@ -337,6 +337,10 @@ struct BossBodySettings {
     float swordGripAlong = 0.07f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
     float handScale = 1.25f;
+    // 体の大きさ（倍率）：鎧（胴・兜・大袖・草摺）の置き場所と大きさ、肩、左手の手振りと待機の置き場所、待機の構えの握りに
+    // 掛ける（下の位置の値は 1 倍の体での値）。体を大きくする時は、Boss.bodyHalfHeight・bodyRadius・シーンのカプセル・
+    // 胴の煙のエフェクト（make_body_smoke.py の scale）も一緒に変える（調整ガイド g-fe0396 の一覧）。
+    float bodyScale = 1.25f;
     // 握りの右手の模型の形（刀の座標、模型の実寸）：手首の位置・肘の向き・手の甲の向き。籠手の筒を手首に付けるのに使う。
     // 模型を作るスクリプトが出す値（GRIP_WRIST・GRIP_ELBOW・GRIP_BACK）に合わせる。
     HIKARI::GameProjectFloat3 gripWrist{-0.0289f, 0.2395f, -0.1030f};
@@ -347,6 +351,13 @@ struct BossBodySettings {
     HIKARI::GameProjectFloat3 shoulder{-0.80f, 3.05f, 0.0f};
     // 筒の向きに、握りの手の模型の肘の向きを混ぜる割合（0 で肩をまっすぐ向く、1 で手の模型どおり）。
     float cuffGripBlend = 0.25f;
+    // 籠手の筒の模型の長さ（手首から先まで、模型の実寸 m。模型を作るスクリプトの build_cuff の length）。
+    float cuffModelLength = 0.62f;
+    // 籠手の筒の先を、肩からこれだけ手前で止める（m。体の大きさを掛ける）。手を大きくすると筒が肩まで届いて大袖・胴に
+    // 刺さるので、筒の長さだけを詰める（太さはそのまま）。0 で詰めない。
+    float cuffShoulderClearance = 0.55f;
+    // 詰める時の下限（模型の長さに対する割合。手が肩のそばに来ても筒が消えないように）。
+    float cuffMinLength = 0.35f;
     // 左手（刀を持たない手）の、何もしていない時の置き場所：手首の位置（体の足元から、局所 m）と、
     // 指先・手の甲の向き（体の向きに対する局所の向き。長さは問わない）。
     HIKARI::GameProjectFloat3 leftRestWrist{1.0f, 1.80f, 0.35f};

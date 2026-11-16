@@ -39,13 +39,23 @@ inline Quat AimZ(Vec3 direction, Vec3 spine) {
 }
 
 // 手首に付く籠手の筒：筒は手首から肘の向き（局所 -Z）へ伸び、腕の甲（局所 +Y）は手の甲の側を向く。
-inline BossBodyPlacement Cuff(Vec3 wrist, Vec3 elbow, Vec3 back, float scale) {
+// 筒の先が肩（shoulder）から cuffShoulderClearance より近くなる時は、筒の長さだけを詰める（太さはそのまま）。
+inline BossBodyPlacement Cuff(Vec3 wrist, Vec3 elbow, Vec3 back, float scale, const BossBodySettings& s,
+                              Vec3 shoulder) {
     BossBodyPlacement cuff;
     cuff.position = wrist;
     cuff.rotation = AimZ(Mul(Normalize(elbow), -1.0f), back);
     cuff.scale = scale;
+    const float full = s.cuffModelLength * scale;
+    if (s.cuffShoulderClearance > 0.0f && full > 0.0f) {
+        const float room = Length(Sub(shoulder, wrist)) - s.cuffShoulderClearance * s.bodyScale;
+        cuff.lengthScale = std::clamp(room / full, std::clamp(s.cuffMinLength, 0.0f, 1.0f), 1.0f);
+    }
     return cuff;
 }
+
+// 体の局所の位置（1 倍の体で書いた値）を、外形の体の大きさ（Boss.bodyScale）へ。
+inline Vec3 BodyPoint(const BossBodySettings& s, Vec3 v) { return Mul(v, s.bodyScale); }
 
 // 位置のばね（StepSway と同じ形）。短い刻みに分けて進める。
 inline void SpringPoint(Vec3& position, Vec3& velocity, Vec3 target, float frequency, float damping, float dt) {

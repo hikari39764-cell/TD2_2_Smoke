@@ -59,7 +59,8 @@ LeftTarget Pose(Gesture gesture, Shape shape, Vec3 wrist, Vec3 fingers, Vec3 bac
 LeftTarget Balance(const BossComponent& boss) {
     const BossBodySettings& settings = boss.body;
     const BossBodyMotionState& m = boss.bodyState.motion;
-    return Pose(Gesture::Balance, Shape::Open, RotateY(Add(settings.leftRestWrist, m.leftOffset), m.twist),
+    return Pose(Gesture::Balance, Shape::Open,
+                RotateY(Add(BodyPoint(settings, settings.leftRestWrist), m.leftOffset), m.twist),
                 RotateY(settings.leftRestFingers, m.twist), RotateY(settings.leftRestBack, m.twist));
 }
 
@@ -81,12 +82,13 @@ SwordAxes Axes(const BossBodyMotionState& m) {
 // 引爆：前隙の初めに掲げ、溜めの間に胸へ寄せる。爆ぜ始めた tick（BossDetonate::Begin）に拳を握って下へ落とす。
 bool Detonate(const BossComponent& boss, const BossMove& move, LeftTarget& t) {
     const BossBodyLeftHandSettings& s = boss.body.leftHand;
+    const Vec3 raised = BodyPoint(boss.body, s.detonateRaise), chest = BodyPoint(boss.body, s.detonateChest);
     if (boss.phase == BossActPhase::Pre) {
         const float p = Share(boss.stateFrame, move.pre);
         const float raise = std::clamp(s.detonateRaiseShare, 0.01f, 1.0f);
         const Vec3 wrist =
-            p < raise ? Lerp(Balance(boss).wrist, s.detonateRaise, Smooth(p / raise))
-                      : Lerp(s.detonateRaise, s.detonateChest, Smooth((p - raise) / std::max(kTiny, 1.0f - raise)));
+            p < raise ? Lerp(Balance(boss).wrist, raised, Smooth(p / raise))
+                      : Lerp(raised, chest, Smooth((p - raise) / std::max(kTiny, 1.0f - raise)));
         t = Pose(Gesture::Detonate, Shape::Open, wrist, s.detonateFingers, s.detonateBack);
         return true;
     }
@@ -95,9 +97,10 @@ bool Detonate(const BossComponent& boss, const BossMove& move, LeftTarget& t) {
     const bool fist = boss.phase == BossActPhase::Act ? boss.detonation.active || boss.stateFrame >= 1
                                                       : boss.stateFrame < s.detonateFistHoldFrames;
     if (fist)
-        t = Pose(Gesture::Detonate, Shape::Fist, s.detonateFist, s.detonateFingers, s.detonateBack, s.snapFrequency);
+        t = Pose(Gesture::Detonate, Shape::Fist, BodyPoint(boss.body, s.detonateFist), s.detonateFingers,
+                 s.detonateBack, s.snapFrequency);
     else if (boss.phase == BossActPhase::Act)
-        t = Pose(Gesture::Detonate, Shape::Open, s.detonateChest, s.detonateFingers, s.detonateBack);
+        t = Pose(Gesture::Detonate, Shape::Open, chest, s.detonateFingers, s.detonateBack);
     return fist || boss.phase == BossActPhase::Act;
 }
 
@@ -105,9 +108,10 @@ bool Detonate(const BossComponent& boss, const BossMove& move, LeftTarget& t) {
 bool Knife(const BossComponent& boss, LeftTarget& t) {
     const BossBodyLeftHandSettings& s = boss.body.leftHand;
     if (boss.phase == BossActPhase::Pre)
-        t = Pose(Gesture::Knife, Shape::Seal, s.knifePull, s.knifePullFingers, s.knifePullBack);
+        t = Pose(Gesture::Knife, Shape::Seal, BodyPoint(boss.body, s.knifePull), s.knifePullFingers, s.knifePullBack);
     else if (boss.phase == BossActPhase::Act)
-        t = Pose(Gesture::Knife, Shape::Open, s.knifeThrow, s.knifeThrowFingers, s.knifeThrowBack, s.snapFrequency);
+        t = Pose(Gesture::Knife, Shape::Open, BodyPoint(boss.body, s.knifeThrow), s.knifeThrowFingers,
+                 s.knifeThrowBack, s.snapFrequency);
     return boss.phase != BossActPhase::Post;
 }
 
@@ -116,7 +120,7 @@ bool Seal(const BossComponent& boss, LeftTarget& t) {
     const BossBodyLeftHandSettings& s = boss.body.leftHand;
     if (boss.phase != BossActPhase::Pre)
         return false;
-    t = Pose(Gesture::Seal, Shape::Seal, s.sealWrist, s.sealFingers, s.sealBack);
+    t = Pose(Gesture::Seal, Shape::Seal, BodyPoint(boss.body, s.sealWrist), s.sealFingers, s.sealBack);
     return true;
 }
 
@@ -155,8 +159,8 @@ LeftTarget TwoHand(const BossComponent& boss, bool towardShoulder) {
     Vec3 back = Perpendicular(HandPoint(sword.x, sword.y, sword.z, s.twoHandBack), sword.z);
     if (towardShoulder) {
         // 肩は胴の捻りに付き、腰を落とした分だけ下がる（握りは規則の線の枠なので、体の傾きは見ない）。
-        const Vec3 shoulder = Sub(RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, m.twist),
-                                  {0.0f, boss.poseCrouch, 0.0f});
+        const Vec3 right = BodyPoint(settings, settings.shoulder);
+        const Vec3 shoulder = Sub(RotateY({-right.x, right.y, right.z}, m.twist), {0.0f, boss.poseCrouch, 0.0f});
         const Vec3 toShoulder = ProjectOut(Sub(shoulder, m.grip), sword.z);
         if (Length(toShoulder) > kTiny)
             back = Cross(Mul(Normalize(toShoulder), -1.0f), handX);
@@ -189,7 +193,7 @@ Gesture GestureOf(BossMoveType type) {
 LeftTarget Target(const BossComponent& boss) {
     const BossBodyLeftHandSettings& s = boss.body.leftHand;
     if (boss.state == BossState::Stunned || boss.state == BossState::Dead)
-        return Pose(Gesture::Limp, Shape::Open, s.limpWrist, s.limpFingers, s.limpBack);
+        return Pose(Gesture::Limp, Shape::Open, BodyPoint(boss.body, s.limpWrist), s.limpFingers, s.limpBack);
     const BossMove* move = CurrentMove(boss);
     LeftTarget t;
     bool active = false;
@@ -200,7 +204,7 @@ LeftTarget Target(const BossComponent& boss) {
     case Gesture::FlameWipe: active = FlameWipe(boss, *move, t); break;
     case Gesture::Aim:
         active = boss.retreat.charging;
-        t = Pose(Gesture::Aim, Shape::Open, s.aimWrist, s.aimFingers, s.aimBack);
+        t = Pose(Gesture::Aim, Shape::Open, BodyPoint(boss.body, s.aimWrist), s.aimFingers, s.aimBack);
         break;
     case Gesture::TwoHand:
         active = HoldingGreatSword(boss, *move);
@@ -208,7 +212,7 @@ LeftTarget Target(const BossComponent& boss) {
         break;
     case Gesture::Kick:
         active = boss.phase != BossActPhase::Post;
-        t = Pose(Gesture::Kick, Shape::Open, s.kickWrist, s.kickFingers, s.kickBack);
+        t = Pose(Gesture::Kick, Shape::Open, BodyPoint(boss.body, s.kickWrist), s.kickFingers, s.kickBack);
         break;
     default: break;
     }
@@ -294,9 +298,11 @@ void BossBodyLeftHand::Solve(const BossComponent& boss, const HIKARI::GameProjec
     pose.leftHand.scale = handScale;
     pose.leftShape = m.leftShape;
     // 籠手の筒は肩（胴の捻りに付く）の方へ伸ばす。
-    const Vec3 shoulder = RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, m.twist);
+    const Vec3 right = BodyPoint(settings, settings.shoulder);
+    const Vec3 shoulder = RotateY({-right.x, right.y, right.z}, m.twist);
+    const Vec3 shoulderWorld = bodyFrame.Point(shoulder);
     pose.leftCuff =
-        Cuff(pose.leftHand.position, Sub(bodyFrame.Point(shoulder), pose.leftHand.position), back, handScale);
+        Cuff(pose.leftHand.position, Sub(shoulderWorld, pose.leftHand.position), back, handScale, settings, shoulderWorld);
 }
 
 } // namespace Project_TD2_2

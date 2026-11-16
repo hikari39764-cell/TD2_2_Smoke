@@ -11,6 +11,8 @@ struct BossBodyPlacement {
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectQuaternion rotation{};
     float scale = 1.0f;
+    // 局所の Z の向きだけに掛ける倍率（籠手の筒の長さを詰める）。
+    float lengthScale = 1.0f;
 };
 
 // 外形の部品の置き場所の一式。

@@ -56,7 +56,7 @@ struct BodyFrame {
                                                   kFlutterPhaseStep * static_cast<float>(index));
         const float flare =
             std::clamp(flareDegrees + Dot(flat, outward) + in.sway.y + flutter, kFlareMinDegrees, kFlareMaxDegrees);
-        return Hanging(local, yaw, flare, 1.0f, Dot(flat, tangent));
+        return Hanging(local, yaw, flare, in.settings.bodyScale, Dot(flat, tangent));
     }
 };
 
@@ -73,12 +73,15 @@ void SolveArmor(const BossBodyRigInput& in, BossBodyPose& pose) {
     const BodyFrame frame{in.body, in.halfHeight};
     // 胴・兜・大袖は、刀の横の向きに付いて縦の軸まわりに捻る（BossBodySword が進める）。兜はさらにプレイヤーを向く。
     const float twist = in.twist;
-    pose.torso = frame.Hanging(RotateY(body.torsoCenter, twist), twist, 0.0f);
-    pose.head = frame.Hanging(RotateY(body.headCenter, twist), in.headYaw, 0.0f, body.headScale);
+    const float size = body.bodyScale;
+    pose.torso = frame.Hanging(RotateY(BodyPoint(body, body.torsoCenter), twist), twist, 0.0f, size);
+    pose.head =
+        frame.Hanging(RotateY(BodyPoint(body, body.headCenter), twist), in.headYaw, 0.0f, body.headScale * size);
     const float sodeYaw = body.sodeYawDegrees * kRadiansPerDegree;
     // 右の袖は -X の側（外向きは -X 寄り）、左は +X の側。
-    pose.sode[0] = frame.Swinging(in, RotateY(body.sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100);
-    pose.sode[1] = frame.Swinging(in, RotateY({-body.sodeHang.x, body.sodeHang.y, body.sodeHang.z}, twist),
+    const Vec3 sodeHang = BodyPoint(body, body.sodeHang);
+    pose.sode[0] = frame.Swinging(in, RotateY(sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100);
+    pose.sode[1] = frame.Swinging(in, RotateY({-sodeHang.x, sodeHang.y, sodeHang.z}, twist),
                                   twist + sodeYaw, body.sodeFlareDegrees, 101);
     pose.tassetCount = std::clamp(body.tassetCount, 0, kBossBodyTassetCapacity);
     // 草摺は腰に付くので、捻りの一部だけ。
@@ -87,7 +90,8 @@ void SolveArmor(const BossBodyRigInput& in, BossBodyPose& pose) {
         const float angle = 2.0f * kPi * static_cast<float>(k) / static_cast<float>(pose.tassetCount);
         pose.tassets[static_cast<size_t>(k)] = frame.Swinging(
             in,
-            RotateY(WaistPoint(angle, body.tassetRadiusSide, body.tassetRadiusFront, body.tassetHangHeight),
+            RotateY(BodyPoint(body, WaistPoint(angle, body.tassetRadiusSide, body.tassetRadiusFront,
+                                               body.tassetHangHeight)),
                     tassetTwist),
             angle + tassetTwist, body.tassetFlareDegrees, k);
     }
@@ -103,24 +107,28 @@ void SolveIdleHands(const BossBodyRigInput& in, BossBodyPose& pose) {
     const auto direction = [&](Vec3 local) { return Normalize(Rotate(in.body.rotation, local), local); };
     Vec3 blade{}, grip{};
     IdleKamae(s.motion, in.clock, blade, grip);
+    grip = BodyPoint(s, grip);
     const Vec3 edge = Perpendicular(s.motion.idleEdge, blade);
     pose.sword.position = frame.Point(grip);
     pose.sword.rotation = AimZ(direction(blade), Mul(direction(edge), -1.0f));
     pose.sword.scale = in.swordScale;
     pose.rightHand = pose.sword;
     pose.rightHand.scale = in.handScale;
-    const Vec3 rightShoulder = frame.Point(RotateY(s.shoulder, in.twist));
+    const Vec3 rightShoulder = frame.Point(RotateY(BodyPoint(s, s.shoulder), in.twist));
     const Vec3 rightWrist = Add(pose.sword.position, Rotate(pose.sword.rotation, Mul(s.gripWrist, in.handScale)));
     const Vec3 gripElbow = Normalize(Rotate(pose.sword.rotation, s.gripElbow));
     const Vec3 rightElbow = Lerp(Normalize(Sub(rightShoulder, rightWrist), gripElbow), gripElbow, s.cuffGripBlend);
-    pose.rightCuff = Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, s.gripBack), in.handScale);
+    pose.rightCuff = Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, s.gripBack), in.handScale, s,
+                          rightShoulder);
     const Vec3 back = direction(RotateY(s.leftRestBack, in.twist));
-    pose.leftHand.position = frame.Point(RotateY(s.leftRestWrist, in.twist));
+    pose.leftHand.position = frame.Point(RotateY(BodyPoint(s, s.leftRestWrist), in.twist));
     pose.leftHand.rotation = AimZ(direction(RotateY(s.leftRestFingers, in.twist)), back);
     pose.leftHand.scale = in.handScale;
     pose.leftShape = BossBodyHandShape::Open;
-    const Vec3 leftShoulder = frame.Point(RotateY({-s.shoulder.x, s.shoulder.y, s.shoulder.z}, in.twist));
-    pose.leftCuff = Cuff(pose.leftHand.position, Sub(leftShoulder, pose.leftHand.position), back, in.handScale);
+    const Vec3 shoulder = BodyPoint(s, s.shoulder);
+    const Vec3 leftShoulder = frame.Point(RotateY({-shoulder.x, shoulder.y, shoulder.z}, in.twist));
+    pose.leftCuff =
+        Cuff(pose.leftHand.position, Sub(leftShoulder, pose.leftHand.position), back, in.handScale, s, leftShoulder);
 }
 
 } // namespace

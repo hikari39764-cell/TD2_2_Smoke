@@ -229,6 +229,8 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  swordVisibleLength, 0.0f, 20.0f);
     fields.Float("bodySwordGripAlong", "握りの位置：剣の付け根から剣の向きへ (m)", swordGripAlong, -1.0f, 2.0f);
     fields.Float("bodyHandScale", "手の大きさ（刀の拡大に掛ける倍率）", handScale, 0.1f, 5.0f);
+    fields.Float("bodyScale", "体の大きさ（倍率。鎧・肩・左手の置き場所・待機の握りに掛ける。当たりの型には掛けない）",
+                 bodyScale, 0.2f, 5.0f);
     fields.Float3("bodyGripWrist", "握りの右手の模型：手首の位置（刀の座標、模型の実寸 m）", gripWrist);
     fields.Float3("bodyGripElbow", "握りの右手の模型：肘の向き（刀の座標）", gripElbow);
     fields.Float3("bodyGripBack", "握りの右手の模型：手の甲の向き（刀の座標）", gripBack);
@@ -240,6 +242,11 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                   shoulder);
     fields.Float("bodyCuffGripBlend", "右の籠手の筒の向きに、握りの手の模型の肘の向きを混ぜる割合", cuffGripBlend, 0.0f,
                  1.0f);
+    fields.Float("bodyCuffModelLength", "籠手の筒の模型の長さ (m。模型を作るスクリプトの値)", cuffModelLength, 0.05f, 5.0f);
+    fields.Float("bodyCuffShoulderClearance",
+                 "籠手の筒の先を、肩からこれだけ手前で止める (m。体の大きさを掛ける。0 で詰めない)",
+                 cuffShoulderClearance, 0.0f, 5.0f);
+    fields.Float("bodyCuffMinLength", "籠手の筒を詰める下限（模型の長さに対する割合）", cuffMinLength, 0.0f, 1.0f);
     fields.Float3("bodyTorsoCenter", "鎧：胴の中心（体の足元から、局所 m）", torsoCenter);
     fields.Float3("bodyHeadCenter", "鎧：兜の中心（体の足元から、局所 m）", headCenter);
     fields.Float("bodyHeadScale", "鎧：兜の大きさ（倍率）", headScale, 0.2f, 4.0f);

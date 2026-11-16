@@ -91,7 +91,7 @@ void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& 
     request.castShadow = boss.body.castShadow ? 1u : 0u;
     request.worldTransform.position = placement.position;
     request.worldTransform.rotation = placement.rotation;
-    request.worldTransform.scale = {placement.scale, placement.scale, placement.scale};
+    request.worldTransform.scale = {placement.scale, placement.scale, placement.scale * placement.lengthScale};
     if (world.GetPresentationModels().SubmitExclusiveNode(request, part.node) || boss.bodyState.submitWarned)
         return;
     boss.bodyState.submitWarned = true;
@@ -193,6 +193,7 @@ void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView o
     // 大袖・草摺は揺らぎだけ。胴の捻りは本体の待機と同じく刀の横の向きから。
     HIKARI::GameProjectFloat3 blade{}, grip{};
     BossBodyMath::IdleKamae(boss.body.motion, clone.bodyClock, blade, grip);
+    grip = BossBodyMath::Mul(grip, boss.body.bodyScale);
     const BossBodyRigInput input{boss.body,
                                  body,
                                  boss.bodyHalfHeight,

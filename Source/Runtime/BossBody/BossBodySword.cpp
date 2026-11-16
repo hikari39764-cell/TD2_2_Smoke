@@ -115,6 +115,7 @@ void GreatTargets(const BossComponent& boss, MotionTargets& t) {
 // 待機の構え：下段で、息に合わせて握りと剣先が少し上下する。
 void Kamae(const BossComponent& boss, Vec3& direction, Vec3& grip) {
     IdleKamae(boss.body.motion, boss.bodyState.clock, direction, grip);
+    grip = BodyPoint(boss.body, grip);
 }
 
 // 待機の構えを混ぜる重み。待機・溜めの始めは「規則の剣が下ろした構えに近いほど」、後隙は後半で待機の構えへ戻す。
@@ -356,21 +357,25 @@ constexpr float kFistRadius = 0.12f;
 float ArmorGap(const BossBodyPose& pose, Vec3 a, Vec3 b, float pad, const char*& who) {
     const Vec3 up = Rotate(pose.torso.rotation, {0.0f, 1.0f, 0.0f});
     const Vec3 torso = pose.torso.position;
+    // 近似の数値は 1 倍の体の値。鎧の大きさ（胴の拡大＝Boss.bodyScale）を掛ける。
+    const float k = std::max(0.01f, pose.torso.scale);
     struct Part {
         const char* name;
         Vec3 from, to;
         float radius;
     };
-    const auto hang = [](const BossBodyPlacement& p) {
-        return Add(p.position, Rotate(p.rotation, {0.0f, -kSodeLength, 0.0f}));
+    const auto hang = [k](const BossBodyPlacement& p) {
+        return Add(p.position, Rotate(p.rotation, {0.0f, -kSodeLength * k, 0.0f}));
     };
     const Part parts[] = {
-        {"torso", Add(torso, Mul(up, -kTorsoHalf)), Add(torso, Mul(up, kTorsoHalf)), kTorsoRadius},
-        {"tassetUp", Add(torso, Mul(up, -kTassetMiddle)), Add(torso, Mul(up, -kTassetTop)), kTassetUpperRadius},
-        {"tassetLow", Add(torso, Mul(up, -kTassetBottom)), Add(torso, Mul(up, -kTassetMiddle)), kTassetLowerRadius},
-        {"head", pose.head.position, pose.head.position, kHeadRadius},
-        {"sodeR", pose.sode[0].position, hang(pose.sode[0]), kSodeRadius},
-        {"sodeL", pose.sode[1].position, hang(pose.sode[1]), kSodeRadius},
+        {"torso", Add(torso, Mul(up, -kTorsoHalf * k)), Add(torso, Mul(up, kTorsoHalf * k)), kTorsoRadius * k},
+        {"tassetUp", Add(torso, Mul(up, -kTassetMiddle * k)), Add(torso, Mul(up, -kTassetTop * k)),
+         kTassetUpperRadius * k},
+        {"tassetLow", Add(torso, Mul(up, -kTassetBottom * k)), Add(torso, Mul(up, -kTassetMiddle * k)),
+         kTassetLowerRadius * k},
+        {"head", pose.head.position, pose.head.position, kHeadRadius * k},
+        {"sodeR", pose.sode[0].position, hang(pose.sode[0]), kSodeRadius * k},
+        {"sodeL", pose.sode[1].position, hang(pose.sode[1]), kSodeRadius * k},
     };
     float best = 1000.0f;
     for (const Part& part : parts) {
@@ -399,9 +404,9 @@ void TraceClearance(const BossComponent& boss, const Transform& body, const Boss
     const float hand = ArmorGap(pose, pose.sword.position, pose.sword.position, kFistRadius, handWho);
     const MotionFrame frame{boss, body, 0.0f};
     const float twist = boss.bodyState.motion.twist;
-    const Vec3 rightShoulder = frame.Point(RotateY(settings.shoulder, twist));
-    const Vec3 leftShoulder =
-        frame.Point(RotateY({-settings.shoulder.x, settings.shoulder.y, settings.shoulder.z}, twist));
+    const Vec3 shoulder = BodyPoint(settings, settings.shoulder);
+    const Vec3 rightShoulder = frame.Point(RotateY(shoulder, twist));
+    const Vec3 leftShoulder = frame.Point(RotateY({-shoulder.x, shoulder.y, shoulder.z}, twist));
     char message[320]{};
     std::snprintf(
         message, sizeof(message),
@@ -518,12 +523,13 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     pose.rightHand.scale = handScale;
     // 右の籠手の筒：握りの手の模型の手首に付け、肩（胴の捻りに付く）の方へ伸ばす。手の模型の肘の向きを少し混ぜて、
     // 手首が不自然に折れないようにする。
-    const Vec3 rightShoulder = frame.Point(RotateY(settings.shoulder, m.twist));
+    const Vec3 rightShoulder = frame.Point(RotateY(BodyPoint(settings, settings.shoulder), m.twist));
     const Vec3 rightWrist = Add(pose.sword.position, Rotate(pose.sword.rotation, Mul(settings.gripWrist, handScale)));
     const Vec3 gripElbow = Normalize(Rotate(pose.sword.rotation, settings.gripElbow));
     const Vec3 rightElbow =
         Lerp(Normalize(Sub(rightShoulder, rightWrist), gripElbow), gripElbow, settings.cuffGripBlend);
-    pose.rightCuff = Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, settings.gripBack), handScale);
+    pose.rightCuff =
+        Cuff(rightWrist, rightElbow, Rotate(pose.sword.rotation, settings.gripBack), handScale, settings, rightShoulder);
     BossBodyLeftHand::Solve(boss, body, pose);
 }
 

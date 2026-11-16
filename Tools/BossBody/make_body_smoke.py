@@ -4,7 +4,7 @@
   襟（兜の後ろへ昇る筋）、両の袖口（肩から外へ垂れる）。
 - 入力：input.amount（出す量の倍率）、input.heat（源の温度の倍率。上げると熱い煙が光る＝フェーズ 2）。
 霞の大剣 BossGreatswordMist.hvfx の域と源の層を写して作る（描画まわりの値を引き継ぐ）。
-引数：[out=<フォルダ>]（既定は D:/PJ/TD2_2/Assets/Vfx） [d.<項目>=値] [rate=<全体の倍率>] [<源の名前>.<項目>=値]"""
+引数：[out=<フォルダ>]（既定は D:/PJ/TD2_2/Assets/Vfx） [scale=<体の倍率。既定 1.25>] [d.<項目>=値] [rate=<全体の倍率>] [<源の名前>.<項目>=値]"""
 import copy, hashlib, json, pathlib, sys
 
 ROOT = pathlib.Path("D:/PJ/TD2_2")
@@ -13,8 +13,10 @@ src = json.loads((ROOT / "Assets/Vfx/BossGreatswordMist.hvfx").read_text(encodin
 args = dict(a.split("=", 1) for a in sys.argv[1:] if "=" in a)
 out_dir = pathlib.Path(args.get("out", str(ROOT / "Assets/Vfx")))
 layers = {e["name"]: e for e in src["emitters"]}
-SIZE = [3.0, 5.2, 3.0]
-CENTER_Y = 2.1   # 域の中心（ボスの足元から）。足元の下 0.5 m から、兜の上 0.7 m まで入る。
+# 体の大きさ（Boss.bodyScale と同じ倍率）。域・源の位置と大きさに掛ける（1 倍は身長 4 m の体）。
+SCALE = float(args.get("scale", 1.25))
+SIZE = [3.0 * SCALE, 5.2 * SCALE, 3.0 * SCALE]
+CENTER_Y = 2.1 * SCALE   # 域の中心（ボスの足元から）。足元の下 0.5 m から、兜の上 0.7 m まで入る。
 
 DOMAIN = dict(
     # 分解能 72（1 格 約 7 cm）：104 と見た目はほぼ同じで、解算が約 0.4 ms 軽い。
@@ -75,14 +77,14 @@ def source(name, shape, position, rate, values, order, domain_id):
     layer["parentEmitterId"] = domain_id
     # 域の子なので、域の中心ぶん戻して、ボスの足元をエフェクトの原点に置く。
     layer["modules"]["emitterTransform"]["transform"].update(
-        position=[position[0], position[1] - CENTER_Y, position[2]], rotationEulerDegrees=[0.0, 0.0, 0.0],
-        scale=[1.0, 1.0, 1.0])
+        position=[position[0] * SCALE, position[1] * SCALE - CENTER_Y, position[2] * SCALE],
+        rotationEulerDegrees=[0.0, 0.0, 0.0], scale=[1.0, 1.0, 1.0])
     module = layer["modules"]["shape"]
     module["type"] = shape["type"]
     if "radius" in shape:
-        module["radius"].update(maximum=shape["radius"], minimum=shape["radius"])
+        module["radius"].update(maximum=shape["radius"] * SCALE, minimum=shape["radius"] * SCALE)
     if "boxHalfExtents" in shape:
-        module["boxHalfExtents"] = shape["boxHalfExtents"]
+        module["boxHalfExtents"] = [v * SCALE for v in shape["boxHalfExtents"]]
     layer["modules"]["spawn"]["ratePerSecond"] = rate * float(args.get("rate", 1.0))
     settings = layer["modules"]["fluidSource"]
     settings.update(shapeModel="", shapeFill=1.0, shapeOffset=0.0, radialSpeed=0.0, outflow=0.0, fuelFraction=0.0,
