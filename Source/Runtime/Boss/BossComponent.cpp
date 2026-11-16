@@ -215,13 +215,20 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                    greatswordFillFrames, 1, 600);
         fields.Float("greatswordRaiseTilt", "霞の大剣：作り出す間、剣を真上から後ろへ倒す角度 (度)",
                      greatswordRaiseTilt, 0.0f, 90.0f);
-        fields.Float("greatswordRaiseHeight", "霞の大剣：作り出す間の柄の高さ（足元から m。右肩の上）",
-                     greatswordRaiseHeight, 0.0f, 10.0f);
+        fields.Float("greatswordRaiseHeight", "霞の大剣：作り出す間の柄の高さ（足元から m）", greatswordRaiseHeight,
+                     0.0f, 10.0f);
+        fields.Float("greatswordRaiseSide", "霞の大剣：作り出す間の柄の横（足元から局所 m。右が負）",
+                     greatswordRaiseSide, -3.0f, 3.0f);
+        fields.Float("greatswordRaiseForward", "霞の大剣：作り出す間の柄の前（足元から局所 m）", greatswordRaiseForward,
+                     -3.0f, 3.0f);
         fields.Int("greatswordWindFrames", "霞の大剣：前隙の最後に、薙ぎ始めの構えへ下ろす長さ (F)",
                    greatswordWindFrames, 1, 120);
         fields.Float("greatswordSweepDegrees", "霞の大剣：薙ぐ角度 (度。右後ろから正面を通って左後ろへ)",
                      greatswordSweepDegrees, 10.0f, 360.0f);
-        fields.Float("greatswordSweepHeight", "霞の大剣：薙ぐ高さ（足元から m）", greatswordSweepHeight, 0.0f, 10.0f);
+        fields.Float("greatswordSweepHeight", "霞の大剣：薙ぐ柄の高さ（足元から m。見た目だけ）", greatswordSweepHeight,
+                     0.0f, 10.0f);
+        fields.Float("greatswordSweepTiltDegrees", "霞の大剣：薙ぐ間に剣先を下げる角度 (度。見た目だけ)",
+                     greatswordSweepTiltDegrees, -30.0f, 30.0f);
         fields.Float("greatswordHitMarginDegrees", "霞の大剣：当たりの角度のゆとり（1 tick に通った角度の両側へ、度）",
                      greatswordHitMarginDegrees, 0.0f, 45.0f);
         fields.Float("greatswordInnerRadius", "霞の大剣：これより内側（ボスの懐）には当たらない (m)",

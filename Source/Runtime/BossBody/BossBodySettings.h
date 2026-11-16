@@ -63,7 +63,7 @@ struct BossBodyLeftHandSettings {
     HIKARI::GameProjectFloat3 aimBack{0.0f, 0.0f, -1.0f};
     // 両手持ち（霞の大剣・天降り斬り）：拳を右手の後ろ（柄頭の側。握りから刀の -Z へ twoHandBehind m）に握る。
     // 親指の側は剣先へ、手の甲は twoHandBack（刀の座標：+X が刀の左、+Y が棟）。拳の真ん中（模型の座標・実寸 m）が柄に乗る。
-    float twoHandBehind = 0.44f;
+    float twoHandBehind = 0.52f;
     HIKARI::GameProjectFloat3 twoHandBack{0.4f, 0.92f, 0.0f};
     HIKARI::GameProjectFloat3 fistCenter{0.0f, -0.102f, 0.239f};
     // 回し蹴り：左の外へ手を上げて釣り合いを取る（指先は外、手の甲は上）。
@@ -307,11 +307,11 @@ struct BossBodySettings {
     float swordModelLength = 2.3411f;
     // 見える刀の、剣の付け根（Boss.swordShoulder）から剣先までの長さ。刀も手もこの長さに合わせて大きくなる。
     // 当たりの線（Boss.swordLength＋swordHazeLength）より先へは伸ばさない（当たらない刃を見せない）。0 なら Boss.swordLength。
-    float swordVisibleLength = 3.0f;
+    float swordVisibleLength = 3.4f;
     // 握りの中央を、剣の付け根（Boss.swordShoulder）から剣の向きへどれだけ先に置くか。
     float swordGripAlong = 0.07f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
-    float handScale = 1.0f;
+    float handScale = 1.15f;
     // 握りの右手の模型の形（刀の座標、模型の実寸）：手首の位置・肘の向き・手の甲の向き。籠手の筒を手首に付けるのに使う。
     // 模型を作るスクリプトが出す値（GRIP_WRIST・GRIP_ELBOW・GRIP_BACK）に合わせる。
     HIKARI::GameProjectFloat3 gripWrist{-0.0289f, 0.2395f, -0.1030f};

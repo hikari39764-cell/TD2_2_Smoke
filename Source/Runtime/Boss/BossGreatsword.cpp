@@ -82,9 +82,10 @@ Vec3 GroundAhead(const BossComponent& boss, Vec3 origin, float yaw, float distan
     return {at.x, boss.ground.y, at.z};
 }
 
-// 作り出す間：右肩の上（肩の横・前後の位置、足元から greatswordRaiseHeight m）に柄を置き、真上から後ろへ少し倒して立てる。
+// 作り出す間：右の胸の前（greatswordRaiseSide・greatswordRaiseForward、足元から greatswordRaiseHeight m）に柄を置き、
+// 真上から後ろへ少し倒して立てる。
 void RaisePose(const BossComponent& boss, Vec3& hilt, Vec3& direction) {
-    const Vec3 shoulder{boss.swordShoulder.x, boss.greatswordRaiseHeight, boss.swordShoulder.z};
+    const Vec3 shoulder{boss.greatswordRaiseSide, boss.greatswordRaiseHeight, boss.greatswordRaiseForward};
     hilt = Add(Center(boss, 0.0f), RotateY(shoulder, boss.yaw));
     const float tilt = boss.greatswordRaiseTilt * kRadiansPerDegree;
     direction = Normalize(Add(Vec3{0.0f, std::cos(tilt), 0.0f}, Mul(Forward(boss.yaw), -std::sin(tilt))));
@@ -98,10 +99,13 @@ void OverheadPose(const BossComponent& boss, Vec3& hilt, Vec3& direction) {
     direction = Normalize(Add(Vec3{0.0f, std::cos(tilt), 0.0f}, Mul(Forward(boss.yaw), -std::sin(tilt))));
 }
 
-// 薙ぐ間：剣は水平。基準の向き yaw から angle 度（右が負）の向きに、ボスの中心から greatswordHiltOffset m の所に柄。
+// 薙ぐ間：基準の向き yaw から angle 度（右が負）の向きに、ボスの中心から greatswordHiltOffset m の所に柄。剣先は
+// greatswordSweepTiltDegrees だけ下げる（当たりは角度と距離だけなので、高さと傾きは見た目）。
 void SweepPose(const BossComponent& boss, float yaw, float angle, Vec3& hilt, Vec3& direction) {
-    direction = Forward(yaw + angle * kRadiansPerDegree);
-    hilt = Add(Center(boss, boss.greatswordSweepHeight), Mul(direction, boss.greatswordHiltOffset));
+    const Vec3 flat = Forward(yaw + angle * kRadiansPerDegree);
+    const float tilt = boss.greatswordSweepTiltDegrees * kRadiansPerDegree;
+    direction = Add(Mul(flat, std::cos(tilt)), Vec3{0.0f, -std::sin(tilt), 0.0f});
+    hilt = Add(Center(boss, boss.greatswordSweepHeight), Mul(flat, boss.greatswordHiltOffset));
 }
 
 float StartAngle(const BossComponent& boss) { return -boss.greatswordSweepDegrees * 0.5f; }

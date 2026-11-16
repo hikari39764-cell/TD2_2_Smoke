@@ -599,21 +599,31 @@ public:
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
     int retreatStepFrames = 20;
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
-    float greatswordLength = 9.5f;
-    float greatswordHiltOffset = 0.8f;
+    // 剣の長さ。柄を体の外へ 0.4 m 出した時（c-8c8d95）に同じだけ縮めて、届く距離（柄の距離＋長さ）は 10.3 m のまま。
+    float greatswordLength = 9.1f;
+    // 薙ぐ間の柄の、ボスの中心からの距離 (m)。両手で握る左手が胴に入らないよう、体の外へ出してある（c-8c8d95 で 0.8→1.2）。
+    float greatswordHiltOffset = 1.2f;
     int greatswordFillFrames = 80;
     float greatswordRaiseTilt = 15.0f;
     float greatswordRaiseHeight = 2.6f;
+    // 作り出す間の柄の横・前（足元から局所 m。右が負）。右肩の真上だと、両手で握る刀が右の大袖に入り、左手が体を
+    // 横切って届かない（c-8c8d95 で右の胸の前へ出した）。
+    float greatswordRaiseSide = -0.45f;
+    float greatswordRaiseForward = 0.95f;
     int greatswordWindFrames = 14;
     float greatswordSweepDegrees = 200.0f;
-    float greatswordSweepHeight = 1.3f;
+    // 薙ぐ高さ（柄。見た目だけ：薙ぎの当たりは角度と距離だけで見る）と、剣先を下げる角度（度）。腰の高さで握り、
+    // 剣先へ下げて、プレイヤーの体の高さを通す（膝の高さで握ると、両手が肩から遠い）。
+    float greatswordSweepHeight = 1.6f;
+    float greatswordSweepTiltDegrees = 4.0f;
     float greatswordHitMarginDegrees = 4.0f;
     float greatswordInnerRadius = 1.12f;
     int greatswordDissolveFrames = 24;
     // 縦割り（型 greatswordCleave。前隙・叩きつける F・後隙・刃の威力と被弾・追尾を止める F・崩せる被弾数・残す火は技の表）。
     // 頭上の構え：柄の高さ（足元から m）・前への位置 m・真上から後ろへ倒す角度（度）。作り出してから振りかぶる F。
     float greatswordOverheadHeight = 4.0f;
-    float greatswordOverheadForward = 0.3f;
+    // 振りかぶりの柄の前への位置。兜の真上に近いと、叩きつけで両手が顔の前を通って兜に当たる（c-8c8d95 で 0.3→0.8）。
+    float greatswordOverheadForward = 0.8f;
     float greatswordOverheadTilt = 10.0f;
     int greatswordCleaveLiftFrames = 16;
     // 叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）。
@@ -766,8 +776,10 @@ public:
     // 高さ（y）だけは体を大きくしても据え置き：倍率どおり 2.791 へ上げると、横の振りの刀がプレイヤーの頭上を抜けて、
     // 刀そのものの当たりが出なくなる（突進横なぎ・横なぎ二連で確かめた。c-146b66）。横と前は倍率どおり。
     HIKARI::GameProjectFloat3 swordShoulder{-0.855f, 2.372f, 0.186f};
-    float swordLength = 2.651f;
-    float swordHazeLength = 0.706f;
+    // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（Boss.bodySwordVisibleLength）に
+    // 合わせる：両手の斬りで当たりを見える刀に合わせた時（c-8c8d95）に、刀を 3.4 m へ大きくし、霞を剣先の少し先までにした。
+    float swordLength = 3.0f;
+    float swordHazeLength = 0.45f;
     // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
     BossSwingSettings swing;
     float waveForward = 1.059f;

@@ -379,11 +379,11 @@ float ArmorGap(const BossBodyPose& pose, Vec3 a, Vec3 b, float pad, const char*&
     return best;
 }
 
-// 確かめ用（bodyTraceMotion）：斬りの技の間、毎フレーム、刀身（鍔〜剣先）と握りの拳が鎧の近似からどれだけ離れているか、
+// 確かめ用（bodyTraceMotion）：技の間、毎フレーム、刀身（鍔〜剣先）と握りの拳が鎧の近似からどれだけ離れているか、
 // 手首から肩（胴の捻りに付く）までの距離、剣先の地面からの高さ、両手の重みを記録に出す。
 void TraceClearance(const BossComponent& boss, const Transform& body, const BossBodyPose& pose) {
     const BossMove* move = CurrentMove(boss);
-    if (!boss.body.motion.traceMotion || move == nullptr || !BossMoveTable::IsSwingType(move->type))
+    if (!boss.body.motion.traceMotion || move == nullptr)
         return;
     const BossBodySettings& settings = boss.body;
     const Vec3 direction = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});

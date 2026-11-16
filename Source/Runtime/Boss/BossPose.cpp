@@ -19,27 +19,20 @@ struct Angles {
 
 constexpr Angles kRest{70.0f, -10.0f};
 constexpr Angles kUp{-110.0f, 0.0f};
-constexpr Angles kUpLeft{-55.0f, 45.0f};
-constexpr Angles kUpRight{-55.0f, -45.0f};
-constexpr Angles kDownLeft{55.0f, 50.0f};
-constexpr Angles kDownRight{55.0f, -50.0f};
-constexpr Angles kVerticalEnd{80.0f, 0.0f};
 constexpr Angles kStunned{105.0f, -25.0f};
-constexpr Angles kKnifeStart{-30.0f, -120.0f};
-constexpr Angles kKnifeEnd{30.0f, 40.0f};
+// 投げナイフ：左手で投げる間、刀は右の外で後ろ上から前下へ小さく振る（体の前を横切らない）。
+constexpr Angles kKnifeStart{5.0f, -130.0f};
+constexpr Angles kKnifeEnd{20.0f, -60.0f};
 // 回し蹴りの間、剣を横に構えたまま回る。分身を出す間は剣をまっすぐ前へ（試作の held と [0, 0]）。
 constexpr Angles kHeld{20.0f, -80.0f};
 constexpr Angles kForward{0.0f, 0.0f};
 // 天降り斬りで落ちる・着地した剣：切っ先を真下へ向けて突き立てる。落ちる進みのこの倍で向け終える（落ちる前半で下を向く）。
 constexpr Angles kPlunge{90.0f, 0.0f};
 constexpr float kPlungeTurnSpeed = 2.0f;
-// 炎走り：前隙は剣を右後ろへ引きずる（切っ先が地面すれすれ）。前線を放つたびに前の高い所へ斬り上げ、放つ間隔のこの割合で
-// 上げ切って、残りで引きずる構えへ戻す（次の 1 本も低い所から斬り上げる）。
+// 炎走り：前隙は剣を右後ろへ引きずる（切っ先が地面すれすれ。左手で刀身をなぞる間は片手）。前線を放つたびに両手で前の
+// 高い所へ斬り上げ（縦の型を逆に回す）、放つ間隔のこの割合で上げ切って、残りで低い構えへ戻す。
 constexpr Angles kDrag{60.0f, -160.0f};
-constexpr Angles kFlameRunUp{-65.0f, 0.0f};
 constexpr float kFlameRunUpShare = 0.6f;
-// 角度で書いた振り：振り上げた構えの引き（反対へ 22% 引く）。
-constexpr float kCockedPull = 0.22f;
 // 振り出しの割合、フェイントで引き戻す長さ (F)、溜めの震え（角度 度・1 F あたりの位相 rad）。
 constexpr float kSwingInShare = 0.16f;
 constexpr int kFeintPullbackFrames = 7;
@@ -80,8 +73,9 @@ BossSwordPose Blend(const BossSwordPose& a, const BossSwordPose& b, float k) {
 
 BossSwordPose Sweep(const BossSwordPose& a, const BossSwordPose& c, float k) { return Blend(a, c, Smooth(k)); }
 
-// 両手の型の、軸のまわり degrees 度の構え。mirror は左右に映した型（返しの振り）。
-BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees) {
+// 両手の型の、軸のまわり degrees 度の構え。mirror は左右に映した型（返しの振り）。sense は振る向き（角度が増える向き
+// へ振る時 1、減る向き＝逆に回す時 -1）で、斬る向き（刃を向ける先）を決める。
+BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees, float sense) {
     const auto flip = [mirror](Vec3 v) { return mirror ? Vec3{-v.x, v.y, v.z} : v; };
     // 映した回転の軸は、x の成分を残して y・z を反転する（向きを持つ軸は鏡で裏返る）。
     const Vec3 axis =
@@ -95,7 +89,7 @@ BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees)
     pose.direction =
         Normalize(RotateAbout(Normalize(flip(shape.direction)), axis, (degrees + wrist) * kRadiansPerDegree));
     // 斬る向き：構えから振り終わりへ回る向き。
-    const Vec3 sweep = Mul(Cross(axis, pose.direction), span >= 0.0f ? 1.0f : -1.0f);
+    const Vec3 sweep = Mul(Cross(axis, pose.direction), sense);
     pose.edge = Normalize(ProjectOut(sweep, pose.direction), {0.0f, -1.0f, 0.0f});
     pose.crouch = shape.crouch;
     pose.lean = shape.lean;
@@ -104,36 +98,31 @@ BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees)
     return pose;
 }
 
-// 一撃の振り方：両手の型（shape が有る。mirror で左右に映す）か、角度で書いた始点・終点（start → end）。
+// 一撃の振り方：両手の型を（mirror で左右に映して）from 度から to 度まで回す。
 struct Strike {
     const BossSwingShape* shape = nullptr;
     bool mirror = false;
-    Angles start{};
-    Angles end{};
+    float from = 0.0f;
+    float to = 0.0f;
 };
 
-Strike ShapeStrike(const BossSwingShape& shape, bool mirror) { return {&shape, mirror, {}, {}}; }
-Strike AngleStrike(Angles start, Angles end) { return {nullptr, false, start, end}; }
+Strike ShapeStrike(const BossSwingShape& shape, bool mirror) {
+    return {&shape, mirror, shape.fromDegrees, shape.toDegrees};
+}
 
-// 角度で書いた振りの、振り上げた構え：体の後ろへは回さず、プレイヤーから剣が見える高さ・横に掲げる。
-Angles Cocked(Angles a, Angles c) {
-    float x = a.x + (a.x - c.x) * kCockedPull;
-    const float y = a.y + (a.y - c.y) * kCockedPull;
-    if (std::abs(a.y) > 60.0f)
-        x = std::min(x, a.x - 25.0f);
-    return {std::clamp(x, -100.0f, 60.0f), std::clamp(y, -105.0f, 105.0f)};
+// 炎走りの斬り上げ：縦の型を逆に回す。
+Strike RiseStrike(const BossComponent& boss) {
+    return {&boss.swing.vertical, false, boss.swing.riseFromDegrees, boss.swing.riseToDegrees};
 }
 
 // 振りの進み e（0＝構え、1＝振り終わり）の構え。
-BossSwordPose StrikeAt(const BossComponent& boss, const Strike& strike, float e) {
-    if (strike.shape != nullptr)
-        return ShapePose(*strike.shape, strike.mirror, Lerp(strike.shape->fromDegrees, strike.shape->toDegrees, e));
-    const Angles cocked = Cocked(strike.start, strike.end);
-    return FromAngles(boss, {Lerp(cocked.x, strike.end.x, e), Lerp(cocked.y, strike.end.y, e)});
+BossSwordPose StrikeAt(const Strike& strike, float e) {
+    return ShapePose(*strike.shape, strike.mirror, Lerp(strike.from, strike.to, e),
+                     strike.to >= strike.from ? 1.0f : -1.0f);
 }
 
-BossSwordPose StrikeCocked(const BossComponent& boss, const Strike& strike) { return StrikeAt(boss, strike, 0.0f); }
-BossSwordPose StrikeEnd(const BossComponent& boss, const Strike& strike) { return StrikeAt(boss, strike, 1.0f); }
+BossSwordPose StrikeCocked(const Strike& strike) { return StrikeAt(strike, 0.0f); }
+BossSwordPose StrikeEnd(const Strike& strike) { return StrikeAt(strike, 1.0f); }
 
 // 振り：最初の振り出しはゆっくり動き始め（振り出しが見える）、残りで一気に振り抜く。
 BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, int length) {
@@ -148,7 +137,19 @@ BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, in
         e = std::min(1.0f, kSwingInShare + (1.0f - kSwingInShare) *
                                                (2.0f * kSwingInShare * u + (1.0f - 2.0f * kSwingInShare) * u * u));
     }
-    return StrikeAt(boss, strike, e);
+    return StrikeAt(strike, e);
+}
+
+// 振り上げ：今の構え previous から一撃の構えへ（k は 0〜1）。型の raiseVia が 0 より大きければ、前半で型の途中の構えへ
+// 寄せ、後半で型を逆にたどって構えへ上げる（縦の振りかぶりで、刀の向きが真逆へ変わる時に体の中を通らない）。
+BossSwordPose Raise(const BossSwordPose& previous, const Strike& strike, float k) {
+    const float via = std::clamp(strike.shape->raiseVia, 0.0f, 1.0f);
+    if (via <= 0.0f)
+        return Sweep(previous, StrikeCocked(strike), k);
+    const float s = Smooth(k);
+    if (s < 0.5f)
+        return Blend(previous, StrikeAt(strike, via), s * 2.0f);
+    return StrikeAt(strike, via * (1.0f - (s - 0.5f) * 2.0f));
 }
 
 // 溜めの震え：刀の向きを、刀と上の向きに直交する軸のまわりに小さく揺らす。
@@ -163,7 +164,7 @@ BossSwordPose Tremble(BossSwordPose pose, int t) {
 // フェイント（遅）は、いつものテンポで「振り出し」まで見せてから引き戻し、溜めて（小さく震えて）待つ。
 BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, const Strike& strike, int tIn,
                      int length, bool feint) {
-    const BossSwordPose cocked = StrikeCocked(boss, strike);
+    const BossSwordPose cocked = StrikeCocked(strike);
     const int base = feint ? std::max(1, length - boss.feintFrames) : length;
     const int kamae = std::min(boss.kamaeFrames, base - 1);
     const int raiseEnd = std::max(1, base - kamae);
@@ -172,7 +173,7 @@ BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, c
         if (tIn < raiseStart)
             return previous;
         if (tIn < raiseEnd)
-            return Sweep(previous, cocked,
+            return Raise(previous, strike,
                          static_cast<float>(tIn - raiseStart) / static_cast<float>(std::max(1, raiseEnd - raiseStart)));
         return cocked;
     }
@@ -197,9 +198,9 @@ Strike StrikeOf(const BossComponent& boss, const BossMove& move, size_t index) {
             strike = ShapeStrike(boss.swing.horizontal, side);
             side = !side;
             break;
-        case BossStrikeDirection::Vertical: strike = AngleStrike(kUp, kVerticalEnd); break;
-        case BossStrikeDirection::Kesa: strike = AngleStrike(kUpLeft, kDownRight); break;
-        case BossStrikeDirection::ReverseKesa: strike = AngleStrike(kUpRight, kDownLeft); break;
+        case BossStrikeDirection::Vertical: strike = ShapeStrike(boss.swing.vertical, false); break;
+        case BossStrikeDirection::Kesa: strike = ShapeStrike(boss.swing.kesa, false); break;
+        case BossStrikeDirection::ReverseKesa: strike = ShapeStrike(boss.swing.kesa, true); break;
         }
         if (i == index)
             return strike;
@@ -283,9 +284,9 @@ BossSwordPose SingleStrikePose(const BossComponent& boss, const BossMove& move, 
     if (boss.phase == BossActPhase::Pre)
         return Windup(boss, boss.moveStartPose, strike, boss.stateFrame, move.pre, false);
     if (boss.phase == BossActPhase::Post)
-        return HoldThenRest(boss, StrikeEnd(boss, strike), move.post);
+        return HoldThenRest(boss, StrikeEnd(strike), move.post);
     const auto g = BossPose::Progress(boss, move);
-    return g.hit ? Swing(boss, strike, g.tIn, g.swingLength) : StrikeEnd(boss, strike);
+    return g.hit ? Swing(boss, strike, g.tIn, g.swingLength) : StrikeEnd(strike);
 }
 
 // 突進横なぎ：ひとつの振りと同じで、後隙だけ下ろした構えへ戻す。
@@ -297,20 +298,20 @@ BossSwordPose DashPose(const BossComponent& boss, const BossMove& move) {
 
 // 退く間は剣を下げたまま。降りたら振り上げて、溜めの間ずっと振りかぶったまま構える（長い溜めを剣で見せる）。
 BossSwordPose RetreatPose(const BossComponent& boss, const BossMove& move) {
-    const Strike strike = AngleStrike(kUp, kVerticalEnd);
+    const Strike strike = ShapeStrike(boss.swing.vertical, false);
     if (boss.phase != BossActPhase::Pre)
         return SingleStrikePose(boss, move, strike);
     if (!boss.retreat.charging)
         return Sweep(boss.moveStartPose, BossPose::Rest(boss),
                      Share(boss.stateFrame, std::clamp(boss.retreatStepFrames, 1, std::max(1, move.pre - 1))));
-    return Sweep(BossPose::Rest(boss), StrikeCocked(boss, strike),
+    return Raise(BossPose::Rest(boss), strike,
                  static_cast<float>(boss.retreat.chargeElapsed) / static_cast<float>(std::max(1, boss.raiseFrames)));
 }
 
 // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
 BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
-    const Strike first = AngleStrike(kUpLeft, kDownRight);
-    const Strike second = AngleStrike(kUpRight, kDownLeft);
+    const Strike first = ShapeStrike(boss.swing.kesa, false);
+    const Strike second = ShapeStrike(boss.swing.kesa, true);
     if (boss.phase == BossActPhase::Pre)
         return Windup(boss, boss.moveStartPose, first, boss.stateFrame, move.pre, false);
     if (boss.phase == BossActPhase::Post)
@@ -318,7 +319,7 @@ BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
     const auto g = BossPose::Progress(boss, move);
     if (g.hitIndex % 2 == 0)
         return g.hit ? Swing(boss, first, g.tIn, g.swingLength)
-                     : Sweep(StrikeEnd(boss, first), StrikeCocked(boss, second), g.progress);
+                     : Sweep(StrikeEnd(first), StrikeCocked(second), g.progress);
     return Swing(boss, second, g.tIn, g.swingLength);
 }
 
@@ -341,22 +342,26 @@ BossSwordPose DetonatePose(const BossComponent& boss, const BossMove& move) {
 BossSwordPose FlameRunPose(const BossComponent& boss, const BossMove& move) {
     const int t = boss.stateFrame;
     const BossSwordPose drag = FromAngles(boss, kDrag);
-    const BossSwordPose up = FromAngles(boss, kFlameRunUp);
+    const Strike rise = RiseStrike(boss);
+    const BossSwordPose low = StrikeCocked(rise), up = StrikeEnd(rise);
     if (boss.phase == BossActPhase::Pre)
         return Sweep(boss.moveStartPose, drag,
                      static_cast<float>(t) / static_cast<float>(std::max(1, boss.raiseFrames)));
     if (boss.phase == BossActPhase::Post)
-        return Sweep(up, BossPose::Rest(boss), static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
+        return HoldThenRest(boss, up, move.post);
     // 攻撃中：いちばん新しく放った前線を放った tick（stateFrame 1＋間隔×番号）からの F で斬り上げる。
-    // 最後の 1 本は斬り上げたまま後隙へ。
+    // 1 本目は引きずった構えから両手に持ち替えつつ斬り上げる。最後の 1 本は斬り上げたまま後隙へ。
     const int interval = std::max(1, boss.flameRunIntervalFrames);
     const int since = std::max(0, t - 1 - interval * std::max(0, boss.flameRun.released - 1));
-    const int rise = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
-    if (since <= rise)
-        return Sweep(drag, up, static_cast<float>(since) / static_cast<float>(rise));
+    const int span = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
+    if (since <= span) {
+        const float e = static_cast<float>(since) / static_cast<float>(span);
+        const BossSwordPose rising = StrikeAt(rise, Smooth(e));
+        return boss.flameRun.released <= 1 ? Blend(drag, rising, Smooth(std::min(1.0f, e * 2.0f))) : rising;
+    }
     if (boss.flameRun.released >= boss.flameRun.count)
         return up;
-    return Sweep(up, drag, static_cast<float>(since - rise) / static_cast<float>(std::max(1, interval - rise)));
+    return Sweep(up, low, static_cast<float>(since - span) / static_cast<float>(std::max(1, interval - span)));
 }
 
 // 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
@@ -375,6 +380,39 @@ BossSwordPose SkyfallPose(const BossComponent& boss, const BossMove& move) {
                    : plunge;
     default: return BossPose::Rest(boss);
     }
+}
+
+// 霞の大剣の間：構えは大剣の柄と向き（見える刀が大剣に重なる。大剣の当たりは BossGreatsword が決める）。両手で握り、
+// 大剣の向きへ胴を捻る。薙ぐ・叩きつける・刺さっている間は腰を落として前へ傾く（薙ぎ始めへ下ろす間・叩きつける間・
+// ほどける間はその進みで寄せる）。
+BossSwordPose GreatswordPose(const BossComponent& boss) {
+    const BossGreatswordState& sword = boss.greatsword;
+    const BossSwingSettings& s = boss.swing;
+    const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
+    BossSwordPose pose;
+    pose.grip = RotateY(Sub(sword.hilt, root), -boss.yaw);
+    pose.direction = Normalize(RotateY(sword.direction, -boss.yaw), {0.0f, 1.0f, 0.0f});
+    pose.twoHand = 1.0f;
+    float low = 0.0f, turn = 1.0f;
+    switch (sword.phase) {
+    case BossGreatswordPhase::Conjure:
+        low = sword.wind;
+        turn = sword.wind;
+        break;
+    case BossGreatswordPhase::Sweep:
+    case BossGreatswordPhase::Stuck: low = 1.0f; break;
+    case BossGreatswordPhase::Slam: low = sword.slam; break;
+    case BossGreatswordPhase::Dissolve: low = 1.0f - sword.dissolve; break;
+    default: break;
+    }
+    pose.crouch = s.greatswordCrouch * low;
+    pose.lean = s.greatswordLean * low;
+    // 大剣の向きの横の角度（縦に立てている時は決まらないので捻らない）。
+    const float flat = std::hypot(pose.direction.x, pose.direction.z);
+    const float yaw = flat > 0.2f ? std::atan2(pose.direction.x, pose.direction.z) / kRadiansPerDegree : 0.0f;
+    pose.twist =
+        std::clamp(yaw * s.greatswordTwistShare, -s.greatswordTwistMaxDegrees, s.greatswordTwistMaxDegrees) * turn;
+    return pose;
 }
 
 // 霞隠れ：前隙で前の技の構えから下ろした構えへ。隠れている間は下ろした構えで、現れる時の振り上げもそこから始める
@@ -414,15 +452,14 @@ BossSwordPose StringPose(const BossComponent& boss, const BossMove& move) {
         return Windup(boss, boss.moveStartPose, StrikeOf(boss, move, 0), boss.stateFrame, move.pre,
                       !move.strikes.empty() && move.strikes[0].feint);
     if (boss.phase == BossActPhase::Post)
-        return HoldThenRest(boss, StrikeEnd(boss, StrikeOf(boss, move, last)), move.post);
+        return HoldThenRest(boss, StrikeEnd(StrikeOf(boss, move, last)), move.post);
     const auto g = BossPose::Progress(boss, move);
     const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
     const size_t k = std::min(static_cast<size_t>(std::max(0, segment.strike)), last);
     const Strike now = StrikeOf(boss, move, k);
     if (g.hit)
         return Swing(boss, now, g.tIn, g.swingLength);
-    return Windup(boss, StrikeEnd(boss, StrikeOf(boss, move, k > 0 ? k - 1 : 0)), now, g.tIn, segment.length,
-                  segment.feint);
+    return Windup(boss, StrikeEnd(StrikeOf(boss, move, k > 0 ? k - 1 : 0)), now, g.tIn, segment.length, segment.feint);
 }
 
 } // namespace
@@ -440,13 +477,15 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     if (boss.state != BossState::Act || boss.move < 0 || static_cast<size_t>(boss.move) >= moves.size())
         return Rest(boss);
     const BossMove& move = moves[static_cast<size_t>(boss.move)];
+    if (boss.greatsword.phase != BossGreatswordPhase::None)
+        return GreatswordPose(boss);
     switch (move.type) {
     case BossMoveType::Dash: return DashPose(boss, move);
-    case BossMoveType::SlashR: return SingleStrikePose(boss, move, AngleStrike(kUpLeft, kDownRight));
-    case BossMoveType::SlashL: return SingleStrikePose(boss, move, AngleStrike(kUpRight, kDownLeft));
+    case BossMoveType::SlashR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, false));
+    case BossMoveType::SlashL: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, true));
     case BossMoveType::SlashH: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, false));
     case BossMoveType::Overhead:
-    case BossMoveType::SlashV: return SingleStrikePose(boss, move, AngleStrike(kUp, kVerticalEnd));
+    case BossMoveType::SlashV: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.vertical, false));
     case BossMoveType::Retreat: return RetreatPose(boss, move);
     case BossMoveType::Jump: return JumpPose(boss, move);
     case BossMoveType::Kick: return HeldPose(boss, move, kHeld);

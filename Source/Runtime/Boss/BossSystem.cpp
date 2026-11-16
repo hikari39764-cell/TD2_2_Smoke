@@ -41,6 +41,9 @@ constexpr float kStunCrouch = 0.85f;
 constexpr float kStunCrouchBlend = 0.12f;
 // 剣の上下（度）がこの値のとき体はまっすぐ。上げると後ろへ、振り下ろすと前へ傾く。
 constexpr float kPoseLeanNeutral = 30.0f;
+// 両手の型の間の左右の傾き：握りが体の横へ 1 m 出ると、片手の構えで剣を横へ何度向けた時と同じだけ傾けるか。両手の
+// 型は刀が後ろや真上を向く（剣の左右の角度で傾けると、上段で体が大きく横へ倒れる）ので、握りの横の位置で傾ける。
+constexpr float kSwayDegreesPerGripMeter = 90.0f;
 // これより速い位置の変化（瞬間移動）では、動きの傾きを付けない (m/秒)。
 constexpr float kLeanSpeedLimit = 30.0f;
 // 撃破の後に体を縮める下限の倍率（0 にすると変換が潰れるので、見えない大きさで止める）。
@@ -372,26 +375,33 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     boss.previousGround = boss.ground;
     const Vec3 velocity = Mul(moved, 1.0f / std::max(1e-4f, dt));
     const float speedGate = FlatLength(velocity) < kLeanSpeedLimit ? 1.0f : 0.0f;
+    // 両手の斬りの間は、速さの傾きを小さく抑える（踏み込みで大きく傾くと、胴と兜が両手の通り道へ入る）。
+    const float leanMax = Lerp(boss.leanMaxRadians, boss.swing.speedLeanMaxDegrees * kRadiansPerDegree,
+                               std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f));
     const float forwardSpeed = velocity.x * std::sin(boss.yaw) + velocity.z * std::cos(boss.yaw);
     const float sideSpeed = velocity.x * std::cos(boss.yaw) - velocity.z * std::sin(boss.yaw);
-    boss.leanForward =
-        Lerp(boss.leanForward,
-             speedGate * std::clamp(forwardSpeed * boss.leanFromSpeed, -boss.leanMaxRadians, boss.leanMaxRadians),
-             kLeanBlend);
-    boss.leanSide = Lerp(
-        boss.leanSide,
-        speedGate * std::clamp(-sideSpeed * boss.leanFromSpeed, -boss.leanMaxRadians, boss.leanMaxRadians), kLeanBlend);
-    // 剣の上下（前後の傾き、度）・左右（度）。下へ向けるほど前へ、左へ向けるほど右へ体を傾ける。
+    boss.leanForward = Lerp(boss.leanForward,
+                            speedGate * std::clamp(forwardSpeed * boss.leanFromSpeed, -leanMax, leanMax), kLeanBlend);
+    boss.leanSide =
+        Lerp(boss.leanSide, speedGate * std::clamp(-sideSpeed * boss.leanFromSpeed, -leanMax, leanMax), kLeanBlend);
+    // 剣の上下（前後の傾き、度）・左右（度）。下へ向けるほど前へ、左へ向けるほど右へ体を傾ける。両手の型の左右は
+    // 握りの横の位置から。
     const Vec3 direction = Normalize(boss.swordPose.direction, {0.0f, -1.0f, 0.0f});
     const float pitch = std::asin(std::clamp(-direction.y, -1.0f, 1.0f)) / kRadiansPerDegree;
-    const float side = std::atan2(direction.x, direction.z) / kRadiansPerDegree;
+    const float side =
+        Lerp(std::atan2(direction.x, direction.z) / kRadiansPerDegree, boss.swordPose.grip.x * kSwayDegreesPerGripMeter,
+             std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f));
     const float blend = boss.state == BossState::Act && boss.phase == BossActPhase::Act ? kPoseBlendFast : kPoseBlend;
     boss.poseX = Lerp(boss.poseX, pitch, blend);
     boss.poseY = Lerp(boss.poseY, side, blend);
     boss.poseLean = Lerp(boss.poseLean, boss.swordPose.lean * kRadiansPerDegree, blend);
     boss.poseCrouch = Lerp(boss.poseCrouch, boss.swordPose.crouch, blend);
+    // 剣の上下に合わせた前後の傾きは片手の構えのもの。両手の型は型が前傾を決めるので、その重みの分だけ消す（縦の
+    // 振りかぶりで体が後ろへ反ると、頭上の手から肩が遠くなる）。左右の傾きは残す（握りの側へ肩を寄せる）。
+    const float oneHand = 1.0f - std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f);
     float lean = boss.leanForward +
-                 boss.poseLeanDegrees * kRadiansPerDegree * (boss.poseX - kPoseLeanNeutral) / 100.0f + boss.poseLean;
+                 oneHand * boss.poseLeanDegrees * kRadiansPerDegree * (boss.poseX - kPoseLeanNeutral) / 100.0f +
+                 boss.poseLean;
     const float sway = boss.leanSide - boss.poseSwayDegrees * kRadiansPerDegree * boss.poseY / 100.0f;
     if (boss.state == BossState::Stunned)
         lean += boss.stunLeanRadians + std::sin(boss.floatClock * kStunWobbleRate) * kStunWobble;
