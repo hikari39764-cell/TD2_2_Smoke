@@ -654,9 +654,9 @@ public:
     float flameRunStepDegrees = 22.0f;
     int flameRunIntervalFrames = 10;
     float flameRunStartDistance = 1.12f;
-    float flameRunLength = 20.0f;
+    float flameRunLength = 26.0f;
     float flameRunFuel = 220.0f;
-    float flameRunFuelRadius = 0.8f;
+    float flameRunFuelRadius = 1.2f;
     float flameRunFuelTemperature = 6.5f;
     float flameRunFuelRise = 5.0f;
     float flameRunFuelLean = 4.0f;

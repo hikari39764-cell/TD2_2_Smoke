@@ -27,8 +27,9 @@ constexpr uint64_t kJetFuelId = 220;
 constexpr uint64_t kJetPushId = 221;
 constexpr uint64_t kBodyFuelBase = 222;
 constexpr uint64_t kBodyScatterId = 224;
-// 1 フレームに見せる塊の数。火の域が受け取れる注入は 32 個で、燃料の点・吸い込みの力と分け合う。残りは次のフレームへ回す。
-constexpr uint32_t kBlastsPerFrame = 3;
+// 1 フレームに見せる塊の数。火の域が受け取れる注入は 32 個で、燃料の点（16）・吸い込みの力と分け合う。残りは次の
+// フレームへ回す（引爆の広がりを 30 m/秒にした時に、見た目が遅れないよう 3→6。c-e759cf）。
+constexpr uint32_t kBlastsPerFrame = 6;
 constexpr float kMaximumStrength = 10000.0f;
 // 燃料の点は、升目の中のかたまりの長い方へ毎フレーム行き来させる（エンジンが通った線に沿って燃料を広げるので、
 // 球ではなく細長い形で入る）。エンジンは 60 m/s を超える移動を「瞬間移動」と見て線にしないので、それより遅くする

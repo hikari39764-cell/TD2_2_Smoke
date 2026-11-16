@@ -44,7 +44,7 @@ struct BurnJet {
     float remaining = 0.0f;
 };
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
-inline constexpr size_t kBurnBlastCapacity = 32;
+inline constexpr size_t kBurnBlastCapacity = 64;
 // 爆発のエフェクトの上限（BurnField の blastEffectCap）に選べる最大。出した時刻をこの数だけ覚えておく。
 inline constexpr size_t kBlastEffectCapMax = 256;
 
@@ -120,11 +120,11 @@ public:
     float hotspotRise = 3.0f;
     HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
                                                      "Assets/Vfx/BossSlashBurst.hvfx"};
-    float blastEffectScale = 0.6f;
+    float blastEffectScale = 0.9f;
     int blastEffectCap = 60;
     float blastEffectWindow = 1.4f;
-    float blastRadiusScale = 1.4f;
-    float blastFuel = 400.0f;
+    float blastRadiusScale = 1.8f;
+    float blastFuel = 550.0f;
     float blastTemperature = 10.0f;
     float blastRise = 2.0f;
     float blastPush = 8.0f;
