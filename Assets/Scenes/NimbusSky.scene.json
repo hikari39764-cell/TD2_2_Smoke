@@ -179,12 +179,7 @@
         },
         {
           "id": 9,
-          "properties": {
-            "cloudObject": {
-              "$hikariRef": "SceneObject",
-              "id": 50
-            }
-          },
+          "properties": {},
           "type": "Project_TD2_2.CloudMount"
         }
       ],
@@ -415,58 +410,6 @@
           1.0,
           1.0,
           1.0
-        ]
-      }
-    },
-    {
-      "components": [
-        {
-          "id": 1,
-          "properties": {
-            "assetId": "",
-            "castShadow": true,
-            "receiveShadow": true,
-            "renderStatic": false,
-            "visible": true
-          },
-          "type": "ModelComponent"
-        },
-        {
-          "id": 2,
-          "properties": {
-            "depth": 1.0,
-            "doubleSided": false,
-            "generateTangents": true,
-            "height": 1.0,
-            "kind": "Sphere",
-            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 1.0
-          },
-          "type": "ProceduralMeshComponent"
-        }
-      ],
-      "editorLocked": false,
-      "editorVisible": true,
-      "enabled": true,
-      "id": 50,
-      "name": "Nimbus Cloud (仮)",
-      "parent": null,
-      "sourcePrefabId": "",
-      "transform": {
-        "position": [
-          0.0,
-          3370.0,
-          -14.0
-        ],
-        "rotationEulerDeg": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          2.2,
-          0.6,
-          2.2
         ]
       }
     }

@@ -1,0 +1,14 @@
+{
+  "displayName": "NimbusCloud",
+  "guid": "467fbd610a584de599d6946884fcdb67",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/NimbusCloud.hvfx",
+  "type": "VfxEffect"
+}

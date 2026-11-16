@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Project/VfxTypes.h"
 #include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
@@ -46,7 +47,7 @@ struct CloudMountFlightReadout {
 };
 
 // プレイヤーの筋斗雲。Player と同じ物体に付ける。状態と飛行の運動の規則は CloudMountRules、入力を読んで運動を出すのは
-// CloudMountSystem。見た目（いまは仮の雲）とカメラの要求は差し替えられるよう別の所に置く。ここは調整値と実行時の状態だけ。
+// CloudMountSystem。見た目（CloudMountVisuals）とカメラの要求（CloudMountCamera）は別の所に置く。ここは調整値と実行時の状態だけ。
 class CloudMountComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
@@ -162,14 +163,41 @@ public:
     float cameraBoostShakeFadeSeconds = 0.15f;
     // 降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろしを普段の値へ戻すならし（秒）。
     float cameraReleaseSeconds = 0.4f;
-    // 仮の雲（流体の雲ができるまで）。シーンの物体（Procedural Mesh の球）を足元へ動かし、乗っていない間は地面の下へしまう。
-    uint64_t cloudObjectId = 0;
-    float cloudDiameter = 2.2f;
-    float cloudThickness = 0.6f;
-    // 雲の中心を足元からどれだけ下げるか (m)。
-    float cloudBelowFeet = 0.15f;
-    // しまう深さ（体の中心から下へ m）。
-    float cloudParkDepth = 30.0f;
+    // 雲の見た目（CloudMountVisuals）：足元に付いて動く流体の雲のエフェクト。空なら出さない。資産の入力は
+    // input.appear（体の雲の量）・input.speed（尾の量）・input.boost（吹き出しと金の縁の明るさ）。
+    HIKARI::GameProjectVfxAssetReference cloudEffect{"467fbd610a584de599d6946884fcdb67", "Assets/Vfx/NimbusCloud.hvfx"};
+    // エフェクトの原点（資産の足元）を、体の足元からどれだけ下げるか (m)。
+    float cloudBelowFeet = 0.0f;
+    // 体の雲の量（倍率）。出す・消すは cloudAppearSeconds・cloudVanishSeconds で 0〜1 をならす（⑥ の演出の口）。
+    float cloudAmount = 1.0f;
+    float cloudAppearSeconds = 0.3f;
+    float cloudVanishSeconds = 0.25f;
+    // 尾の量：速さ ÷ cloudTailFullSpeed（上限 cloudTailLimit）× cloudTailAmount。尾の長さは資産の相対風と消散で決まる。
+    float cloudTailAmount = 1.0f;
+    float cloudTailFullSpeed = 32.0f;
+    float cloudTailLimit = 1.4f;
+    // 吹き出しと金の縁の強さ：ブースト中 cloudBoostAmount、弾き出しの間 cloudBoostKickAmount を足し、急降下の度合い ×
+    // cloudDiveAmount を足す。cloudBoostSeconds でならす。
+    float cloudBoostAmount = 1.0f;
+    float cloudBoostKickAmount = 1.0f;
+    float cloudDiveAmount = 0.6f;
+    float cloudBoostSeconds = 0.12f;
+    // 止まっている時の上下の揺れ（雲だけ。体は動かさない）：揺れ幅 (m) と 1 往復の秒。水平の速さ cloudIdleSpeed で 0 になる。
+    float cloudBobHeight = 0.08f;
+    float cloudBobSeconds = 2.4f;
+    float cloudIdleSpeed = 6.0f;
+    // 上り下りで雲の前を進む向きへ傾ける割合（0〜1）と上限（度）、ならし（秒）。水平の速さが cloudIdleSpeed 以上で全部掛け、
+    // 真上・真下だけの上昇・下降では傾けない。急降下で相対風が雲を体の上へ吹き上げず、尾が進む向きの後ろへ流れる。
+    float cloudPitchFollow = 0.8f;
+    float cloudPitchMaxDegrees = 45.0f;
+    float cloudPitchSeconds = 0.25f;
+    // 旋回で雲を内側へ傾ける角度（旋回の強さ ±1 で、度）と、そのならし（秒）。
+    float cloudBankDegrees = 18.0f;
+    float cloudBankSeconds = 0.2f;
+    // 乗っていない間もエフェクトを出したままにする（中は空で域は眠る。召喚のたびに出し直す詰まりを避ける）。false なら
+    // 雲が消えてから cloudLingerSeconds 後に止める。
+    bool cloudKeepAlive = true;
+    float cloudLingerSeconds = 1.5f;
     // 確かめ用：この F ごとに位置・速度をログに出す（0 は出さない）。
     int traceEveryFrames = 0;
 
@@ -220,6 +248,15 @@ public:
     float submittedVertical = 0.0f;
     float submittedGravity = 0.0f;
     bool motionAccepted = true;
+    // 雲の見た目（CloudMountVisuals が描画フレームごとに進める）：再生、出し入れ（0〜1）、吹き出しの強さ、旋回の傾きと上り下りの傾き（度）、
+    // 揺れの時間、雲が消えてからの秒、送った入力が受け付けられたか。
+    HIKARI::GameProjectVfxPlaybackHandle cloudVfx{};
+    float cloudAppear = 0.0f;
+    float cloudBoost = 0.0f;
+    float cloudBank = 0.0f;
+    float cloudPitch = 0.0f;
+    float cloudBobTime = 0.0f;
+    float cloudHiddenSeconds = 0.0f;
     bool cloudAccepted = true;
 };
 

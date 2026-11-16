@@ -142,14 +142,39 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろし（普段の限度の外）を一度に戻さず、"
                     "このならしで戻します。");
     }
-    if (fields.Section("仮の雲")) {
-        fields.Note("流体の雲ができるまでの仮の見た目です。当たりの無い物体を足元へ動かし、"
-                    "乗っていない間は地面の下へしまいます。");
-        fields.SceneObject("cloudObject", "仮の雲の物体", cloudObjectId);
-        fields.Float("cloudDiameter", "雲の直径 (m)", cloudDiameter, 0.01f, 50.0f);
-        fields.Float("cloudThickness", "雲の厚み (m)", cloudThickness, 0.01f, 50.0f);
-        fields.Float("cloudBelowFeet", "雲の中心を足元から下げる量 (m)", cloudBelowFeet, -5.0f, 5.0f);
-        fields.Float("cloudParkDepth", "しまう深さ（体の中心から下へ m）", cloudParkDepth, 0.0f, 1000.0f);
+    if (fields.Section("雲の見た目")) {
+        fields.Note("足元に付いて動く流体の雲です。色・明るさ・形・尾の伸び方（相対風と消散）はエフェクト資産"
+                    "（NimbusCloud）で、量と尾の量・揺れ・傾きはここで変えます。");
+        fields.Vfx("cloudEffect", "雲のエフェクト（足元に付く流体。空なら出さない）", cloudEffect);
+        fields.Float("cloudBelowFeet", "エフェクトの原点を足元から下げる量 (m)", cloudBelowFeet, -2.0f, 2.0f);
+        fields.Float("cloudAmount", "体の雲の量（倍率）", cloudAmount, 0.0f, 5.0f);
+        fields.Float("cloudAppearSeconds", "雲が湧き出るまで (秒、0 で一瞬)", cloudAppearSeconds, 0.0f, 5.0f);
+        fields.Float("cloudVanishSeconds", "降りて雲の湧きが止まるまで (秒、0 で一瞬)", cloudVanishSeconds, 0.0f, 5.0f);
+        fields.Float("cloudTailAmount", "尾の量（倍率。速さが下の値の時）", cloudTailAmount, 0.0f, 5.0f);
+        fields.Float("cloudTailFullSpeed", "尾の量が倍率どおりになる速さ (m/s)", cloudTailFullSpeed, 1.0f, 100.0f);
+        fields.Float("cloudTailLimit", "それより速い時の尾の量の上限（倍）", cloudTailLimit, 0.0f, 5.0f);
+        fields.Note("尾の量＝速さ ÷ 上の速さ（上限まで）× 倍率。止まると尾の源は止まり、残った尾は消散で雲へ戻るように"
+                    "消えます。");
+        fields.Float("cloudBoostAmount", "ブースト中の吹き出しと金の縁の強さ", cloudBoostAmount, 0.0f, 5.0f);
+        fields.Float("cloudBoostKickAmount", "弾き出しの間に足す強さ", cloudBoostKickAmount, 0.0f, 5.0f);
+        fields.Float("cloudDiveAmount", "急降下の度合い 1 で足す強さ", cloudDiveAmount, 0.0f, 5.0f);
+        fields.Float("cloudBoostSeconds", "強さのならし (秒)", cloudBoostSeconds, 0.0f, 2.0f);
+        fields.Float("cloudBobHeight", "止まっている時の上下の揺れ幅 (m。雲だけ)", cloudBobHeight, 0.0f, 1.0f);
+        fields.Float("cloudBobSeconds", "揺れの 1 往復 (秒)", cloudBobSeconds, 0.1f, 20.0f);
+        fields.Float("cloudIdleSpeed", "揺れが無くなり、上り下りの傾きを全部掛ける水平の速さ (m/s)", cloudIdleSpeed, 0.1f,
+                     100.0f);
+        fields.Float("cloudBankDegrees", "旋回で雲を内側へ傾ける角度 (度。体は傾けない)", cloudBankDegrees, 0.0f, 60.0f);
+        fields.Float("cloudBankSeconds", "旋回の傾きのならし (秒)", cloudBankSeconds, 0.0f, 2.0f);
+        fields.Float("cloudPitchFollow", "上り下りで雲の前を進む向きへ傾ける割合 (0〜1)", cloudPitchFollow, 0.0f, 1.0f);
+        fields.Float("cloudPitchMaxDegrees", "上り下りの傾きの上限 (度)", cloudPitchMaxDegrees, 0.0f, 89.0f);
+        fields.Float("cloudPitchSeconds", "上り下りの傾きのならし (秒)", cloudPitchSeconds, 0.0f, 2.0f);
+        fields.Note("急降下では、傾けないと相対風が雲を体の上へ吹き上げます。傾けると雲は進む向きに沿い、尾は後ろへ"
+                    "流れます。真上・真下だけの上昇・下降では傾けません。");
+        fields.Bool("cloudKeepAlive", "乗っていない間もエフェクトを出したままにする", cloudKeepAlive);
+        fields.Float("cloudLingerSeconds", "出したままにしない時、雲が消えてから止めるまで (秒)", cloudLingerSeconds,
+                     0.0f, 10.0f);
+        fields.Note("出したままにすると、乗っていない間は中が空で域が眠り、ほぼ重さが無くなります。止めると、"
+                    "召喚のたびにエフェクトを出し直す 1 フレームの詰まりが出ます。");
     }
     if (fields.Section("確かめ")) {
         fields.Int("traceEveryFrames", "位置と速度をログに出す間隔 (F、0 は出さない)", traceEveryFrames, 0, 7200);

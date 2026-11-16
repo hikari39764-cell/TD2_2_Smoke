@@ -7,7 +7,8 @@
 namespace Project_TD2_2::FluidChannels {
 
 // 流体の通り道（FluidView へ出す時の channels）。受ける域の側は、エフェクト資産の流体域の層の channel で決める。
-// 場の霧（ArenaGroundFog）は Default、場の火（ArenaFireField）は Channel1 で受ける。
+// 場の霧（ArenaGroundFog）は Default、場の火（ArenaFireField）は Channel1 で受ける。筋斗雲（NimbusCloud）は Channel2 で
+// 受け、いまはここから出すものは無い（体の障害物・技の力に押されない）。
 inline constexpr uint32_t kFog = HIKARI::kGameProjectFluidDefaultChannel;
 inline constexpr uint32_t kFire = 1u << 1u;
 

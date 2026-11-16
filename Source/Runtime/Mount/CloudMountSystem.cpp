@@ -12,8 +12,8 @@
 #include "../Player/PlayerRules.h"
 #include "CloudMountCamera.h"
 #include "CloudMountComponent.h"
-#include "CloudMountPlaceholder.h"
 #include "CloudMountRules.h"
+#include "CloudMountVisuals.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -213,7 +213,7 @@ void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HI
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
 }
 
-// 乗っていない間：立った時の体の中心から足元までの高さを測る（召喚の高さと仮の雲の位置に使う）。
+// 乗っていない間：立った時の体の中心から足元までの高さを測る（召喚の高さと雲の位置に使う）。
 void MeasureStandOffset(CloudMountComponent& mount, const HIKARI::GameProjectKinematicState& state) {
     if (state.groundState != HIKARI::GameProjectGroundState::OnGround)
         return;
@@ -397,7 +397,7 @@ void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     if (!IsPlaying(world, frame))
         return;
     ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
-        CloudMountPlaceholder::Update(world, object, mount);
+        CloudMountVisuals::Update(world, object, mount, player, frame);
         SubmitCameraEffects(world, mount, player, frame);
     });
 }
