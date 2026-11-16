@@ -137,37 +137,60 @@ float SwingProgress(const BossComponent& boss, int tIn, int length) {
     return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
 }
 
-BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, int length) {
-    return StrikeAt(strike, SwingProgress(boss, tIn, length));
+// 振り終わりの後：振り終わりの行き過ぎ（1＋swingOvershoot）から、振り終わりへ swingSettleFrames F で戻る（勢いで流れた
+// 刀を引き戻して止める＝残心）。
+BossSwordPose Follow(const BossComponent& boss, const Strike& strike, int t) {
+    const float settle = Smooth(Share(t, std::max(1, boss.swingSettleFrames)));
+    return StrikeAt(strike, 1.0f + boss.swingOvershoot * (1.0f - settle));
 }
 
-// 振り上げ：今の構え previous から一撃の構えへ（k は 0〜1）。型の raiseVia が 0 より大きければ、前半で型の途中の構えへ
-// 寄せ、後半で型を逆にたどって構えへ上げる（縦の振りかぶりで、刀の向きが真逆へ変わる時に体の中を通らない）。
-BossSwordPose Raise(const BossSwordPose& previous, const Strike& strike, float k) {
+// 振り：構えの引き絞り（-swingCoil）から、振り終わりの行き過ぎ（1＋swingOvershoot）まで速さの曲線で回す。振り終わった
+// 後（tIn が length を越えた所）は Follow で振り終わりへ戻す。
+BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, int length) {
+    if (tIn > length)
+        return Follow(boss, strike, tIn - length);
+    return StrikeAt(strike, Lerp(-boss.swingCoil, 1.0f + boss.swingOvershoot, SwingProgress(boss, tIn, length)));
+}
+
+// 振り上げ：今の構え previous から一撃の構え（振りの進み end。行き過ぎは負）へ（k は 0〜1）。型の raiseVia が 0 より
+// 大きければ、前半で型の途中の構えへ寄せ、後半で型を逆にたどって構えへ上げる（縦の振りかぶりで、刀の向きが真逆へ変わる
+// 時に体の中を通らない）。
+BossSwordPose Raise(const BossSwordPose& previous, const Strike& strike, float k, float end = 0.0f) {
     const float via = std::clamp(strike.shape->raiseVia, 0.0f, 1.0f);
     if (via <= 0.0f)
-        return Sweep(previous, StrikeCocked(strike), k);
+        return Sweep(previous, StrikeAt(strike, end), k);
     const float s = Smooth(k);
     if (s < 0.5f)
         return Blend(previous, StrikeAt(strike, via), s * 2.0f);
-    return StrikeAt(strike, via * (1.0f - (s - 0.5f) * 2.0f));
+    return StrikeAt(strike, Lerp(via, end, (s - 0.5f) * 2.0f));
 }
 
-// 溜めの震え：刀の向きを、刀と上の向きに直交する軸のまわりに小さく揺らす。
-BossSwordPose Tremble(BossSwordPose pose, int t) {
+// 溜めの震え：刀の向きを、刀と上の向きに直交する軸のまわりに小さく揺らす（degrees は揺れの大きさ）。
+BossSwordPose Tremble(BossSwordPose pose, int t, float degrees = kFeintTremorDegrees) {
     const Vec3 axis = Cross(pose.direction, {0.0f, 1.0f, 0.0f});
-    const float angle = std::sin(static_cast<float>(t) * kFeintTremorRate) * kFeintTremorDegrees * kRadiansPerDegree;
+    const float angle = std::sin(static_cast<float>(t) * kFeintTremorRate) * degrees * kRadiansPerDegree;
     pose.direction = Normalize(RotateAbout(pose.direction, axis, angle), pose.direction);
     return pose;
+}
+
+// 構えの間の振りの進み（t は構えに入ってからの F、kamae は構えの長さ）：振り上げの行き過ぎ（-swingOverwind）から
+// swingOverwindFrames F で戻りながら、構えの終わりへ向けて swingCoil まで引き絞る。
+float CockedShare(const BossComponent& boss, int t, int kamae) {
+    const float settle = Smooth(Share(t, std::max(1, boss.swingOverwindFrames)));
+    const float coil = Smooth(Share(t, std::max(1, kamae)));
+    return -boss.swingOverwind * (1.0f - settle) - boss.swingCoil * coil;
 }
 
 // 振り上げ→構え。剣を振る方向と反対へ大きく引いて、構えの間は止める。
 // フェイント（遅）は、いつものテンポで「振り出し」まで見せてから引き戻し、溜めて（小さく震えて）待つ。
 BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, const Strike& strike, int tIn,
                      int length, bool feint) {
-    const BossSwordPose cocked = StrikeCocked(strike);
+    const BossSwordPose cocked = StrikeAt(strike, -boss.swingCoil);
     const int base = feint ? std::max(1, length - boss.feintFrames) : length;
-    const int kamae = std::min(boss.kamaeFrames, base - 1);
+    // 前隙が構え＋振り上げより短い時（変化で切り替えた技など）は比で分ける（構えへ 1 F で跳ばない）。
+    int kamae = std::min(boss.kamaeFrames, base - 1);
+    if (base < boss.kamaeFrames + boss.raiseFrames)
+        kamae = std::max(1, base * boss.kamaeFrames / std::max(1, boss.kamaeFrames + boss.raiseFrames));
     const int raiseEnd = std::max(1, base - kamae);
     const int raiseStart = std::max(0, raiseEnd - boss.raiseFrames);
     if (tIn < base || !feint) {
@@ -175,8 +198,11 @@ BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, c
             return previous;
         if (tIn < raiseEnd)
             return Raise(previous, strike,
-                         static_cast<float>(tIn - raiseStart) / static_cast<float>(std::max(1, raiseEnd - raiseStart)));
-        return cocked;
+                         static_cast<float>(tIn - raiseStart) / static_cast<float>(std::max(1, raiseEnd - raiseStart)),
+                         -boss.swingOverwind);
+        const int t = tIn - raiseEnd;
+        return Tremble(StrikeAt(strike, CockedShare(boss, t, kamae)), tIn,
+                       boss.swingCoilTremorDegrees * Share(t, std::max(1, kamae)));
     }
     const int t = tIn - base;
     const int swingIn = std::max(1, boss.swingInFrames);

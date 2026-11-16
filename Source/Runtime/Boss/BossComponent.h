@@ -479,7 +479,17 @@ public:
     int swingInFrames = 6;
     // 振りの速さがいちばん速くなる所（当たりの窓の進み 0〜1）。ゆっくり動き始めて加速し、ここで最も速く、振り終わりへ
     // 減速して止まる（窓の途中で速さが落ちる・最速のまま止まることがない）。大きいほど溜めて遅く当たる。
-    float swingPeakShare = 0.6f;
+    float swingPeakShare = 0.66f;
+    // 振りの気勢（c-4a8ea1。値は型の振りの角度の幅に対する割合）：振り上げは構えより swingOverwind だけ後ろまで行き過ぎ、
+    // swingOverwindFrames F で構えへ戻り、残りの構えの間に swingCoil まで引き絞る（刀がわずかに震える）。振りは引き絞った
+    // 所から振り終わりの swingOvershoot 先まで回り（勢いで流れる）、振り終わりの後 swingSettleFrames F で振り終わりへ戻る。
+    float swingOverwind = 0.08f;
+    int swingOverwindFrames = 6;
+    float swingCoil = 0.05f;
+    float swingOvershoot = 0.07f;
+    int swingSettleFrames = 10;
+    // 引き絞る間の刀の震えの大きさ（度。構えの終わりでこの大きさ）。
+    float swingCoilTremorDegrees = 1.2f;
     // 技・気絶の終わりの構えを保ったまま待機へ入った時に下ろした構えへ戻る F と、技を打ち切られて気絶に入る時に
     // 崩れた構えへ移る F（0 は最初の tick で切り替える）。
     // 既定の 11 は、待機へ戻る時に規則の剣が 1 tick に 15 度以上動かない長さ（気絶に入る時は、振り上げた構えからだと
@@ -959,6 +969,8 @@ public:
     // 溜めの揺らぎ：前隙の windupHoldAt F 目で、あと windupHold F だけ構えたまま止まる。
     int windupHold = 0;
     int windupHoldAt = -1;
+    // 構えの途中の変化（表の「変化先」）を、この技でもう振ったか（構えきる F で 1 回だけ）。
+    bool switchRolled = false;
     // 前隙の間に当てられた回数（崩せる被弾数と比べる）。
     int windupHits = 0;
     // 追尾を止めている間（一撃を放つまで）。狙いは止めた時のプレイヤーの位置のまま。

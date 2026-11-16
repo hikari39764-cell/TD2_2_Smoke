@@ -47,14 +47,23 @@ enum class Column {
     BlastDamage,
     BlastSize,
     KnockDistance,
+    SwitchTo,
+    SwitchChance,
+    SwitchPre,
     Count
 };
+// 「変化の前隙 F」が空欄の時の、切り替えた技の前隙 (F)。
+constexpr double kDefaultSwitchPre = 14.0;
+
 struct HeaderKey {
     const char* text;
     Column column;
 };
 // 「追尾を止める」は「追尾」より、「崩せる被弾数」は「被弾」より先に見る（後ろの短い見出しに取られないように）。
 constexpr HeaderKey kHeaders[] = {
+    {"変化の前隙", Column::SwitchPre},
+    {"変化確率", Column::SwitchChance},
+    {"変化先", Column::SwitchTo},
     {"爆発の威力", Column::BlastDamage},
     {"爆発の判定", Column::BlastSize},
     {"吹っ飛びの距離", Column::KnockDistance},
@@ -285,6 +294,39 @@ void LinkCombos(std::vector<BossMove>& moves, std::vector<std::string>& warnings
     }
 }
 
+// 構えの途中の変化：変化先の行を、前隙だけ短くした行として末尾へ足し、元の行の switchMove に入れる。足した行は
+// 行動ツリーの技選びに出ない（コンボ用）。溜めの揺らぎ・崩せる被弾数・変化は持たない（切り替わった後は一気に振る）。
+void AddSwitches(std::vector<BossMove>& moves, std::vector<std::string>& warnings) {
+    const size_t original = moves.size();
+    for (size_t self = 0; self < original; ++self) {
+        const std::string name = moves[self].switchText;
+        if (name.empty() || moves[self].switchChance <= 0.0f)
+            continue;
+        int target = -1;
+        for (size_t i = 0; i < original; ++i) {
+            if (moves[i].name == name)
+                target = static_cast<int>(i);
+        }
+        if (target < 0 || target == static_cast<int>(self)) {
+            warnings.push_back("「" + moves[self].name + "」: 変化先「" + name + "」という行動が表にありません");
+            continue;
+        }
+        BossMove copy = moves[static_cast<size_t>(target)];
+        copy.name += "（変化）";
+        copy.pre = std::max(2, moves[self].switchPre);
+        copy.windupExtras.clear();
+        copy.breakHits = 0;
+        copy.switchText.clear();
+        copy.switchChance = 0.0f;
+        copy.switchMove = -1;
+        copy.comboOnly = true;
+        copy.use = BossMoveUse::Combo;
+        copy.distanceWeight = -1.0f;
+        moves[self].switchMove = static_cast<int>(moves.size());
+        moves.push_back(std::move(copy));
+    }
+}
+
 } // namespace
 
 const char* BossMoveTable::TypeKey(BossMoveType type) {
@@ -443,6 +485,9 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.role = raw[Column::Role];
         move.condition = raw[Column::Condition];
         move.comboText = raw[Column::Combo];
+        move.switchText = Trim(raw[Column::SwitchTo]);
+        move.switchChance = static_cast<float>(std::clamp(NumberOf(raw[Column::SwitchChance]).value_or(0.0), 0.0, 100.0));
+        move.switchPre = RoundHalfUp(NumberOf(raw[Column::SwitchPre]).value_or(kDefaultSwitchPre));
         const std::string& typeText = raw[Column::Type];
         int typeIndex = -1;
         for (int t = 0; t < kTypeCount && !typeText.empty(); ++t) {
@@ -759,6 +804,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         moves_.push_back(std::move(move));
     }
     LinkCombos(moves_, warnings);
+    AddSwitches(moves_, warnings);
     return !moves_.empty();
 }
 

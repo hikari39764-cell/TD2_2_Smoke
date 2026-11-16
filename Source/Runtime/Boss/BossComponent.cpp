@@ -25,6 +25,13 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("swingPeakShare",
                      "振りの速さがいちばん速くなる所（窓の進み 0〜1。そこから振り終わりへ減速して止まる）",
                      swingPeakShare, 0.5f, 0.9f);
+        fields.Float("swingOverwind", "振り上げの行き過ぎ（構えより後ろへ。型の角度の幅に対する割合）", swingOverwind, 0.0f,
+                     0.5f);
+        fields.Int("swingOverwindFrames", "行き過ぎから構えへ戻る (F)", swingOverwindFrames, 1, 60);
+        fields.Float("swingCoil", "構えの間に引き絞る量（同じ割合。振りはここから始まる）", swingCoil, 0.0f, 0.5f);
+        fields.Float("swingOvershoot", "振り終わりの行き過ぎ（同じ割合。勢いで流れる）", swingOvershoot, 0.0f, 0.5f);
+        fields.Int("swingSettleFrames", "行き過ぎから振り終わりへ戻る (F)", swingSettleFrames, 1, 60);
+        fields.Float("swingCoilTremorDegrees", "引き絞る間の刀の震え（度）", swingCoilTremorDegrees, 0.0f, 10.0f);
         fields.Int("poseRecoverFrames",
                    "技の終わりの構えから、待機の下ろした構え・気絶の崩れた構えへ移る (F。0 は一気に切り替える)",
                    poseRecoverFrames, 0, 60);

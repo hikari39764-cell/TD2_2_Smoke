@@ -438,6 +438,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.aimFrozen = false;
     boss.windupHits = 0;
     boss.windupHold = 0;
+    boss.switchRolled = false;
     // 構えきる F（構えの合図の F）。前隙が短すぎて止まれない技は揺らがない。
     boss.windupHoldAt = move.pre - std::min(boss.kamaeFrames, move.pre - 1);
     if (!move.windupExtras.empty() && move.pre >= 2) {
@@ -479,6 +480,21 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     const bool swingType = BossMoveTable::IsSwingType(move.type);
     const int kamae = boss.kamaeFrames;
     StepResult result = StepResult::Running;
+    // 構えの途中の変化：構えきる F に 1 回だけ確率を振り、当たれば変化先（前隙の短い行）へ切り替える。いま見えている構え
+    // （振りかぶった所）から、変化先の振り上げ・構え・振りが続く。見た目の乱数（技選びの乱数とは別）。
+    if (boss.phase == BossActPhase::Pre && !boss.switchRolled && move.switchMove >= 0 &&
+        boss.stateFrame >= boss.windupHoldAt) {
+        boss.switchRolled = true;
+        if (BossRandom(boss) * 100.0f < move.switchChance) {
+            char extra[160]{};
+            std::snprintf(extra, sizeof(extra), "to=%s chance=%.0f",
+                          boss.table.GetMoves()[static_cast<size_t>(move.switchMove)].name.c_str(),
+                          static_cast<double>(move.switchChance));
+            Log(boss, "Switch", extra);
+            Start(frame, move.switchMove, boss.chain);
+            return StepResult::Running;
+        }
+    }
     if (boss.phase == BossActPhase::Pre) {
         const float progress = move.pre > 0 ? static_cast<float>(boss.stateFrame) / move.pre : 1.0f;
         // 構え（剣先に霞が集まる）は、溜めの揺らぎで止まった後、振るまでいつもの長さの所で出す。

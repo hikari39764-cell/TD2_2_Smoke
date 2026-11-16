@@ -155,6 +155,13 @@ struct BossMove {
     float blastSize = 0.0f;
     // 「吹っ飛びの距離 m」：この技の斬撃が吹っ飛ばす距離。空欄は 0（プレイヤーの既定）。添えて起きる爆発には使わない。
     float knockDistance = 0.0f;
+    // 構えの途中の変化（「変化先」「変化確率%」「変化の前隙 F」）：構えきる F に switchChance %の確率で、変化先の技へ
+    // 切り替える。切り替える先は、変化先の行の前隙を switchPre F にした行（表を読む時に末尾へ足す。名前は「<変化先>（変化）」、
+    // 行動ツリーの技選びには出ない）で、switchMove がその行（-1 は変化しない）。
+    std::string switchText;
+    float switchChance = 0.0f;
+    int switchPre = 0;
+    int switchMove = -1;
     // 距離重み（空欄は -1）とコンボ確率（空欄は -1）。どちらも技の選び方（行動ツリー）が使う。
     float distanceWeight = -1.0f;
     float comboChance = -1.0f;

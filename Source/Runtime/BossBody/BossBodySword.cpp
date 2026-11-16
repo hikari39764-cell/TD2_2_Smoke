@@ -149,6 +149,10 @@ MotionTargets Targets(const BossComponent& boss) {
     BossSegmentProgress g{};
     if (move != nullptr && boss.phase == BossActPhase::Act)
         g = BossPose::Progress(boss, *move);
+    // 振り抜き（振りの後、振り終わりの行き過ぎから戻る swingSettleFrames F）も規則の刀に付ける：当たって霞の窓が閉じても、
+    // 刀は規則の振り（行き過ぎ→戻り）をそのままたどる（ばねに任せると規則の振りより遅れ、30 度ほどずれた。c-4a8ea1）。
+    if (swing && boss.phase == BossActPhase::Act && g.hit && g.tIn <= g.swingLength + boss.swingSettleFrames)
+        t.window = true;
     // 両手の型の間は、待機の構えへ混ぜない（体の屈み・前傾は規則の構えが戻すので、刀だけ先に戻すと手が胴に入る）。
     t.calm = CalmWeight(boss, move, swing, restWeight) * (1.0f - t.twoHand);
     if (swing) {
