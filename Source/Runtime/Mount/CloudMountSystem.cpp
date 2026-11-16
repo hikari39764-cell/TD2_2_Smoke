@@ -5,14 +5,17 @@
 #include <cstdio>
 
 #include "HIKARI/Project/ActionViews.h"
+#include "HIKARI/Project/CameraViewSnapshot.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
+#include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 #include "CloudMountCamera.h"
 #include "CloudMountComponent.h"
 #include "CloudMountRules.h"
+#include "CloudMountSpeedFx.h"
 #include "CloudMountVisuals.h"
 
 namespace Project_TD2_2 {
@@ -32,6 +35,20 @@ constexpr int kCameraEffectPriority = 300;
 // 動きのぼかしの、エンジンが受け付ける範囲（シャッター角は度、ぼかしの長さは 1080p の画素）。
 constexpr float kMaximumShutterDegrees = 360.0f;
 constexpr float kMaximumBlurPixels = 64.0f;
+// 速度感の全画面の効果の送り手（Action Post の経路はこの送り手だけが使う。優先度は競う相手が無いので 0）。
+constexpr uint64_t kSpeedFxSource = 0x5444324D04ull;
+constexpr int kSpeedFxPriority = 0;
+// 効果資産 FlightSpeed.hposteffect の、コードが毎フレーム送る値の置き場所（資産の params と同じ slot・channel）。
+// slot 0：x 強さ・y と z 流れの中心（UV）。slot 1：x と y 体を守る楕円の中心（UV）・z 半径（画面の高さを 1）・w 有効。
+// ほかの slot は資産（プロファイル）の値のまま（channel の印 0 は資産の値を残す）。
+constexpr uint32_t kSpeedFxFrameSlot = 0u;
+constexpr uint32_t kSpeedFxFrameMask = 1u | 2u | 4u;
+constexpr uint32_t kSpeedFxGuardSlot = 1u;
+constexpr uint32_t kSpeedFxGuardMask = 1u | 2u | 4u | 8u;
+// 流れの中心を進む向きから決める時の速さの下限 (m/s)。これより遅いと前の中心のまま。
+constexpr float kSpeedFxMinimumHeadingSpeed = 0.5f;
+// 確かめのログで進む向きを遠くの点として SDK の写し方と突き合わせる時の距離 (m)。
+constexpr float kSpeedFxProbeDistance = 1000.0f;
 // 震えを続ける間、弱まりを割り戻す時の包絡の下限（割り算が大きくなりすぎないように）。
 constexpr float kMinimumShakeEnvelope = 0.05f;
 // 騎乗中は毎 tick ソルバーの跳躍として出す時の初速 (m/s)。初速は同じ tick の重力の差し替えで打ち消すので、
@@ -353,6 +370,142 @@ void SubmitCameraEffects(HIKARI::WorldView& world, CloudMountComponent& mount, c
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
 }
 
+// 直前に描いたフレームのカメラ（姿勢・画角・横縦比）。描いたことが無ければ false。
+bool ReadSpeedFxView(HIKARI::WorldView& world, HIKARI::GameProjectCameraViewSnapshot& snapshot,
+                     CloudMountSpeedFxView& view) {
+    if (!world.GetCamera().TryGetViewSnapshot(snapshot))
+        return false;
+    const auto& pose = snapshot.pose;
+    const Vec3 zero{};
+    const Vec3 forward = VectorMath::Normalize(VectorMath::Difference(pose.target, pose.eye), zero);
+    const Vec3 up = pose.up;
+    // 画面の右＝前 × 上、画面の上＝右 × 前（前が +Z の時、右は −X）。SDK の ProjectWorldToScreen と同じ点に写ることを
+    // 確かめのログ（probeHeading・probeGuard）で確かめた。
+    const Vec3 right = VectorMath::Normalize(
+        {forward.y * up.z - forward.z * up.y, forward.z * up.x - forward.x * up.z, forward.x * up.y - forward.y * up.x},
+        zero);
+    const Vec3 screenUp{right.y * forward.z - right.z * forward.y, right.z * forward.x - right.x * forward.z,
+                        right.x * forward.y - right.y * forward.x};
+    const float fov = snapshot.lens.verticalFovRadians;
+    if ((forward.x == 0.0f && forward.y == 0.0f && forward.z == 0.0f) ||
+        (right.x == 0.0f && right.y == 0.0f && right.z == 0.0f) || !(fov > 0.0f) || !(snapshot.aspectRatio > 0.0f))
+        return false;
+    view.eye = pose.eye;
+    view.forward = forward;
+    view.right = right;
+    view.up = screenUp;
+    view.tanHalfFov = std::tan(fov * 0.5f);
+    view.aspect = snapshot.aspectRatio;
+    return true;
+}
+
+// SDK の写し方（確かめ用）：世界の点の、場面の描画範囲の中の UV。写せなければ (-1,-1)。
+void ProbeOnScreen(const HIKARI::GameProjectCameraViewSnapshot& snapshot, Vec3 point, float& u, float& v) {
+    u = v = -1.0f;
+    HIKARI::GameProjectWorldToScreenResult result{};
+    if (!HIKARI::ProjectWorldToScreen(snapshot, point, HIKARI::GameProjectScreenCoordinateSpace::PhysicalOutputPixels,
+                                      result))
+        return;
+    const auto& rect = snapshot.sceneContentPhysical;
+    const float width = rect.right - rect.left;
+    const float height = rect.bottom - rect.top;
+    if (width <= 0.0f || height <= 0.0f)
+        return;
+    u = (result.x - rect.left) / width;
+    v = (result.y - rect.top) / height;
+}
+
+// 速度感の全画面の効果：強さと流れの中心・体を守る楕円を決め、強さが 0 でなければこのフレームの Action Post として
+// 送る（送らないフレームは効果が無い）。降りた後も弱まり終えるまで送る。
+void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount,
+                   const HIKARI::FrameContext& frame) {
+    const float dt = std::max(0.0f, frame.unscaledDt);
+    const float target = CloudMountSpeedFx::TargetStrength(mount);
+    const float strength = CloudMountSpeedFx::StepStrength(mount, dt);
+    const bool wasAccepted = mount.speedFxAccepted;
+    mount.speedFxAccepted = false;
+    if (strength <= 0.0f && mount.state == CloudMountState::None) {
+        // 次に乗った時は、最初の進む向きへ中心を一度に置く。
+        mount.speedFxHasCenter = false;
+        mount.speedFxFacing = 1.0f;
+        return;
+    }
+    HIKARI::GameProjectCameraViewSnapshot snapshot{};
+    CloudMountSpeedFxView view{};
+    const bool hasView = ReadSpeedFxView(world, snapshot, view);
+    float headingU = -1.0f;
+    float headingV = -1.0f;
+    const float speed = std::sqrt(mount.velocity.x * mount.velocity.x + mount.velocity.y * mount.velocity.y +
+                                  mount.velocity.z * mount.velocity.z);
+    const Vec3 heading = speed > 0.0f ? VectorMath::Scale(mount.velocity, 1.0f / speed) : Vec3{};
+    if (hasView && speed > kSpeedFxMinimumHeadingSpeed) {
+        mount.speedFxFacing = CloudMountSpeedFx::HeadingOnScreen(mount, view, heading, headingU, headingV);
+        CloudMountSpeedFx::StepCenter(mount, headingU, headingV, !mount.speedFxHasCenter, dt);
+        mount.speedFxHasCenter = true;
+    }
+    HIKARI::GameProjectTransform transform{};
+    object.GetWorldTransform(transform);
+    const Vec3 guardCenter{transform.position.x, transform.position.y - mount.speedFxGuardDrop, transform.position.z};
+    float guardU = 0.0f;
+    float guardV = 0.0f;
+    float guardRadius = 0.0f;
+    const bool guard = hasView && mount.speedFxGuardRadius > 0.0f &&
+                       CloudMountSpeedFx::SphereOnScreen(view, guardCenter, mount.speedFxGuardRadius, guardU, guardV,
+                                                         guardRadius);
+    const float facing = mount.speedFxFacing;
+    const float amount = strength * facing;
+    if (amount > 0.0f && mount.speedFxHasCenter && !mount.speedFxProfile.empty()) {
+        HIKARI::GameProjectActionPostFrameRequest request{};
+        request.sourceId = kSpeedFxSource;
+        request.priority = kSpeedFxPriority;
+        request.values[kSpeedFxFrameSlot] = {amount, mount.speedFxCenterU, mount.speedFxCenterV, 0.0f};
+        request.channelMasks[kSpeedFxFrameSlot] = kSpeedFxFrameMask;
+        request.values[kSpeedFxGuardSlot] = {guardU, guardV, guardRadius, guard ? 1.0f : 0.0f};
+        request.channelMasks[kSpeedFxGuardSlot] = kSpeedFxGuardMask;
+        mount.speedFxAccepted = world.GetPresentationVfx().SubmitActionPostProfile(mount.speedFxProfile, request);
+        if (mount.speedFxAccepted)
+            ++mount.speedFxSubmits;
+        if (mount.speedFxAccepted && !wasAccepted) {
+            // 出していなかった所から出し始めた（エンジンは効果の準備をし直す。確かめ用に数える）。
+            ++mount.speedFxStarts;
+            if (mount.traceEveryFrames > 0) {
+                char start[96]{};
+                std::snprintf(start, sizeof(start), "SpeedFxStart frame=%llu starts=%llu",
+                              static_cast<unsigned long long>(frame.frameIndex),
+                              static_cast<unsigned long long>(mount.speedFxStarts));
+                HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", start);
+            }
+        }
+    }
+    if (mount.traceEveryFrames <= 0 || (target <= 0.0f && strength <= 0.0f))
+        return;
+    float probeHeadingU = -1.0f;
+    float probeHeadingV = -1.0f;
+    float probeGuardU = -1.0f;
+    float probeGuardV = -1.0f;
+    if (hasView) {
+        ProbeOnScreen(snapshot, VectorMath::Add(view.eye, VectorMath::Scale(heading, kSpeedFxProbeDistance)),
+                      probeHeadingU, probeHeadingV);
+        ProbeOnScreen(snapshot, guardCenter, probeGuardU, probeGuardV);
+    }
+    char message[512]{};
+    std::snprintf(message, sizeof(message),
+                  "SpeedFx frame=%llu speed=%.3f boost=%d dive=%.3f target=%.4f strength=%.4f facing=%.3f "
+                  "amount=%.4f heading=(%.4f,%.4f) center=(%.4f,%.4f) guard=(%.4f,%.4f,%.4f,%d) "
+                  "probeHeading=(%.4f,%.4f) probeGuard=(%.4f,%.4f) view=%d accepted=%d submits=%llu rawDtMs=%.2f",
+                  static_cast<unsigned long long>(frame.frameIndex), static_cast<double>(mount.flight.speed),
+                  static_cast<int>(mount.flight.boosting), static_cast<double>(mount.flight.dive),
+                  static_cast<double>(target), static_cast<double>(strength), static_cast<double>(facing),
+                  static_cast<double>(amount), static_cast<double>(headingU), static_cast<double>(headingV),
+                  static_cast<double>(mount.speedFxCenterU), static_cast<double>(mount.speedFxCenterV),
+                  static_cast<double>(guardU), static_cast<double>(guardV), static_cast<double>(guardRadius),
+                  static_cast<int>(guard), static_cast<double>(probeHeadingU), static_cast<double>(probeHeadingV),
+                  static_cast<double>(probeGuardU), static_cast<double>(probeGuardV), static_cast<int>(hasView),
+                  static_cast<int>(mount.speedFxAccepted), static_cast<unsigned long long>(mount.speedFxSubmits),
+                  static_cast<double>(frame.rawDt * 1000.0f));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "CloudMount", message);
+}
+
 } // namespace
 
 void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
@@ -399,6 +552,7 @@ void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
         CloudMountVisuals::Update(world, object, mount, player, frame);
         SubmitCameraEffects(world, mount, player, frame);
+        SubmitSpeedFx(world, object, mount, frame);
     });
 }
 

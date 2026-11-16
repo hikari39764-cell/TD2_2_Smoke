@@ -228,6 +228,32 @@ void CloudMountComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      disperseHoldSeconds, 0.0f, 5.0f);
         fields.Float("disperseSwirl", "散らす間の渦の強さ（乱流の倍率。煙を筋にちぎる）", disperseSwirl, 0.0f, 10.0f);
     }
+    if (fields.Section("速度感")) {
+        fields.Note("速く飛ぶ間、進む向き（画面の中心近く）を澄ませたまま、縁を放射状に流します（ぼかし・細い筋・"
+                    "わずかな色ずれ・縁の減光）。巡航は弱く、ブーストと急降下で強くなります。歩き・止まっている時は"
+                    "一切掛かりません。ぼかしの長さ・筋・色ずれ・減光・中心の澄んだ広さは効果資産（FlightSpeed）で変えます。");
+        fields.Asset("speedFxProfile", "効果のプロファイル（FlightSpeed。空なら出さない）",
+                     HIKARI::GameProjectAssetKind::PostProfile, speedFxProfile);
+        fields.Float("speedFxLimit", "強さの上限 (0〜1。0 で出さない：酔いやすい人向け)", speedFxLimit, 0.0f, 1.0f);
+        fields.Float("speedFxStartSpeed", "掛かり始める速さ (m/s)", speedFxStartSpeed, 0.0f, 100.0f);
+        fields.Float("speedFxCruise", "巡航の速さの強さ", speedFxCruise, 0.0f, 1.0f);
+        fields.Float("speedFxBoost", "ブースト（中・ブーストの速さ）の強さ", speedFxBoost, 0.0f, 1.0f);
+        fields.Float("speedFxDive", "急降下（度合い 1・急降下の上限の速さ）の強さ", speedFxDive, 0.0f, 1.0f);
+        fields.Note("強さ＝速さの曲線（掛かり始める速さまで 0 → 巡航 → ブーストの速さ → 急降下の上限の速さ）と、"
+                    "ブースト中・急降下の度合いの大きい方。");
+        fields.Float("speedFxRiseSeconds", "強まる時のならし (秒)", speedFxRiseSeconds, 0.0f, 3.0f);
+        fields.Float("speedFxFallSeconds", "弱まる時のならし (秒)", speedFxFallSeconds, 0.0f, 3.0f);
+        fields.Float("speedFxCenterSeconds", "流れの中心（進む向き）のならし (秒)", speedFxCenterSeconds, 0.0f, 2.0f);
+        fields.Float("speedFxCenterLimit", "流れの中心を置ける、画面の中心からの限度（画面の端が 1）",
+                     speedFxCenterLimit, 0.0f, 5.0f);
+        fields.Note("横へ飛ぶと進む向きは画面の外になります。その時は向きのまま限度の所に中心を置き、流れはほぼ"
+                    "平行になります。");
+        fields.Float("speedFxGuardRadius", "流さない体と雲の球の半径 (m。0 で守らない)", speedFxGuardRadius, 0.0f,
+                     10.0f);
+        fields.Float("speedFxGuardDrop", "その球の中心を体の中心から下げる量 (m。雲を含める)", speedFxGuardDrop,
+                     -5.0f, 5.0f);
+        fields.Note("動きのぼかし（節：カメラ）と重なります。流れを強める時は両方を見て決めてください。");
+    }
     if (fields.Section("確かめ")) {
         fields.Int("traceEveryFrames", "位置と速度をログに出す間隔 (F、0 は出さない)", traceEveryFrames, 0, 7200);
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
@@ -283,6 +284,27 @@ public:
     float disperseHoldSeconds = 1.0f;
     // 散らす間の渦の強さ（域の乱流の倍率）。煙を筋にちぎって散らす。
     float disperseSwirl = 3.0f;
+    // 速度感（全画面の効果 FlightSpeed：進む向きを中心に、縁が放射状に流れる・ぼかし・わずかな色ずれ・縁の減光）。
+    // 強さは速さの曲線（speedFxStartSpeed まで 0 → 巡航 speedFxCruise → ブーストの速さ speedFxBoost → 急降下の上限の速さ
+    // speedFxDive）と、ブースト中 speedFxBoost・急降下の度合い × speedFxDive の大きい方。強まる時 speedFxRiseSeconds、
+    // 弱まる時 speedFxFallSeconds でならし、speedFxLimit で抑える（0 で出さない。酔いやすい人向け）。強さ 0 の間は
+    // 効果を一切出さない。見た目（ぼかしの長さ・筋・色ずれ・減光・中心の澄んだ広さ）は効果資産の値。
+    std::string speedFxProfile{"0b62bd7baa7d48e4a65dc8867fd3d990"};
+    float speedFxLimit = 1.0f;
+    float speedFxStartSpeed = 4.0f;
+    float speedFxCruise = 0.15f;
+    float speedFxBoost = 0.75f;
+    float speedFxDive = 1.0f;
+    float speedFxRiseSeconds = 0.25f;
+    float speedFxFallSeconds = 0.5f;
+    // 流れの中心（進む向きを画面へ写した点）のならし（秒）と、画面の中心からの限度（画面の端が 1）。横へ飛ぶ時は
+    // 限度の所に置き、流れはほぼ平行になる。
+    float speedFxCenterSeconds = 0.1f;
+    float speedFxCenterLimit = 1.4f;
+    // 体と雲を守る球：体の中心から speedFxGuardDrop (m) 下げた所の、半径 speedFxGuardRadius (m)。画面で守る楕円の
+    // 内は流さない（縁のぼかし具合は効果資産の guardFeather）。半径 0 で守らない。
+    float speedFxGuardRadius = 1.5f;
+    float speedFxGuardDrop = 0.35f;
     // 確かめ用：この F ごとに位置・速度をログに出す（0 は出さない）。
     int traceEveryFrames = 0;
 
@@ -345,6 +367,18 @@ public:
     bool cloudAccepted = true;
     // 召喚と解除の演出（CloudMountVisuals が描画フレームごとに進める）。
     CloudMountArrivalState arrival{};
+    // 速度感（CloudMountSystem が描画フレームごとに進める）：ならした強さ（上限の前）、流れの中心（UV）と置いたか、
+    // 前へ向かう度合い、最後の提出が受け付けられたか、受け付けられた提出の数と、出していない所から出し始めた数
+    // （確かめ用）。
+    float speedFxStrength = 0.0f;
+    float speedFxCenterU = 0.5f;
+    float speedFxCenterV = 0.5f;
+    bool speedFxHasCenter = false;
+    // 前へ向かう度合い（CloudMountSpeedFx::HeadingOnScreen）。止まって向きが決まらない間は前の値のまま。
+    float speedFxFacing = 1.0f;
+    bool speedFxAccepted = false;
+    uint64_t speedFxSubmits = 0;
+    uint64_t speedFxStarts = 0;
 };
 
 } // namespace Project_TD2_2

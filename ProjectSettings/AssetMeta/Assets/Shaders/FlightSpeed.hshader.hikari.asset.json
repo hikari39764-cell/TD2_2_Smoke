@@ -1,0 +1,10 @@
+{
+  "displayName": "FlightSpeed",
+  "guid": "1c8474dcc55a4e29a607411d6f55e820",
+  "importSettings": {},
+  "importerId": "ShaderImporter",
+  "importerVersion": 1,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Shaders/FlightSpeed.hshader",
+  "type": "Shader"
+}
