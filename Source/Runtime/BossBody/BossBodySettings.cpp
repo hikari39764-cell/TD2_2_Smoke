@@ -38,6 +38,17 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyEyeFlareBig", "目の閃き：大技（引爆・天降り斬り・退き溜め・霞の大剣）の強さ", eyeFlareBig, 0.0f,
                  8.0f);
     fields.Float("bodyEyeFlareSeconds", "目の閃き：消えるまでの時間 (秒)", eyeFlareSeconds, 0.01f, 3.0f);
+    fields.Float("bodyBladeRimKamae", "刀身の輪郭の光：両手の斬りの構え・溜めの強さ（0 で掛けない）", bladeRimKamae,
+                 0.0f, 8.0f);
+    fields.Float("bodyBladeRimSwing", "刀身の輪郭の光：振る間の強さ", bladeRimSwing, 0.0f, 8.0f);
+    fields.Float("bodyBladeRimCharge", "刀身の輪郭の光：大きな溜め（溜めの見た目 1 あたり）で足す強さ", bladeRimCharge,
+                 0.0f, 8.0f);
+    fields.Float("bodyBladeRimHotShare", "刀身の輪郭の光：燃える刀身の間に弱める割合 (0〜1)", bladeRimHotShare, 0.0f,
+                 1.0f);
+    fields.Float("bodyBladeRimPower", "刀身の輪郭の光：鋭さ（大きいほど縁だけ細く光る）", bladeRimPower, 0.5f, 16.0f);
+    fields.Float("bodyBladeRimPulse", "刀身の輪郭の光：明滅の速さ (rad/秒)", bladeRimPulse, 0.0f, 32.0f);
+    fields.Float("bodyBladeRimRiseSeconds", "刀身の輪郭の光：灯る時間 (秒)", bladeRimRiseSeconds, 0.01f, 2.0f);
+    fields.Float("bodyBladeRimFallSeconds", "刀身の輪郭の光：消える時間 (秒)", bladeRimFallSeconds, 0.01f, 2.0f);
     fields.Vfx("bodyGlintEffect", "刀身を走る光のエフェクト（刀を振る技を出すと決めた瞬間。空なら出さない）",
                glintEffect);
     fields.Float3("bodyGlintMistColor", "刀身を走る光：霞の技の色と明るさ", glintMistColor);

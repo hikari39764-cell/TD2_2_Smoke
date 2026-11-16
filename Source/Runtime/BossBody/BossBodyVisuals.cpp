@@ -42,6 +42,13 @@ constexpr std::string_view kTassetNode = "KusazuriPanel";
 constexpr uint64_t kTassetInstance = 20u;
 // 胴の煙のエフェクトの入力（資産側の契約）：出す量の倍率と、源の温度の倍率。
 constexpr const char* kSmokeHeatInput = "input.heat";
+// 刀身に掛ける材質の効果（エンジンに組み込みの溶かす効果。溶かす量は 0 のまま、輪郭の発光だけを使う）と、その項目の名前。
+constexpr std::string_view kBladeFxProfile = "HIKARI_Dissolve";
+constexpr std::string_view kRimStrength = "rimStrength";
+constexpr std::string_view kRimPower = "rimPower";
+constexpr std::string_view kPulseSpeed = "pulseSpeed";
+// 輪郭の光がこれより弱ければ、強さ 0 を送る。
+constexpr float kBladeRimMinimum = 0.01f;
 
 // 胴の煙：体の足元に付けて出し続ける。量と熱さは、気絶・フェーズで変える。
 void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body) {
@@ -91,6 +98,47 @@ void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& 
     BossLog::Warn("[BossBody] 外形の模型を出せませんでした（Boss の「外形の模型」とノードの名前を確かめてください）");
 }
 
+// 刀身の輪郭の光の目標：両手の斬りの構え・溜め（前隙と、連撃の振りの間）で灯り、大きな溜めで増し、振る間は強い。
+float BladeRimTarget(const BossComponent& boss, bool hot) {
+    const BossBodyAccentSettings& a = boss.body.accents;
+    if (boss.state != BossState::Act || boss.swordPose.twoHand < 0.5f)
+        return 0.0f;
+    float rim = 0.0f;
+    if (boss.swordSmoke)
+        rim = a.bladeRimSwing;
+    else if (boss.phase != BossActPhase::Post)
+        rim = a.bladeRimKamae + a.bladeRimCharge * std::max(0.0f, boss.chargeVisual);
+    return rim * (hot ? a.bladeRimHotShare : 1.0f);
+}
+
+// 刀身（模型の刀身の番号）に材質の効果を掛け、輪郭の光を時間で寄せて送る。効果を掛ける前に同じフレームで刀身を頼んで
+// あること（頼まれていない番号には掛けられない）。効果（プロファイル）は掛かっていない時だけ掛け、外さない：掛け外しや
+// 掛け直しは描画の場面の作り直し（光の追跡の場面を含む）を毎フレーム起こして重い。光らない時は強さ 0 を送る。
+void UpdateBladeShader(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, bool hot,
+                       float seconds) {
+    const BossBodyAccentSettings& a = boss.body.accents;
+    float& rim = boss.bodyState.accents.bladeRim;
+    const float target = BladeRimTarget(boss, hot);
+    const float time = target > rim ? a.bladeRimRiseSeconds : a.bladeRimFallSeconds;
+    rim += (target - rim) * (1.0f - std::exp(-std::max(0.0f, seconds) / std::max(1e-3f, time)));
+    // 構えも振りも 0 なら効果を掛けない（材質のまま描く）。
+    if (a.bladeRimKamae <= 0.0f && a.bladeRimSwing <= 0.0f)
+        return;
+    const HIKARI::MaterialFxView fx =
+        world.GetPresentationModels().GetMaterialFx(object.GetHandle().value, kBlade.instance);
+    if (!fx.IsValid())
+        return;
+    char current[64]{};
+    if (fx.GetProfileIdSize() != kBladeFxProfile.size() || !fx.CopyProfileId(current, sizeof(current)) ||
+        kBladeFxProfile != current) {
+        if (!fx.SetProfileId(kBladeFxProfile))
+            return;
+        fx.SetFloat(kRimPower, a.bladeRimPower);
+        fx.SetFloat(kPulseSpeed, a.bladeRimPulse);
+    }
+    fx.SetFloat(kRimStrength, rim < kBladeRimMinimum ? 0.0f : rim);
+}
+
 // 置き場所の一式を、持ち主の物体（本体・分身）の表示専用の模型として頼む。番号は持ち主ごとなので、本体と分身で
 // 同じ番号を使っても重ならない。
 void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyPose& pose) {
@@ -130,6 +178,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     const BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, body, pose);
     SubmitPose(world, object, boss, pose);
+    UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
     BossBodyAccents::Update(world, boss, body, pose, seconds);
 }
 

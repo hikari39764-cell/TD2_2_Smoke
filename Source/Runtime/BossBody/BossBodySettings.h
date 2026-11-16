@@ -180,6 +180,18 @@ struct BossBodyAccentSettings {
     // 燃える刀身：炎の明るさ（倍率。0 で出さない）と、火が付く・消える時間 (秒)。
     float bladeHeat = 1.0f;
     float bladeHeatSeconds = 0.25f;
+    // 刀身の輪郭の光（刀身の模型に掛ける材質の効果 HIKARI_Dissolve の輪郭の発光。シェーダーで刀身の全長が光る。色は
+    // エンジンの青白）：両手の斬りの構え・溜めで灯り（溜めの強さで増す）、振る間は強く、振り終わりで消える。
+    // 0 で掛けない。燃える刀身の間はこの割合へ弱める（炎と重ねて白く飛ばない）。
+    float bladeRimKamae = 1.2f;
+    float bladeRimSwing = 3.0f;
+    float bladeRimCharge = 1.5f;
+    float bladeRimHotShare = 0.35f;
+    // 輪郭の光の鋭さ（大きいほど縁だけ細く光る）、明滅の速さ (rad/秒)、灯る・消える時間 (秒)。
+    float bladeRimPower = 2.5f;
+    float bladeRimPulse = 6.0f;
+    float bladeRimRiseSeconds = 0.12f;
+    float bladeRimFallSeconds = 0.3f;
 
     // 目の光：兜に付くエフェクト（頭が動くと尾を引く光・暈・技を出すと決めた瞬間に横へ伸びる閃き）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference eyesEffect{"a4f1c8e27b5d4390b61e2c9d3f7a0851", "Assets/Vfx/BossEyes.hvfx"};
@@ -261,6 +273,8 @@ struct BossBodyAccentState {
     float trailHold = 0.0f;
     float trailGain = 0.0f;
     float heatGain = 0.0f;
+    // 刀身の輪郭の光のいまの強さ（材質の効果の rimStrength）。
+    float bladeRim = 0.0f;
     // 目の光・刀身を走る光・溜めの気配の再生。
     HIKARI::GameProjectVfxPlaybackHandle eyesVfx{};
     HIKARI::GameProjectVfxPlaybackHandle glintVfx{};
