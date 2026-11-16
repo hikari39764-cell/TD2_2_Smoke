@@ -32,8 +32,14 @@ void BossTestBrain::OnIdle(BossBrainContext& context) {
     }
 }
 
-void BossTestBrain::OnActFinished(BossBrainContext&) {
-    // 確かめ用はコンボを出さない（どの技も後隙まで見せる）。コンボは行動ツリーの brain が表のとおりにつなぐ。
+void BossTestBrain::OnActFinished(BossBrainContext& context) {
+    // 確かめ用は、ふだんはコンボを出さない（どの技も後隙まで見せる）。コンボは行動ツリーの brain が表のとおりにつなぐ。
+    // testChain の時だけ、確率・距離を見ずにコンボ先の最初の行へつなぐ（コンボの起こりの姿勢を毎回同じ手順で見る）。
+    BossComponent& boss = context.boss;
+    const BossMove* move = BossRules::GetMove(boss, boss.move);
+    if (!boss.testChain || move == nullptr || move->comboTargets.empty() || boss.chain + 1 >= boss.comboMaxChain)
+        return;
+    BossRules::RequestMove(boss, move->comboTargets.front(), true);
 }
 
 void BossTestBrain::OnRecovery(BossBrainContext&) {

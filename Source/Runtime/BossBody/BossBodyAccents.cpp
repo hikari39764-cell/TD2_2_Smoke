@@ -24,8 +24,6 @@ constexpr const char* kColorInput = "input.color"; // 刀身を走る光の色
 constexpr const char* kAuraInput = "input.aura";   // 溜めの気配の色と強さ
 constexpr const char* kDashInput = "input.dash";   // 突進の尾の色と明るさ
 constexpr const char* kHandInput = "input.hand";   // 左手の光の色と明るさ
-// これより速い 1 フレームの動きは、瞬間移動と見て速さに数えない (m/秒)。
-constexpr float kTeleportSpeed = 300.0f;
 // 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
 constexpr float kReleaseCharge = 0.85f;
 // 突進の尾の明るさを追う時間 (秒)。
@@ -246,8 +244,10 @@ void UpdateDash(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Gam
     }
     const Vec3 feet = Feet(boss, body);
     float speed = a.feetSeen && seconds > kTiny ? Length(Sub(feet, a.previousFeet)) / seconds : 0.0f;
-    // 瞬間移動（霞隠れ・分身）と、霧へ沈んでいる間は出さない。
-    if (speed > kTeleportSpeed || BossPose::RootHeight(boss) < -kTiny)
+    // 瞬間移動（霞隠れ・分身。規則の層が数える）と、霧へ沈んでいる間は出さない。
+    const bool teleported = boss.teleportCount != a.teleportSeen;
+    a.teleportSeen = boss.teleportCount;
+    if (teleported || BossPose::RootHeight(boss) < -kTiny)
         speed = 0.0f;
     a.previousFeet = feet;
     a.feetSeen = true;

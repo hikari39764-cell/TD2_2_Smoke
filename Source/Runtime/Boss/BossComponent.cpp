@@ -22,6 +22,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("kamaeFrames", "振る前の構え（剣を止めて溜める）(F)", kamaeFrames, 1, 300);
         fields.Int("raiseFrames", "振り上げ（構えの前に剣を引く）(F)", raiseFrames, 0, 300);
         fields.Int("swingInFrames", "振り出し（ゆっくり動き始める）(F)", swingInFrames, 0, 60);
+        fields.Int("poseRecoverFrames",
+                   "技の終わりの構えから、待機の下ろした構え・気絶の崩れた構えへ移る (F。0 は一気に切り替える)",
+                   poseRecoverFrames, 0, 60);
         fields.Float("damageBase", "威力（空欄時）＝基本", damageBase, 0.0f, 1000.0f);
         fields.Float("damagePerFrame", "…＋隙 F × この係数", damagePerFrame, 0.0f, 10.0f, 0.01f);
         fields.Float("thickness", "斬撃の厚み (m)", thickness, 0.01f, 5.0f, 0.01f);
@@ -517,6 +520,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("testStartFrames", "最初の技までの待ち (F)", testStartFrames, 0, 7200);
         fields.Int("testGapFrames", "技と技の間の待ち (F)", testGapFrames, 0, 7200);
         fields.Bool("testHoldStill", "待機中に横歩きしない", testHoldStill);
+        fields.Bool("testChain", "試す技のコンボ先（表の最初の行）へ続ける（コンボの最大の数まで）", testChain);
         fields.Int("testDamageAtFrame", "ボスに確かめのダメージを入れる F（-1 は使わない）", testDamageAtFrame, -1,
                    72000);
         fields.Float("testDamageAmount", "確かめのダメージの量", testDamageAmount, 0.0f, 100000.0f);

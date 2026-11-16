@@ -276,6 +276,7 @@ struct BossBodyAccentState {
     float dash = 0.0f;
     HIKARI::GameProjectFloat3 previousFeet{};
     bool feetSeen = false;
+    uint64_t teleportSeen = 0;
     // 衝撃の輪を出す瞬間を見分ける、前のフレームの様子（-1＝まだ見ていない）。
     int previousSkyfall = -1;
     int previousGreatsword = -1;
@@ -417,8 +418,9 @@ struct BossBodyMotionState {
     float great = 0.0f;
     HIKARI::GameProjectFloat3 greatPrevious{0.0f, 1.0f, 0.0f};
     uint64_t greatTick = 0;
-    // 瞬間移動を見分ける、前のフレームの足元。
+    // 前のフレームの足元（確かめ用の記録に出す足元の速さを測る）と、前に見た規則の層の teleportCount。
     HIKARI::GameProjectFloat3 ground{};
+    uint64_t teleportSeen = 0;
 };
 
 // 外形の実行時の状態（保存しない）。

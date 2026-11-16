@@ -8,6 +8,7 @@
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossMoveTable.h"
+#include "BossSwordPose.h"
 #include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
@@ -471,6 +472,11 @@ public:
     int kamaeFrames = 20;
     int raiseFrames = 12;
     int swingInFrames = 6;
+    // 技・気絶の終わりの構えを保ったまま待機へ入った時に下ろした構えへ戻る F と、技を打ち切られて気絶に入る時に
+    // 崩れた構えへ移る F（0 は最初の tick で切り替える）。
+    // 既定の 11 は、待機へ戻る時に規則の剣が 1 tick に 15 度以上動かない長さ（気絶に入る時は、振り上げた構えからだと
+    // 28 度ほどまで動く。15 度未満にするには 21 F ほど要る見込み）。
+    int poseRecoverFrames = 11;
     float damageBase = 6.0f;
     float damagePerFrame = 0.15f;
     float thickness = 0.5f;
@@ -861,6 +867,7 @@ public:
     int testStartFrames = 60;
     int testGapFrames = 40;
     bool testHoldStill = false;
+    bool testChain = false;
     int testDamageAtFrame = -1;
     float testDamageAmount = 40.0f;
     int testDamageRepeatFrames = 0;
@@ -905,6 +912,16 @@ public:
     float leanSide = 0.0f;
     float poseX = 70.0f;
     float poseY = -10.0f;
+    // 規則の剣の向き（BossPose::Target）。固定 tick の終わりに BossSystem が 1 度だけ書き、煙・外形・見た目・記録は
+    // これを読む。tick の途中（振りの最中の BossMoveExecutor）は、状態が変わる前の向きが要るので現場で求める。
+    BossSwordPose swordPose;
+    // 構えが 1 tick で跳ばないための起点（BossMoveExecutor が書く）。moveStartPose：技を始めた時の向き（前隙の
+    // 振り上げの起点）。lastEndPose：後隙・待機に入った時の向き（そこから下ろした構えへ戻る起点）。
+    BossSwordPose moveStartPose;
+    BossSwordPose lastEndPose;
+    // 位置を不連続に跳ばした（霞隠れの現れる・分身との入れ替え）回数。外形が、前に見た数と違えば刀をばねで追わず目標へ
+    // そろえる。速いが連続の動き（突進・落下）は数えない。
+    uint64_t teleportCount = 0;
     HIKARI::GameProjectFloat3 stepFrom{};
     bool dashStarted = false;
     // 瞬間突進の瞬間移動を終えた（跡の火を 1 回だけ塗る）。

@@ -381,7 +381,7 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     boss.leanSide = Lerp(
         boss.leanSide,
         speedGate * std::clamp(-sideSpeed * boss.leanFromSpeed, -boss.leanMaxRadians, boss.leanMaxRadians), kLeanBlend);
-    const BossSwordPose target = BossPose::Target(boss);
+    const BossSwordPose target = boss.swordPose;
     const float blend = boss.state == BossState::Act && boss.phase == BossActPhase::Act ? kPoseBlendFast : kPoseBlend;
     boss.poseX = Lerp(boss.poseX, target.x, blend);
     boss.poseY = Lerp(boss.poseY, target.y, blend);
@@ -414,11 +414,13 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
 void Trace(const BossComponent& boss, const DamageableComponent* health) {
     if (boss.traceEveryFrames <= 0 || boss.tick % static_cast<uint64_t>(boss.traceEveryFrames) != 0)
         return;
+    // 規則の剣の向き（度）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
+    const BossSwordPose sword = boss.swordPose;
     char message[448]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu state=%d phase=%d move=%d stateFrame=%d ground=(%.3f,%.3f,%.3f) yaw=%.3f "
                   "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d sink=%.3f hidden=%d "
-                  "clones=%d chargeVisual=%.3f",
+                  "clones=%d chargeVisual=%.3f swordX=%.4f swordY=%.4f",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.state),
                   static_cast<int>(boss.phase), boss.move, boss.stateFrame, static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.y), static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw),
@@ -426,7 +428,8 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
                   static_cast<double>(boss.crouch), static_cast<double>(boss.stun), boss.stunCount,
                   health ? static_cast<double>(DamageableRules::GetHealth(*health)) : -1.0,
                   static_cast<int>(boss.fluidAccepted), static_cast<double>(boss.sink), static_cast<int>(boss.hidden),
-                  boss.activeClones, static_cast<double>(boss.chargeVisual));
+                  boss.activeClones, static_cast<double>(boss.chargeVisual), static_cast<double>(sword.x),
+                  static_cast<double>(sword.y));
     BossLog::Write(message);
 }
 
@@ -500,6 +503,10 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 }
                 BossWaves::Step(bossFrame);
                 BossWaves::StepDeposits(boss);
+                // 規則の剣の向きは、この tick の状態が決まった後に 1 度だけ求める（体の傾き・見た目・記録が読む）。
+                // StepState の直後ではなくここに置く：被弾の処理（気絶・撃破）が状態を変えうるので、それを済ませた
+                // 向きが、これまで ApplyTransform が求めていた向きと同じになる。
+                boss.swordPose = BossPose::Target(boss);
                 ApplyTransform(object, boss, frame.fixedDt);
                 Trace(boss, health);
             };

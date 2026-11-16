@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 #include "BossMath.h"
 
@@ -106,23 +105,25 @@ struct StrikePose {
     BossSwordPose end;
 };
 
-std::vector<StrikePose> StrikePoses(const BossMove& move) {
-    std::vector<StrikePose> poses;
+// 連撃の index 番目（0 から）の一撃の始点・終点。横の一撃は左右を往復するので、手前の横の数で向きが決まる。
+// 一撃の無い行は、横の一撃 1 つとして扱う。呼ぶたびに配列を作らない（毎 tick 呼ばれる）。
+StrikePose StrikePoseAt(const BossMove& move, size_t index) {
     bool side = false;
-    for (const auto& strike : move.strikes) {
-        switch (strike.direction) {
+    for (size_t i = 0; i < move.strikes.size(); ++i) {
+        StrikePose pose{};
+        switch (move.strikes[i].direction) {
         case BossStrikeDirection::Horizontal:
-            poses.push_back(side ? StrikePose{kSide, kBack} : StrikePose{kBack, kSide});
+            pose = side ? StrikePose{kSide, kBack} : StrikePose{kBack, kSide};
             side = !side;
             break;
-        case BossStrikeDirection::Vertical: poses.push_back({kUp, kVerticalEnd}); break;
-        case BossStrikeDirection::Kesa: poses.push_back({kUpLeft, kDownRight}); break;
-        case BossStrikeDirection::ReverseKesa: poses.push_back({kUpRight, kDownLeft}); break;
+        case BossStrikeDirection::Vertical: pose = {kUp, kVerticalEnd}; break;
+        case BossStrikeDirection::Kesa: pose = {kUpLeft, kDownRight}; break;
+        case BossStrikeDirection::ReverseKesa: pose = {kUpRight, kDownLeft}; break;
         }
+        if (i == index)
+            return pose;
     }
-    if (poses.empty())
-        poses.push_back({kBack, kSide});
-    return poses;
+    return {kBack, kSide};
 }
 
 int SegmentLength(const BossComponent& boss, const BossMove& move, size_t index) {
@@ -159,9 +160,148 @@ BossSegmentProgress BossPose::Progress(const BossComponent& boss, const BossMove
     return result;
 }
 
+namespace {
+
+// 後隙・待機の戻り：from から下ろした構え（kRest）へ、frame F 目（全体 frames F）までに戻す。
+BossSwordPose BackToRest(BossSwordPose from, int frame, int frames) { return Sweep(from, kRest, Share(frame, frames)); }
+
+// 待機：技・気絶の終わりの構え（lastEndPose）を保ったまま入った時、poseRecoverFrames F かけて下ろした構えへ戻る。
+// 0 は待機の最初の tick で切り替える（これまでの動き）。
+BossSwordPose IdlePose(const BossComponent& boss) {
+    return boss.poseRecoverFrames > 0 ? BackToRest(boss.lastEndPose, boss.idleFrames, boss.poseRecoverFrames) : kRest;
+}
+
+// 気絶：技を打ち切った時の構え（lastEndPose）から、poseRecoverFrames F かけて崩れた構え（kStunned）へ。0 は一気に
+// 切り替える（これまでの動き）。
+BossSwordPose StunPose(const BossComponent& boss) {
+    return boss.poseRecoverFrames > 0
+               ? Sweep(boss.lastEndPose, kStunned, Share(boss.stateFrame, boss.poseRecoverFrames))
+               : kStunned;
+}
+
+// 剣を決まった向きに保つ技（回し蹴り・分身）：前隙で、前の技の構えからその向きへ移す。
+BossSwordPose HeldPose(const BossComponent& boss, const BossMove& move, BossSwordPose held) {
+    return boss.phase == BossActPhase::Pre ? Sweep(boss.moveStartPose, held, Share(boss.stateFrame, move.pre)) : held;
+}
+
+// 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
+BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
+    if (boss.phase == BossActPhase::Pre)
+        return Windup(boss, boss.moveStartPose, kUpLeft, kDownRight, boss.stateFrame, move.pre, false);
+    if (boss.phase == BossActPhase::Post)
+        return BackToRest(boss.lastEndPose, boss.stateFrame, move.post);
+    const auto g = BossPose::Progress(boss, move);
+    if (g.hitIndex % 2 == 0)
+        return g.hit ? Swing(boss, kUpLeft, kDownRight, g.tIn, g.swingLength)
+                     : Sweep(kDownRight, Cocked(kUpRight, kDownLeft), g.progress);
+    return Swing(boss, kUpRight, kDownLeft, g.tIn, g.swingLength);
+}
+
+// 剣を頭上へ掲げ、切っ先を下へ向けて地面へ突き立て、溜めの間・爆ぜる間は突き立てたまま。後隙で抜いて戻す。
+BossSwordPose DetonatePose(const BossComponent& boss, const BossMove& move) {
+    const int t = boss.stateFrame;
+    if (boss.phase == BossActPhase::Post)
+        return Sweep(kPlunge, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
+    if (boss.phase != BossActPhase::Pre)
+        return kPlunge;
+    const float progress = static_cast<float>(t) / static_cast<float>(std::max(1, move.pre));
+    const float raise = std::clamp(boss.detonateRaiseShare, 0.05f, 0.9f);
+    const float plant = std::max(raise + 0.01f, boss.detonatePlantShare);
+    return progress < raise ? Sweep(boss.moveStartPose, kUp, progress / raise)
+                            : Sweep(kUp, kPlunge, (progress - raise) / (plant - raise));
+}
+
+BossSwordPose FlameRunPose(const BossComponent& boss, const BossMove& move) {
+    const int t = boss.stateFrame;
+    if (boss.phase == BossActPhase::Pre)
+        return Sweep(boss.moveStartPose, kDrag,
+                     static_cast<float>(t) / static_cast<float>(std::max(1, boss.raiseFrames)));
+    if (boss.phase == BossActPhase::Post)
+        return Sweep(kFlameRunUp, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
+    // 攻撃中：いちばん新しく放った前線を放った tick（stateFrame 1＋間隔×番号）からの F で斬り上げる。
+    // 最後の 1 本は斬り上げたまま後隙へ。
+    const int interval = std::max(1, boss.flameRunIntervalFrames);
+    const int since = std::max(0, t - 1 - interval * std::max(0, boss.flameRun.released - 1));
+    const int up = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
+    if (since <= up)
+        return Sweep(kDrag, kFlameRunUp, static_cast<float>(since) / static_cast<float>(up));
+    if (boss.flameRun.released >= boss.flameRun.count)
+        return kFlameRunUp;
+    return Sweep(kFlameRunUp, kDrag, static_cast<float>(since - up) / static_cast<float>(std::max(1, interval - up)));
+}
+
+// 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
+BossSwordPose SkyfallPose(const BossComponent& boss, const BossMove& move) {
+    switch (boss.skyfall.phase) {
+    case BossSkyfallPhase::Crouch: return Sweep(boss.moveStartPose, kUp, boss.crouch);
+    case BossSkyfallPhase::Rise:
+    case BossSkyfallPhase::Hang: return kUp;
+    case BossSkyfallPhase::Dive: return Sweep(kUp, kPlunge, boss.skyfall.dive * kPlungeTurnSpeed);
+    case BossSkyfallPhase::Landed:
+        return boss.phase == BossActPhase::Post
+                   ? Sweep(kPlunge, kRest,
+                           static_cast<float>(boss.stateFrame) / static_cast<float>(std::max(1, move.post)))
+                   : kPlunge;
+    default: return kRest;
+    }
+}
+
+// 霞隠れ：前隙で前の技の構えから下ろした構えへ。隠れている間は下ろした構えで、現れる時の振り上げもそこから始める
+// （隠れている間は剣が見えないので、前の技の構えへは戻さない）。
+BossSwordPose AmbushPose(const BossComponent& boss, const BossMove& move) {
+    const int t = boss.stateFrame;
+    if (boss.phase == BossActPhase::Pre)
+        return Sweep(boss.moveStartPose, kRest, Share(t, move.pre));
+    if (boss.phase == BossActPhase::Post)
+        return BackToRest(boss.lastEndPose, t, move.post);
+    const auto g = BossPose::Progress(boss, move);
+    const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
+    if (g.hit)
+        return Swing(boss, kBack, kSide, g.tIn, g.swingLength);
+    if (segment.kind != BossSegmentKind::Appear)
+        return kRest;
+    // 現れて振り上げ→構え（最後の 1 回はフェイント）。
+    return Windup(boss, kRest, kBack, kSide, g.tIn, segment.length, segment.feint);
+}
+
+// 投げナイフ：前隙で前の技の構えから投げの構えへ、攻撃中で投げ切り、後隙で下ろした構えへ戻る。
+BossSwordPose KnifePose(const BossComponent& boss, const BossMove& move) {
+    if (boss.phase == BossActPhase::Pre)
+        return Sweep(boss.moveStartPose, kKnifeStart, Share(boss.stateFrame, move.pre));
+    if (boss.phase == BossActPhase::Act)
+        return Sweep(kKnifeStart, kKnifeEnd, BossPose::Progress(boss, move).progress * 2.0f);
+    return BackToRest(boss.lastEndPose, boss.stateFrame, move.post);
+}
+
+// 連撃：一撃ごとの構えと振りは StrikePoseAt。後隙は最後の一撃の振り終わりを保つ。
+BossSwordPose StringPose(const BossComponent& boss, const BossMove& move) {
+    const size_t last = std::max<size_t>(1, move.strikes.size()) - 1;
+    if (boss.phase == BossActPhase::Pre) {
+        const StrikePose first = StrikePoseAt(move, 0);
+        return Windup(boss, boss.moveStartPose, first.start, first.end, boss.stateFrame, move.pre,
+                      !move.strikes.empty() && move.strikes[0].feint);
+    }
+    if (boss.phase == BossActPhase::Post)
+        return StrikePoseAt(move, last).end;
+    const auto g = BossPose::Progress(boss, move);
+    const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
+    const size_t k = std::min(static_cast<size_t>(std::max(0, segment.strike)), last);
+    const StrikePose now = StrikePoseAt(move, k);
+    if (g.hit)
+        return Swing(boss, now.start, now.end, g.tIn, g.swingLength);
+    return Windup(boss, StrikePoseAt(move, k > 0 ? k - 1 : 0).end, now.start, now.end, g.tIn, segment.length,
+                  segment.feint);
+}
+
+} // namespace
+
 BossSwordPose BossPose::Target(const BossComponent& boss) {
-    if (boss.state == BossState::Stunned || boss.state == BossState::Dead)
+    if (boss.state == BossState::Dead)
         return kStunned;
+    if (boss.state == BossState::Stunned)
+        return StunPose(boss);
+    if (boss.state == BossState::Idle)
+        return IdlePose(boss);
     const auto& moves = boss.table.GetMoves();
     if (boss.state != BossState::Act || boss.move < 0 || static_cast<size_t>(boss.move) >= moves.size())
         return kRest;
@@ -170,14 +310,15 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     const int t = boss.stateFrame;
     auto sw = [&](BossSwordPose a, BossSwordPose c) {
         if (phase == BossActPhase::Pre)
-            return Windup(boss, kRest, a, c, t, move.pre, false);
+            return Windup(boss, boss.moveStartPose, a, c, t, move.pre, false);
         if (phase == BossActPhase::Post)
             return c;
         const auto g = Progress(boss, move);
         return g.hit ? Swing(boss, a, c, g.tIn, g.swingLength) : c;
     };
     switch (move.type) {
-    case BossMoveType::Dash: return phase == BossActPhase::Post ? kRest : sw(kBack, kSide);
+    case BossMoveType::Dash:
+        return phase == BossActPhase::Post ? BackToRest(boss.lastEndPose, t, move.post) : sw(kBack, kSide);
     case BossMoveType::SlashR: return sw(kUpLeft, kDownRight);
     case BossMoveType::SlashL: return sw(kUpRight, kDownLeft);
     case BossMoveType::SlashH: return sw(kBack, kSide);
@@ -187,102 +328,26 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
         // 退く間は剣を下げたまま。降りたら振り上げて、溜めの間ずっと振りかぶったまま構える（長い溜めを剣で見せる）。
         if (phase == BossActPhase::Pre) {
             if (!boss.retreat.charging)
-                return kRest;
+                return Sweep(boss.moveStartPose, kRest,
+                             Share(t, std::clamp(boss.retreatStepFrames, 1, std::max(1, move.pre - 1))));
             return Sweep(kRest, Cocked(kUp, kVerticalEnd),
                          static_cast<float>(boss.retreat.chargeElapsed) /
                              static_cast<float>(std::max(1, boss.raiseFrames)));
         }
         return sw(kUp, kVerticalEnd);
-    case BossMoveType::Jump: {
-        // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の短い区間で 2 撃目の構えへ引く。
+    case BossMoveType::Jump: return JumpPose(boss, move);
+    case BossMoveType::Kick: return HeldPose(boss, move, kHeld);
+    case BossMoveType::Detonate: return DetonatePose(boss, move);
+    case BossMoveType::Clone: return HeldPose(boss, move, kForward);
+    case BossMoveType::FlameRun: return FlameRunPose(boss, move);
+    case BossMoveType::Skyfall: return SkyfallPose(boss, move);
+    case BossMoveType::Ambush: return AmbushPose(boss, move);
+    case BossMoveType::Knife: return KnifePose(boss, move);
+    case BossMoveType::String: return StringPose(boss, move);
+    default:
         if (phase == BossActPhase::Pre)
-            return Windup(boss, kRest, kUpLeft, kDownRight, t, move.pre, false);
-        if (phase == BossActPhase::Post)
-            return kRest;
-        const auto g = Progress(boss, move);
-        if (g.hitIndex % 2 == 0)
-            return g.hit ? Swing(boss, kUpLeft, kDownRight, g.tIn, g.swingLength)
-                         : Sweep(kDownRight, Cocked(kUpRight, kDownLeft), g.progress);
-        return Swing(boss, kUpRight, kDownLeft, g.tIn, g.swingLength);
-    }
-    case BossMoveType::Kick: return kHeld;
-    case BossMoveType::Detonate: {
-        // 剣を頭上へ掲げ、切っ先を下へ向けて地面へ突き立て、溜めの間・爆ぜる間は突き立てたまま。後隙で抜いて戻す。
-        if (phase == BossActPhase::Post)
-            return Sweep(kPlunge, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
-        if (phase != BossActPhase::Pre)
-            return kPlunge;
-        const float progress = static_cast<float>(t) / static_cast<float>(std::max(1, move.pre));
-        const float raise = std::clamp(boss.detonateRaiseShare, 0.05f, 0.9f);
-        const float plant = std::max(raise + 0.01f, boss.detonatePlantShare);
-        return progress < raise ? Sweep(kRest, kUp, progress / raise)
-                                : Sweep(kUp, kPlunge, (progress - raise) / (plant - raise));
-    }
-    case BossMoveType::Clone: return kForward;
-    case BossMoveType::FlameRun: {
-        if (phase == BossActPhase::Pre)
-            return Sweep(kRest, kDrag, static_cast<float>(t) / static_cast<float>(std::max(1, boss.raiseFrames)));
-        if (phase == BossActPhase::Post)
-            return Sweep(kFlameRunUp, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)));
-        // 攻撃中：いちばん新しく放った前線を放った tick（stateFrame 1＋間隔×番号）からの F で斬り上げる。
-        // 最後の 1 本は斬り上げたまま後隙へ。
-        const int interval = std::max(1, boss.flameRunIntervalFrames);
-        const int since = std::max(0, t - 1 - interval * std::max(0, boss.flameRun.released - 1));
-        const int up = std::max(1, static_cast<int>(static_cast<float>(interval) * kFlameRunUpShare));
-        if (since <= up)
-            return Sweep(kDrag, kFlameRunUp, static_cast<float>(since) / static_cast<float>(up));
-        if (boss.flameRun.released >= boss.flameRun.count)
-            return kFlameRunUp;
-        return Sweep(kFlameRunUp, kDrag,
-                     static_cast<float>(since - up) / static_cast<float>(std::max(1, interval - up)));
-    }
-    case BossMoveType::Skyfall:
-        // 屈みながら剣を頭上へ掲げ、跳ぶ・空中で溜める間は掲げたまま。落ちる間に切っ先を下へ向け、着地で突き立てる。
-        switch (boss.skyfall.phase) {
-        case BossSkyfallPhase::Crouch: return Sweep(kRest, kUp, boss.crouch);
-        case BossSkyfallPhase::Rise:
-        case BossSkyfallPhase::Hang: return kUp;
-        case BossSkyfallPhase::Dive: return Sweep(kUp, kPlunge, boss.skyfall.dive * kPlungeTurnSpeed);
-        case BossSkyfallPhase::Landed:
-            return phase == BossActPhase::Post
-                       ? Sweep(kPlunge, kRest, static_cast<float>(t) / static_cast<float>(std::max(1, move.post)))
-                       : kPlunge;
-        default: return kRest;
-        }
-    case BossMoveType::Ambush: {
-        if (phase != BossActPhase::Act)
-            return kRest;
-        const auto g = Progress(boss, move);
-        const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
-        if (g.hit)
-            return Swing(boss, kBack, kSide, g.tIn, g.swingLength);
-        if (segment.kind != BossSegmentKind::Appear)
-            return kRest;
-        // 現れて振り上げ→構え（最後の 1 回はフェイント）。
-        return Windup(boss, kRest, kBack, kSide, g.tIn, segment.length, segment.feint);
-    }
-    case BossMoveType::Knife:
-        if (phase == BossActPhase::Pre)
-            return kKnifeStart;
-        if (phase == BossActPhase::Act)
-            return Sweep(kKnifeStart, kKnifeEnd, Progress(boss, move).progress * 2.0f);
-        return kRest;
-    case BossMoveType::String: {
-        const auto poses = StrikePoses(move);
-        if (phase == BossActPhase::Pre)
-            return Windup(boss, kRest, poses[0].start, poses[0].end, t, move.pre,
-                          !move.strikes.empty() && move.strikes[0].feint);
-        if (phase == BossActPhase::Post)
-            return poses.back().end;
-        const auto g = Progress(boss, move);
-        const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
-        const size_t k = std::min(static_cast<size_t>(std::max(0, segment.strike)), poses.size() - 1);
-        if (g.hit)
-            return Swing(boss, poses[k].start, poses[k].end, g.tIn, g.swingLength);
-        return Windup(boss, poses[k > 0 ? k - 1 : 0].end, poses[k].start, poses[k].end, g.tIn, segment.length,
-                      segment.feint);
-    }
-    default: return kRest;
+            return Sweep(boss.moveStartPose, kRest, Share(t, move.pre));
+        return phase == BossActPhase::Post ? BackToRest(boss.lastEndPose, t, move.post) : kRest;
     }
 }
 

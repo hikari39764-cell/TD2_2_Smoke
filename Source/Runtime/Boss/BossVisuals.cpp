@@ -178,7 +178,7 @@ void UpdateChargeGather(HIKARI::WorldView& world, BossComponent& boss) {
     }
     const bool fire = boss.lastPhaseNumber >= 2;
     // 剣の真ん中へ集める（頭上に掲げた剣先だと、見上げるカメラの上の縁から外れやすい）。
-    const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
+    const auto sword = BossPose::SwordPoints(boss, boss.swordPose);
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kMistInput, fire ? 0.0f : 1.0f);
     VfxParameters::SetFloat(parameters, kEmberInput, fire ? 1.0f : 0.0f);
@@ -253,7 +253,7 @@ void UpdateIgniteFlash(HIKARI::WorldView& world, BossComponent& boss, bool lit) 
     if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f) {
         const BossSwordPoints sword = boss.swordSmoke
                                           ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
-                                          : BossPose::SwordPoints(boss, BossPose::Target(boss));
+                                          : BossPose::SwordPoints(boss, boss.swordPose);
         BurnFieldRules::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
     }
     boss.bladeWasLit = lit;
@@ -280,7 +280,7 @@ void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss) {
         StopHandle(world, boss.swordVfx);
         return;
     }
-    const auto sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
+    const auto sword = BossPose::SwordPoints(boss, boss.swordPose);
     // 溜めの光は剣の真ん中に出す（集まる光の粒と同じ所）。
     Vec3 position = swinging                   ? boss.swordOuter
                     : boss.chargeVisual > 0.0f ? Lerp(sword.inner, sword.outer, 0.5f)

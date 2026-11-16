@@ -157,6 +157,7 @@ void BossClones::Place(BossFrame& frame, const BossMove& move) {
                   spots[static_cast<size_t>(std::min(i, static_cast<int>(BossRandom(boss) * (i + 1))))]);
     BossSpecialMoves::Puff(boss, boss.ground, false);
     boss.ground = boss.lastBodyPosition = spots[0];
+    ++boss.teleportCount;
     boss.yaw = YawOf(Sub(player, boss.ground));
     BossSpecialMoves::Puff(boss, boss.ground, false);
     for (int i = 0; i < count; ++i) {

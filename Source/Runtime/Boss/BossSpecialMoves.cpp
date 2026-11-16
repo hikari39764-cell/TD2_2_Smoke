@@ -43,6 +43,7 @@ void Appear(BossFrame& frame) {
     Vec3 to = Add(PlayerGround(frame), Mul(FlatNormalize(RotateY(behind, angle)), boss.ambushAppearDistance));
     BossMoveExecutor::ClampToArena(boss, to);
     boss.ground = to;
+    ++boss.teleportCount;
     boss.lastBodyPosition = to;
     boss.yaw = YawOf(Sub(PlayerGround(frame), boss.ground));
     boss.hidden = false;

@@ -1,14 +1,9 @@
 #pragma once
 
 #include "BossComponent.h"
+#include "BossSwordPose.h"
 
 namespace Project_TD2_2 {
-
-// 剣の向き（度）。x は前後の傾き（正で下）、y は左右（正でボスの左）。試作の POSE と同じ約束。
-struct BossSwordPose {
-    float x = 70.0f;
-    float y = -10.0f;
-};
 
 // 剣の根元・霞の内側・霞の先（世界座標）。
 struct BossSwordPoints {

@@ -94,7 +94,7 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
     }
     if (boss.glintFrames > 0) {
         // 構え：剣が止まり、剣先に霞が集まる（地面や画面の予告の代わり）。
-        const BossSwordPoints sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
+        const BossSwordPoints sword = BossPose::SwordPoints(boss, boss.swordPose);
         emitter.Emit(kKamaeId, sword.outer, boss.swordSmokeRadius,
                      boss.kamaeSmoke / static_cast<float>(std::max(1, boss.kamaeSmokeFrames)) * kFramesPerSecond, {});
     }

@@ -17,8 +17,6 @@ using Transform = HIKARI::GameProjectTransform;
 
 // 1 フレームの長さの上限 (秒)。止まった後の長いフレームでも一度に進めすぎない（その分ゆっくり見える）。
 constexpr float kMaxFrameSeconds = 0.1f;
-// 足元がこの速さ (m/秒) より速く動いたら瞬間移動と見なし、刀を目標へそろえる（突進の出現・霞隠れ）。
-constexpr float kTeleportSpeed = 25.0f;
 // 規則の剣が 1 tick でこの角度 (度) より大きく変わったら、振りでなく構えの切り替え（状態の変わり目）と見なし、
 // 速さに数えない（数えると、刃が切り替えの向きへ一瞬で向いてしまう）。
 constexpr float kRuleJumpDegrees = 40.0f;
@@ -133,7 +131,7 @@ float CalmWeight(const BossComponent& boss, const BossMove* move, bool swing, fl
 MotionTargets Targets(const BossComponent& boss) {
     const BossBodyMotionSettings& s = boss.body.motion;
     MotionTargets t;
-    t.ruleDirection = RotateY(BossPose::SwordLine(boss, BossPose::Target(boss)).direction, -boss.yaw);
+    t.ruleDirection = RotateY(BossPose::SwordLine(boss, boss.swordPose).direction, -boss.yaw);
     // BossSwordPose の既定値は、規則の「下ろした構え」（BossPose の kRest）と同じ。
     const Vec3 rest = RotateY(BossPose::SwordLine(boss, BossSwordPose{}).direction, -boss.yaw);
     t.ruleRoot = boss.swordShoulder;
@@ -320,6 +318,19 @@ void TraceGreat(const BossComponent& boss, const MotionTargets& t, BossBodyMotio
     BossLog::Write(message);
 }
 
+// 確かめ用（bodyTraceMotion）：ばねを進めず目標へそろえたフレームと、その理由（first・hidden・teleport）・
+// 足元の速さ (m/秒)・技の相を記録に出す。
+void TraceSnap(const BossComponent& boss, const char* reason, float speed) {
+    if (!boss.body.motion.traceMotion)
+        return;
+    char message[192]{};
+    std::snprintf(message, sizeof(message),
+                  "[BossBody] Snap tick=%llu reason=%s speed=%.1f move=%d state=%d phase=%d stateFrame=%d",
+                  static_cast<unsigned long long>(boss.tick), reason, static_cast<double>(speed), boss.move,
+                  static_cast<int>(boss.state), static_cast<int>(boss.phase), boss.stateFrame);
+    BossLog::Write(message);
+}
+
 // 最初のフレーム・隠れている間・瞬間移動：ばねを進めず、目標へそろえる。
 void Snap(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState& m) {
     const BossBodyMotionSettings& s = boss.body.motion;
@@ -350,9 +361,14 @@ void BossBodySword::Step(BossComponent& boss, float seconds) {
     BossBodyMotionState& m = boss.bodyState.motion;
     const MotionTargets t = Targets(boss);
     MeasureRule(boss, t.ruleDirection, m);
-    const bool teleported = m.ready && seconds > 0.0f && Length(Sub(boss.ground, m.ground)) > kTeleportSpeed * seconds;
+    // 規則の層が位置を跳ばした（teleportCount が増えた）フレームだけ、刀を目標へそろえる。速いが連続の動き
+    // （突進・落下）はばねで追う。足元の速さは確かめ用の記録にだけ使う。
+    const bool teleported = boss.teleportCount != m.teleportSeen;
+    m.teleportSeen = boss.teleportCount;
+    const float speed = m.ready && seconds > 0.0f ? Length(Sub(boss.ground, m.ground)) / seconds : 0.0f;
     m.ground = boss.ground;
     if (!m.ready || boss.hidden || teleported) {
+        TraceSnap(boss, !m.ready ? "first" : boss.hidden ? "hidden" : "teleport", speed);
         Snap(boss, t, m);
         // 左手は刀の後で決める（両手持ち・刀身をなぞる手は、見せる刀に付く）。
         BossBodyLeftHand::Step(boss, 0.0f, true);
@@ -422,7 +438,7 @@ void BossBodySword::Trace(const BossComponent& boss, const BossBodyPose& pose) {
     // 窓の間は規則の線の枠（体の向きだけ）なので、局所の速さを体の向きで回せば世界の剣先の動きの向き。
     const Vec3 motion = RotateY(m.velocity, boss.yaw);
     const float speed = Length(motion);
-    const BossSwordLine line = BossPose::SwordLine(boss, BossPose::Target(boss));
+    const BossSwordLine line = BossPose::SwordLine(boss, boss.swordPose);
     const Vec3 tip = Add(pose.sword.position, Mul(direction, VisibleBladeReach(boss)));
     const Vec3 far =
         Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength + boss.body.motion.armReach));

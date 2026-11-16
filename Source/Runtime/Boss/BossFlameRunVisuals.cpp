@@ -66,7 +66,7 @@ void RenderDrag(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     const BossMove* move = BossRules::GetMove(boss, BossRules::GetCurrentMove(boss));
     if (move == nullptr || move->type != BossMoveType::FlameRun)
         return;
-    const HIKARI::GameProjectFloat3 tip = BossPose::SwordPoints(boss, BossPose::Target(boss)).outer;
+    const HIKARI::GameProjectFloat3 tip = BossPose::SwordPoints(boss, boss.swordPose).outer;
     if (tip.y - boss.ground.y > kDragHeight)
         return;
     HIKARI::GameProjectFluidInteraction fuel{};

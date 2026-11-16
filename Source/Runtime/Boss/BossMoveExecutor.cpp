@@ -307,6 +307,8 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     }
     if (boss.segmentDone[static_cast<size_t>(g.segment)])
         return;
+    // tick の途中の向き：攻撃中の最後の tick は、この後で後隙・次の技へ状態が変わる。tick の終わりに求める swordPose は
+    // 変わった後の向きなので、当たりには使えない。
     const BossSwordPoints sword = BossPose::SwordPoints(boss, BossPose::Target(boss));
     if (swing.samples == 0)
         swing.firstOuter = sword.outer;
@@ -385,6 +387,8 @@ void BossMoveExecutor::StepFloat(BossComponent& boss) {
 void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     BossComponent& boss = frame.boss;
     const BossMove& move = boss.table.GetMoves()[static_cast<size_t>(moveIndex)];
+    // 前隙の構えは、いま見えている剣（前の tick の向き）から始める（コンボ・後隙の切り上げでも途切れない）。
+    boss.moveStartPose = boss.swordPose;
     if (!BossMoveTable::IsMoveType(move.type))
         boss.velocity = {};
     for (auto& swing : boss.swings)
@@ -528,12 +532,14 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
 }
 
 void BossMoveExecutor::EnterPost(BossComponent& boss) {
+    boss.lastEndPose = boss.swordPose;
     boss.phase = BossActPhase::Post;
     boss.stateFrame = 0;
     boss.aimFrozen = false;
 }
 
 void BossMoveExecutor::EnterIdle(BossComponent& boss) {
+    boss.lastEndPose = boss.swordPose;
     boss.state = BossState::Idle;
     boss.bladeLit = false;
     boss.aimFrozen = false;
@@ -571,6 +577,8 @@ void BossMoveExecutor::StepIdle(BossFrame& frame) {
 }
 
 void BossMoveExecutor::Interrupt(BossComponent& boss) {
+    // 打ち切った時の向きから、気絶の構えへ移る（気絶・撃破で 1 tick に跳ばない）。
+    boss.lastEndPose = boss.swordPose;
     for (auto& swing : boss.swings)
         swing = {};
     boss.segmentDone.clear();
