@@ -9,6 +9,7 @@
 #include "GourdShotComponent.h"
 #include "GourdComponent.h"
 #include "GourdRules.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
@@ -17,6 +18,8 @@
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 constexpr float kFramesPerSecond = Feedback::kFramesPerSecond;
 using VectorMath::kTau;
@@ -58,11 +61,8 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     modifier.localTargetOffset = modifier.localPositionOffset;
     modifier.verticalFovOffsetRadians = feedback.cameraFovDegrees * kRadiansPerDegree * strength;
     uint64_t cameraId = 0;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView gourdObject, GourdComponent& gourd) {
-                                               if (gourdObject.GetHandle().value == object.GetHandle().value)
-                                                   cameraId = gourd.cameraId;
-                                           });
+    ForEachOnObject<GourdComponent>(world, kGourdType, object,
+                                    [&](HIKARI::ObjectView, GourdComponent& gourd) { cameraId = gourd.cameraId; });
     modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, cameraId);
     if (modifier.cameraObjectHandle == 0)
         return false;

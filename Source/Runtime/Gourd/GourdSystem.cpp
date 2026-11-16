@@ -11,13 +11,17 @@
 #include "GourdAbsorbField.h"
 #include "GourdAbsorbVisuals.h"
 #include "GourdRules.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Common/ObjectVariables.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 using VectorMath::Difference;
 using VectorMath::Normalize;
@@ -50,13 +54,11 @@ template <class Callback> bool WithPlayer(HIKARI::WorldView& world, const GourdC
     if (!playerObject.IsValid())
         return false;
     bool found = false;
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                if (object.GetHandle().value != playerObject.GetHandle().value)
-                                                    return;
-                                                found = true;
-                                                callback(object, player);
-                                            });
+    ForEachOnObject<PlayerComponent>(world, kPlayerType, playerObject,
+                                     [&](HIKARI::ObjectView object, PlayerComponent& player) {
+                                         found = true;
+                                         callback(object, player);
+                                     });
     return found;
 }
 
@@ -313,7 +315,7 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
         if (gourd.absorbing && gourd.poseInitialized)
             GourdAbsorbField::Submit(world, object, gourd, gourd.absorbSeconds);
         ++gourd.renderFrameCount;
-        if (gourd.traceEveryFrames > 0 && gourd.renderFrameCount % static_cast<uint64_t>(gourd.traceEveryFrames) == 0)
+        if (TraceInterval::Due(gourd.traceEveryFrames, gourd.renderFrameCount))
             Trace(world, object, gourd);
     });
 }

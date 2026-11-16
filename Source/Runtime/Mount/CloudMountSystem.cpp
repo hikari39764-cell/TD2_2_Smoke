@@ -8,9 +8,11 @@
 #include "HIKARI/Project/CameraViewSnapshot.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Combat/Feedback.h"
 #include "../Combat/FeedbackCamera.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 #include "CloudMountCamera.h"
@@ -21,6 +23,8 @@
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 using Vec3 = HIKARI::GameProjectFloat3;
 
@@ -66,11 +70,10 @@ template <class Callback>
 void ForEachRider(HIKARI::WorldView& world, Callback&& callback) {
     world.ForEachComponent<CloudMountComponent>(
         HIKARI::MakeComponentTypeId(kCloudMountType), [&](HIKARI::ObjectView object, CloudMountComponent& mount) {
-            world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                    [&](HIKARI::ObjectView owner, PlayerComponent& player) {
-                                                        if (owner.GetHandle() == object.GetHandle())
-                                                            callback(object, mount, player);
-                                                    });
+            ForEachOnObject<PlayerComponent>(world, kPlayerType, object,
+                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                                 callback(object, mount, player);
+                                             });
         });
 }
 
@@ -196,7 +199,7 @@ void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCo
 
 void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HIKARI::GameProjectKinematicState& state,
            uint64_t tick) {
-    if (mount.traceEveryFrames <= 0 || tick % static_cast<uint64_t>(mount.traceEveryFrames) != 0)
+    if (!TraceInterval::Due(mount.traceEveryFrames, tick))
         return;
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);

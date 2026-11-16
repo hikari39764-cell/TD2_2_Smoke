@@ -8,6 +8,7 @@
 #include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Project/WorldView.h"
 #include "../Combat/Feedback.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
 #include "../Player/PlayerRules.h"
@@ -300,7 +301,7 @@ HIKARI::GameProjectVfxParameterOverrides Parameters(const CloudMountComponent& m
 
 void Trace(const CloudMountComponent& mount, const HIKARI::GameProjectVfxParameterOverrides& parameters,
            const HIKARI::GameProjectTransform& transform, const HIKARI::FrameContext& frame) {
-    if (mount.traceEveryFrames <= 0 || frame.frameIndex % static_cast<uint64_t>(mount.traceEveryFrames) != 0)
+    if (!TraceInterval::Due(mount.traceEveryFrames, frame.frameIndex))
         return;
     const CloudMountArrivalState& state = mount.arrival;
     char message[512]{};

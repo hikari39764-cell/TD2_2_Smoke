@@ -121,21 +121,10 @@ void UpdateGeyserBlade(HIKARI::WorldView& world, BossComponent& boss, float seco
             blade.position = at;
         }
     } else if (blade.handle.IsValid() && blade.flying) {
-        blade.flying = false;
-        blade.impactSeconds = boss.slashImpactSeconds;
-        blade.fadeSeconds = boss.slashFadeSeconds;
-        blade.velocity = Mul(blade.velocity, boss.slashHitSpeedScale);
+        Shatter(boss, blade, boss.slashFadeSeconds);
     }
-    if (blade.handle.IsValid() && !blade.flying) {
-        blade.fadeSeconds -= seconds;
-        blade.glow = std::max(0.0f, blade.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
-        blade.impactSeconds = std::max(0.0f, blade.impactSeconds - seconds);
-        blade.position = Add(blade.position, Mul(blade.velocity, seconds));
-        if (blade.fadeSeconds <= 0.0f) {
-            StopHandle(world, blade.handle);
-            blade = {};
-        }
-    }
+    if (blade.handle.IsValid() && !blade.flying)
+        StepShattered(world, boss, blade, seconds);
     if (blade.handle.IsValid())
         SendSlash(world, boss, blade);
 }

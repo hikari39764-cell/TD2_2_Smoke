@@ -8,6 +8,7 @@
 #include "BossMath.h"
 #include "BossRules.h"
 #include "BossWaves.h"
+#include "../Common/TraceInterval.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -67,7 +68,7 @@ void SetPhase(BossComponent& boss, BossGreatswordPhase phase) {
 
 // 確かめ用の項目 traceEveryFrames が入っている時だけ、毎 tick の形を出す（満ちる曲線・薙ぐ角度の並び）。
 void Trace(const BossComponent& boss) {
-    if (boss.traceEveryFrames > 0 && boss.tick % static_cast<uint64_t>(boss.traceEveryFrames) == 0)
+    if (TraceInterval::Due(boss.traceEveryFrames, boss.tick))
         LogShape(boss, "GreatswordTrace");
 }
 

@@ -12,13 +12,17 @@
 #include "GourdShotRules.h"
 #include "GourdShotVisuals.h"
 #include "GourdRules.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Combat/DamageableRules.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 using VectorMath::Add;
 using VectorMath::Difference;
@@ -32,31 +36,24 @@ using GameSession::IsPlaying;
 template <class Callback>
 bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callback&& callback) {
     bool found = false;
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView gourdObject, GourdComponent& gourd) {
-            if (gourdObject.GetHandle().value != shotObject.GetHandle().value)
-                return;
-            const auto playerObject = world.FindSceneObject(gourd.playerId);
-            if (!playerObject.IsValid())
-                return;
-            world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                    [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                        if (object.GetHandle().value != playerObject.GetHandle().value)
-                                                            return;
-                                                        found = true;
-                                                        callback(gourd, object, player);
-                                                    });
-        });
+    ForEachOnObject<GourdComponent>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, GourdComponent& gourd) {
+        const auto playerObject = world.FindSceneObject(gourd.playerId);
+        if (!playerObject.IsValid())
+            return;
+        ForEachOnObject<PlayerComponent>(world, kPlayerType, playerObject,
+                                         [&](HIKARI::ObjectView object, PlayerComponent& player) {
+                                             found = true;
+                                             callback(gourd, object, player);
+                                         });
+    });
     return found;
 }
 
 float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
     float value = 0.0f;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView object, GourdComponent& gourd) {
-                                               if (object.GetHandle().value == shotObject.GetHandle().value)
-                                                   value = GourdRules::GetSmokePerVolume(gourd);
-                                           });
+    ForEachOnObject<GourdComponent>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, GourdComponent& gourd) {
+        value = GourdRules::GetSmokePerVolume(gourd);
+    });
     return value;
 }
 
@@ -454,7 +451,7 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
         projectile.fadeFramesLeft = shot.shellFadeFrames;
         AddResidue(world, shot, projectile.position, 0);
         GourdShotFogReturn::Queue(world, shot, projectile, 0);
-    } else if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
+    } else if (TraceInterval::Due(shot.traceEveryFrames, shot.processedTick)) {
         LogProjectile(shot, projectile, "ProjectileStep");
     }
 }

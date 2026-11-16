@@ -8,6 +8,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/VfxView.h"
 #include "GourdShotRules.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
 
@@ -269,7 +270,7 @@ void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView objec
         burst.pending = false;
     }
     shot.reservedDomains = 0;
-    if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
+    if (TraceInterval::Due(shot.traceEveryFrames, shot.processedTick)) {
         char message[192]{};
         std::snprintf(message, sizeof(message), "Effects tick=%llu sourceCount=%u bursts=%llu vfxAccepted=%d",
                       static_cast<unsigned long long>(shot.processedTick), sourceCount,
@@ -335,7 +336,7 @@ void GourdShotVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
                         shot.residueSmokeRate * fade);
         }
     }
-    if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0) {
+    if (TraceInterval::Due(shot.traceEveryFrames, shot.processedTick)) {
         char message[256]{};
         std::snprintf(message, sizeof(message),
                       "Visual tick=%llu active=%u fluidSubmissions=%u totalShotFluid=%u dropped=%u vfxAccepted=%d "

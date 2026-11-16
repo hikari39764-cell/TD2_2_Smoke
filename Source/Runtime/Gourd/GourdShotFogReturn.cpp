@@ -8,6 +8,7 @@
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "../Common/FluidEmit.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 
 namespace Project_TD2_2 {
@@ -212,7 +213,7 @@ void GourdShotFogReturn::Render(HIKARI::WorldView& world, HIKARI::ObjectView obj
         ++fluidCount;
         ++shot.fluidSubmissions;
     }
-    if (shot.traceEveryFrames > 0 && shot.processedTick % static_cast<uint64_t>(shot.traceEveryFrames) == 0 &&
+    if (TraceInterval::Due(shot.traceEveryFrames, shot.processedTick) &&
         (emitted > 0 || waiting > 0)) {
         char message[192]{};
         std::snprintf(message, sizeof(message), "FogReturn tick=%llu emitting=%u waiting=%u queued=%.3f returned=%.3f",

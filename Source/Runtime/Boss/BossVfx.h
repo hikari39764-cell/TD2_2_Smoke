@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Project/WorldView.h"
 #include "BossComponent.h"
@@ -116,6 +118,29 @@ inline void StartSlash(HIKARI::WorldView& world, BossComponent& boss, BossSlashE
 
 inline void SendSlash(HIKARI::WorldView& world, BossComponent& boss, const BossSlashEffect& effect) {
     Send(world, boss, effect.handle, Placed(effect.position, effect.scale, effect.rotation), SlashParameters(effect));
+}
+
+// 斬撃の刃を砕けさせる：刃を出すのをやめ、衝撃の入力を slashImpactSeconds 出し、fadeSeconds で消し、勢いを
+// slashHitSpeedScale 倍に落とす（その場で散る）。この後は StepShattered で進める。
+inline void Shatter(const BossComponent& boss, BossSlashEffect& effect, float fadeSeconds) {
+    effect.flying = false;
+    effect.impactSeconds = boss.slashImpactSeconds;
+    effect.fadeSeconds = fadeSeconds;
+    const float scale = boss.slashHitSpeedScale;
+    effect.velocity = {effect.velocity.x * scale, effect.velocity.y * scale, effect.velocity.z * scale};
+}
+
+// 砕けた刃を 1 描画フレーム進める：光を下げ、残りの勢いで流し、消える時が来たら止めて空にする。
+inline void StepShattered(HIKARI::WorldView& world, const BossComponent& boss, BossSlashEffect& effect, float seconds) {
+    effect.fadeSeconds -= seconds;
+    effect.glow = std::max(0.0f, effect.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
+    effect.impactSeconds = std::max(0.0f, effect.impactSeconds - seconds);
+    effect.position = {effect.position.x + effect.velocity.x * seconds, effect.position.y + effect.velocity.y * seconds,
+                       effect.position.z + effect.velocity.z * seconds};
+    if (effect.fadeSeconds <= 0.0f) {
+        StopHandle(world, effect.handle);
+        effect = {};
+    }
 }
 
 // 炎の輪のエフェクトの入力：広がっている間は燃料を出し（flying）、シェーダーの層を glow の明るさにする。

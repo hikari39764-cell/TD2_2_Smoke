@@ -66,22 +66,11 @@ void UpdateBlade(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompon
         } else {
             // 着地した（か、打ち切られた）：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
             // （砕けた霞が、着地の上に大きく立ちのぼる）。
-            blade.flying = false;
-            blade.impactSeconds = boss.slashImpactSeconds;
-            blade.fadeSeconds = boss.slashFadeSeconds;
-            blade.velocity = Mul(blade.velocity, boss.slashHitSpeedScale);
+            Shatter(boss, blade, boss.slashFadeSeconds);
         }
     }
-    if (blade.handle.IsValid() && !blade.flying) {
-        blade.fadeSeconds -= seconds;
-        blade.glow = std::max(0.0f, blade.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
-        blade.impactSeconds = std::max(0.0f, blade.impactSeconds - seconds);
-        blade.position = Add(blade.position, Mul(blade.velocity, seconds));
-        if (blade.fadeSeconds <= 0.0f) {
-            StopHandle(world, blade.handle);
-            blade = {};
-        }
-    }
+    if (blade.handle.IsValid() && !blade.flying)
+        StepShattered(world, boss, blade, seconds);
     if (blade.handle.IsValid())
         SendSlash(world, boss, blade);
 }

@@ -10,11 +10,14 @@
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossSpecialMoves.h"
+#include "../Common/ComponentLookup.h"
 #include "../Combat/DamageableRules.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 using namespace BossMath;
 
@@ -51,24 +54,21 @@ void Log(const BossComponent& boss, const char* event, const char* extra) {
 
 uint64_t HitCountOf(HIKARI::WorldView& world, HIKARI::ObjectView object) {
     uint64_t hits = 0;
-    world.ForEachComponent<DamageableComponent>(HIKARI::MakeComponentTypeId(kDamageableType),
-                                                [&](HIKARI::ObjectView other, DamageableComponent& health) {
-                                                    if (other.GetHandle().value == object.GetHandle().value)
-                                                        hits = DamageableRules::GetHitCount(health);
-                                                });
+    ForEachOnObject<DamageableComponent>(world, kDamageableType, object,
+                                         [&](HIKARI::ObjectView, DamageableComponent& health) {
+                                             hits = DamageableRules::GetHitCount(health);
+                                         });
     return hits;
 }
 
 // 出し直す分身の体力を最大へ戻す。戻さないと、何度か出るうちに受けた当たりで体力が尽き、ApplyDamage が当たりを
 // 断るようになる（当たりの数が増えず、撃っても消せない・「分身を撃たれた」が出ない）。
 void RestoreHealth(HIKARI::WorldView& world, HIKARI::ObjectView object) {
-    world.ForEachComponent<DamageableComponent>(HIKARI::MakeComponentTypeId(kDamageableType),
-                                                [&](HIKARI::ObjectView other, DamageableComponent& health) {
-                                                    if (other.GetHandle().value != object.GetHandle().value)
-                                                        return;
-                                                    DamageableRules::Initialize(health);
-                                                    health.currentHealth = DamageableRules::GetMaxHealth(health);
-                                                });
+    ForEachOnObject<DamageableComponent>(world, kDamageableType, object,
+                                         [&](HIKARI::ObjectView, DamageableComponent& health) {
+                                             DamageableRules::Initialize(health);
+                                             health.currentHealth = DamageableRules::GetMaxHealth(health);
+                                         });
 }
 
 void Remove(BossComponent& boss, BossCloneComponent& clone, bool puff, const char* why) {

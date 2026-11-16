@@ -22,7 +22,9 @@
 #include "BossSmoke.h"
 #include "BossVisuals.h"
 #include "BossWaves.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
+#include "../Common/TraceInterval.h"
 #include "../BossBody/BossBodyVisuals.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
@@ -31,6 +33,8 @@
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 using namespace BossMath;
 
@@ -436,7 +440,7 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
 }
 
 void Trace(const BossComponent& boss, const DamageableComponent* health) {
-    if (boss.traceEveryFrames <= 0 || boss.tick % static_cast<uint64_t>(boss.traceEveryFrames) != 0)
+    if (!TraceInterval::Due(boss.traceEveryFrames, boss.tick))
         return;
     // 規則の剣の構え（握り・向き）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
     const BossSwordPose& sword = boss.swordPose;
@@ -538,14 +542,13 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             };
             auto withHealth = [&](PlayerComponent* player, Vec3 playerCenter) {
                 bool done = false;
-                world.ForEachComponent<DamageableComponent>(
-                    HIKARI::MakeComponentTypeId(kDamageableType),
-                    [&](HIKARI::ObjectView healthObject, DamageableComponent& health) {
-                        if (!done && healthObject.GetHandle().value == object.GetHandle().value) {
-                            done = true;
-                            body(player, playerCenter, &health);
-                        }
-                    });
+                ForEachOnObject<DamageableComponent>(world, kDamageableType, object,
+                                                     [&](HIKARI::ObjectView, DamageableComponent& health) {
+                                                         if (done)
+                                                             return;
+                                                         done = true;
+                                                         body(player, playerCenter, &health);
+                                                     });
                 if (!done)
                     body(player, playerCenter, nullptr);
             };

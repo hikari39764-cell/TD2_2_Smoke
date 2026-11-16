@@ -5,13 +5,17 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Common/ObjectVariables.h"
+#include "../Common/TraceInterval.h"
 #include "PlayerDebugComponent.h"
 #include "PlayerRules.h"
 
 namespace Project_TD2_2 {
 namespace {
+
+using ComponentLookup::ForEachOnObject;
 
 const char* StateName(PlayerState state) {
     switch (state) {
@@ -132,12 +136,10 @@ void PlayerDebugSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Fram
             if (!debug.enabled) {
                 return;
             }
-            world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                    [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                        if (object.GetHandle() == owner.GetHandle()) {
-                                                            ApplyScheduledActions(player, debug);
-                                                        }
-                                                    });
+            ForEachOnObject<PlayerComponent>(world, kPlayerType, owner,
+                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                                 ApplyScheduledActions(player, debug);
+                                             });
             debug.processedTick = debug.elapsedTicks;
             ++debug.elapsedTicks;
         });
@@ -149,16 +151,13 @@ void PlayerDebugSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::
     }
     world.ForEachComponent<PlayerDebugComponent>(
         HIKARI::MakeComponentTypeId(kPlayerDebugType), [&](HIKARI::ObjectView owner, PlayerDebugComponent& debug) {
-            if (!debug.enabled || debug.traceEveryFrames <= 0 ||
-                debug.processedTick % static_cast<uint64_t>(debug.traceEveryFrames) != 0) {
+            if (!debug.enabled || !TraceInterval::Due(debug.traceEveryFrames, debug.processedTick)) {
                 return;
             }
-            world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                    [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                        if (object.GetHandle() == owner.GetHandle()) {
-                                                            TracePlayer(world, object, player, debug);
-                                                        }
-                                                    });
+            ForEachOnObject<PlayerComponent>(world, kPlayerType, owner,
+                                             [&](HIKARI::ObjectView object, PlayerComponent& player) {
+                                                 TracePlayer(world, object, player, debug);
+                                             });
         });
 }
 

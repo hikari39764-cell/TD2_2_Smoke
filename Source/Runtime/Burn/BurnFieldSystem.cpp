@@ -12,6 +12,7 @@
 #include "BurnFieldRules.h"
 #include "BurnFieldVisuals.h"
 #include "../Common/GameSession.h"
+#include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Gourd/GourdRules.h"
 #include "../Player/PlayerRules.h"
@@ -107,7 +108,7 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
 }
 
 void Trace(const BurnFieldComponent& field) {
-    if (field.traceEveryFrames <= 0 || field.tick % static_cast<uint64_t>(field.traceEveryFrames) != 0)
+    if (!TraceInterval::Due(field.traceEveryFrames, field.tick))
         return;
     // 爆発のエフェクトは累計（出した・均等に間引いた・窓の上限で止めた）と、窓の中に同時にあった数の最大。
     char message[576]{};
