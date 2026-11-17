@@ -8,6 +8,7 @@
 #include "BossGreatsword.h"
 #include "BossMath.h"
 #include "BossPose.h"
+#include "BossSelection.h"
 #include "BossSkyfall.h"
 #include "BossSpecialMoves.h"
 #include "BossWaves.h"
@@ -557,14 +558,16 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     StepResult result = StepResult::Running;
     // 構えの途中の変化：構えきる F に 1 回だけ確率を振り、当たれば変化先（前隙の短い行）へ切り替える。いま見えている構え
     // （振りかぶった所）から、変化先の振り上げ・構え・振りが続く。見た目の乱数（技選びの乱数とは別）。
+    // 確率は表の「変化確率%」（咎められた技を変化しやすくする項目が入なら、その分を足す：BossSelection::SwitchChance）。
     if (boss.phase == BossActPhase::Pre && !boss.switchRolled && move.switchMove >= 0 &&
         boss.stateFrame >= boss.windupHoldAt) {
         boss.switchRolled = true;
-        if (BossRandom(boss) * 100.0f < move.switchChance) {
+        const float chance = BossSelection::SwitchChance(boss, boss.move);
+        if (BossRandom(boss) * 100.0f < chance) {
             char extra[160]{};
             std::snprintf(extra, sizeof(extra), "to=%s chance=%.0f",
                           boss.table.GetMoves()[static_cast<size_t>(move.switchMove)].name.c_str(),
-                          static_cast<double>(move.switchChance));
+                          static_cast<double>(chance));
             Log(boss, "Switch", extra);
             Start(frame, move.switchMove, boss.chain);
             return StepResult::Running;

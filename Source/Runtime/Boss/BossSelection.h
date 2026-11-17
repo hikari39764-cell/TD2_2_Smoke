@@ -28,6 +28,9 @@ public:
     static uint64_t NoteHits(BossComponent& boss, uint64_t totalHits);
     // 技を始めた（実行器が始めた直後に呼ぶ）。chain は何連目か（0 が始動）。
     static void NoteStarted(BossComponent& boss, int row, int chain);
+    // 構えの途中で変化する確率 (%)：表の「変化確率%」。punishSwitchEnabled なら、その技の後隙に当てられた回数
+    // （punishSwitchMaxHits 回まで）× punishSwitchPerHit 倍だけ増やす（100 % まで）。
+    static float SwitchChance(const BossComponent& boss, int row);
 };
 
 } // namespace Project_TD2_2

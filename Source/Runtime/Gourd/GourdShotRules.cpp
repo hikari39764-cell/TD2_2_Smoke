@@ -49,4 +49,18 @@ uint32_t GourdShotRules::GetActiveProjectileCount(const GourdShotComponent& shot
                                                [](const GourdProjectile& projectile) { return projectile.active; }));
 }
 
+bool GourdShotRules::IsWindingUp(const GourdShotComponent& shot) { return shot.phase == GourdShotPhase::Windup; }
+
+bool GourdShotRules::IsChaining(const GourdShotComponent& shot) {
+    // 後隙を延ばして連射を待つのと同じ見方（GourdShotSystem の EndRecovery）。
+    return shot.phase == GourdShotPhase::Recovery && (shot.attackHeld || shot.attackBuffer > 0) &&
+           shot.processedTick <= shot.nextFireTick;
+}
+
+uint64_t GourdShotRules::GetShotsFired(const GourdShotComponent& shot) { return shot.shotsFired; }
+
+HIKARI::GameProjectFloat3 GourdShotRules::GetAimOrigin(const GourdShotComponent& shot) { return shot.aimOrigin; }
+
+HIKARI::GameProjectFloat3 GourdShotRules::GetAimDirection(const GourdShotComponent& shot) { return shot.aimDirection; }
+
 } // namespace Project_TD2_2

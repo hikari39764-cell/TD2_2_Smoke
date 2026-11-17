@@ -359,9 +359,11 @@ void PlayerRules::SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjec
 float PlayerRules::GetHealth(const PlayerComponent& player) {
     return player.initialized ? player.health : player.maxHealth;
 }
+float PlayerRules::GetMaxHealth(const PlayerComponent& player) { return player.maxHealth; }
 float PlayerRules::GetStamina(const PlayerComponent& player) {
     return player.initialized ? player.stamina : player.maxStamina;
 }
+float PlayerRules::GetMaxStamina(const PlayerComponent& player) { return player.maxStamina; }
 int PlayerRules::GetHealCharges(const PlayerComponent& player) {
     return player.initialized ? player.healCharges : player.maxHealCharges;
 }

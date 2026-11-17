@@ -348,9 +348,12 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
     // （歩き出せたら、歩く向き・ロック対象へ普段どおり振り向く）。
     const bool walkable =
         shot.processedTick - shot.lastShotTick >= static_cast<uint64_t>(std::max(0, shot.moveCancelFrames));
-    if (shot.phase == GourdShotPhase::Windup || (shot.phase == GourdShotPhase::Recovery && shot.attackHeld))
-        PlayerRules::SetAimTurn(player, Aim(world, shot, gourd, player), shot.aimTurnSpeed);
-    else if (shot.phase == GourdShotPhase::Recovery && !walkable)
+    if (shot.phase == GourdShotPhase::Windup || (shot.phase == GourdShotPhase::Recovery && shot.attackHeld)) {
+        // 狙いを残す：ボスが「撃とうとしている」かを読む（GourdShotRules::GetAimDirection）。
+        shot.aimOrigin = gourd.position;
+        shot.aimDirection = Aim(world, shot, gourd, player);
+        PlayerRules::SetAimTurn(player, shot.aimDirection, shot.aimTurnSpeed);
+    } else if (shot.phase == GourdShotPhase::Recovery && !walkable)
         PlayerRules::SetAimTurn(player, PlayerRules::GetFacing(player), 0.0f);
     RequestPlayerAllowances(shot, player);
 }

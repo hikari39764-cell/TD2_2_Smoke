@@ -100,7 +100,9 @@ public:
     static void RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request);
     static HIKARI::GameProjectFloat3 GetCameraLook(const PlayerComponent& player);
     static float GetHealth(const PlayerComponent& player);
+    static float GetMaxHealth(const PlayerComponent& player);
     static float GetStamina(const PlayerComponent& player);
+    static float GetMaxStamina(const PlayerComponent& player);
     static int GetHealCharges(const PlayerComponent& player);
     static HIKARI::GameProjectFloat3 FlatNormalize(HIKARI::GameProjectFloat3 value,
                                                    HIKARI::GameProjectFloat3 fallback = {0.0f, 0.0f, 1.0f});

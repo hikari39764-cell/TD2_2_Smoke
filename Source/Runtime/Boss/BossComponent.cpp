@@ -88,6 +88,16 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("rollAxisDegrees",
                      "ローリングの向き：ボスへ向かう・離れる向きからこの角度以内なら前後、外れたら横 (度)",
                      rollAxisDegrees, 0.0f, 90.0f, 1.0f);
+        fields.Int("watchShotChainFrames", "射撃：前の弾からこの F 以内に撃てば「続けて撃った」と数える",
+                   watchShotChainFrames, 1, 600);
+        fields.Float("watchShotAimMargin", "射撃：狙いの線が体の半径＋この距離以内を通ればボスへ向いている (m)",
+                     watchShotAimMargin, 0.0f, 10.0f, 0.05f);
+        fields.Int("watchLogFrames", "立ち位置のログ（SeeStance）の間隔 (F。0 で出さない)", watchLogFrames, 0, 600);
+        fields.Bool("punishSwitchEnabled", "咎められた技ほど変化しやすくする（技の表の「変化確率%」を増やす）",
+                    punishSwitchEnabled);
+        fields.Float("punishSwitchPerHit", "…後隙に当てられた 1 回ごとに変化確率を何倍増やすか (+倍)",
+                     punishSwitchPerHit, 0.0f, 10.0f, 0.05f);
+        fields.Int("punishSwitchMaxHits", "…数える回数の上限 (回)", punishSwitchMaxHits, 0, 100);
         fields.Note("どの技を出すかは、同じ物体の Behavior Tree（木は KasumiBushi、Update は GameCode）が決めます。"
                     "技の間の待ち・連続攻撃とみなす命中数と時間は、木の節（待ち／連続攻撃された）で調整します。"
                     "プレイヤーへの反応（回復・吸い込み・ローリング・密着を咎める）は、木の枝「プレイヤーへの反応」の"

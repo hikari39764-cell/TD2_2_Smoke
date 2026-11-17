@@ -240,6 +240,9 @@ public:
     bool muzzlePending = false;
     HIKARI::GameProjectFloat3 muzzlePosition{};
     HIKARI::GameProjectFloat3 muzzleDirection{0.0f, 0.0f, 1.0f};
+    // 構えの間と押し続けている間の狙い（ヒョウタンの位置と撃つ向き）。ボスが「撃とうとしている」を読む（c-59bd08）。
+    HIKARI::GameProjectFloat3 aimOrigin{};
+    HIKARI::GameProjectFloat3 aimDirection{0.0f, 0.0f, 1.0f};
     bool vfxAccepted = true;
     bool fluidAccepted = true;
     // 他の表現（ボスの斬撃）が使う流体域の数。使う側が毎フレーム入れ、砲撃の枠をその分だけ減らす。

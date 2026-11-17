@@ -10,6 +10,7 @@
 #include "BossMoveTable.h"
 #include "BossSwingShapes.h"
 #include "BossSwordPose.h"
+#include "BossWatch.h"
 #include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
@@ -455,27 +456,6 @@ struct BossReactionMemory {
     float rerollSeconds = 0.0f;
 };
 
-// ボスから見たローリングの向き。
-enum class BossRollDirection { Away, Toward, Sideways };
-
-// ボスが毎 tick 見ているプレイヤーの様子（行動ツリーの反応の節が読む）。時刻は boss.clockSeconds の秒。
-struct BossPlayerWatch {
-    bool present = false;
-    bool healing = false;
-    bool absorbing = false;
-    float absorbSince = 0.0f;
-    bool inFire = false;
-    float fireSince = 0.0f;
-    // 最後にローリングを始めた時刻（負はまだ見ていない）と、始めた時のボスから見た向き。
-    float rollSeconds = -1.0f;
-    BossRollDirection rollDirection = BossRollDirection::Away;
-    // 前の tick にローリング中だったか・その経過 F（続けてもう一度転がったのを見分ける）。
-    bool wasRolling = false;
-    int rollFrame = 0;
-    // 場の燃えている面積の割合 (%)。
-    float burningPercent = 0.0f;
-};
-
 // 技の選び方が覚えていること（行動ツリーの節が BossSelection を通して読み書きする）。
 struct BossBrainMemory {
     // 直前に始動した技の行（中立の技選びで重みを減らす）。無ければ -1。
@@ -596,6 +576,16 @@ public:
     float comboChancePercent = 65.0f;
     // ローリングの向きを分ける角度：ボスへ向かう・離れる向きからこの角度以内なら前後、それより外れたら横。
     float rollAxisDegrees = 45.0f;
+    // プレイヤーを見る（c-59bd08）：前の弾からこの F 以内に撃った弾を「続けて撃った」と数える。狙いの線が体の軸から
+    // 体の半径＋watchShotAimMargin m 以内を通れば「ボスへ向いている」。立ち位置のログ（SeeStance）の間隔 F（0 で出さない）。
+    int watchShotChainFrames = 40;
+    float watchShotAimMargin = 0.5f;
+    int watchLogFrames = 30;
+    // 咎められた技の変化（c-59bd08）：入なら、技の表の「変化確率%」を、その技の後隙に当てられた回数（punishSwitchMaxHits
+    // 回まで）× punishSwitchPerHit 倍だけ増やす（例：0.5 で 2 回当てられると 2 倍）。既定は切（表のまま）。
+    bool punishSwitchEnabled = false;
+    float punishSwitchPerHit = 0.5f;
+    int punishSwitchMaxHits = 4;
     // 体。身長 6.75 m・半径 1.35 m（5.0 m・1.0 m の 1.35 倍：c-a30eaf で 1.5 倍にした後、c-e97b18 でその 0.9 倍に）。
     // 以下の「体に付く値」は、同じ倍率で揃えてある：
     // 体の位置・高さに付く値と、体の中心どうしの距離（近づく・止まる距離）は、倍率を掛ける。

@@ -152,4 +152,16 @@ void BossSelection::NoteStarted(BossComponent& boss, int row, int chain) {
         boss.brain.cloneStruck = false;
 }
 
+float BossSelection::SwitchChance(const BossComponent& boss, int row) {
+    const BossMove* move = BossRules::GetMove(boss, row);
+    if (move == nullptr)
+        return 0.0f;
+    if (!boss.punishSwitchEnabled || !(move->switchChance > 0.0f) || static_cast<size_t>(row) >= kBossPunishRows)
+        return move->switchChance;
+    const int punished = std::min(static_cast<int>(boss.watch.punished[static_cast<size_t>(row)]),
+                                  std::max(0, boss.punishSwitchMaxHits));
+    return std::min(100.0f, move->switchChance *
+                                (1.0f + std::max(0.0f, boss.punishSwitchPerHit) * static_cast<float>(punished)));
+}
+
 } // namespace Project_TD2_2

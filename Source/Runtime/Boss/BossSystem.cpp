@@ -29,6 +29,7 @@
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
 #include "../Gourd/GourdShotComponent.h"
+#include "../Gourd/GourdShotRules.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -168,6 +169,8 @@ void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
     boss.brain.scoredRows = 0;
     boss.brain.coverageChecked = false;
     boss.brain.unknownCount = 0;
+    // 咎められた回数は行の番号で数えているので、行が変わったら数え直す。
+    boss.watch.punished = {};
     for (const auto& warning : warnings)
         BossLog::Warn(warning.c_str());
     char message[160]{};
@@ -246,8 +249,8 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
     EnterStun(boss);
 }
 
-// HP の持ち主は Damageable。受けた量から気絶値をため、フェーズと死亡を決める。
-void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health) {
+// HP の持ち主は Damageable。受けた量から気絶値をため、フェーズと死亡を決める。この tick に新しく当てられた数を返す。
+uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health) {
     BossComponent& boss = frame.boss;
     DamageableRules::Initialize(health);
     boss.shownHealth = DamageableRules::GetHealth(health);
@@ -267,7 +270,8 @@ void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent
         ++boss.testDamageDone;
     }
     // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。前隙の間なら大技が崩れる。
-    CheckBreak(boss, BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health)));
+    const uint64_t hits = BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health));
+    CheckBreak(boss, hits);
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
@@ -303,6 +307,7 @@ void SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent
         health.invulnerable = boss.hidden;
         boss.hiddenApplied = boss.hidden;
     }
+    return hits;
 }
 
 void StartRequested(BossFrame& frame, int chain) {
@@ -440,6 +445,22 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     object.SetWorldTransform(transform);
 }
 
+// プレイヤーの砲撃（最初の 1 つ）を、砲撃の規則の読むだけの関数から見る。
+void SeeShot(HIKARI::WorldView& world, BossGearSight& gear) {
+    bool seen = false;
+    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
+                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
+                                                   if (seen)
+                                                       return;
+                                                   seen = true;
+                                                   gear.shotWindup = GourdShotRules::IsWindingUp(shot);
+                                                   gear.shotChaining = GourdShotRules::IsChaining(shot);
+                                                   gear.shotsFired = GourdShotRules::GetShotsFired(shot);
+                                                   gear.aimOrigin = GourdShotRules::GetAimOrigin(shot);
+                                                   gear.aimDirection = GourdShotRules::GetAimDirection(shot);
+                                               });
+}
+
 void Trace(const BossComponent& boss, const DamageableComponent* health) {
     if (!TraceInterval::Due(boss.traceEveryFrames, boss.tick))
         return;
@@ -481,17 +502,25 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
     // 捕まえた斬撃・ナイフを引き込む先（最初のヒョウタンの口）。
     Vec3 mouth{};
     bool hasMouth = false;
+    // ボスが見るプレイヤーの道具（最初のヒョウタンと砲撃）。
+    BossGearSight gear;
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView,
                                                                                         GourdComponent& gourd) {
         if (!hasMouth) {
             mouth = GourdRules::GetMouthPosition(gourd);
             hasMouth = true;
+            const float capacity = GourdRules::GetCapacity(gourd);
+            gear.hasGourd = true;
+            gear.smokePercent = capacity > 0.0f ? GourdRules::GetSmoke(gourd) / capacity * 100.0f : 0.0f;
+            gear.gourdFull = !GourdRules::HasRoomToAbsorb(gourd);
         }
         if (!GourdRules::IsAbsorbing(gourd))
             return;
         inhaling = true;
         catchRoom = std::max(catchRoom, GourdRules::GetCatchRoom(gourd));
     });
+    gear.absorbing = inhaling;
+    SeeShot(world, gear);
     world.ForEachComponent<BossComponent>(
         HIKARI::MakeComponentTypeId(kBossType),
         [&](HIKARI::ObjectView, BossComponent& boss) { catchRoom -= BossWaves::GetPullingSmoke(boss); });
@@ -513,7 +542,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
                 BossFrame bossFrame{world,    boss,       player, playerCenter, frame.fixedDt,
                                     inhaling, &catchRoom, mouth,  hasMouth};
-                BossObserver::Observe(world, boss, player, playerCenter, inhaling);
+                BossObserver::Observe(world, boss, player, playerCenter, gear, frame.fixedDt);
                 // 兜が向く先（見た目だけが読む。規則は使わない）。
                 boss.bodyState.lookTarget = playerCenter;
                 boss.bodyState.lookTargetSeen = player != nullptr;
@@ -525,11 +554,15 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 if (health != nullptr && DamageableRules::GetMaxHealth(*health) > 0.0f)
                     context.healthPercent = static_cast<double>(DamageableRules::GetHealth(*health)) /
                                             static_cast<double>(DamageableRules::GetMaxHealth(*health)) * 100.0;
+                // この tick に読む命中は、前の tick の終わり（＝この tick の始め）の状態の間に当たったもの。後隙だったなら
+                // その技が咎められた（体を動かすと後隙が終わって待機へ戻ることがあるので、先に覚える）。
+                const int recoveryRow =
+                    boss.state == BossState::Act && boss.phase == BossActPhase::Post ? boss.move : -1;
                 StepState(bossFrame, BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(testBrain_) : treeBrain_,
                           context);
                 // 受けたダメージ（気絶値・フェーズ・撃破）は体を動かした後に読む（試作と同じ順で、気絶の長さが 1 F ずれない）。
                 if (health != nullptr)
-                    SyncHealth(bossFrame, object, *health);
+                    BossObserver::NotePunished(boss, recoveryRow, SyncHealth(bossFrame, object, *health));
                 // 崩れ・気絶・撃破で引爆が打ち切られたら、溜めを燃える地面から下ろす。
                 BossDetonate::Sync(bossFrame);
                 // 天降り斬り（フェーズ 2）の着地の火は、技が終わった後も、爆ぜるまで進める。
