@@ -66,6 +66,12 @@ public:
     // 0〜frames の経過 F で、ease の式に従って進んだ距離の割合（0〜1）。回避と反動で共用する。
     static float EaseOutFraction(int elapsedFrames, int frames, float easePower);
     static HIKARI::GameProjectFloat3 GetFacing(const PlayerComponent& player);
+    // 描画のフレームで体を置く位置。エンジンは体を、固定 tick の始めの位置と今の位置の間で fixedInterpolationAlpha の
+    // 割合に補間して描く。描画のフレームで体に付けて置くもの（カメラの追う点・筋斗雲の雲・ひょうたん）は、current
+    // （GetWorldTransform の位置。tick ごとに段になる）ではなくこの位置を使う（段のまま使うと、描画が tick より速い時に
+    // 止まる・跳ぶを繰り返してがくつく）。tick の始めを知らない時と、瞬間移動（大きく離れた）の時は current のまま。
+    static HIKARI::GameProjectFloat3 PresentedPosition(const PlayerComponent& player, HIKARI::GameProjectFloat3 current,
+                                                       float alpha);
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);
     // ロックオンを押した時に狙う相手（シーン物体 id）。ロックしていない時の照準補助も同じ相手を見る。
     static uint64_t GetLockCandidateId(const PlayerComponent& player);

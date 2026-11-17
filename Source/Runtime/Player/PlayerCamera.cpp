@@ -271,7 +271,8 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
 
 } // namespace
 
-void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt) {
+void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt,
+                          float alpha) {
     const CameraLimits limits = TakeLimits(player);
     const auto camera = world.FindSceneObject(player.cameraId);
     HIKARI::GameProjectTransform body{};
@@ -280,6 +281,8 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
         return;
     }
     dt = std::clamp(dt, 0.0f, kMaximumStep);
+    // 体は描かれる位置（tick の間の補間）で追う。tick ごとの段の位置で追うと、描画が tick より速い時にカメラががくつく。
+    body.position = PlayerRules::PresentedPosition(player, body.position, alpha);
     const Vec3 goal{body.position.x, body.position.y + player.cameraPivotHeight, body.position.z};
     if (!player.cameraReady)
         Start(world, camera, player, goal);

@@ -572,6 +572,12 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
                                             [&](HIKARI::ObjectView object, PlayerComponent& player) {
                                                 PlayerRules::Initialize(player);
+                                                // この tick の始めの体の位置（描画のフレームの補間の起点）。
+                                                HIKARI::GameProjectTransform start{};
+                                                if (object.GetWorldTransform(start)) {
+                                                    player.tickStartPosition = start.position;
+                                                    player.tickStartKnown = true;
+                                                }
                                                 // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
                                                 // ずれないようにする。
                                                 if (player.advanceStateNextTick)
@@ -609,7 +615,8 @@ void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameConte
         return;
     world.ForEachComponent<PlayerComponent>(
         HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
-            PlayerCamera::Update(world, object, player, std::max(0.0f, frame.unscaledDt));
+            PlayerCamera::Update(world, object, player, std::max(0.0f, frame.unscaledDt),
+                                 frame.fixedInterpolationAlpha);
             StepHitFeedback(world, player, frame);
         });
 }

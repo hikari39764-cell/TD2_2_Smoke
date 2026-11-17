@@ -414,7 +414,7 @@ void ProbeOnScreen(const HIKARI::GameProjectCameraViewSnapshot& snapshot, Vec3 p
 // 速度感の全画面の効果：強さと流れの中心・体を守る楕円を決め、強さが 0 でなければこのフレームの Action Post として
 // 送る（送らないフレームは効果が無い）。降りた後も弱まり終えるまで送る。
 void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount,
-                   const HIKARI::FrameContext& frame) {
+                   const PlayerComponent& player, const HIKARI::FrameContext& frame) {
     const float dt = std::max(0.0f, frame.unscaledDt);
     const float target = CloudMountSpeedFx::TargetStrength(mount);
     const float strength = CloudMountSpeedFx::StepStrength(mount, dt);
@@ -441,6 +441,7 @@ void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMou
     }
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
+    transform.position = PlayerRules::PresentedPosition(player, transform.position, frame.fixedInterpolationAlpha);
     const Vec3 guardCenter{transform.position.x, transform.position.y - mount.speedFxGuardDrop, transform.position.z};
     float guardU = 0.0f;
     float guardV = 0.0f;
@@ -552,7 +553,7 @@ void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
         CloudMountVisuals::Update(world, object, mount, player, frame);
         SubmitCameraEffects(world, mount, player, frame);
-        SubmitSpeedFx(world, object, mount, frame);
+        SubmitSpeedFx(world, object, mount, player, frame);
     });
 }
 

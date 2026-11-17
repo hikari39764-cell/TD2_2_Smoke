@@ -308,6 +308,20 @@ void PlayerRules::RequestCamera(PlayerComponent& player, const PlayerCameraReque
 HIKARI::GameProjectFloat3 PlayerRules::GetCameraLook(const PlayerComponent& player) { return player.cameraLook; }
 
 HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) { return player.facing; }
+
+HIKARI::GameProjectFloat3 PlayerRules::PresentedPosition(const PlayerComponent& player,
+                                                         HIKARI::GameProjectFloat3 current, float alpha) {
+    // 1 tick にこれより離れていたら瞬間移動と見なし、補間しない（エンジンの表示も跳ぶ）。速い急降下でも 1 tick は 1 m 未満。
+    constexpr float kTeleportDistance = 5.0f;
+    if (!player.tickStartKnown)
+        return current;
+    const HIKARI::GameProjectFloat3 from = player.tickStartPosition;
+    const float dx = current.x - from.x, dy = current.y - from.y, dz = current.z - from.z;
+    if (dx * dx + dy * dy + dz * dz > kTeleportDistance * kTeleportDistance)
+        return current;
+    const float t = std::clamp(alpha, 0.0f, 1.0f);
+    return {from.x + dx * t, from.y + dy * t, from.z + dz * t};
+}
 HIKARI::GameProjectObjectHandle PlayerRules::GetLockTarget(const PlayerComponent& player) { return player.lockTarget; }
 uint64_t PlayerRules::GetLockCandidateId(const PlayerComponent& player) { return player.lockTargetId; }
 

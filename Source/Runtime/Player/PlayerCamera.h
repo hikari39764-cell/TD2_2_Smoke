@@ -13,8 +13,9 @@ class PlayerComponent;
 // その値へならす。要求が終わると見せ方と限度の外の見上げをならして戻す。姿勢を出すのはここだけ（外部は値を渡すだけ）。
 namespace PlayerCamera {
 
-// 描画フレームごとに 1 回呼ぶ。dt はヒットストップで止まらない時間（秒）。
-void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt);
+// 描画フレームごとに 1 回呼ぶ。dt はヒットストップで止まらない時間（秒）、alpha は FrameContext::fixedInterpolationAlpha
+// （体を、エンジンが描く補間の位置で追う：PlayerRules::PresentedPosition）。
+void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt, float alpha);
 
 } // namespace PlayerCamera
 

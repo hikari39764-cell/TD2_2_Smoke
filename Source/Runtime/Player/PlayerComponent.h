@@ -288,6 +288,10 @@ public:
     HIKARI::GameProjectFloat3 aimTurnDirection{0.0f, 0.0f, 1.0f};
     // いまの歩く速度（歩き出し・止まる時のならし）。
     HIKARI::GameProjectFloat3 moveVelocity{};
+    // 描画のフレームで体の位置を補間するための、いまの固定 tick の始めの体の位置（PlayerSystem の PreFixedUpdate が毎 tick
+    // 書く）。PlayerRules::PresentedPosition が、エンジンが体を描く位置と同じ補間に使う。
+    HIKARI::GameProjectFloat3 tickStartPosition{};
+    bool tickStartKnown = false;
     // カメラの状態（PlayerCamera が持つ）。角度は rad。yaw は水平の向き、pitch は見下ろす角度。
     bool cameraReady = false;
     float cameraYaw = 0.0f;

@@ -447,6 +447,10 @@ void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body
         Stop(world, mount);
         return;
     }
+    // 雲は体が描かれる位置（tick の間の補間）に付ける。tick ごとの段の位置に付けると、描画が tick より速い時に雲が
+    // 止まる・跳ぶを繰り返し、流体の域の速さ（相対風）の見積もりも揺れて、雲と尾ががくつく。
+    bodyTransform.position =
+        PlayerRules::PresentedPosition(player, bodyTransform.position, frame.fixedInterpolationAlpha);
     const HIKARI::GameProjectTransform transform = Placement(world, mount, player, bodyTransform.position, dt, frame);
     const HIKARI::GameProjectVfxParameterOverrides parameters = Parameters(mount);
     if (mount.cloudVfx.IsValid()) {

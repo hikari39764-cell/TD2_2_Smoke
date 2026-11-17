@@ -149,11 +149,13 @@ void StepRecoil(GourdComponent& gourd, float dt) {
     SpringAxis(gourd.recoilOffset.z, gourd.recoilVelocity.z, 0.0f, gourd.followFrequency, dt);
 }
 
-void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float dt) {
+void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float dt, float alpha) {
     WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, PlayerComponent& player) {
         HIKARI::GameProjectTransform playerTransform{};
         if (!playerObject.GetWorldTransform(playerTransform))
             return;
+        // 体が描かれる位置（tick の間の補間）を追う（tick ごとの段の位置を追うと、速く動く時にひょうたんががくつく）。
+        playerTransform.position = PlayerRules::PresentedPosition(player, playerTransform.position, alpha);
         const auto facing = PlayerRules::GetFacing(player);
         const Vec3 right{facing.z, 0.0f, -facing.x};
         const auto offset = gourd.shoulderOffset;
@@ -286,7 +288,8 @@ void GourdSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
                                            [&](HIKARI::ObjectView object, GourdComponent& gourd) {
                                                if (gourd.enabled && gourd.playerValid)
-                                                   Follow(world, object, gourd, std::max(0.0f, frame.gameDt));
+                                                   Follow(world, object, gourd, std::max(0.0f, frame.gameDt),
+                                                          frame.fixedInterpolationAlpha);
                                                gourd.aimOverridePending = false;
                                                GourdAbsorbVisuals::Update(world, object, gourd, frame);
                                            });
