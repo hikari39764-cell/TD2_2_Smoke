@@ -54,6 +54,22 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyBladeRimPulse", "刀身の輪郭の光：明滅の速さ (rad/秒)", bladeRimPulse, 0.0f, 32.0f);
     fields.Float("bodyBladeRimRiseSeconds", "刀身の輪郭の光：灯る時間 (秒)", bladeRimRiseSeconds, 0.01f, 2.0f);
     fields.Float("bodyBladeRimFallSeconds", "刀身の輪郭の光：消える時間 (秒)", bladeRimFallSeconds, 0.01f, 2.0f);
+    fields.Float3("bodyEdgeMistColor", "刃口の光：霞の色と明るさ（段階の倍率を掛ける）", edgeMistColor);
+    fields.Float3("bodyEdgeFireColor", "刃口の光：刀が燃えている時の色と明るさ", edgeFireColor);
+    fields.Float("bodyEdgeIdle", "刃口の光：待機の明るさ（倍率。弱いが必ず見える）", edgeIdle, 0.0f, 8.0f);
+    fields.Float("bodyEdgeWindup", "刃口の光：前隙の終わり（構え切った所）の明るさ", edgeWindup, 0.0f, 8.0f);
+    fields.Float("bodyEdgeSwing", "刃口の光：振る間（命中の窓）の明るさ", edgeSwing, 0.0f, 8.0f);
+    fields.Float("bodyEdgeCharge", "刃口の光：大きな溜め（溜めの見た目 1 あたり）で足す明るさ", edgeCharge, 0.0f, 8.0f);
+    fields.Float("bodyEdgeStunned", "刃口の光：気絶の間の明るさ", edgeStunned, 0.0f, 8.0f);
+    fields.Float("bodyEdgeRampPower", "刃口の光：前隙の立ち上がりの曲がり（1 で一定、大きいほど終わりに急に明るく）",
+                 edgeRampPower, 0.2f, 6.0f);
+    fields.Float("bodyEdgePulseDepth", "刃口の光：前隙の脈の深さ（0〜1。0 で脈打たない）", edgePulseDepth, 0.0f, 1.0f);
+    fields.Float("bodyEdgePulseFrequency", "刃口の光：前隙の脈の速さ（1 秒あたりの回数）", edgePulseFrequency, 0.0f,
+                 10.0f);
+    fields.Float("bodyEdgeHotShare", "刃口の光：燃える刀身の間に掛ける割合 (0〜1)", edgeHotShare, 0.0f, 1.0f);
+    fields.Float("bodyEdgeRiseSeconds", "刃口の光：明るくなる時間 (秒)", edgeRiseSeconds, 0.005f, 2.0f);
+    fields.Float("bodyEdgeFallSeconds", "刃口の光：暗くなる時間 (秒)", edgeFallSeconds, 0.005f, 2.0f);
+    fields.Float("bodyEdgeDark", "刃のまわりの暗い縁：濃さ（倍率。0 で出さない）", edgeDark, 0.0f, 2.0f);
     fields.Vfx("bodyGlintEffect", "刀身を走る光のエフェクト（刀を振る技を出すと決めた瞬間。空なら出さない）",
                glintEffect);
     fields.Float3("bodyGlintMistColor", "刀身を走る光：霞の技の色と明るさ", glintMistColor);

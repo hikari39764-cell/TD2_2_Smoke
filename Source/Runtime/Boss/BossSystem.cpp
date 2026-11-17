@@ -48,6 +48,7 @@ constexpr float kStunCrouchBlend = 0.12f;
 constexpr float kPoseLeanNeutral = 30.0f;
 // 両手の型の間の左右の傾き：握りが体の横へ 1 m 出ると、片手の構えで剣を横へ何度向けた時と同じだけ傾けるか。両手の
 // 型は刀が後ろや真上を向く（剣の左右の角度で傾けると、上段で体が大きく横へ倒れる）ので、握りの横の位置で傾ける。
+// 握りの位置は体と一緒に大きくなるので、1 倍の体（Boss.bodyScale で割った値）の 1 m あたりで見る（c-a30eaf）。
 constexpr float kSwayDegreesPerGripMeter = 90.0f;
 // これより速い位置の変化（瞬間移動）では、動きの傾きを付けない (m/秒)。
 constexpr float kLeanSpeedLimit = 30.0f;
@@ -399,9 +400,9 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     // 握りの横の位置から。
     const Vec3 direction = Normalize(boss.swordPose.direction, {0.0f, -1.0f, 0.0f});
     const float pitch = std::asin(std::clamp(-direction.y, -1.0f, 1.0f)) / kRadiansPerDegree;
-    const float side =
-        Lerp(std::atan2(direction.x, direction.z) / kRadiansPerDegree, boss.swordPose.grip.x * kSwayDegreesPerGripMeter,
-             std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f));
+    const float side = Lerp(std::atan2(direction.x, direction.z) / kRadiansPerDegree,
+                            boss.swordPose.grip.x / std::max(0.1f, boss.body.bodyScale) * kSwayDegreesPerGripMeter,
+                            std::clamp(boss.swordPose.twoHand, 0.0f, 1.0f));
     const float blend = boss.state == BossState::Act && boss.phase == BossActPhase::Act ? kPoseBlendFast : kPoseBlend;
     boss.poseX = Lerp(boss.poseX, pitch, blend);
     boss.poseY = Lerp(boss.poseY, side, blend);

@@ -255,7 +255,7 @@
           "transform": {
             "position": [
               0.0,
-              2.625,
+              3.9375,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -283,9 +283,9 @@
           "detailScale": 0.12,
           "detailStrength": 0.55,
           "domainSize": [
-            3.75,
-            6.5,
-            3.75
+            5.625,
+            9.75,
+            5.625
           ],
           "emissionColor": [
             1.0,
@@ -1147,8 +1147,8 @@
           "transform": {
             "position": [
               0.0,
-              0.5,
-              -0.125
+              0.75,
+              -0.1875
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -1708,9 +1708,9 @@
         },
         "shape": {
           "boxHalfExtents": [
-            0.44999999999999996,
-            0.5,
-            0.25
+            0.6749999999999999,
+            0.75,
+            0.375
           ],
           "circleArcDegrees": 50.4,
           "circleEmitOnEdge": false,
@@ -2007,7 +2007,7 @@
           "transform": {
             "position": [
               0.0,
-              -0.4750000000000001,
+              -0.7124999999999999,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2580,8 +2580,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.c4c3558cc6fde5a02d2a9714e86e14ac",
           "radius": {
-            "maximum": 0.525,
-            "minimum": 0.525,
+            "maximum": 0.7875,
+            "minimum": 0.7875,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -2867,7 +2867,7 @@
           "transform": {
             "position": [
               0.0,
-              -1.375,
+              -2.0625,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -3440,8 +3440,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.0724739b903f207a702c975e71c00228",
           "radius": {
-            "maximum": 0.42500000000000004,
-            "minimum": 0.42500000000000004,
+            "maximum": 0.6375000000000001,
+            "minimum": 0.6375000000000001,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -3727,8 +3727,8 @@
           "transform": {
             "position": [
               0.0,
-              1.3000000000000003,
-              -0.17500000000000002
+              1.9500000000000002,
+              -0.2625
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -4300,8 +4300,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.b87abf93728d53557e0786cc7b5903c2",
           "radius": {
-            "maximum": 0.2,
-            "minimum": 0.2,
+            "maximum": 0.3,
+            "minimum": 0.3,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -4586,8 +4586,8 @@
           "id": "module.emitterTransform.5ee84bb93c8df4dca95b000cf1a1bebd",
           "transform": {
             "position": [
-              0.8250000000000001,
-              1.025,
+              1.2375,
+              1.5374999999999996,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -5160,8 +5160,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.07bbc9a309d552deaf0e1257a9557b90",
           "radius": {
-            "maximum": 0.1875,
-            "minimum": 0.1875,
+            "maximum": 0.28125,
+            "minimum": 0.28125,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -5446,8 +5446,8 @@
           "id": "module.emitterTransform.eb79ae94c776f766f9403950261ebbf7",
           "transform": {
             "position": [
-              -0.8250000000000001,
-              1.025,
+              -1.2375,
+              1.5374999999999996,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -6020,8 +6020,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.0906ef93d75c59279554191bd0052816",
           "radius": {
-            "maximum": 0.1875,
-            "minimum": 0.1875,
+            "maximum": 0.28125,
+            "minimum": 0.28125,
             "mode": "Constant",
             "randomGroup": 0
           },

@@ -444,7 +444,7 @@
       "id": 43,
       "type": "Project_TD2_2.BossDistance",
       "params": {
-        "max": 2.2,
+        "max": 3.0,
         "min": 0.0
       }
     },

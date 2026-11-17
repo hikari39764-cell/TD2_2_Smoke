@@ -18,9 +18,9 @@ void BossSwingShape::Describe(HIKARI::PropertyFields& fields, std::string_view k
                  120.0f);
     fields.Float(k + "TwistFromDegrees", l + "：構えの胴の捻り（度。+ で左へ）", twistFromDegrees, -90.0f, 90.0f);
     fields.Float(k + "TwistToDegrees", l + "：振り終わりの胴の捻り（度）", twistToDegrees, -90.0f, 90.0f);
-    fields.Float(k + "Crouch", l + "：腰を落とす量 (m。見た目だけ)", crouch, 0.0f, 1.0f);
+    fields.Float(k + "Crouch", l + "：腰を落とす量 (m。見た目だけ)", crouch, 0.0f, 3.0f);
     fields.Float(k + "Lean", l + "：前へ傾ける角度 (度。見た目だけ)", lean, -30.0f, 30.0f);
-    fields.Float(k + "CrouchTo", l + "：振り終わりの腰の落とし (m。構えから寄せる。見た目だけ)", crouchTo, 0.0f, 1.0f);
+    fields.Float(k + "CrouchTo", l + "：振り終わりの腰の落とし (m。構えから寄せる。見た目だけ)", crouchTo, 0.0f, 3.0f);
     fields.Float(k + "LeanTo", l + "：振り終わりの前傾 (度。構えから寄せる。見た目だけ)", leanTo, -30.0f, 30.0f);
     fields.Float(k + "RaiseVia", l + "：振り上げの道（型の振りのこの進みを通って構えへ。0 は直に）", raiseVia, 0.0f,
                  1.0f);
@@ -39,7 +39,7 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
                  180.0f);
     fields.Float("swingRiseToDegrees", "炎走りの斬り上げ：この角度まで逆に回す（度）", riseToDegrees, -180.0f, 180.0f);
     fields.Float("swingGreatswordCrouch", "霞の大剣：薙ぐ間に腰を落とす量 (m。見た目だけ)", greatswordCrouch, 0.0f,
-                 1.0f);
+                 3.0f);
     fields.Float("swingGreatswordLean", "霞の大剣：薙ぐ間の前傾 (度。見た目だけ)", greatswordLean, -30.0f, 30.0f);
     fields.Float("swingGreatswordTwistShare", "霞の大剣：大剣の向き 1 度あたりの胴の捻り (度)", greatswordTwistShare,
                  0.0f, 1.0f);

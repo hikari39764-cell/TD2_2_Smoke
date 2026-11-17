@@ -25,6 +25,8 @@ constexpr const char* kColorInput = "input.color"; // 刀身を走る光の色
 constexpr const char* kAuraInput = "input.aura";   // 溜めの気配の色と強さ
 constexpr const char* kDashInput = "input.dash";   // 突進の尾の色と明るさ
 constexpr const char* kHandInput = "input.hand";   // 左手の光の色と明るさ
+constexpr const char* kEdgeInput = "input.edge";   // 刃口の常時の光の色と明るさ
+constexpr const char* kEdgeDarkInput = "input.edgeDark"; // 刃のまわりの暗い縁（A が濃さ）
 // 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
 constexpr float kReleaseCharge = 0.85f;
 // 突進の尾の明るさを追う時間 (秒)。
@@ -83,7 +85,53 @@ HIKARI::GameProjectTransform BladeTransform(const BossComponent& boss, const Bos
     return Placed(Add(pose.sword.position, Mul(direction, from + span * 0.5f)), span, BasisRotation(direction, edge));
 }
 
+// 刃口の常時の光の目標（倍率。脈と燃える刀身の割合は掛ける前）：刀を見れば何をしているか分かる段階。待機は弱く、
+// 前隙は進みにつれて強く（溜めで足す）、振る間（命中の窓）はいちばん強く、連撃の振りの間・投げる・蹴る間は構え切った
+// 明るさ、後隙は待機へ。歩き・下がりは待機のまま。
+float EdgeTarget(const BossComponent& boss, const BossMove* move, bool& pulsing) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    pulsing = false;
+    if (boss.state == BossState::Dead)
+        return 0.0f;
+    if (boss.state == BossState::Stunned)
+        return s.edgeStunned;
+    if (boss.state != BossState::Act || move == nullptr || IsFootwork(move->type) || boss.phase == BossActPhase::Post)
+        return s.edgeIdle;
+    if (boss.swordSmoke)
+        return s.edgeSwing;
+    pulsing = true;
+    const float charge = s.edgeCharge * std::max(0.0f, boss.chargeVisual);
+    if (boss.phase == BossActPhase::Pre) {
+        const float progress =
+            move->pre > 0 ? std::clamp(static_cast<float>(boss.stateFrame) / static_cast<float>(move->pre), 0.0f, 1.0f)
+                          : 1.0f;
+        return Lerp(s.edgeIdle, s.edgeWindup, std::pow(progress, std::max(0.01f, s.edgeRampPower))) + charge;
+    }
+    return s.edgeWindup + charge;
+}
+
+// 刃口の常時の光と暗い縁を、刀に付くエフェクトの入力へ入れる。霞の大剣の間は、霧の大剣が刀を包むので出さない。
+void SetEdge(HIKARI::GameProjectVfxParameterOverrides& parameters, BossComponent& boss, const BossBodyPose& pose,
+             bool great, float seconds) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    BossBodyAccentState& a = boss.bodyState.accents;
+    bool pulsing = false;
+    float target = great ? 0.0f : EdgeTarget(boss, CurrentMove(boss), pulsing);
+    a.edgeClock = pulsing ? a.edgeClock + seconds : 0.0f;
+    if (pulsing)
+        target *= 1.0f + s.edgePulseDepth * std::sin(2.0f * kPi * s.edgePulseFrequency * a.edgeClock);
+    if (pose.bladeHot)
+        target *= s.edgeHotShare;
+    const float time = target > a.edgeGain ? s.edgeRiseSeconds : s.edgeFallSeconds;
+    a.edgeGain = Lerp(a.edgeGain, target, Follow(seconds, time));
+    const float dark = great || boss.state == BossState::Dead ? 0.0f : s.edgeDark;
+    a.edgeDarkGain = Lerp(a.edgeDarkGain, dark, Follow(seconds, s.edgeFallSeconds));
+    VfxParameters::SetColor(parameters, kEdgeInput, Mul(pose.bladeHot ? s.edgeFireColor : s.edgeMistColor, a.edgeGain));
+    VfxParameters::SetColorAlpha(parameters, kEdgeDarkInput, {1.0f, 1.0f, 1.0f}, a.edgeDarkGain);
+}
+
 // 刀に付くエフェクト：見える刀の刃に付けて出し続け、振っている間は刀光を、刀が燃えている間は刀身の炎を入れる。
+// 刃口の常時の光と暗い縁は、いつも入れる（段階で明るさが変わる）。
 void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, float seconds) {
     const BossBodyAccentSettings& s = boss.body.accents;
     BossBodyAccentState& a = boss.bodyState.accents;
@@ -119,6 +167,7 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
     const float heat = s.bladeHeat * a.heatGain;
     VfxParameters::SetColor(parameters, kHeatInput, {heat, heat, heat});
     VfxParameters::SetColor(parameters, kHazeInput, {s.swingHaze * a.hazeGain, 1.0f, 1.0f});
+    SetEdge(parameters, boss, pose, great, seconds);
     StartOrSend(world, boss, a.bladeVfx, s.bladeEffect, BladeTransform(boss, pose), parameters);
 }
 
@@ -187,7 +236,8 @@ void UpdateAura(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Gam
         return;
     }
     a.aura = Lerp(a.aura, ChargeAmount(boss), Follow(seconds, s.auraSeconds));
-    StartOrSend(world, boss, a.auraVfx, s.auraEffect, Placed(Feet(boss, body), 1.0f, body.rotation),
+    // 資産は 1 倍の体（身長 4 m）で作ってあるので、外形の体の大きさ（Boss.bodyScale）を掛ける。
+    StartOrSend(world, boss, a.auraVfx, s.auraEffect, Placed(Feet(boss, body), boss.body.bodyScale, body.rotation),
                 Color(kAuraInput, Mul(pose.bladeHot ? s.auraFireColor : s.auraMistColor, a.aura)));
 }
 
@@ -264,7 +314,8 @@ void UpdateDash(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Gam
     const float target =
         std::clamp((speed - s.dashMinSpeed) / std::max(kTiny, s.dashFullSpeed - s.dashMinSpeed), 0.0f, 1.0f);
     a.dash = Lerp(a.dash, target, Follow(seconds, kDashFollowSeconds));
-    StartOrSend(world, boss, a.dashVfx, s.dashEffect, Placed(feet, 1.0f, body.rotation),
+    // 肩と背から流れる帯の置き場所は 1 倍の体で作ってあるので、体の大きさを掛ける。
+    StartOrSend(world, boss, a.dashVfx, s.dashEffect, Placed(feet, boss.body.bodyScale, body.rotation),
                 Color(kDashInput, Mul(pose.bladeHot ? s.dashFireColor : s.dashMistColor, a.dash)));
 }
 

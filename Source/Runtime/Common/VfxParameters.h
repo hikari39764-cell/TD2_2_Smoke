@@ -28,14 +28,20 @@ inline void SetBool(HIKARI::GameProjectVfxParameterOverrides& parameters, const 
     entry.boolean = value;
 }
 
-inline void SetColor(HIKARI::GameProjectVfxParameterOverrides& parameters, const char* inputId,
-                     HIKARI::GameProjectFloat3 color) {
+// 色と不透明度（A）を両方送る。不透明度を色の入力で掛ける層（Alpha の層の濃さ）に使う。
+inline void SetColorAlpha(HIKARI::GameProjectVfxParameterOverrides& parameters, const char* inputId,
+                          HIKARI::GameProjectFloat3 color, float alpha) {
     auto& entry = Add(parameters, inputId);
     entry.type = HIKARI::GameProjectBindingValueType::Color;
     entry.numeric[0] = color.x;
     entry.numeric[1] = color.y;
     entry.numeric[2] = color.z;
-    entry.numeric[3] = 1.0f;
+    entry.numeric[3] = alpha;
+}
+
+inline void SetColor(HIKARI::GameProjectVfxParameterOverrides& parameters, const char* inputId,
+                     HIKARI::GameProjectFloat3 color) {
+    SetColorAlpha(parameters, inputId, color, 1.0f);
 }
 
 } // namespace Project_TD2_2::VfxParameters
