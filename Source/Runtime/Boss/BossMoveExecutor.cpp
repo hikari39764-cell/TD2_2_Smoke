@@ -38,8 +38,6 @@ constexpr float kStrafeFlipChance = 0.3f;
 constexpr int kFloatRetargetMin = 50;
 constexpr int kFloatRetargetSpread = 80;
 // 瞬間突進：構えの前の瞬間移動は前隙の 1/4 まで、構えは前隙の半分まで。
-constexpr float kDashTeleportShare = 0.25f;
-constexpr float kDashKamaeShare = 0.5f;
 constexpr float kDashCrouchSpeed = 1.5f;
 // 上段：前隙の最後の 15% で踏み込む。
 constexpr float kOverheadLungeStart = 0.85f;
@@ -186,23 +184,26 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
     switch (move.type) {
     case BossMoveType::Dash: {
         boss.crouch = std::min(1.0f, progress * kDashCrouchSpeed);
-        const float kamae = std::min(static_cast<float>(boss.kamaeFrames), move.pre * kDashKamaeShare);
-        const float teleport = std::min(static_cast<float>(boss.dashTeleportFrames), move.pre * kDashTeleportShare);
-        const float start = static_cast<float>(move.pre) - kamae - teleport;
-        if (static_cast<float>(t) >= start && frame.player != nullptr) {
-            // 瞬間移動を終えてから構える。行き先はプレイヤーの手前。
+        // 構えてから、前隙の終わりの dashSlideFrames F で低く滑って詰める（c-2dd9a2。前は構えの前に 12 F で瞬間移動して
+        // いた）。速さは始めと終わりで 0 の滑らかな曲線。行き先はプレイヤーの手前で、もう手前より近ければ動かない
+        // （プレイヤーの背後へは回らない）。
+        const int slide = std::clamp(boss.dashSlideFrames, 1, std::max(1, move.pre - 1));
+        const int start = move.pre - slide;
+        if (t >= start && frame.player != nullptr) {
             if (!boss.dashStarted) {
                 boss.dashStarted = true;
                 boss.dashFrom = boss.ground;
-                boss.dashTo = Sub(PlayerGround(frame), Mul(toPlayer, boss.dashStopDistance));
+                boss.dashTo = distance > boss.dashStopDistance
+                                  ? Sub(PlayerGround(frame), Mul(toPlayer, boss.dashStopDistance))
+                                  : boss.ground;
                 BossMoveExecutor::ClampToArena(boss, boss.dashTo);
                 char extra[96]{};
-                std::snprintf(extra, sizeof(extra), "distance=%.3f",
-                              static_cast<double>(FlatLength(Sub(boss.dashTo, boss.dashFrom))));
-                Log(boss, "Teleport", extra);
+                std::snprintf(extra, sizeof(extra), "distance=%.3f frames=%d",
+                              static_cast<double>(FlatLength(Sub(boss.dashTo, boss.dashFrom))), slide);
+                Log(boss, "DashSlide", extra);
             }
-            const float k = std::min(1.0f, (static_cast<float>(t) - start) / std::max(1.0f, teleport));
-            boss.ground = Lerp(boss.dashFrom, boss.dashTo, 1.0f - std::pow(1.0f - k, 3.0f));
+            const float k = Share(t - start, slide);
+            boss.ground = Lerp(boss.dashFrom, boss.dashTo, Smooth(k));
             if (k >= 1.0f && !boss.dashLanded) {
                 boss.dashLanded = true;
                 BossBurnMarks::DashLanded(frame, move);
@@ -215,8 +216,17 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
     case BossMoveType::SlashR:
     case BossMoveType::SlashL:
     case BossMoveType::SlashH:
+    case BossMoveType::SlashHR:
     case BossMoveType::SlashV:
-        if (!inKamae)
+        if (move.preShift != 0.0f) {
+            // 表の「前隙の移動 m」：構えに入るまで（振り上げの間）に、滑らかに前へ・後ろへ動く。
+            const int span = std::max(1, move.pre - std::min(boss.kamaeFrames, move.pre - 1));
+            if (t <= span) {
+                const float d = move.preShift * (Smooth(Share(t, span)) - Smooth(Share(t - 1, span)));
+                boss.ground = Add(boss.ground, Mul(forward, d));
+                BossMoveExecutor::ClampToArena(boss, boss.ground);
+            }
+        } else if (!inKamae)
             boss.ground = Add(boss.ground, Mul(forward, boss.slashApproachSpeed * frame.dt));
         break;
     case BossMoveType::Overhead:
@@ -278,6 +288,10 @@ void Release(BossFrame& frame, BossSwing& swing) {
     if (swing.samples < 2 || swing.released)
         return;
     swing.released = true;
+    // 当て方が「実」の技・斬撃速度が 0 の一撃は、斬撃を飛ばさない（実体の刀だけで当てる。c-2dd9a2）。
+    if (CurrentMove(boss).delivery == BossDelivery::Blade ||
+        !(BossMoveTable::Strike(CurrentMove(boss), swing.strike).speed > 0.0f))
+        return;
     const Vec3 forward = Forward(boss.yaw);
     const float minimumAhead = boss.bodyRadius + boss.waveForward;
     // 刀に合わせる：刀が正面を斬った部分の記録がある時（刀の線が面を掃いている）だけ。無ければ前の作りで放つ。
@@ -401,8 +415,9 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     boss.swordSmokeRate = boss.swingSmoke / static_cast<float>(std::max(1, g.swingLength)) / frame.dt;
     // 振っている剣そのものの当たり：剣が描いている霞の弧と同じ一撃（当たる・抜けるは 1 回だけ）。速い振りは 1 tick に
     // 40 度ほど回り、プレイヤーの体を tick の間で飛び越えるので、前の tick の剣からいまの剣までを分けて確かめる。
+    // 当て方が「霞」の技は、刀そのものでは当てない（飛ぶ斬撃だけ。c-2dd9a2）。
     bool touched = false;
-    for (int k = 1; k <= kSwordSweepSteps && !swing.done && !touched; ++k) {
+    for (int k = 1; k <= kSwordSweepSteps && !swing.done && !touched && move.delivery != BossDelivery::Haze; ++k) {
         const float u = static_cast<float>(k) / static_cast<float>(kSwordSweepSteps);
         touched = BossWaves::Touches(frame, Lerp(previousBase, sword.base, u), Lerp(previousOuter, sword.outer, u),
                                      boss.thickness);
@@ -524,8 +539,10 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.windupHits = 0;
     boss.windupHold = 0;
     boss.switchRolled = false;
-    // 構えきる F（構えの合図の F）。前隙が短すぎて止まれない技は揺らがない。
+    // 構えきる F（構えの合図の F）。前隙が短すぎて止まれない技は揺らがない。突進横なぎは滑り出す前（滑る途中で止まらない）。
     boss.windupHoldAt = move.pre - std::min(boss.kamaeFrames, move.pre - 1);
+    if (move.type == BossMoveType::Dash)
+        boss.windupHoldAt = std::max(1, move.pre - std::clamp(boss.dashSlideFrames, 1, std::max(1, move.pre - 1)) - 1);
     if (!move.windupExtras.empty() && move.pre >= 2) {
         // 見た目の乱数で選ぶ。技選びの乱数や、プレイヤーに見える合図とは結び付かない。
         // 始めた tick を混ぜる：見た目の乱数は種が決まっているので、混ぜないと Play のたびに最初の溜めが同じ長さになる。

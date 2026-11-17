@@ -127,7 +127,7 @@ struct BossBodyMotionSettings {
     // 合わせる時間 (秒)、構えを移る間（振り上げ・両手の型の斬る向きへ）に回す時間 (秒)、待機の刃の向きへ戻る時間 (秒)。
     float edgeMinDegreesPerSecond = 40.0f;
     float edgeTurnSeconds = 0.04f;
-    float edgeStanceSeconds = 0.12f;
+    float edgeStanceSeconds = 0.07f;
     float edgeIdleSeconds = 0.6f;
     // 待機の刃の向き（局所。刀に直交する成分を使う）と、溜めの間に刃を向ける先（これから斬る向き。局所）。
     HIKARI::GameProjectFloat3 idleEdge{-0.5f, -1.0f, 0.35f};

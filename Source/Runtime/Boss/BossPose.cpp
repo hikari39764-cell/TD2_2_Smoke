@@ -380,9 +380,34 @@ BossSwordPose SingleStrikePose(const BossComponent& boss, const BossMove& move, 
     return RecoverAfterLast(boss, move, strike);
 }
 
-// 突進横なぎ：ひとつの横なぎ。
+// 早く構えて長く溜める前隙：始めの raise F で今の構えから型の構え（振り上げの行き過ぎ）へ移り、残りは構えたまま
+// 引き絞って震える（構えが長く見えるので、どの技かが読める）。
+BossSwordPose EarlyWindup(const BossComponent& boss, const Strike& strike, int t, int length, int raise) {
+    const int r = std::clamp(raise, 1, std::max(1, length - 1));
+    if (t < r)
+        return Raise(boss.moveStartPose, strike, static_cast<float>(t) / static_cast<float>(r), -boss.swingOverwind);
+    const int k = std::max(1, length - r);
+    return Tremble(StrikeAt(strike, CockedShare(boss, t - r, k)), t,
+                   boss.swingCoilTremorDegrees * Share(t - r, k));
+}
+
+// 突進横なぎ（c-2dd9a2）：前隙の始めの dashRaiseFrames F で、刀を後ろ下へ引きずって体を沈める構え（突進の型）へ移り、
+// 残りは構えたまま引き絞る（終わりの dashSlideFrames F で低く滑って詰める＝実行器）。攻撃中に、腰・胴・腕・刀の順に
+// 体ごと回す大きい払い。振り終わりからは止まらずに戻る（コンボなら返し刀へ直に）。
 BossSwordPose DashPose(const BossComponent& boss, const BossMove& move) {
-    return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, false));
+    const Strike strike = ShapeStrike(boss.swing.dash, false);
+    if (boss.phase != BossActPhase::Pre)
+        return SingleStrikePose(boss, move, strike);
+    return EarlyWindup(boss, strike, boss.stateFrame, move.pre, boss.dashRaiseFrames);
+}
+
+// 退き払い（c-2dd9a2）：後ろへ跳ぶ間（retreatSweepStepFrames F）に刀を左の腰へ収め（突進の型を左右に映した構え）、着地して
+// 構えたまま引き絞り、低い所から右へ払い上げて横の斬撃を飛ばす。
+BossSwordPose RetreatSweepPose(const BossComponent& boss, const BossMove& move) {
+    const Strike strike = ShapeStrike(boss.swing.dash, true);
+    if (boss.phase != BossActPhase::Pre)
+        return SingleStrikePose(boss, move, strike);
+    return EarlyWindup(boss, strike, boss.stateFrame, move.pre, boss.retreatSweepStepFrames);
 }
 
 // 退く間は剣を下げたまま。降りたら振り上げて、溜めの間ずっと振りかぶったまま構える（長い溜めを剣で見せる）。
@@ -600,6 +625,8 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     case BossMoveType::SlashR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, false));
     case BossMoveType::SlashL: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, true));
     case BossMoveType::SlashH: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, false));
+    case BossMoveType::SlashHR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, true));
+    case BossMoveType::RetreatSweep: return RetreatSweepPose(boss, move);
     case BossMoveType::Overhead:
     case BossMoveType::SlashV: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.vertical, false));
     case BossMoveType::Retreat: return RetreatPose(boss, move);

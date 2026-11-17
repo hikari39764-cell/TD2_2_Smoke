@@ -138,6 +138,15 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     case BossMoveType::Detonate: BossDetonate::Charge(frame, std::clamp(progress, 0.0f, 1.0f)); break;
     case BossMoveType::Skyfall: BossSkyfall::Pre(frame); break;
     case BossMoveType::Retreat: RetreatPre(frame, move); break;
+    case BossMoveType::RetreatSweep: {
+        // 退き払い：始めの retreatSweepStepFrames F で後ろへ跳び（後ろへ下がると同じ動き）、残りは着地して構える。
+        const int step = std::clamp(boss.retreatSweepStepFrames, 1, std::max(1, move.pre - 1));
+        if (boss.stateFrame <= step)
+            BossMoveExecutor::StepBack(frame, Share(boss.stateFrame, step));
+        else
+            boss.height = 0.0f;
+        break;
+    }
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: BossGreatsword::Pre(frame, move); break;
     case BossMoveType::KasumiStep: BossKasumiStep::Pre(boss, progress); break;

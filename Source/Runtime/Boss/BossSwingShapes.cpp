@@ -41,6 +41,7 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     horizontal.Describe(fields, "swingHorizontal", "横なぎ");
     kesa.Describe(fields, "swingKesa", "袈裟（逆袈裟は左右に映す）");
     vertical.Describe(fields, "swingVertical", "縦");
+    dash.Describe(fields, "swingDash", "突進の払い（突進横なぎ。退き払いは左右に映す）");
     fields.Float3("swingReturnGrip", "戻りの中段：握り（体の足元から、局所 m）", returnGrip);
     fields.Float3("swingReturnDirection", "戻りの中段：刀の向き（局所。剣先をプレイヤーの胸へ）", returnDirection);
     fields.Float("swingReturnCrouch", "戻りの中段：腰を落とす量 (m。見た目だけ)", returnCrouch, 0.0f, 3.0f);

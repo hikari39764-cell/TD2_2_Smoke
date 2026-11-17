@@ -247,8 +247,12 @@ void StepEdge(const BossComponent& boss, const MotionTargets& t, BossBodyMotionS
     } else if (Length(t.ruleEdge) > kEdgeGoalMinLength) {
         if (Length(cut) > kEdgeGoalMinLength)
             m.edgeGoal = Normalize(cut);
-        if (!t.window)
-            seconds = s.edgeStanceSeconds;
+        // 振っている間（命中の窓）は斬る向きにぴったり合わせる（追うと、速い振りの間に 40 度ほど遅れた。c-2dd9a2）。
+        if (t.window && Length(cut) > kEdgeGoalMinLength) {
+            m.edge = m.edgeGoal;
+            return;
+        }
+        seconds = s.edgeStanceSeconds;
     } else if (t.window) {
         if (Length(m.velocity) > s.edgeMinDegreesPerSecond * kRadiansPerDegree)
             m.edgeGoal = Normalize(m.velocity);

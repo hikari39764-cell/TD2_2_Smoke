@@ -18,7 +18,7 @@ constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 constexpr const char* kTypeKeys[kTypeCount] = {
     "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",      "knife",    "string",
     "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn",    "backstep", "detonate",
-    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep"};
+    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep", "slashHR", "retreatSweep"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -55,6 +55,8 @@ enum class Column {
     StepDirections,
     StepDistance,
     StepHeight,
+    PreShift,
+    Delivery,
     Count
 };
 // 「変化の前隙 F」が空欄の時の、切り替えた技の前隙 (F)。
@@ -69,6 +71,8 @@ constexpr HeaderKey kHeaders[] = {
     {"跳ぶ向き", Column::StepDirections},
     {"跳ぶ距離", Column::StepDistance},
     {"跳ぶ高さ", Column::StepHeight},
+    {"前隙の移動", Column::PreShift},
+    {"当て方", Column::Delivery},
     {"変化の前隙", Column::SwitchPre},
     {"変化確率", Column::SwitchChance},
     {"変化先", Column::SwitchTo},
@@ -190,6 +194,8 @@ BossMoveType GuessType(std::string_view name) {
 std::optional<BossStrikeDirection> DefaultDirection(BossMoveType type) {
     switch (type) {
     case BossMoveType::SlashH:
+    case BossMoveType::SlashHR:
+    case BossMoveType::RetreatSweep:
     case BossMoveType::Dash:
     case BossMoveType::Ambush: return BossStrikeDirection::Horizontal;
     case BossMoveType::SlashV:
@@ -306,7 +312,9 @@ bool BossMoveTable::IsSwingType(BossMoveType type) {
     case BossMoveType::Overhead:
     case BossMoveType::String:
     case BossMoveType::Ambush:
-    case BossMoveType::Retreat: return true;
+    case BossMoveType::Retreat:
+    case BossMoveType::SlashHR:
+    case BossMoveType::RetreatSweep: return true;
     default: return false;
     }
 }
@@ -687,6 +695,14 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.speed = static_cast<float>(NumberOf(raw[Column::Speed]).value_or(T.speed));
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
+        move.preShift = static_cast<float>(NumberOf(raw[Column::PreShift]).value_or(0.0));
+        {
+            const std::string& text = raw[Column::Delivery];
+            const bool blade = Contains(text, "実"), haze = Contains(text, "霞");
+            move.delivery = blade && !haze ? BossDelivery::Blade : haze && !blade ? BossDelivery::Haze : BossDelivery::Both;
+            if (!text.empty() && !blade && !haze)
+                move.warnings.push_back("当て方「" + text + "」が読めないので実＋霞にしました（実・霞・実＋霞）");
+        }
         ReadWindup(raw, move);
         ReadBlast(raw, move);
         ReadKnockDistance(raw, move);

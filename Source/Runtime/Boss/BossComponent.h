@@ -619,7 +619,10 @@ public:
     // 半径の差を足すだけだと
     // プレイヤーが刀の根元に入り、横なぎの刀が頭上を通って当たらなかった（握りからプレイヤーまでの間を保つ）。
     float dashStopDistance = 4.266f;
-    int dashTeleportFrames = 12;
+    // 突進横なぎ（c-2dd9a2）：前隙の始めに、刀を後ろ下へ引きずって体を沈める構えへ移る F と、前隙の終わりに低く滑って
+    // 詰める F（瞬間移動ではなく速い動き。速さは始めと終わりで 0、真ん中で最も速い）。溜めの揺らぎは滑り出す前に入る。
+    int dashRaiseFrames = 20;
+    int dashSlideFrames = 20;
     float slashApproachSpeed = 1.2f;
     float stringApproachSpeed = 1.6f;
     float stringApproachStop = 3.942f;
@@ -668,6 +671,8 @@ public:
     // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
     int retreatStepFrames = 20;
+    // 退き払い（c-2dd9a2）：前隙の始めに後ろへ跳ぶ F（距離・高さは backstepDistance／backstepHeight。前隙の残りは着地の構え）。
+    int retreatSweepStepFrames = 18;
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
     // 剣の長さ。柄を体の外へ出すたびに同じだけ縮めて、届く距離（柄の距離＋長さ）を保つ（c-8c8d95 で 10.3 m、
     // c-f91bd1 で 10.6 m。c-a30eaf で柄を 2.25 m へ、c-e97b18 で 2.025 m へ変えた時も 10.6 m のまま）。

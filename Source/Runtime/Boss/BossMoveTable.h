@@ -48,8 +48,16 @@ enum class BossMoveType {
     // 霞歩：プレイヤーを見たまま、横・斜め前・斜め後ろ、またはプレイヤーの弾の線から離れる側へ 1 歩で跳ぶ
     // （攻撃中＝跳ぶ F、後隙＝着地の止まり。向き・距離・高さは表の「跳ぶ向き」「跳ぶ距離 m」「跳ぶ高さ m」）。当たりは無い。
     KasumiStep,
+    // 返し横（c-2dd9a2）：左から右へ薙ぐ横なぎ（横なぎの型を左右に映す）。前の振りから手首で返してつなぐ速い一撃。
+    SlashHR,
+    // 退き払い（c-2dd9a2）：刀を腰へ収めながら後ろへ跳び（後ろへ下がると同じ動き。跳ぶ F はボスの retreatSweepStepFrames）、
+    // 着地して低い所から左から右へ払い上げ、横の斬撃を飛ばす（突進の型を左右に映す）。
+    RetreatSweep,
     Count
 };
+
+// 斬りの技の当て方（表の「当て方」）。
+enum class BossDelivery { Both, Blade, Haze };
 
 // 霞歩の向き（表の「跳ぶ向き」の 1 項目）。左右は、ボスがプレイヤーへ向いた時のボスの左右（プレイヤーから見ると逆）。
 // 弾＝プレイヤーが撃とうとしている弾の線から離れる側（線に直交する向き）。
@@ -155,6 +163,12 @@ struct BossMove {
     float homing = 0.0f;
     float step = 0.0f;
     float side = 0.0f;
+    // 前隙の移動（c-2dd9a2。表の「前隙の移動 m」）：構えの前（振り上げの間）にプレイヤーの方へ動く距離 (m。負は後ろへ)。
+    // 0 でない斬りの技は、前隙に歩き寄らない。
+    float preShift = 0.0f;
+    // 当て方（c-2dd9a2。表の「当て方」）：実＝実体の刀だけで当てる（斬撃を飛ばさない。吸い込めない）、霞＝飛ぶ斬撃だけで
+    // 当てる（刀そのものは当たらない。吸い込める）、実＋霞＝両方（空欄。前からの作り）。
+    BossDelivery delivery = BossDelivery::Both;
     int damage = 0;
     bool damageAuto = false;
     BossKnock knock = BossKnock::Flinch;

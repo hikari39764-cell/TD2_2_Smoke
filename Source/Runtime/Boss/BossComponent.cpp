@@ -134,7 +134,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     if (fields.Section("動きの型ごとの体の動き")) {
         fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", dashStopDistance, 0.0f, 30.0f);
-        fields.Int("dashTeleportFrames", "瞬間突進：瞬間移動にかける長さ (F)", dashTeleportFrames, 1, 120);
+        fields.Int("dashRaiseFrames", "突進横なぎ：前隙の始めに、刀を引きずる構えへ移る長さ (F)", dashRaiseFrames, 1, 120);
+        fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)", dashSlideFrames, 1,
+                   120);
         fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", slashApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachSpeed", "連撃：前隙に近づく速さ (m/秒)", stringApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachStop", "連撃：これより近いと近づかない (m)", stringApproachStop, 0.0f, 30.0f);
@@ -224,6 +226,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "天降り斬りの落ちる先は、技の表の「追尾を止める F」の時のプレイヤーの手前です（空欄なら落ち始めの時）。"
             "それより後に動けば外れます。落ちる長さを変えた時は、表を読み直す（Play し直す）と効きます。"
             "地面や画面の予告は出しません（ボスの向きと構えで読ませる）。");
+        fields.Int("retreatSweepStepFrames", "退き払い：前隙の始めに後ろへ跳ぶ長さ (F。前隙の残りが着地の構え)",
+                   retreatSweepStepFrames, 1, 120);
         fields.Int("retreatStepFrames", "退き溜め：前隙の始めに後ろへ跳ぶ長さ (F。前隙の残りが溜め)", retreatStepFrames, 1,
                    120);
         fields.Note("退き溜めの跳ぶ距離・高さは「後ろへ下がる」と同じ値です。溜めの間は前へ出ず、プレイヤーの方を向き続けます"
