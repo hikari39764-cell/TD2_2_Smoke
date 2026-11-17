@@ -59,6 +59,9 @@ public:
     HIKARI::GameProjectFloat3 smokeColor{0.45f, 0.65f, 0.68f};
     // 火弾の間（Gourd.FireShot が 0 より大きい間）の煙の条と、残り時間の条の色。切れたら smokeColor へ戻る。
     HIKARI::GameProjectFloat3 fireSmokeColor{1.0f, 0.45f, 0.1f};
+    // 満杯で吸おうとした時（Gourd.Blocked が 0 より大きくなった時）に煙の条が光る色と、元の色へ戻るまでの秒。
+    HIKARI::GameProjectFloat3 smokeBlockedColor{1.0f, 1.0f, 1.0f};
+    float smokeBlockedFlashSeconds = 0.3f;
     HIKARI::GameProjectFloat3 bossColor{0.5f, 0.05f, 0.07f};
 
     // 実行時の状態は保存しない。

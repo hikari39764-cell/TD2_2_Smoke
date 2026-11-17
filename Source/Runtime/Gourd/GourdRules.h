@@ -13,8 +13,22 @@ class GourdRules final {
     // 煙の量 ÷ 吸った霧の量（密度 × m³）。霧へ戻す煙の量を、同じ換算で霧の量へ直すために使う。
     static float GetSmokePerVolume(const GourdComponent& gourd);
     static bool IsFull(const GourdComponent& gourd);
-    // まだ吸い込める空きがあるか（空きが kAbsorbRoomEpsilon より多い）。飛ぶ斬撃を吸う時と、火を吸う時の満杯の判定。
+    // 空き room（煙の量）があると見るか（kAbsorbRoomEpsilon より多い）。空きが少しでもあれば吸え、
+    // 入りきらない煙は捨てる。
+    static bool IsRoomLeft(float room);
+    // まだ吸い込める空きがあるか（容量 − 煙の量 に IsRoomLeft）。
     static bool HasRoomToAbsorb(const GourdComponent& gourd);
+    // 満杯で吸えない（absorbWhenFull が切で、空きが無い）。吸い込みの構えをしていても、
+    // 霧・火・斬撃・ナイフを取り込まない。
+    static bool IsBlocked(const GourdComponent& gourd);
+    // 吸い込み中で、いま物を取り込める（場の霧・場の火を消す、飛ぶ斬撃・ナイフを捕まえる）。
+    static bool CanTakeIn(const GourdComponent& gourd);
+    // 飛ぶ斬撃・ナイフをあと取り込める煙の量（容量 − 煙の量。absorbWhenFull が入なら float の最大）。
+    // 捕まえる側が、口へ引き込み中の分（入りきった時に足す煙）を引いて使う。
+    static float GetCatchRoom(const GourdComponent& gourd);
+    // 固定 tick ごとに、満杯で吸えないまま吸い込みを続けている秒数を進める（吸い込みの段階を決めた後に呼ぶ）。
+    // 「入らない」になった tick（吸い込みを始めた時か、吸っている間に満杯になった時）に真を返し、記録する。
+    static bool StepBlocked(GourdComponent& gourd, float dt);
     static bool TryConsumeSmoke(GourdComponent& gourd, float amount);
     // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
     static float AddSmoke(GourdComponent& gourd, float amount);
@@ -26,7 +40,8 @@ class GourdRules final {
     static void StepSwallow(GourdComponent& gourd);
     static bool IsSwallowing(const GourdComponent& gourd);
     // 火弾（c-ad360d）：吸い込みで消した場の火の面積 (m²) を足す。ためた面積が fireShotTriggerArea に届くたびに、
-    // 火弾の残りを fireShotDuration へ戻す（延ばすだけで、それより多くは積まない）。満杯でも呼ばれれば効く。
+    // 火弾の残りを fireShotDuration へ戻す（延ばすだけで、それより多くは積まない）。満杯で吸えない間は火を消せないので、
+    // 呼ばれない（absorbWhenFull が入の時だけ、満杯でも呼ばれる）。
     static void AddAbsorbedFireArea(GourdComponent& gourd, float area);
     // 火の刃（火を残す斬撃・ナイフ）を count 個吸い取った。1 つでも火弾の残りを fireShotDuration へ戻す。
     static void NotifyFireCatch(GourdComponent& gourd, int count);

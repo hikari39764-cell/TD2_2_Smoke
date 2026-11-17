@@ -17,8 +17,11 @@ struct BossFrame {
     PlayerComponent* player = nullptr;
     HIKARI::GameProjectFloat3 playerCenter{};
     float dt = 1.0f / 60.0f;
-    // ヒョウタンが吸い込み中で、まだ煙が入る（飛んで来た斬撃・ナイフを吸える）。
+    // ヒョウタンが吸い込み中（満杯かどうかは問わない。捕まえられるかは catchRoom も見る）。
     bool absorbing = false;
+    // 飛ぶ斬撃・ナイフをあと取り込める煙の量（ヒョウタンの空きから、口へ引き込み中の分を引いた値。満杯でも吸える設定なら
+    // float の最大）。捕まえるたびに、その斬撃が入れる煙を引く（同じ tick のほかのボスとも分け合う）。nullptr は 0 と同じ。
+    float* catchRoom = nullptr;
     // ヒョウタンの口の位置（捕まえた斬撃・ナイフを引き込む先）。ヒョウタンが無ければ hasMouth が偽。
     HIKARI::GameProjectFloat3 mouth{};
     bool hasMouth = false;

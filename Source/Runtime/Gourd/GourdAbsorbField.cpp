@@ -44,6 +44,8 @@ constexpr uint64_t kGlowInstanceBase = 60;
 constexpr uint64_t kCatchInstance = 50;
 // 捕まえた斬撃を飲み込む口の力の ID（回読しない：消した霧を煙に数えない）。
 constexpr uint64_t kSwallowInstance = 70;
+// 満杯で吸えない時に、口の前の霧を押し戻す噴きの力の ID（霧を消さない）。
+constexpr uint64_t kPushBackInstance = 80;
 // 地面に沿って温める場所の数。口から遠いほど広く、ぬるくする（1 か所ごとの半径の増し分と、温度の減り分）。
 constexpr int kGlowGroundSpots = 3;
 constexpr float kGlowRadiusGrowth = 0.5f;
@@ -120,15 +122,34 @@ void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectVie
     ++gourd.fluidSubmissions;
 }
 
+void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+    const int frames = std::max(1, gourd.blockedPuffFrames);
+    const float strength =
+        gourd.blockedPuffStrength * static_cast<float>(gourd.blockedPuffLeft) / static_cast<float>(frames);
+    if (!(strength > 0.0f) || !(gourd.blockedPuffRadius > 0.0f))
+        return;
+    // 向きのある力＝加速度：口の少し先を中心に、口の向く先へ押す。場の霧と、口のエフェクトの域（どちらも Default）に届く。
+    HIKARI::GameProjectFluidInteraction push{};
+    push.kind = Kind::Force;
+    push.position = Add(gourd.mouthPosition, Scale(gourd.aimDirection, gourd.blockedPuffReach));
+    push.extents = {gourd.blockedPuffRadius, 0.0f, 0.0f};
+    push.direction = gourd.aimDirection;
+    push.strength = strength;
+    push.channels = FluidChannels::kFog;
+    gourd.fluidAccepted =
+        world.GetFluid().Submit(object.GetHandle(), kPushBackInstance, push).Accepted() && gourd.fluidAccepted;
+    ++gourd.fluidSubmissions;
+}
+
 void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
                               float seconds) {
-    // 満杯の時は霧を消さない（吸っても増えない煙を場から減らさない）。流れもそよ風まで弱める。
-    const bool blocked = GourdRules::IsFull(gourd) && !gourd.absorbWhenFull;
+    // 満杯で吸えない時は霧を消さない（吸っても増えない煙を場から減らさない）。流れもそよ風まで弱める。
+    const bool blocked = GourdRules::IsBlocked(gourd);
     const float flow = blocked ? kFullFlowScale : 1.0f;
     // 扇の中の霧は、口へ運ばれながら消える（吸った所に穴が見える）。満杯で吸わない設定の時は消さない。
     const float fade = blocked ? 0.0f : gourd.gatherAbsorption;
-    // 場の霧にはいつも届く。場の火には、口に近い力だけが届き、火の舌が口へ曲がって吸われる（満杯でも同じ。
-    // 満杯で吸わない設定の時だけ、火に触らない）。火の域が 1 フレームに受け取れる注入は 32 個で、地面の火の燃料の点
+    // 場の霧にはいつも届く。場の火には、口に近い力だけが届き、火の舌が口へ曲がって吸われる（満杯で吸えない間は、
+    // 火に触らない）。火の域が 1 フレームに受け取れる注入は 32 個で、地面の火の燃料の点
     // （最大 16）と分け合うので、火へ届けるのは手前 2 つの輪の中央 3 筋ずつ・持ち上げ・口元の 8 個に絞る。
     const uint32_t channels = FluidChannels::kFog;
     Field field{world, object, gourd, channels};

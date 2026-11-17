@@ -15,6 +15,8 @@ inline constexpr std::string_view kGourdSmokeVariable = "Gourd.Smoke";
 inline constexpr std::string_view kGourdCapacityVariable = "Gourd.Capacity";
 // 火弾の残り秒数（火弾でなければ 0）。HUD が読む。
 inline constexpr std::string_view kGourdFireShotVariable = "Gourd.FireShot";
+// 満杯で吸えないまま吸い込みを続けている秒数（吸えている・吸っていない間は 0）。HUD が「入らない」の合図に読む。
+inline constexpr std::string_view kGourdBlockedVariable = "Gourd.Blocked";
 
 // 吸い込みの段階：構え（吸う力はまだ出ない）→ 吸う → 後隙。どの段階でもゆっくり歩けて、向きも変えられる。
 // ローリングはどの段階でも出せて、吸い込みを後隙なしで打ち切る。
@@ -50,7 +52,8 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float gatherNearRadius = 0.0f;
     float gatherAbsorption = 2.0f;
     float gatherSmokeShare = 0.25f;
-    bool absorbWhenFull = true;
+    // 満杯の間は吸えない（霧・火・斬撃・ナイフのどれも。c-d07c33）。入にすると、満杯でも吸える前の扱いに戻る。
+    bool absorbWhenFull = false;
     float absorbCatchRadius = 1.1f;
     float absorbCatchHeight = 0.7f;
     float absorbCatchRate = 30.0f;
@@ -86,6 +89,16 @@ class GourdComponent final : public HIKARI::IGameComponent {
     float absorbRumble = 0.16f;
     int fullRumbleFrames = 8;
     float fullRumble = 0.7f;
+    // 満杯で吸えない時の「入らない」合図（c-d07c33）：吸い込みを始めた時か、吸っている間に満杯になった時に 1 回、
+    // ヒョウタンが口の向きと逆へ小さく跳ね、口の前の霧を押し戻す短い噴きを出す（振動は fullRumble）。
+    float blockedKickDistance = 0.06f;
+    int blockedKickFrames = 3;
+    // 噴きは口の域の霧の筋を blockedPuffEffect まで濃くして、その霧と口の前の場の霧を押し出す（短く・0.3 秒以内）。
+    int blockedPuffFrames = 16;
+    float blockedPuffStrength = 300.0f;
+    float blockedPuffRadius = 1.8f;
+    float blockedPuffReach = 0.6f;
+    float blockedPuffEffect = 1.0f;
     // ボスの斬撃・ナイフを吸い取った瞬間の手応え（c-d330c0）。止め・手柄の振動・視野角の引き。
     int catchHitStopFrames = 3;
     float catchHitStopScale = 0.05f;
@@ -181,6 +194,13 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // 吸い込みで消した場の火の面積 (m²)。
     float fireShotSeconds = 0.0f;
     float fireAreaPending = 0.0f;
+    // 満杯で吸えないまま吸い込みを続けている秒数（固定 tick で進む。吸えている・吸っていない間は 0）と、
+    // 「入らない」になった回数の累計（見た目が、手応えを出し終えた分と比べて 1 回ずつ見せる）。
+    float blockedSeconds = 0.0f;
+    uint64_t blockedCount = 0;
+    uint64_t blockedObserved = 0;
+    // 押し戻す噴きの残りの固定 tick。
+    int blockedPuffLeft = 0;
 };
 
 } // namespace Project_TD2_2

@@ -9,6 +9,7 @@
 #include "BossMath.h"
 #include "BossRules.h"
 #include "../Burn/BurnFieldRules.h"
+#include "../Gourd/GourdRules.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -63,6 +64,7 @@ void LogWave(const BossComponent& boss, const BossWave& wave, const char* event)
 
 // 吸い込みの扇（プレイヤーの向きの前、片側 absorbCatchAngle 度、absorbCatchRange m 以内）に斬撃・ナイフの刃が
 // 入ったか（試作の inhaleCatch：刃の線分のうちプレイヤーに一番近い点で測る。近ければ向きを問わない）。
+// 満杯かどうかは見ない（HasCatchRoom）。
 bool InCatch(const BossFrame& frame, Vec3 a, Vec3 b) {
     if (!frame.absorbing || frame.player == nullptr)
         return false;
@@ -79,9 +81,30 @@ bool InCatch(const BossFrame& frame, Vec3 a, Vec3 b) {
     return Dot(FlatNormalize(offset), facing) >= std::cos(boss.absorbCatchAngle * kRadiansPerDegree);
 }
 
+// ヒョウタンにまだ空きがある（空きが少しでもあれば捕まえる。入りきらない煙は、入りきった時に捨てる）。
+bool HasCatchRoom(const BossFrame& frame) {
+    return frame.catchRoom != nullptr && GourdRules::IsRoomLeft(*frame.catchRoom);
+}
+
+// 吸い込みの扇に入ったが、満杯で吸えなかった（飛び続けて当たる）。1 本につき 1 回だけ記録する。
+void Refuse(const BossFrame& frame, BossWave& wave) {
+    if (wave.refused)
+        return;
+    wave.refused = true;
+    char message[192]{};
+    std::snprintf(message, sizeof(message), "WaveRefused tick=%llu id=%llu knife=%d room=%.3f",
+                  static_cast<unsigned long long>(frame.boss.tick), static_cast<unsigned long long>(wave.id),
+                  static_cast<int>(wave.knife),
+                  frame.catchRoom != nullptr ? static_cast<double>(*frame.catchRoom) : 0.0);
+    BossLog::Write(message);
+}
+
 // 吸い込みの扇に入った斬撃・ナイフを捕まえる。この tick から当たらず、火も残り煙も置かない。
+// 入りきった時に足す煙を、捕まえられる空きから先に引く（同じ tick に続けて入った分は、残りの空きで決まる）。
 void Capture(BossFrame& frame, BossWave& wave) {
     BossComponent& boss = frame.boss;
+    if (frame.catchRoom != nullptr)
+        *frame.catchRoom -= wave.absorbSmoke;
     // 同時に引き込んでいる分だけ遅らせて、順に入って見えるようにする。
     int pulling = 0;
     for (const auto& other : boss.waves)
@@ -371,11 +394,15 @@ void BossWaves::Step(BossFrame& frame) {
             }
             continue;
         }
-        // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに捕まる（振っている剣そのものは吸えない）。
+        // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに捕まる（振っている剣そのものは吸えない）。満杯で空きが
+        // 無ければ捕まらず、そのまま飛んで当たる。
         const Vec3 edge = Mul(wave.across, wave.width * 0.5f);
         if (!wave.done && frame.hasMouth && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
-            Capture(frame, wave);
-            continue;
+            if (HasCatchRoom(frame)) {
+                Capture(frame, wave);
+                continue;
+            }
+            Refuse(frame, wave);
         }
         // 放った直後の数 F で判定サイズまで伸びる。
         if (wave.grow < 1.0f) {
@@ -504,6 +531,13 @@ void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
     ++boss.caught.count;
     if (wave.fire)
         ++boss.caught.fireCount;
+}
+
+float BossWaves::GetPullingSmoke(const BossComponent& boss) {
+    float smoke = 0.0f;
+    for (const auto& wave : boss.waves)
+        smoke += wave.active && wave.captured ? wave.absorbSmoke : 0.0f;
+    return smoke;
 }
 
 void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {

@@ -33,8 +33,10 @@ public:
     // 飛ばす・当てる・吸い込みの扇に入ったものを吸わせる（DeliverCatch で渡し分に足す）。
     static void Step(BossFrame& frame);
     // 吸い取った斬撃・ナイフ 1 つを、ヒョウタンへの渡し分（boss.caught）へ足す：煙・数・火の刃なら火弾の知らせ。
-    // いまは扇に入った tick に呼ぶ。口へ入りきった tick に渡すようにする時（c-3341a7）は、呼ぶ所だけを移す。
+    // 口へ入りきった tick に呼ぶ（c-3341a7）。
     static void DeliverCatch(BossComponent& boss, const BossWave& wave);
+    // 口へ引き込み中の斬撃・ナイフが、入りきった時にヒョウタンへ入れる煙の合計（捕まえられる空きから先に引く）。
+    static float GetPullingSmoke(const BossComponent& boss);
     // 刃や斬撃がプレイヤーの体の軸に触れたか（触れたら true）。
     static bool Touches(const BossFrame& frame, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
                         float thickness);

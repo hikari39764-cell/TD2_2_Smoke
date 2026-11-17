@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <limits>
 
 #include "HIKARI/Project/ProjectLog.h"
 
@@ -52,10 +53,40 @@ bool GourdRules::IsFull(const GourdComponent& gourd) {
     return GetCapacity(gourd) > 0.0f && GetSmoke(gourd) >= GetCapacity(gourd);
 }
 
-bool GourdRules::HasRoomToAbsorb(const GourdComponent& gourd) {
+bool GourdRules::IsRoomLeft(float room) {
     // 空きがこれより少なければ満杯と見る（煙の足し引きの丸めで、ほぼ満杯のまま吸い続けないように）。
     constexpr float kAbsorbRoomEpsilon = 0.01f;
-    return GetCapacity(gourd) - GetSmoke(gourd) > kAbsorbRoomEpsilon;
+    return room > kAbsorbRoomEpsilon;
+}
+
+bool GourdRules::HasRoomToAbsorb(const GourdComponent& gourd) {
+    return IsRoomLeft(GetCapacity(gourd) - GetSmoke(gourd));
+}
+
+bool GourdRules::IsBlocked(const GourdComponent& gourd) { return !gourd.absorbWhenFull && !HasRoomToAbsorb(gourd); }
+
+bool GourdRules::CanTakeIn(const GourdComponent& gourd) { return IsAbsorbing(gourd) && !IsBlocked(gourd); }
+
+float GourdRules::GetCatchRoom(const GourdComponent& gourd) {
+    return gourd.absorbWhenFull ? std::numeric_limits<float>::max() : GetCapacity(gourd) - GetSmoke(gourd);
+}
+
+bool GourdRules::StepBlocked(GourdComponent& gourd, float dt) {
+    if (!IsAbsorbing(gourd) || !IsBlocked(gourd)) {
+        gourd.blockedSeconds = 0.0f;
+        return false;
+    }
+    const bool began = !(gourd.blockedSeconds > 0.0f);
+    gourd.blockedSeconds += std::max(dt, 0.0f);
+    if (!began)
+        return false;
+    ++gourd.blockedCount;
+    char message[160]{};
+    std::snprintf(message, sizeof(message), "AbsorbBlocked tick=%llu smoke=%.3f capacity=%.3f count=%llu",
+                  static_cast<unsigned long long>(gourd.processedTick), static_cast<double>(GetSmoke(gourd)),
+                  static_cast<double>(GetCapacity(gourd)), static_cast<unsigned long long>(gourd.blockedCount));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
+    return true;
 }
 
 bool GourdRules::TryConsumeSmoke(GourdComponent& gourd, float amount) {

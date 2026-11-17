@@ -20,6 +20,8 @@ struct FlowHudValues {
     // 火弾の残り秒数（火弾でなければ 0）と、火弾の長さ（残りの条の分母。ヒョウタンの fireShotDuration）。
     float fireShotSeconds = 0.0f;
     float fireShotDuration = 0.0f;
+    // 満杯で吸えないまま吸い込みを続けている秒数（Gourd.Blocked。吸えている・吸っていない間は 0）。
+    float gourdBlocked = 0.0f;
     float bossHealth = 0.0f;
     float bossMaxHealth = 0.0f;
 };

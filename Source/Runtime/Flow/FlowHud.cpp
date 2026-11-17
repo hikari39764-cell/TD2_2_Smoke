@@ -45,6 +45,17 @@ bool Rect(const HIKARI::UiView& ui, uint64_t id, int order, float x, float y, fl
 
 float Ratio(float value, float maximum) { return maximum > 0.0f ? std::clamp(value / maximum, 0.0f, 1.0f) : 0.0f; }
 
+// 煙の条の色。満杯で吸おうとした直後（Gourd.Blocked が 0〜smokeBlockedFlashSeconds の間）は、光る色から元の色へ戻す。
+HIKARI::GameProjectFloat3 SmokeColor(const FlowComponent& flow, const FlowHudValues& values, bool fireShot) {
+    const HIKARI::GameProjectFloat3 base = fireShot ? flow.fireSmokeColor : flow.smokeColor;
+    const float flash = flow.smokeBlockedFlashSeconds;
+    if (!(values.gourdBlocked > 0.0f) || !(flash > 0.0f) || values.gourdBlocked >= flash)
+        return base;
+    const float k = 1.0f - values.gourdBlocked / flash;
+    const HIKARI::GameProjectFloat3 lit = flow.smokeBlockedColor;
+    return {base.x + (lit.x - base.x) * k, base.y + (lit.y - base.y) * k, base.z + (lit.z - base.z) * k};
+}
+
 // 底の上に、割合だけの長さの中身を重ねる。
 bool Bar(const HIKARI::UiView& ui, const FlowComponent& flow, uint64_t backId, uint64_t fillId, float x, float y,
          float width, float height, float ratio, HIKARI::GameProjectFloat3 color) {
@@ -70,7 +81,7 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
     // 火弾の間は、煙の条の色を変え、すぐ下に残り時間の細い条を出す（文字は出さない）。
     const bool fireShot = values.fireShotSeconds > 0.0f;
     accepted = Bar(ui, flow, kIdSmokeBack, kIdSmoke, flow.playerBarX, smokeY, flow.playerBarWidth, flow.smokeBarHeight,
-                   Ratio(values.gourdSmoke, values.gourdCapacity), fireShot ? flow.fireSmokeColor : flow.smokeColor) &&
+                   Ratio(values.gourdSmoke, values.gourdCapacity), SmokeColor(flow, values, fireShot)) &&
                accepted;
     if (fireShot) {
         accepted = Bar(ui, flow, kIdFireShotBack, kIdFireShot, flow.playerBarX,

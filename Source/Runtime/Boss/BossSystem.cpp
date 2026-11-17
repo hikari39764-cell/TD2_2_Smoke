@@ -471,11 +471,13 @@ void BossSystem::OnWorldAttached(HIKARI::WorldView&) { treeBrain_.Attach(); }
 void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。満杯でも吸う設定（Gourd.absorbWhenFull）なら、煙は増えないが
-    // 斬撃は吸い取れる（砲撃の煙のコストを 0 にした場面ではいつも満杯で、吸い込みが何もできなくなるため）。
-    // 切なら、煙がもう入らなければ吸えずに当たる（試作と同じ）。
+    // 吸い込み中のヒョウタン（飛んで来た斬撃・ナイフを吸える）。煙がもう入らなければ（満杯）、吸えずに当たる。
+    // 捕まえられるかは、ヒョウタンの空きから、口へ引き込み中の斬撃・ナイフが入りきった時に足す煙を先に引いて決める
+    // （1 本で満杯になる時は、続けて来た次の 1 本が当たる。引き込み中の分は満杯になっても最後まで入る）。
+    // 満杯でも吸える設定（Gourd.absorbWhenFull）なら、煙は増えないが斬撃は吸い取れる（前の扱い）。
     // ボスがプレイヤーの様子として見るのは、煙が入るかどうかに関わらず吸い込みの構えをしているか。
-    bool absorbing = false, inhaling = false;
+    bool inhaling = false;
+    float catchRoom = 0.0f;
     // 捕まえた斬撃・ナイフを引き込む先（最初のヒョウタンの口）。
     Vec3 mouth{};
     bool hasMouth = false;
@@ -485,12 +487,14 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             mouth = GourdRules::GetMouthPosition(gourd);
             hasMouth = true;
         }
-        inhaling = inhaling || GourdRules::IsAbsorbing(gourd);
-        absorbing = absorbing ||
-                    (GourdRules::IsAbsorbing(gourd) &&
-                     (gourd.absorbWhenFull ||
-                      GourdRules::HasRoomToAbsorb(gourd)));
+        if (!GourdRules::IsAbsorbing(gourd))
+            return;
+        inhaling = true;
+        catchRoom = std::max(catchRoom, GourdRules::GetCatchRoom(gourd));
     });
+    world.ForEachComponent<BossComponent>(
+        HIKARI::MakeComponentTypeId(kBossType),
+        [&](HIKARI::ObjectView, BossComponent& boss) { catchRoom -= BossWaves::GetPullingSmoke(boss); });
     BossCatchHandoff caught;
     // 口へ引き込んでいる途中の斬撃・ナイフの数（ある間は、ヒョウタンが口の吸う力と見た目を保つ）。
     int pulling = 0;
@@ -507,7 +511,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             boss.glintFrames = std::max(0, boss.glintFrames - 1);
             // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
-                BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing, mouth, hasMouth};
+                BossFrame bossFrame{world,    boss,       player, playerCenter, frame.fixedDt,
+                                    inhaling, &catchRoom, mouth,  hasMouth};
                 BossObserver::Observe(world, boss, player, playerCenter, inhaling);
                 // 兜が向く先（見た目だけが読む。規則は使わない）。
                 boss.bodyState.lookTarget = playerCenter;
@@ -595,7 +600,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 return;
             // 吸った合図は、ヒョウタン自身が次の描画フレームで見せる（ボスはカメラに触れない）。
             GourdRules::NotifyCatch(gourd, caught.count);
-            // 火の刃を吸い取ったら火弾になる（満杯で煙が入らなくても）。
+            // 火の刃を吸い取ったら火弾になる（捕まえた時に空きがあった分。入りきった時に満杯になっていても）。
             GourdRules::NotifyFireCatch(gourd, caught.fireCount);
             const float added = GourdRules::AddSmoke(gourd, caught.smoke);
             char message[192]{};

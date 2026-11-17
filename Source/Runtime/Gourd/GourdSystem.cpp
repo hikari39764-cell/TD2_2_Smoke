@@ -126,6 +126,17 @@ void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
     gourd.absorbBuffer = std::max(0, gourd.absorbBuffer - 1);
 }
 
+// 満杯で吸えない「入らない」の tick に、ヒョウタンを口の向きと逆へ小さく跳ねさせ、押し戻す噴きを始める
+// （跳ねは同じ tick の StepRecoil が一歩目を進める。振動は GourdAbsorbVisuals が回数の差を見て出す）。
+void StepBlocked(GourdComponent& gourd, float dt) {
+    gourd.blockedPuffLeft = std::max(0, gourd.blockedPuffLeft - 1);
+    if (!GourdRules::StepBlocked(gourd, dt))
+        return;
+    GourdRules::AddRecoil(gourd, VectorMath::Scale(gourd.aimDirection, -1.0f), gourd.blockedKickDistance,
+                          gourd.blockedKickFrames);
+    gourd.blockedPuffLeft = std::max(0, gourd.blockedPuffFrames);
+}
+
 void SpringAxis(float& value, float& velocity, float target, float frequency, float dt) {
     // 臨界減衰の解析解なので、描画のフレーム間隔が変わってもばねが発散しない。
     const float offset = value - target;
@@ -236,7 +247,7 @@ void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const Gour
         "readAccepted=%d "
         "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u "
         "gatherStrength=%.3f intake=%.3f phase=%d phaseFrames=%d buffer=%d "
-        "varsRead=%d varSmoke=%.3f varCapacity=%.3f fireShot=%.3f varFireShot=%.3f",
+        "varsRead=%d varSmoke=%.3f varCapacity=%.3f fireShot=%.3f varFireShot=%.3f blocked=%d blockedSeconds=%.3f",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -251,7 +262,8 @@ void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const Gour
         gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate),
         static_cast<int>(gourd.absorbPhase), gourd.absorbPhaseFrames, gourd.absorbBuffer, static_cast<int>(varsRead),
         static_cast<double>(varSmoke), static_cast<double>(varCapacity),
-        static_cast<double>(GourdRules::GetFireShotSeconds(gourd)), static_cast<double>(varFireShot));
+        static_cast<double>(GourdRules::GetFireShotSeconds(gourd)), static_cast<double>(varFireShot),
+        static_cast<int>(GourdRules::IsBlocked(gourd)), static_cast<double>(gourd.blockedSeconds));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -280,6 +292,7 @@ void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
                                                gourd.processedTick = frame.fixedTickIndex;
                                                GourdRules::Initialize(gourd);
                                                StepAbsorb(world, gourd);
+                                               StepBlocked(gourd, frame.fixedDt);
                                                if (gourd.enabled && frame.fixedDt > 0.0f)
                                                    StepRecoil(gourd, frame.fixedDt);
                                                GourdRules::StepFireShot(gourd, frame.fixedDt);
@@ -324,6 +337,8 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
             GourdAbsorbField::Submit(world, object, gourd, gourd.absorbSeconds);
         if (GourdRules::IsSwallowing(gourd) && gourd.poseInitialized)
             GourdAbsorbField::SubmitSwallow(world, object, gourd);
+        if (gourd.blockedPuffLeft > 0 && gourd.poseInitialized)
+            GourdAbsorbField::SubmitPushBack(world, object, gourd);
         ++gourd.renderFrameCount;
         if (TraceInterval::Due(gourd.traceEveryFrames, gourd.renderFrameCount))
             Trace(world, object, gourd);

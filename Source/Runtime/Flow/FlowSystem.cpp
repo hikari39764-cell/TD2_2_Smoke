@@ -161,6 +161,7 @@ FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdSmokeVariable, values.gourdSmoke);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdCapacityVariable, values.gourdCapacity);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdFireShotVariable, values.fireShotSeconds);
+    ObjectVariables::ReadFloat(world, actors.gourd, kGourdBlockedVariable, values.gourdBlocked);
     values.fireShotDuration = actors.fireShotDuration;
     ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);
     ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, values.bossMaxHealth);

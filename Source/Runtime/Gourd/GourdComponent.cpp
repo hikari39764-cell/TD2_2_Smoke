@@ -52,7 +52,14 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbCatchRate", "口の上で霧を消す率 (/s)", absorbCatchRate, 0.0f, 1000.0f);
         fields.Note("持ち上げた霧が口を通り過ぎて空へ噴き上がらないように、口の少し上で消して煙に数えます。"
                     "霧が口の上まで噴き上がる時は、この半径か率を上げるか、持ち上げる力の倍率を下げます。");
-        fields.Bool("absorbWhenFull", "満杯でも霧を吸い続ける（切ると満杯の間は霧を消さない）", absorbWhenFull);
+        fields.Bool("absorbWhenFull", "満杯でも吸える（既定は切：満杯の間は霧・火・斬撃・ナイフのどれも吸えない）",
+                    absorbWhenFull);
+        fields.Note(
+            "切（既定）：満杯の間は、吸い込みを構えても場の霧・場の火を消さず、ボスの斬撃・ナイフは当たります"
+            "（火弾にもなりません）。空きが少しでもあれば吸え、入りきらない煙は捨てます。斬撃・ナイフは、"
+            "口へ引き込み中の分の煙も先に数えるので、1 本で満杯になる時は、続けて来た次の 1 本が当たります"
+            "（引き込み中の分は最後まで入ります）。入にすると、満杯でも吸えて煙だけが増えない前の扱いに戻ります。"
+            "砲撃の煙のコスト（GourdShot.smokeCost）が 0 のシーンでは、切だとずっと満杯で何も吸えません。");
         fields.Note("口元の吸入が周り全体の霧を口へ引き寄せ、前方の扇の流れが遠"
                     "くの霧を渦を巻かせて運びます。"
                     "吸入速度と半径を上げると吸う速さ（煙／秒）も上がります。既"
@@ -88,8 +95,7 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      "くの霧を使う）",
                      smokePerVolume, 0.0f, 100000.0f);
         fields.Note("回読は 1〜3 "
-                    "フレーム遅れます。満杯の間は霧を消しません（「満杯でも霧を"
-                    "吸い続ける」を入れると、"
+                    "フレーム遅れます。満杯の間は霧を消しません（「満杯でも吸える」を入れると、"
                     "吸い込みは続き、超過分は捨てます）。");
     }
     if (fields.Section("火弾（火を吸った後）", true)) {
@@ -100,7 +106,8 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("吸い込みで場の火を消すか、ボスの火の刃（火を残す斬撃・ナイフ）を吸い取ると、しばらく撃つ弾が火弾に"
                     "なります（威力の倍率は砲撃の「火弾の威力の倍率」）。霞の刃では火弾になりません。"
                     "吸い続けている間は残りが長さへ戻り続け、長さを超えては積まれません。"
-                    "満杯でも火は吸える（「満杯でも霧を吸い続ける」が入っている時）ので、満杯でも火弾になります。"
+                    "満杯の間は火も火の刃も吸えないので、火弾になりません（「満杯でも吸える」が入っている時だけ、"
+                    "満杯でも火を吸えて火弾になります）。"
                     "残りは固定 tick で減り、ヒットストップの間は減りません。");
     }
     if (fields.Section("吸い込みの演出と手応え")) {
@@ -128,11 +135,27 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbRumble", "吸い込み中の振動の強さ (0〜1、0 は無効)", absorbRumble, 0.0f, 1.0f);
         fields.Int("fullRumbleFrames", "満杯になった時の振動時間 (F、0 は無効)", fullRumbleFrames, 0, 120);
         fields.Float("fullRumble", "満杯になった時の振動の強さ (0〜1)", fullRumble, 0.0f, 1.0f);
+        fields.Float("blockedKickDistance", "満杯で吸えない時、ヒョウタンが口と逆へ跳ねる距離 (m、0 は無効)",
+                     blockedKickDistance, 0.0f, 1.0f);
+        fields.Int("blockedKickFrames", "…跳ねる時間 (F)", blockedKickFrames, 1, 60);
+        fields.Int("blockedPuffFrames", "…口の前の霧を押し戻す噴きの長さ (F、0 は無効)", blockedPuffFrames, 0, 120);
+        fields.Float("blockedPuffStrength", "…噴きの強さ (m/s²。始めの強さで、長さの間に 0 へ弱まる)",
+                     blockedPuffStrength, 0.0f, 2000.0f);
+        fields.Float("blockedPuffRadius", "…噴きの半径 (m)", blockedPuffRadius, 0.05f, 10.0f);
+        fields.Float("blockedPuffReach", "…噴きの中心の、口からの前方距離 (m)", blockedPuffReach, 0.0f, 5.0f);
+        fields.Float("blockedPuffEffect", "…噴きの間の口のエフェクトの濃さ（input.on。噴きの残りに比例して戻る）",
+                     blockedPuffEffect, 0.0f, 4.0f);
         fields.Note("エフェクト資産の +X は口の向く先。入力 input.on "
                     "は吸い込みの強さ（0〜1）で、実際に吸えている"
                     "速さに合わせて上がります。霧の無い所で吸うと弱く、満杯で吸"
-                    "えない間は 0 です。使っていない間は"
+                    "えない間は「満杯で吸えない時の口の演出の強さ」です。使っていない間は"
                     "域を消して、同時に描ける流体の域の枠を空けます。");
+        fields.Note("満杯で吸えない時（吸い込みを始めた時か、吸っている間に満杯になった時）は 1 回、ヒョウタンが跳ね、"
+                    "口のエフェクトの霧が濃くなって、口の前の霧（場の霧と口のエフェクトの域）と一緒に口から押し戻され、"
+                    "満杯の振動が出ます。満杯で吸えない間は、吸い込みの視野角の寄り・カメラの震え・ヒョウタンの脈・"
+                    "吸い込みの振動は出しません。HUD の煙の条は、"
+                    "物体変数 Gourd.Blocked（吸えないまま吸い込んでいる秒数）を読んで短く光ります（Flow の項目）。"
+                    "地面や画面に予告は出しません。");
     }
     if (fields.Section("吸い取りの手応え")) {
         fields.Int("catchHitStopFrames", "ボスの斬撃を吸い取った時の止め (F、0 は無効)", catchHitStopFrames, 0, 30);
@@ -175,6 +198,7 @@ void GourdComponent::Update(HIKARI::GameComponentContext& context, float) {
                                   variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kGourdFireShotVariable, GourdRules::GetFireShotSeconds(*this),
                                   variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kGourdBlockedVariable, blockedSeconds, variableWriteWarned);
 }
 
 } // namespace Project_TD2_2

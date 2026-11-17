@@ -42,11 +42,16 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     transform.rotation = VectorMath::RotationFromXAxis(gourd.aimDirection);
     transform.scale = {gourd.absorbEffectScale, gourd.absorbEffectScale, gourd.absorbEffectScale};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
-    // 口の演出は、実際に吸えている速さで強める。霧の無い所では弱く、満杯で吸えない間は出さない。
-    const bool blocked = GourdRules::IsFull(gourd) && !gourd.absorbWhenFull;
+    // 口の演出は、実際に吸えている速さで強める。霧の無い所では弱く、満杯で吸えない間は absorbFullEffect まで弱める。
+    // 「入らない」の噴きの間だけは、口の域の霧の筋を blockedPuffEffect まで濃くし、その霧を
+    // GourdAbsorbField::SubmitPushBack の力が口の向く先へ押し戻す（噴きの残りに比例して戻す）。
+    const bool blocked = GourdRules::IsBlocked(gourd);
     const float intake = std::clamp(gourd.intakeRate / std::max(0.1f, gourd.absorbFullIntake), 0.0f, 1.0f);
     const float level = gourd.absorbIdleEffect + (1.0f - gourd.absorbIdleEffect) * intake;
-    VfxParameters::SetFloat(parameters, "input.on", !absorbing ? 0.0f : blocked ? gourd.absorbFullEffect : level);
+    const float puff = gourd.blockedPuffEffect * static_cast<float>(gourd.blockedPuffLeft) /
+                       static_cast<float>(std::max(1, gourd.blockedPuffFrames));
+    const float blockedLevel = std::max(gourd.absorbFullEffect, puff);
+    VfxParameters::SetFloat(parameters, "input.on", !absorbing ? 0.0f : blocked ? blockedLevel : level);
     if (gourd.absorbVfx.IsValid() && !vfx.IsActive(gourd.absorbVfx))
         gourd.absorbVfx = {};
     if (!gourd.absorbVfx.IsValid()) {
@@ -94,13 +99,16 @@ void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
 }
 
 void UpdateRumble(HIKARI::WorldView& world, GourdComponent& gourd, bool absorbing) {
-    const float capacity = GourdRules::GetCapacity(gourd);
-    const bool full = capacity > 0.0f && GourdRules::GetSmoke(gourd) >= capacity;
-    if (absorbing && full && !gourd.wasFull && gourd.fullRumbleFrames > 0 && gourd.fullRumble > 0.0f) {
+    const bool full = GourdRules::IsFull(gourd);
+    // 満杯で吸えない「入らない」になった（吸い込みを始めた時か、吸っている間に満杯になった時）。
+    const bool blockedNow = gourd.blockedObserved != gourd.blockedCount;
+    gourd.blockedObserved = gourd.blockedCount;
+    if (((absorbing && full && !gourd.wasFull) || blockedNow) && gourd.fullRumbleFrames > 0 &&
+        gourd.fullRumble > 0.0f) {
         // 満杯の合図。これ以降は振動を止め、吸っても増えないことを手で分からせる。
         world.GetInput().SetGamepadVibration(gourd.fullRumble, gourd.fullRumble,
                                              static_cast<float>(gourd.fullRumbleFrames) / kFramesPerSecond);
-    } else if (absorbing && !full && gourd.absorbRumble > 0.0f) {
+    } else if (absorbing && !full && !GourdRules::IsBlocked(gourd) && gourd.absorbRumble > 0.0f) {
         world.GetInput().SetGamepadVibration(gourd.absorbRumble, 0.0f, kRumbleRefreshSeconds);
     }
     gourd.wasFull = full;
@@ -114,7 +122,9 @@ void GourdAbsorbVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView obj
     // 捕まえた斬撃を飲み込んでいる間は、吸い込みをやめていても口のエフェクトを保つ（カメラの寄りと振動は保たない）。
     const bool mouthOpen = absorbing || (gourd.enabled && gourd.poseInitialized && GourdRules::IsSwallowing(gourd));
     UpdateEffect(world, object, gourd, mouthOpen, frame);
-    UpdateCamera(world, object, gourd, absorbing, frame);
+    // 満杯で吸えない間は「吸っている」手応え（視野角の寄り・カメラの震え・ヒョウタンの脈。脈も absorbBlend で決まる）を
+    // 出さない。吸い込みの弱い振動も UpdateRumble が止める。「入らない」の合図（跳ね・噴き・満杯の振動・HUD）だけ残す。
+    UpdateCamera(world, object, gourd, absorbing && !GourdRules::IsBlocked(gourd), frame);
     UpdateRumble(world, gourd, absorbing);
 }
 

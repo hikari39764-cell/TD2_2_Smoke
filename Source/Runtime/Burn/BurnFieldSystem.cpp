@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <limits>
 
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/WorldView.h"
@@ -66,8 +65,9 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
     return seen;
 }
 
-// 吸い込み中のヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡し、火弾の元として数える。
-// 満杯でも火は消せる（煙は増えない）。ヒョウタンの「満杯でも吸う」（Gourd.absorbWhenFull）を切ると、満杯では消せない。
+// 吸い込み中で物を取り込めるヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡し、火弾の
+// 元として数える。満杯で吸えない間は火を消さない（火弾にもならない）。空きが少しでもあれば 1 tick の量を消し、
+// 入りきらない煙は捨てる。ヒョウタンの「満杯でも吸える」（Gourd.absorbWhenFull）を入にすると、満杯でも消せる。
 // 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
 void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt,
                 uint64_t tick) {
@@ -77,9 +77,7 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
             if (handled)
                 return;
             handled = true;
-            const float room = GourdRules::GetCapacity(gourd) - GourdRules::GetSmoke(gourd);
-            const bool full = !GourdRules::HasRoomToAbsorb(gourd);
-            if (!player.found || !GourdRules::IsAbsorbing(gourd) || (full && !gourd.absorbWhenFull)) {
+            if (!player.found || !GourdRules::CanTakeIn(gourd)) {
                 field.absorbBudget = 0.0f;
                 return;
             }
@@ -91,18 +89,15 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
             // 1 tick の量が 1 セルに満たなくても、ためて丸ごと消す。吸う相手が無い間にためすぎない。
             field.absorbBudget = std::min(field.absorbBudget + rate, field.map.CellArea() + rate);
             const float perArea = std::max(0.0f, field.smokePerArea);
-            // 満杯でも吸う設定なら、空きに関わらず消す（入り切らない煙は捨てる）。
-            const float roomArea =
-                perArea > 0.0f && !gourd.absorbWhenFull ? room / perArea : std::numeric_limits<float>::max();
-            const float cleared = field.map.ClearFan(player.position, player.facing, field.absorbRange,
-                                                     field.absorbFanDegrees * kRadiansPerDegree, field.absorbNear,
-                                                     std::min(field.absorbBudget, roomArea));
+            const float cleared =
+                field.map.ClearFan(player.position, player.facing, field.absorbRange,
+                                   field.absorbFanDegrees * kRadiansPerDegree, field.absorbNear, field.absorbBudget);
             if (cleared <= 0.0f)
                 return;
             field.absorbBudget = std::max(0.0f, field.absorbBudget - cleared);
             field.absorbedAreaTotal += static_cast<double>(cleared);
             field.smokeGivenTotal += static_cast<double>(GourdRules::AddSmoke(gourd, cleared * perArea));
-            // 火を吸った：消した面積だけ火弾へ近づける（満杯で煙が増えなくても、消した火は数える）。
+            // 火を吸った：消した面積だけ火弾へ近づける（入りきらずに捨てた煙の分も、消した火は数える）。
             GourdRules::AddAbsorbedFireArea(gourd, cleared);
         });
     if (!handled)
