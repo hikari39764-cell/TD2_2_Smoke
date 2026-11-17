@@ -20,6 +20,18 @@ class GourdRules final {
     static float AddSmoke(GourdComponent& gourd, float amount);
     // ボスの斬撃・ナイフを count 個吸い取った。手応え（止め・振動・視野角・エフェクト）はヒョウタンが次の描画フレームで出す。
     static void NotifyCatch(GourdComponent& gourd, int count);
+    // 火弾（c-ad360d）：吸い込みで消した場の火の面積 (m²) を足す。ためた面積が fireShotTriggerArea に届くたびに、
+    // 火弾の残りを fireShotDuration へ戻す（延ばすだけで、それより多くは積まない）。満杯でも呼ばれれば効く。
+    static void AddAbsorbedFireArea(GourdComponent& gourd, float area);
+    // 火の刃（火を残す斬撃・ナイフ）を count 個吸い取った。1 つでも火弾の残りを fireShotDuration へ戻す。
+    static void NotifyFireCatch(GourdComponent& gourd, int count);
+    // 固定 tick ごとに火弾の残りを減らす（ヒットストップで固定 tick が止まる間は減らない）。0 になった tick に終わりを記録する。
+    static void StepFireShot(GourdComponent& gourd, float dt);
+    // いま撃てば火弾か（残りが 0 より大きい）。弾は発射の瞬間にこれで決め、飛んでいる間は変えない。
+    static bool IsFireShot(const GourdComponent& gourd);
+    // 火弾の残り秒数（火弾でなければ 0）と、戻す長さ（秒）。
+    static float GetFireShotSeconds(const GourdComponent& gourd);
+    static float GetFireShotDuration(const GourdComponent& gourd);
     static bool IsAbsorbing(const GourdComponent& gourd);
     // 構えか吸い込みの最中。この間は砲撃と回復を始めない（後隙は他の行動で打ち切れるので含まない）。
     static bool IsAbsorbCommitted(const GourdComponent& gourd);

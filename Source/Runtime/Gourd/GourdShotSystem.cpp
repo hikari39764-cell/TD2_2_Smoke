@@ -161,7 +161,7 @@ bool CanPay(GourdShotComponent& shot, const GourdComponent& gourd, const PlayerC
 }
 
 void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle player, Vec3 origin, Vec3 direction,
-                  float groundClearance) {
+                  float groundClearance, bool fire) {
     const int count = std::clamp(shot.pelletsPerShot, 1, static_cast<int>(kGourdProjectileCapacity));
     int pellet = 0;
     for (auto& projectile : shot.projectiles) {
@@ -185,6 +185,7 @@ void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle play
         projectile.speed = shot.initialSpeed;
         projectile.radius = shot.projectileRadius;
         projectile.groundClearance = groundClearance;
+        projectile.fire = fire;
         ++pellet;
     }
 }
@@ -200,6 +201,8 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     if (shot.smokeCost > 0.0f && !GourdRules::TryConsumeSmoke(gourd, shot.smokeCost))
         return false;
     const Vec3 direction = Aim(world, shot, gourd, player);
+    // 火弾かは発射の瞬間に決める（飛んでいる間にヒョウタンの火弾の状態が切れても、この弾は火弾のまま）。
+    const bool fire = GourdRules::IsFireShot(gourd);
     // 押し続けている間だけ連射が速くなる。構えからの一発目と、離した後の一発目は最初の間隔から。
     shot.chainShots = shot.phase == GourdShotPhase::Recovery && shot.chainHeld ? shot.chainShots + 1 : 1;
     shot.chainHeld = true;
@@ -209,7 +212,7 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     Vec3 ground{};
     const bool grounded =
         GourdShotFogReturn::FindGround(world, origin, shot.impactGroundReach, playerObject.GetHandle().value, ground);
-    SpawnPellets(shot, playerObject.GetHandle(), origin, direction, grounded ? origin.y - ground.y : -1.0f);
+    SpawnPellets(shot, playerObject.GetHandle(), origin, direction, grounded ? origin.y - ground.y : -1.0f, fire);
     GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
     GourdShotFogReturn::MarkFire(shot, origin, shot.muzzleFireFrames);
     PlayerRules::LockActions(player, shot.recoveryFrames);
@@ -230,14 +233,16 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     std::snprintf(
         message, sizeof(message),
         "Shot tick=%llu ordinal=%llu chain=%d pellets=%d staminaBefore=%.3f stamina=%.3f smokeBefore=%.6f smoke=%.6f "
-        "nextFireTick=%llu recoveryEnd=%llu position=(%.6f,%.6f,%.6f) direction=(%.6f,%.6f,%.6f)",
+        "nextFireTick=%llu recoveryEnd=%llu position=(%.6f,%.6f,%.6f) direction=(%.6f,%.6f,%.6f) fire=%d "
+        "fireSeconds=%.3f",
         static_cast<unsigned long long>(shot.processedTick), static_cast<unsigned long long>(shot.shotsFired),
         shot.chainShots, shot.pelletsPerShot, static_cast<double>(staminaBefore),
         static_cast<double>(PlayerRules::GetStamina(player)), static_cast<double>(smokeBefore),
         static_cast<double>(GourdRules::GetSmoke(gourd)), static_cast<unsigned long long>(shot.nextFireTick),
         static_cast<unsigned long long>(shot.recoveryEndTick), static_cast<double>(origin.x),
         static_cast<double>(origin.y), static_cast<double>(origin.z), static_cast<double>(direction.x),
-        static_cast<double>(direction.y), static_cast<double>(direction.z));
+        static_cast<double>(direction.y), static_cast<double>(direction.z), static_cast<int>(fire),
+        static_cast<double>(GourdRules::GetFireShotSeconds(gourd)));
     Log(shot, message);
     return true;
 }
@@ -383,17 +388,17 @@ bool ApplyHit(HIKARI::WorldView& world, uint64_t target, float amount, Vec3 dire
 void LogProjectile(const GourdShotComponent& shot, const GourdProjectile& projectile, const char* event,
                    uint64_t hitObject = 0, bool damageAccepted = false, float health = 0.0f) {
     char message[512]{};
-    std::snprintf(message, sizeof(message),
-                  "%s tick=%llu id=%llu distance=%.6f speed=%.6f radius=%.6f density=%.6f damage=%.6f "
-                  "hitObject=%llu damageAccepted=%d health=%.6f position=(%.6f,%.6f,%.6f)",
-                  event, static_cast<unsigned long long>(shot.processedTick),
-                  static_cast<unsigned long long>(projectile.id), static_cast<double>(projectile.distance),
-                  static_cast<double>(projectile.speed), static_cast<double>(projectile.radius),
-                  static_cast<double>(projectile.densityScale),
-                  static_cast<double>(GourdShotRules::GetDamageAtDistance(shot, projectile.distance)),
-                  static_cast<unsigned long long>(hitObject), static_cast<int>(damageAccepted),
-                  static_cast<double>(health), static_cast<double>(projectile.position.x),
-                  static_cast<double>(projectile.position.y), static_cast<double>(projectile.position.z));
+    std::snprintf(
+        message, sizeof(message),
+        "%s tick=%llu id=%llu distance=%.6f speed=%.6f radius=%.6f density=%.6f damage=%.6f fire=%d "
+        "hitObject=%llu damageAccepted=%d health=%.6f position=(%.6f,%.6f,%.6f)",
+        event, static_cast<unsigned long long>(shot.processedTick), static_cast<unsigned long long>(projectile.id),
+        static_cast<double>(projectile.distance), static_cast<double>(projectile.speed),
+        static_cast<double>(projectile.radius), static_cast<double>(projectile.densityScale),
+        static_cast<double>(GourdShotRules::GetProjectileDamage(shot, projectile)), static_cast<int>(projectile.fire),
+        static_cast<unsigned long long>(hitObject), static_cast<int>(damageAccepted), static_cast<double>(health),
+        static_cast<double>(projectile.position.x), static_cast<double>(projectile.position.y),
+        static_cast<double>(projectile.position.z));
     Log(shot, message);
 }
 
@@ -426,9 +431,8 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
     projectile.densityScale = GourdShotRules::GetDensityAtDistance(shot, projectile.distance);
     if (didHit) {
         float health = 0.0f;
-        const bool accepted =
-            ApplyHit(world, hit.objectHandle, GourdShotRules::GetDamageAtDistance(shot, projectile.distance),
-                     projectile.direction, health);
+        const bool accepted = ApplyHit(world, hit.objectHandle, GourdShotRules::GetProjectileDamage(shot, projectile),
+                                       projectile.direction, health);
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;

@@ -14,6 +14,8 @@ constexpr uint64_t kIdStaminaBack = 0x12;
 constexpr uint64_t kIdStamina = 0x13;
 constexpr uint64_t kIdSmokeBack = 0x14;
 constexpr uint64_t kIdSmoke = 0x15;
+constexpr uint64_t kIdFireShotBack = 0x16;
+constexpr uint64_t kIdFireShot = 0x17;
 constexpr uint64_t kIdBossBack = 0x20;
 constexpr uint64_t kIdBoss = 0x21;
 constexpr uint64_t kIdHealSquare = 0x100;
@@ -65,9 +67,17 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
     accepted = Bar(ui, flow, kIdStaminaBack, kIdStamina, flow.playerBarX, staminaY, flow.playerBarWidth,
                    flow.staminaBarHeight, Ratio(values.playerStamina, values.playerMaxStamina), flow.staminaColor) &&
                accepted;
+    // 火弾の間は、煙の条の色を変え、すぐ下に残り時間の細い条を出す（文字は出さない）。
+    const bool fireShot = values.fireShotSeconds > 0.0f;
     accepted = Bar(ui, flow, kIdSmokeBack, kIdSmoke, flow.playerBarX, smokeY, flow.playerBarWidth, flow.smokeBarHeight,
-                   Ratio(values.gourdSmoke, values.gourdCapacity), flow.smokeColor) &&
+                   Ratio(values.gourdSmoke, values.gourdCapacity), fireShot ? flow.fireSmokeColor : flow.smokeColor) &&
                accepted;
+    if (fireShot) {
+        accepted = Bar(ui, flow, kIdFireShotBack, kIdFireShot, flow.playerBarX,
+                       flow.playerBarBottom + flow.fireShotBarGap, flow.playerBarWidth, flow.fireShotBarHeight,
+                       Ratio(values.fireShotSeconds, values.fireShotDuration), flow.fireSmokeColor) &&
+                   accepted;
+    }
     for (int index = 0; index < values.healCharges; ++index) {
         const float x = flow.playerBarX + static_cast<float>(index) * (flow.healSquareSize + flow.barGap);
         accepted = Rect(ui, kIdHealSquare + static_cast<uint64_t>(index), kOrderFill, x, healY, flow.healSquareSize,

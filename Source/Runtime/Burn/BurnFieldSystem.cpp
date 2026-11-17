@@ -66,7 +66,7 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
     return seen;
 }
 
-// 吸い込み中のヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡す。
+// 吸い込み中のヒョウタンがあれば、プレイヤーの前の扇の火を近い順に消して、その面積ぶんの煙を渡し、火弾の元として数える。
 // 満杯でも火は消せる（煙は増えない）。ヒョウタンの「満杯でも吸う」（Gourd.absorbWhenFull）を切ると、満杯では消せない。
 // 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
 void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt,
@@ -102,6 +102,8 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
             field.absorbBudget = std::max(0.0f, field.absorbBudget - cleared);
             field.absorbedAreaTotal += static_cast<double>(cleared);
             field.smokeGivenTotal += static_cast<double>(GourdRules::AddSmoke(gourd, cleared * perArea));
+            // 火を吸った：消した面積だけ火弾へ近づける（満杯で煙が増えなくても、消した火は数える）。
+            GourdRules::AddAbsorbedFireArea(gourd, cleared);
         });
     if (!handled)
         field.absorbBudget = 0.0f;

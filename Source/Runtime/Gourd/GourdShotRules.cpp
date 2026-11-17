@@ -16,6 +16,11 @@ float GourdShotRules::GetDamageAtDistance(const GourdShotComponent& shot, float 
     return shot.damage * (1.0f - (1.0f - shot.finalDamageRatio) * GetFalloffFraction(shot, distance));
 }
 
+float GourdShotRules::GetProjectileDamage(const GourdShotComponent& shot, const GourdProjectile& projectile) {
+    return GetDamageAtDistance(shot, projectile.distance) *
+           (projectile.fire ? std::max(0.0f, shot.fireShotDamageScale) : 1.0f);
+}
+
 float GourdShotRules::GetSpeedAtDistance(const GourdShotComponent& shot, float distance) {
     const float ratio = std::clamp(distance / std::max(shot.range, 0.1f), 0.0f, 1.0f);
     return shot.initialSpeed * (1.0f - (1.0f - shot.finalSpeedRatio) * ratio);

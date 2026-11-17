@@ -92,6 +92,17 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "吸い続ける」を入れると、"
                     "吸い込みは続き、超過分は捨てます）。");
     }
+    if (fields.Section("火弾（火を吸った後）", true)) {
+        fields.Float("fireShotDuration", "火弾の長さ (秒。火を吸うたびに残りをこの長さへ戻す。0 は火弾にしない)",
+                     fireShotDuration, 0.0f, 600.0f);
+        fields.Float("fireShotTriggerArea", "場の火をこれだけ吸うたびに火弾の残りを戻す (m²)", fireShotTriggerArea,
+                     0.0f, 1000.0f);
+        fields.Note("吸い込みで場の火を消すか、ボスの火の刃（火を残す斬撃・ナイフ）を吸い取ると、しばらく撃つ弾が火弾に"
+                    "なります（威力の倍率は砲撃の「火弾の威力の倍率」）。霞の刃では火弾になりません。"
+                    "吸い続けている間は残りが長さへ戻り続け、長さを超えては積まれません。"
+                    "満杯でも火は吸える（「満杯でも霧を吸い続ける」が入っている時）ので、満杯でも火弾になります。"
+                    "残りは固定 tick で減り、ヒットストップの間は減りません。");
+    }
     if (fields.Section("吸い込みの演出と手応え")) {
         fields.Vfx("absorbEffect", "口の流体エフェクト（吸い込みの霧の筋）", absorbEffect);
         fields.Float("absorbEffectScale", "口のエフェクトの源の大きさ倍率（0 は無効）", absorbEffectScale, 0.0f, 8.0f);
@@ -150,6 +161,8 @@ void GourdComponent::Update(HIKARI::GameComponentContext& context, float) {
     ObjectVariables::PublishFloat(context, category, kGourdSmokeVariable, GourdRules::GetSmoke(*this),
                                   variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kGourdCapacityVariable, GourdRules::GetCapacity(*this),
+                                  variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kGourdFireShotVariable, GourdRules::GetFireShotSeconds(*this),
                                   variableWriteWarned);
 }
 

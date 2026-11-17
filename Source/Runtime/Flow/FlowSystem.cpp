@@ -11,6 +11,7 @@
 #include "../Boss/BossRules.h"
 #include "../Common/ObjectVariables.h"
 #include "../Gourd/GourdComponent.h"
+#include "../Gourd/GourdRules.h"
 #include "../Player/PlayerComponent.h"
 #include "FlowComponent.h"
 #include "FlowHud.h"
@@ -41,6 +42,8 @@ struct Actors {
     HIKARI::GameProjectObjectHandle player{};
     HIKARI::GameProjectObjectHandle boss{};
     HIKARI::GameProjectObjectHandle gourd{};
+    // 火弾の長さ（HUD の残り時間の条の分母）。物体変数は残り秒だけなので、長さは部品の項目から読む。
+    float fireShotDuration = 0.0f;
 };
 
 Actors FindActors(HIKARI::WorldView& world) {
@@ -51,9 +54,11 @@ Actors FindActors(HIKARI::WorldView& world) {
                                                     actors.player = object.GetHandle();
                                             });
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView object, GourdComponent&) {
-                                               if (actors.gourd.value == 0)
-                                                   actors.gourd = object.GetHandle();
+                                           [&](HIKARI::ObjectView object, GourdComponent& gourd) {
+                                               if (actors.gourd.value != 0)
+                                                   return;
+                                               actors.gourd = object.GetHandle();
+                                               actors.fireShotDuration = GourdRules::GetFireShotDuration(gourd);
                                            });
     world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType),
                                           [&](HIKARI::ObjectView object, BossComponent&) {
@@ -155,6 +160,8 @@ FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors
     ObjectVariables::ReadFloat(world, actors.player, kPlayerBurnVariable, values.playerBurn);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdSmokeVariable, values.gourdSmoke);
     ObjectVariables::ReadFloat(world, actors.gourd, kGourdCapacityVariable, values.gourdCapacity);
+    ObjectVariables::ReadFloat(world, actors.gourd, kGourdFireShotVariable, values.fireShotSeconds);
+    values.fireShotDuration = actors.fireShotDuration;
     ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);
     ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, values.bossMaxHealth);
     return values;

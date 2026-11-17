@@ -41,6 +41,9 @@ public:
     float smokeBarHeight = 16.0f;
     float healSquareSize = 20.0f;
     float barGap = 10.0f;
+    // 火弾の残り時間の細い条（煙の条のすぐ下。火弾の間だけ出す）の太さと、煙の条との間。
+    float fireShotBarHeight = 5.0f;
+    float fireShotBarGap = 3.0f;
     // ボスの HP の帯は画面の上の中央。
     float bossBarWidth = 960.0f;
     float bossBarHeight = 22.0f;
@@ -54,6 +57,8 @@ public:
     HIKARI::GameProjectFloat3 staminaColor{0.25f, 0.75f, 0.28f};
     HIKARI::GameProjectFloat3 healColor{0.85f, 0.85f, 0.55f};
     HIKARI::GameProjectFloat3 smokeColor{0.45f, 0.65f, 0.68f};
+    // 火弾の間（Gourd.FireShot が 0 より大きい間）の煙の条と、残り時間の条の色。切れたら smokeColor へ戻る。
+    HIKARI::GameProjectFloat3 fireSmokeColor{1.0f, 0.45f, 0.1f};
     HIKARI::GameProjectFloat3 bossColor{0.5f, 0.05f, 0.07f};
 
     // 実行時の状態は保存しない。

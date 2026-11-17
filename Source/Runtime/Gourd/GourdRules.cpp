@@ -2,8 +2,37 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+
+#include "HIKARI/Project/ProjectLog.h"
 
 namespace Project_TD2_2 {
+namespace {
+
+// 火弾の始まり・延長・終わりを記録する（見た目のカード c-5d738d と確かめが読む）。cause は fire（場の火）・blade（火の刃）・
+// time（時間切れ）。before は変わる前の残り秒。
+void LogFireShot(const GourdComponent& gourd, const char* event, const char* cause, float before) {
+    char message[224]{};
+    std::snprintf(message, sizeof(message),
+                  "FireShot tick=%llu event=%s cause=%s remaining=%.3f before=%.3f duration=%.3f areaPending=%.3f",
+                  static_cast<unsigned long long>(gourd.processedTick), event, cause,
+                  static_cast<double>(gourd.fireShotSeconds), static_cast<double>(before),
+                  static_cast<double>(GourdRules::GetFireShotDuration(gourd)),
+                  static_cast<double>(gourd.fireAreaPending));
+    HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
+}
+
+// 残りを fireShotDuration へ戻す（短い残りを延ばすだけ。それより長くは積まない）。
+void RefreshFireShot(GourdComponent& gourd, const char* cause) {
+    const float duration = GourdRules::GetFireShotDuration(gourd);
+    if (!(duration > 0.0f))
+        return;
+    const float before = gourd.fireShotSeconds;
+    gourd.fireShotSeconds = std::max(before, duration);
+    LogFireShot(gourd, before > 0.0f ? "extend" : "start", cause, before);
+}
+
+} // namespace
 
 void GourdRules::Initialize(GourdComponent& gourd) {
     if (gourd.initialized)
@@ -50,6 +79,36 @@ void GourdRules::NotifyCatch(GourdComponent& gourd, int count) {
     if (count > 0)
         gourd.catchCount += static_cast<uint64_t>(count);
 }
+
+void GourdRules::AddAbsorbedFireArea(GourdComponent& gourd, float area) {
+    if (!std::isfinite(area) || area <= 0.0f)
+        return;
+    const float trigger = std::max(0.0f, gourd.fireShotTriggerArea);
+    gourd.fireAreaPending += area;
+    if (gourd.fireAreaPending < trigger)
+        return;
+    // 1 tick に何度届いても、戻すのは 1 回（残りは長さより多く積まない）。届かなかった端数は次へ持ち越す。
+    gourd.fireAreaPending = trigger > 0.0f ? std::fmod(gourd.fireAreaPending, trigger) : 0.0f;
+    RefreshFireShot(gourd, "fire");
+}
+
+void GourdRules::NotifyFireCatch(GourdComponent& gourd, int count) {
+    if (count > 0)
+        RefreshFireShot(gourd, "blade");
+}
+
+void GourdRules::StepFireShot(GourdComponent& gourd, float dt) {
+    if (!(gourd.fireShotSeconds > 0.0f) || !(dt > 0.0f))
+        return;
+    const float before = gourd.fireShotSeconds;
+    gourd.fireShotSeconds = std::max(0.0f, before - dt);
+    if (gourd.fireShotSeconds <= 0.0f)
+        LogFireShot(gourd, "end", "time", before);
+}
+
+bool GourdRules::IsFireShot(const GourdComponent& gourd) { return gourd.fireShotSeconds > 0.0f; }
+float GourdRules::GetFireShotSeconds(const GourdComponent& gourd) { return std::max(0.0f, gourd.fireShotSeconds); }
+float GourdRules::GetFireShotDuration(const GourdComponent& gourd) { return std::max(0.0f, gourd.fireShotDuration); }
 
 bool GourdRules::IsAbsorbing(const GourdComponent& gourd) { return gourd.absorbing; }
 bool GourdRules::IsAbsorbCommitted(const GourdComponent& gourd) {

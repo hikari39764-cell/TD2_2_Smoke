@@ -17,6 +17,9 @@ struct FlowHudValues {
     float playerBurn = 0.0f;
     float gourdSmoke = 0.0f;
     float gourdCapacity = 0.0f;
+    // 火弾の残り秒数（火弾でなければ 0）と、火弾の長さ（残りの条の分母。ヒョウタンの fireShotDuration）。
+    float fireShotSeconds = 0.0f;
+    float fireShotDuration = 0.0f;
     float bossHealth = 0.0f;
     float bossMaxHealth = 0.0f;
 };
@@ -24,7 +27,7 @@ struct FlowHudValues {
 // 文字の無い試験用 HUD。矩形（単色の画像）だけを毎フレーム出す。
 class FlowHud final {
 public:
-    // プレイヤーの 4 つの条（HP・スタミナ・回復の残り・煙）。出せなかった矩形があれば false。
+    // プレイヤーの 4 つの条（HP・スタミナ・回復の残り・煙）と、火弾の間だけ煙の下の残り時間の条。出せなかった矩形があれば false。
     static bool DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values);
     // ボスの HP の条（画面の上の中央）。
     static bool DrawBoss(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values);

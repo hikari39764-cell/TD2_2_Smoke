@@ -38,6 +38,8 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     if (fields.Section("弾の数値", true)) {
         fields.Float("damage", "基礎威力", damage, 0.0f, 100000.0f);
+        fields.Float("fireShotDamageScale", "火弾の威力の倍率（火を吸った後、ヒョウタンが火弾の間に撃った弾）",
+                     fireShotDamageScale, 0.0f, 100.0f);
         fields.Float("initialSpeed", "初速 (m/s)", initialSpeed, 0.1f, 1000.0f);
         fields.Float("range", "霧散する距離 (m)", range, 0.1f, 1000.0f);
         fields.Float("falloffStart", "威力・大きさ・濃さの減衰開始 (m)", falloffStart, 0.0f, 1000.0f);

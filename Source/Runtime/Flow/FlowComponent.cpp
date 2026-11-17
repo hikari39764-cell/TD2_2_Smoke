@@ -28,6 +28,9 @@ void FlowComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("smokeBarHeight", "煙の量の条の太さ", smokeBarHeight, 1.0f, 200.0f, 1.0f);
         fields.Float("healSquareSize", "回復の残り回数の印の一辺", healSquareSize, 1.0f, 200.0f, 1.0f);
         fields.Float("barGap", "条と条の間", barGap, 0.0f, 100.0f, 1.0f);
+        fields.Float("fireShotBarHeight", "火弾の残り時間の条の太さ（煙の条のすぐ下）", fireShotBarHeight, 1.0f, 100.0f,
+                     1.0f);
+        fields.Float("fireShotBarGap", "…煙の条との間", fireShotBarGap, 0.0f, 100.0f, 1.0f);
         fields.Float("bossBarWidth", "ボスの HP の条の長さ（画面の上の中央）", bossBarWidth, 10.0f, 1920.0f, 1.0f);
         fields.Float("bossBarHeight", "ボスの HP の条の太さ", bossBarHeight, 1.0f, 200.0f, 1.0f);
         fields.Float("bossBarTop", "ボスの HP の条の上端 Y", bossBarTop, 0.0f, 1080.0f, 1.0f);
@@ -38,9 +41,12 @@ void FlowComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Color3("staminaColor", "スタミナの色", staminaColor);
         fields.Color3("healColor", "回復の残り回数の印の色", healColor);
         fields.Color3("smokeColor", "煙の量の色", smokeColor);
+        fields.Color3("fireSmokeColor", "火弾の間の煙の量の色（残り時間の条も同じ色）", fireSmokeColor);
         fields.Color3("bossColor", "ボスの HP の色", bossColor);
         fields.Note("値は物体変数（Player.*・Gourd.*・Boss.*）から読みます。文字・数字・絵は出しません。"
-                    "回復の印は、残っている回数だけ並びます。");
+                    "回復の印は、残っている回数だけ並びます。"
+                    "火弾の間（Gourd.FireShot が 0 より大きい間）は、煙の条の色が変わり、すぐ下に残り時間の条が"
+                    "出て減っていきます（残り ÷ ヒョウタンの火弾の長さ）。");
     }
 }
 

@@ -281,8 +281,7 @@ void BossWaves::Step(BossFrame& frame) {
         // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに吸われて消える（振っている剣そのものは吸えない）。
         const Vec3 edge = Mul(wave.across, wave.width * 0.5f);
         if (!wave.done && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
-            boss.absorbedSmoke += wave.absorbSmoke;
-            ++boss.absorbedWavesPending;
+            DeliverCatch(boss, wave);
             LogWave(boss, wave, "WaveAbsorbed");
             wave.active = false;
             continue;
@@ -402,6 +401,13 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
     target->smokeLeft = smoke;
     target->smokePerFrame = smoke * perFrameShare;
     target->waitFrames = std::max(0, waitFrames);
+}
+
+void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
+    boss.caught.smoke += wave.absorbSmoke;
+    ++boss.caught.count;
+    if (wave.fire)
+        ++boss.caught.fireCount;
 }
 
 void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {

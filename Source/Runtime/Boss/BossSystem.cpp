@@ -483,8 +483,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                      (gourd.absorbWhenFull ||
                       GourdRules::HasRoomToAbsorb(gourd)));
     });
-    float absorbed = 0.0f;
-    int caught = 0;
+    BossCatchHandoff caught;
     world.ForEachComponent<BossComponent>(
         HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
             if (!boss.initialized)
@@ -568,25 +567,27 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 withHealth(nullptr, {});
                 BossClones::Step(world, object, boss, nullptr, {});
             }
-            absorbed += boss.absorbedSmoke;
-            boss.absorbedSmoke = 0.0f;
-            caught += boss.absorbedWavesPending;
-            boss.absorbedWavesPending = 0;
+            // 吸い取った斬撃・ナイフの渡し分を、ボスごとに集めて空にする（渡すのは下でまとめて 1 回）。
+            caught.smoke += boss.caught.smoke;
+            caught.count += boss.caught.count;
+            caught.fireCount += boss.caught.fireCount;
+            boss.caught = {};
         });
-    if (absorbed <= 0.0f && caught == 0)
+    if (caught.smoke <= 0.0f && caught.count == 0)
         return;
     world.ForEachComponent<GourdComponent>(
         HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
             // 吸った合図は、ヒョウタン自身が次の描画フレームで見せる（ボスはカメラに触れない）。
-            GourdRules::NotifyCatch(gourd, caught);
-            caught = 0;
-            const float added = GourdRules::AddSmoke(gourd, absorbed);
-            char message[160]{};
-            std::snprintf(message, sizeof(message), "AbsorbSmoke amount=%.3f added=%.3f smoke=%.3f",
-                          static_cast<double>(absorbed), static_cast<double>(added),
-                          static_cast<double>(GourdRules::GetSmoke(gourd)));
+            GourdRules::NotifyCatch(gourd, caught.count);
+            // 火の刃を吸い取ったら火弾になる（満杯で煙が入らなくても）。
+            GourdRules::NotifyFireCatch(gourd, caught.fireCount);
+            const float added = GourdRules::AddSmoke(gourd, caught.smoke);
+            char message[192]{};
+            std::snprintf(message, sizeof(message), "AbsorbSmoke amount=%.3f added=%.3f smoke=%.3f caught=%d fire=%d",
+                          static_cast<double>(caught.smoke), static_cast<double>(added),
+                          static_cast<double>(GourdRules::GetSmoke(gourd)), caught.count, caught.fireCount);
             BossLog::Write(message);
-            absorbed = 0.0f;
+            caught = {};
         });
 }
 

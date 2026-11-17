@@ -130,6 +130,16 @@ struct BossBlast {
     HIKARI::GameProjectFloat3 direction{};
 };
 
+// 吸い込みで吸い取った斬撃・ナイフのうち、まだヒョウタンへ渡していない分。ボスはヒョウタンの中身を直に書き換えず、
+// tick の終わりに BossSystem がまとめて渡す（煙・手応えの数・火弾の知らせ）。
+struct BossCatchHandoff {
+    // ヒョウタンへ入る煙（Boss.waveAbsorbSmoke・knifeAbsorbSmoke の合計）。
+    float smoke = 0.0f;
+    // 吸い取った数（ヒョウタンの手応え）と、そのうちの火の刃（火を残す斬撃・ナイフ。火弾の状態にする）の数。
+    int count = 0;
+    int fireCount = 0;
+};
+
 // 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡・爆発の跡）。
 struct BossSmokeDeposit {
     bool active = false;
@@ -1021,10 +1031,9 @@ public:
     // いまの技のどれかの一撃が、いまのフェーズで火を残す＝この技の間は剣が燃えている。技を始めた tick に決め、
     // 待機へ戻る・打ち切られる（気絶・崩れ・撃破）まで保つ。規則は読まず、見た目（BossVisuals）が読む。
     bool bladeLit = false;
-    // 吸い込みで吸われた斬撃・ナイフの煙（この tick にヒョウタンへ渡す）。
-    float absorbedSmoke = 0.0f;
-    // この tick に吸われた斬撃・ナイフの数。BossSystem がヒョウタンへ知らせたら消す。
-    int absorbedWavesPending = 0;
+    // 吸い込みで吸い取られた斬撃・ナイフの、ヒョウタンへの渡し分（BossWaves::DeliverCatch が足し、tick の終わりに
+    // BossSystem が渡して空にする）。
+    BossCatchHandoff caught;
     // 気絶
     float stun = 0.0f;
     int stunCount = 0;

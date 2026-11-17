@@ -13,6 +13,8 @@ inline constexpr std::string_view kGourdSystem = "Project_TD2_2.GourdSystem";
 // 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
 inline constexpr std::string_view kGourdSmokeVariable = "Gourd.Smoke";
 inline constexpr std::string_view kGourdCapacityVariable = "Gourd.Capacity";
+// 火弾の残り秒数（火弾でなければ 0）。HUD が読む。
+inline constexpr std::string_view kGourdFireShotVariable = "Gourd.FireShot";
 
 // 吸い込みの段階：構え（吸う力はまだ出ない）→ 吸う → 後隙。どの段階でもゆっくり歩けて、向きも変えられる。
 // ローリングはどの段階でも出せて、吸い込みを後隙なしで打ち切る。
@@ -98,6 +100,10 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // 吸い取った時、飲み込んだようにヒョウタンが一度膨らんで戻る（膨らむ割合と、戻るまでの秒）。
     float catchPulseScale = 0.4f;
     float catchPulseSeconds = 0.18f;
+    // 火弾：場の火・火の刃を吸うと、しばらく撃つ弾が火弾になる（c-ad360d。威力は GourdShot.fireShotDamageScale）。
+    // 吸い込みで消した場の火の面積が fireShotTriggerArea に届くたびと、火の刃を吸い取るたびに、残りを fireShotDuration へ戻す。
+    float fireShotDuration = 8.0f;
+    float fireShotTriggerArea = 0.5f;
     int traceEveryFrames = 0;
 
     // 累積回読値と所持量は別々に持ち、消費や容量超過を次の回読で戻さない。
@@ -155,6 +161,10 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // 力ごとに差を取るので、力の数が変わっても（輪の数を実行中に変えた時など）古い累計を二重に数えない。
     std::array<double, 24> removedByForce{};
     double removedSum = 0.0;
+    // 火弾の残り秒数（0 より大きい間が火弾の状態。固定 tick で減る）と、まだ fireShotTriggerArea に届いていない、
+    // 吸い込みで消した場の火の面積 (m²)。
+    float fireShotSeconds = 0.0f;
+    float fireAreaPending = 0.0f;
 };
 
 } // namespace Project_TD2_2

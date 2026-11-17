@@ -83,6 +83,15 @@
       }
     },
     {
+      "id": "Gourd.FireShot",
+      "name": "Gourd Fire Shot",
+      "description": "ヒョウタンの火弾の残り秒数。火弾でなければ 0。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
       "id": "Boss.Health",
       "name": "Boss Health",
       "description": "ボスの現在の HP（点）。",

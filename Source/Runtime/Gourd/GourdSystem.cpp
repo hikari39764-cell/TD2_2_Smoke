@@ -223,6 +223,8 @@ void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const Gour
     float varCapacity = 0.0f;
     bool varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdSmokeVariable, varSmoke);
     varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdCapacityVariable, varCapacity) && varsRead;
+    float varFireShot = 0.0f;
+    varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdFireShotVariable, varFireShot) && varsRead;
     char message[1024]{};
     std::snprintf(
         message, sizeof(message),
@@ -234,7 +236,7 @@ void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const Gour
         "readAccepted=%d "
         "recoilOffset=(%.6f,%.6f,%.6f) recoilFramesLeft=%d fluidSubmissions=%u "
         "gatherStrength=%.3f intake=%.3f phase=%d phaseFrames=%d buffer=%d "
-        "varsRead=%d varSmoke=%.3f varCapacity=%.3f",
+        "varsRead=%d varSmoke=%.3f varCapacity=%.3f fireShot=%.3f varFireShot=%.3f",
         static_cast<unsigned long long>(gourd.processedTick), static_cast<unsigned long long>(gourd.renderFrameCount),
         static_cast<unsigned long long>(object.GetSceneObjectId()), static_cast<double>(GourdRules::GetSmoke(gourd)),
         static_cast<double>(GourdRules::GetCapacity(gourd)), gourd.lastRemovedTotal, gourd.removedDelta,
@@ -248,7 +250,8 @@ void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const Gour
         static_cast<double>(gourd.recoilOffset.y), static_cast<double>(gourd.recoilOffset.z), gourd.recoilFramesLeft,
         gourd.fluidSubmissions, static_cast<double>(gourd.gatherStrength), static_cast<double>(gourd.intakeRate),
         static_cast<int>(gourd.absorbPhase), gourd.absorbPhaseFrames, gourd.absorbBuffer, static_cast<int>(varsRead),
-        static_cast<double>(varSmoke), static_cast<double>(varCapacity));
+        static_cast<double>(varSmoke), static_cast<double>(varCapacity),
+        static_cast<double>(GourdRules::GetFireShotSeconds(gourd)), static_cast<double>(varFireShot));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Gourd", message);
 }
 
@@ -279,6 +282,7 @@ void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
                                                StepAbsorb(world, gourd);
                                                if (gourd.enabled && frame.fixedDt > 0.0f)
                                                    StepRecoil(gourd, frame.fixedDt);
+                                               GourdRules::StepFireShot(gourd, frame.fixedDt);
                                            });
 }
 

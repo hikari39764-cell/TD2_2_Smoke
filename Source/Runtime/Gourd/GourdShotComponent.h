@@ -37,6 +37,9 @@ struct GourdProjectile {
     float speed = 0.0f;
     float radius = 0.0f;
     float densityScale = 1.0f;
+    // 火弾（ヒョウタンが火弾の状態の間に撃った弾）。発射の瞬間に決め、飛んでいる間に状態が切れても火弾のまま。
+    // 威力に GourdShot.fireShotDamageScale を掛ける。火弾の見た目（c-5d738d）はこの印を読む。
+    bool fire = false;
     // 発射した高さ（地面から）。負は地面が見つからなかった。足元の霧を割る位置に使う。
     float groundClearance = -1.0f;
     HIKARI::GameProjectVfxPlaybackHandle trail{};
@@ -127,6 +130,8 @@ public:
     int gourdRecoilFrames = 8;
     float gourdWindupPull = 0.14f;
     float damage = 40.0f;
+    // 火弾の威力の倍率（ヒョウタンの火弾の状態の間に撃った弾。c-ad360d）。
+    float fireShotDamageScale = 1.5f;
     float initialSpeed = 60.0f;
     float range = 15.0f;
     float falloffStart = 10.0f;

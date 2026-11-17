@@ -8,6 +8,8 @@ class GourdShotRules final {
 public:
     static float GetFalloffFraction(const GourdShotComponent& shot, float distance);
     static float GetDamageAtDistance(const GourdShotComponent& shot, float distance);
+    // 弾がいまの距離で当たった時の威力（距離での減り × 火弾なら fireShotDamageScale）。
+    static float GetProjectileDamage(const GourdShotComponent& shot, const GourdProjectile& projectile);
     static float GetSpeedAtDistance(const GourdShotComponent& shot, float distance);
     static float GetRadiusAtDistance(const GourdShotComponent& shot, float distance);
     static float GetDensityAtDistance(const GourdShotComponent& shot, float distance);
