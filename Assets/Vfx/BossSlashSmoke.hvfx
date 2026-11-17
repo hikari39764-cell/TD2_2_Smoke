@@ -305,7 +305,8 @@
           "substepRate": 60.0,
           "temperatureDissipation": 4.0,
           "vorticity": 8.0,
-          "weight": 0.0
+          "weight": 0.0,
+          "channel": "Channel3"
         },
         "forces": {
           "collisionPlaneEnabled": false,

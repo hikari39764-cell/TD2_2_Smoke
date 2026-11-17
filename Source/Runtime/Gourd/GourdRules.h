@@ -20,6 +20,11 @@ class GourdRules final {
     static float AddSmoke(GourdComponent& gourd, float amount);
     // ボスの斬撃・ナイフを count 個吸い取った。手応え（止め・振動・視野角・エフェクト）はヒョウタンが次の描画フレームで出す。
     static void NotifyCatch(GourdComponent& gourd, int count);
+    // ボスの斬撃・ナイフを口へ引き込んでいる（毎 tick 呼ぶ）。呼ばれなくなってから swallowTailFrames の間まで、
+    // 吸い込みをやめていても、口が飲み込み続ける（口の力と見た目）。
+    static void NotifySwallowing(GourdComponent& gourd);
+    static void StepSwallow(GourdComponent& gourd);
+    static bool IsSwallowing(const GourdComponent& gourd);
     // 火弾（c-ad360d）：吸い込みで消した場の火の面積 (m²) を足す。ためた面積が fireShotTriggerArea に届くたびに、
     // 火弾の残りを fireShotDuration へ戻す（延ばすだけで、それより多くは積まない）。満杯でも呼ばれれば効く。
     static void AddAbsorbedFireArea(GourdComponent& gourd, float area);

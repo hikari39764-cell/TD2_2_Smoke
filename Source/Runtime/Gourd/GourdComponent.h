@@ -89,6 +89,9 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // ボスの斬撃・ナイフを吸い取った瞬間の手応え（c-d330c0）。止め・手柄の振動・視野角の引き。
     int catchHitStopFrames = 3;
     float catchHitStopScale = 0.05f;
+    // 続けて吸い取った時（X 字の 2 本・ナイフの扇が順に入る）、止めを重ねない間隔。この間の吸い取りは、止め以外の
+    // 手応え（エフェクト・振動・画角・膨らみ）だけ出す。
+    int catchHitStopCooldownFrames = 20;
     float catchRumbleLow = 0.5f;
     float catchRumbleHigh = 0.8f;
     int catchRumbleFrames = 6;
@@ -100,6 +103,15 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // 吸い取った時、飲み込んだようにヒョウタンが一度膨らんで戻る（膨らむ割合と、戻るまでの秒）。
     float catchPulseScale = 0.4f;
     float catchPulseSeconds = 0.18f;
+    // 捕まえた斬撃を飲み込む口の力（c-3341a7）：斬撃のエフェクトの域（Channel3）だけに届き、口へ寄せて消す。
+    // 消した霧は煙に数えない（斬撃の煙は、ボスの項目 waveAbsorbSmoke の決まった量で入る）。
+    // 口元の吸い口：半径の面から swallowStrength m/s で吸い込む（外の霧は、距離の 2 乗に反比例する速さで口へ流れる。
+    // 半径 1.5 m・80 m/s なら、5 m 先の霧が約 0.2 秒で届く）。半径の中の霧は swallowAbsorption で消える。
+    float swallowRadius = 1.5f;
+    float swallowStrength = 80.0f;
+    float swallowAbsorption = 40.0f;
+    // 最後の斬撃が入りきった後も、口が飲み込み続ける長さ (F。残った霧を消し、口の見た目を保つ)。
+    int swallowTailFrames = 24;
     // 火弾：場の火・火の刃を吸うと、しばらく撃つ弾が火弾になる（c-ad360d。威力は GourdShot.fireShotDamageScale）。
     // 吸い込みで消した場の火の面積が fireShotTriggerArea に届くたびと、火の刃を吸い取るたびに、残りを fireShotDuration へ戻す。
     float fireShotDuration = 8.0f;
@@ -148,6 +160,10 @@ class GourdComponent final : public HIKARI::IGameComponent {
     // 吸い取った数の累計（ボスの規則が増やす）と、手応えを出し終えた分。差が出たら次の描画フレームで見せる。
     uint64_t catchCount = 0;
     uint64_t catchObservedCount = 0;
+    // 次の止めを出せるまでの残り（実時間の秒）。
+    float catchStopCooldown = 0.0f;
+    // 口が斬撃を飲み込んでいる残りの tick（ボスの規則が、引き込みの間は毎 tick 入れ直す）。
+    int swallowFrames = 0;
     // 膨らみを出し終えた分と、膨らみの残り秒。
     uint64_t catchPulseObserved = 0;
     float catchPulseLeft = 0.0f;

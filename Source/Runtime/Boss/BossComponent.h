@@ -54,6 +54,21 @@ struct BossWave {
     bool done = false;
     // プレイヤーに当たった（エフェクトが刃を砕けさせる）。
     bool struck = false;
+    // 吸い込みに捕まった：もう当たらず、火も残り煙も置かず、ヒョウタンの口へ引き込まれる。入りきった tick に、煙と
+    // 吸い取りの知らせを渡して消える（途中で吸い込みをやめても最後まで進む）。
+    bool captured = false;
+    // 捕まってからの tick と、入りきるまでの tick（同時に捕まえた分は、数 F ずつ遅らせて順に入れる）。
+    int pullFrame = 0;
+    int pullFrames = 0;
+    // 捕まった時の位置・飛ぶ向き・幅の向き・幅。巻き込む向き（+1／−1）と、口へ向ける端（幅の向きの +1／−1 の側）。
+    HIKARI::GameProjectFloat3 pullFrom{};
+    HIKARI::GameProjectFloat3 pullDirection{0.0f, 0.0f, 1.0f};
+    HIKARI::GameProjectFloat3 pullAcross{1.0f, 0.0f, 0.0f};
+    float pullWidth = 0.0f;
+    float pullSide = 1.0f;
+    float pullTip = 1.0f;
+    // tick の始めの位置（引き込みの間、描画のフレームは前の tick との間を補間して置く）。
+    HIKARI::GameProjectFloat3 previousPosition{};
     bool blow = false;
     int move = -1;
     int strike = 0;
@@ -99,6 +114,15 @@ struct BossSlashEffect {
     uint64_t waveId = 0;
     bool flying = false;
     bool struck = false;
+    // 吸い込みに捕まって、口へ引き込まれている（入りきった後は、その場で短く消える）。
+    bool captured = false;
+    // 刃の霧の源の量（1＝飛んでいる時。引き込みの間は弱める）と、幅のほかの向きを細くする倍率（1＝そのまま）。
+    float fly = 1.0f;
+    float pinch = 1.0f;
+    // 引き込みの進み（0〜1。入りきった後は 1）と、捕まった時の幅の向き・幅（域に残った両翼の霧を口へ押し寄せるのに使う）。
+    float pullProgress = 0.0f;
+    HIKARI::GameProjectFloat3 pullAcross{1.0f, 0.0f, 0.0f};
+    float pullWidth = 0.0f;
     float fadeSeconds = 0.0f;
     float impactSeconds = 0.0f;
     // 光の層の大きさ（1＝出ている、0＝消えた）。刃を出すのをやめたら数フレームで 0 へ縮める。
@@ -805,6 +829,24 @@ public:
     float absorbCatchRange = 5.0f;
     float absorbCatchAngle = 60.0f;
     float absorbCatchNear = 1.5f;
+    // 捕まえた斬撃・ナイフを、ヒョウタンの口へ引き込む（c-3341a7）。入りきるまでの tick、初めゆっくり・終わり速くの強さ、
+    // 巻き込む弧（出だしの向きを口への線から横へ振る角度）、入りきる時の大きさ、同時に捕まえた分を順に入れる間隔。
+    int absorbPullFrames = 18;
+    int knifePullFrames = 10;
+    float absorbPullEasePower = 2.0f;
+    float absorbPullSwirlDegrees = 30.0f;
+    float absorbPullEndScale = 0.12f;
+    int absorbPullStaggerFrames = 3;
+    // 斬撃の三日月の端を口へ向ける割合（0＝向きを変えない、1＝端を口へ向けきる）。
+    float absorbPullTurn = 0.0f;
+    // 引き込みの見た目：刃の霧の源の量（飛んでいる時を 1 として）、幅のほかの向き（厚み・前後）を細くする倍率、
+    // 入りきった後に残った霧と光が消えるまで（秒）。
+    float absorbPullFly = 0.6f;
+    float absorbPullPinch = 0.45f;
+    float absorbPullFadeSeconds = 0.3f;
+    // 域に残った三日月の両翼の霧を、刃の中心（口）へ押し寄せる力の強さ (m/s²) と半径 (m)。引き込みが進むほど強くなる。
+    float absorbPullSqueeze = 700.0f;
+    float absorbPullSqueezeRadius = 3.5f;
     // 外形（刀・手・鎧の模型）。置き場所の規則は BossBodyRig、出す所は BossBodyVisuals。
     BossBodySettings body;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。

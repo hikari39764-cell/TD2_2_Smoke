@@ -125,11 +125,17 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
 // ボスの斬撃・ナイフを吸い取った瞬間の手応え。視野角だけを引き、揺れと押しは出さない（吸い込みの寄りと喧嘩しない）。
 void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
                const HIKARI::FrameContext& frame) {
+    gourd.catchStopCooldown = std::max(0.0f, gourd.catchStopCooldown - std::max(0.0f, frame.unscaledDt));
     if (gourd.catchObservedCount != gourd.catchCount) {
         gourd.catchObservedCount = gourd.catchCount;
         const uint64_t owner = object.GetHandle().value;
-        const uint64_t token = Feedback::RequestHitStop(world, kCatchHitStopSource ^ owner, Feedback::kCatchPriority,
-                                                        gourd.catchHitStopFrames, gourd.catchHitStopScale);
+        // 続けて入る間（X 字の 2 本・ナイフの扇）は、止めを重ねない。ほかの手応えは 1 つごとに出す。
+        uint64_t token = 0;
+        if (gourd.catchStopCooldown <= 0.0f) {
+            token = Feedback::RequestHitStop(world, kCatchHitStopSource ^ owner, Feedback::kCatchPriority,
+                                             gourd.catchHitStopFrames, gourd.catchHitStopScale);
+            gourd.catchStopCooldown = static_cast<float>(std::max(0, gourd.catchHitStopCooldownFrames)) / 60.0f;
+        }
         const bool rumble =
             Feedback::Rumble(world, gourd.catchRumbleLow, gourd.catchRumbleHigh, gourd.catchRumbleFrames);
         Feedback::CameraShakeParams shake{};

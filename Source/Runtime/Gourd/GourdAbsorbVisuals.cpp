@@ -111,7 +111,9 @@ void UpdateRumble(HIKARI::WorldView& world, GourdComponent& gourd, bool absorbin
 void GourdAbsorbVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
                                 const HIKARI::FrameContext& frame) {
     const bool absorbing = gourd.enabled && gourd.absorbing && gourd.poseInitialized;
-    UpdateEffect(world, object, gourd, absorbing, frame);
+    // 捕まえた斬撃を飲み込んでいる間は、吸い込みをやめていても口のエフェクトを保つ（カメラの寄りと振動は保たない）。
+    const bool mouthOpen = absorbing || (gourd.enabled && gourd.poseInitialized && GourdRules::IsSwallowing(gourd));
+    UpdateEffect(world, object, gourd, mouthOpen, frame);
     UpdateCamera(world, object, gourd, absorbing, frame);
     UpdateRumble(world, gourd, absorbing);
 }

@@ -283,6 +283,7 @@ void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
                                                if (gourd.enabled && frame.fixedDt > 0.0f)
                                                    StepRecoil(gourd, frame.fixedDt);
                                                GourdRules::StepFireShot(gourd, frame.fixedDt);
+                                               GourdRules::StepSwallow(gourd);
                                            });
 }
 
@@ -321,6 +322,8 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
         gourd.fluidSubmissions = 0;
         if (gourd.absorbing && gourd.poseInitialized)
             GourdAbsorbField::Submit(world, object, gourd, gourd.absorbSeconds);
+        if (GourdRules::IsSwallowing(gourd) && gourd.poseInitialized)
+            GourdAbsorbField::SubmitSwallow(world, object, gourd);
         ++gourd.renderFrameCount;
         if (TraceInterval::Due(gourd.traceEveryFrames, gourd.renderFrameCount))
             Trace(world, object, gourd);

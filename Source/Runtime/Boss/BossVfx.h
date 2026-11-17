@@ -99,7 +99,7 @@ inline const HIKARI::GameProjectVfxAssetReference& SlashAsset(const BossComponen
 
 inline HIKARI::GameProjectVfxParameterOverrides SlashParameters(const BossSlashEffect& effect) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
-    VfxParameters::SetFloat(parameters, kFlyInput, effect.flying ? 1.0f : 0.0f);
+    VfxParameters::SetFloat(parameters, kFlyInput, effect.flying ? effect.fly : 0.0f);
     VfxParameters::SetFloat(parameters, kImpactInput, effect.impactSeconds > 0.0f ? 1.0f : 0.0f);
     VfxParameters::SetFloat(parameters, kGlowInput, effect.glow);
     return parameters;
@@ -116,8 +116,11 @@ inline void StartSlash(HIKARI::WorldView& world, BossComponent& boss, BossSlashE
     effect.handle = StartMoving(world, boss, play, {});
 }
 
+// 資産の向き：+X が飛ぶ向き、+Y が幅、+Z が厚み。pinch は、幅のほかの向きだけを細くする（引き込まれる刃が細い筋になる）。
 inline void SendSlash(HIKARI::WorldView& world, BossComponent& boss, const BossSlashEffect& effect) {
-    Send(world, boss, effect.handle, Placed(effect.position, effect.scale, effect.rotation), SlashParameters(effect));
+    HIKARI::GameProjectTransform transform = Placed(effect.position, effect.scale, effect.rotation);
+    transform.scale = {effect.scale * effect.pinch, effect.scale, effect.scale * effect.pinch};
+    Send(world, boss, effect.handle, transform, SlashParameters(effect));
 }
 
 // 斬撃の刃を砕けさせる：刃を出すのをやめ、衝撃の入力を slashImpactSeconds 出し、fadeSeconds で消し、勢いを

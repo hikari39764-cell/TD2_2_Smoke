@@ -19,6 +19,9 @@ struct BossFrame {
     float dt = 1.0f / 60.0f;
     // ヒョウタンが吸い込み中で、まだ煙が入る（飛んで来た斬撃・ナイフを吸える）。
     bool absorbing = false;
+    // ヒョウタンの口の位置（捕まえた斬撃・ナイフを引き込む先）。ヒョウタンが無ければ hasMouth が偽。
+    HIKARI::GameProjectFloat3 mouth{};
+    bool hasMouth = false;
 };
 
 // プレイヤーの真下の、ボスの地面の高さの点（ボスから見たプレイヤーの水平の向き・距離を測る）。

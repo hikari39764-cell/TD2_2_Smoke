@@ -407,6 +407,31 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbCatchRange", "吸い込み：斬撃・ナイフを吸える距離 (m)", absorbCatchRange, 0.0f, 50.0f);
         fields.Float("absorbCatchAngle", "吸い込み：吸える角度（片側、度）", absorbCatchAngle, 0.0f, 180.0f);
         fields.Float("absorbCatchNear", "吸い込み：向きを問わず吸える近さ (m)", absorbCatchNear, 0.0f, 10.0f);
+        fields.Int("absorbPullFrames", "引き込み：捕まえた斬撃が口へ入りきるまで (F)", absorbPullFrames, 1, 240);
+        fields.Int("knifePullFrames", "引き込み：捕まえたナイフが口へ入りきるまで (F)", knifePullFrames, 1, 240);
+        fields.Float("absorbPullEasePower", "引き込み：初めゆっくり・終わり速くの強さ（1 は一定の速さ）",
+                     absorbPullEasePower, 0.1f, 8.0f);
+        fields.Float("absorbPullSwirlDegrees", "引き込み：巻き込む弧（出だしを口への線から横へ振る角度、度）",
+                     absorbPullSwirlDegrees, 0.0f, 85.0f);
+        fields.Float("absorbPullEndScale", "引き込み：入りきる時の大きさ（元の大きさに対する割合）", absorbPullEndScale,
+                     0.01f, 1.0f);
+        fields.Int("absorbPullStaggerFrames", "引き込み：同時に捕まえた分を、順に入れる間隔 (F)",
+                   absorbPullStaggerFrames, 0, 60);
+        fields.Float("absorbPullTurn", "引き込み：三日月の端を口へ向ける割合（0 は向きを変えない）", absorbPullTurn,
+                     0.0f, 1.0f);
+        fields.Float("absorbPullFly", "引き込み：刃の霧の量（飛んでいる時を 1 として。0 は霧を出さない）",
+                     absorbPullFly, 0.0f, 4.0f);
+        fields.Float("absorbPullPinch", "引き込み：入りきる時の刃の細さ（厚み・前後の倍率。1 はそのまま）",
+                     absorbPullPinch, 0.05f, 1.0f);
+        fields.Float("absorbPullFadeSeconds", "引き込み：入りきった後、残った霧と光が消えるまで (秒)",
+                     absorbPullFadeSeconds, 0.0f, 2.0f);
+        fields.Float("absorbPullSqueeze", "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)",
+                     absorbPullSqueeze, 0.0f, 5000.0f);
+        fields.Float("absorbPullSqueezeRadius", "…その力の半径 (m)", absorbPullSqueezeRadius, 0.1f, 20.0f);
+        fields.Note("吸い込みの扇に入った斬撃・ナイフは、その tick に捕まり（もう当たらない・火も残り煙も置かない）、"
+                    "ヒョウタンの口へ弧を描いて引き込まれます。三日月は片方の端を口へ向け、細く縮みながら入ります。"
+                    "煙（waveAbsorbSmoke・knifeAbsorbSmoke）と吸い取りの手応えは、入りきった瞬間に出ます。"
+                    "途中で吸い込みをやめても、ローリングしても、引き込みは最後まで進みます。");
     }
     body.Describe(fields);
     swing.Describe(fields);

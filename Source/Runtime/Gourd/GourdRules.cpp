@@ -80,6 +80,15 @@ void GourdRules::NotifyCatch(GourdComponent& gourd, int count) {
         gourd.catchCount += static_cast<uint64_t>(count);
 }
 
+void GourdRules::NotifySwallowing(GourdComponent& gourd) {
+    // StepSwallow が次の tick の始めに 1 減らすので、1 足しておく（呼ばれている間は 0 にならない）。
+    gourd.swallowFrames = std::max(0, gourd.swallowTailFrames) + 1;
+}
+
+void GourdRules::StepSwallow(GourdComponent& gourd) { gourd.swallowFrames = std::max(0, gourd.swallowFrames - 1); }
+
+bool GourdRules::IsSwallowing(const GourdComponent& gourd) { return gourd.swallowFrames > 0; }
+
 void GourdRules::AddAbsorbedFireArea(GourdComponent& gourd, float area) {
     if (!std::isfinite(area) || area <= 0.0f)
         return;

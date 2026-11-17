@@ -28,6 +28,8 @@ constexpr float kFramesPerSecond = 60.0f;
 // 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
 constexpr int kRingResiduePoints = 6;
 constexpr float kTau = 6.28318530718f;
+// 引き込みの前半のこの割合の間に、三日月の端（ナイフは刃先）を口へ向け終える。
+constexpr float kPullTurnShare = 0.5f;
 // 爆発の跡の煙の半径の下限 (m)。注入の量の換算（FluidEmit::EmitVolume）は 0 より大きい半径が要る。
 constexpr float kMinimumFogRadius = 0.05f;
 
@@ -75,6 +77,75 @@ bool InCatch(const BossFrame& frame, Vec3 a, Vec3 b) {
         return true;
     const Vec3 facing = FlatNormalize(PlayerRules::GetFacing(*frame.player));
     return Dot(FlatNormalize(offset), facing) >= std::cos(boss.absorbCatchAngle * kRadiansPerDegree);
+}
+
+// 吸い込みの扇に入った斬撃・ナイフを捕まえる。この tick から当たらず、火も残り煙も置かない。
+void Capture(BossFrame& frame, BossWave& wave) {
+    BossComponent& boss = frame.boss;
+    // 同時に引き込んでいる分だけ遅らせて、順に入って見えるようにする。
+    int pulling = 0;
+    for (const auto& other : boss.waves)
+        pulling += other.active && other.captured ? 1 : 0;
+    wave.captured = true;
+    wave.done = true;
+    wave.pullFrame = 0;
+    wave.pullFrames = std::max(1, wave.knife ? boss.knifePullFrames : boss.absorbPullFrames) +
+                      std::max(0, boss.absorbPullStaggerFrames) * pulling;
+    wave.pullFrom = wave.previousPosition = wave.position;
+    wave.pullDirection = wave.direction;
+    wave.pullAcross = wave.across;
+    wave.pullWidth = wave.width;
+    // 巻き込む弧は、プレイヤーの体から見てヒョウタンのある側へふくらませる（体の反対側を回ると、体とカメラの間を
+    // 通って口の反対から入るように見える）。
+    const Vec3 line = Sub(frame.mouth, wave.position);
+    const Vec3 side = Normalize(Vec3{line.z, 0.0f, -line.x}, Vec3{1.0f, 0.0f, 0.0f});
+    wave.pullSide = Dot(side, Sub(frame.mouth, frame.playerCenter)) >= 0.0f ? 1.0f : -1.0f;
+    // 口へ向けるのは、三日月の端のうち口に近い側。
+    wave.pullTip = Dot(wave.across, Sub(frame.mouth, wave.position)) >= 0.0f ? 1.0f : -1.0f;
+    wave.burnWidth = 0.0f;
+    wave.crossPending = false;
+    wave.smokeOwed = 0.0f;
+    LogWave(boss, wave, "WaveCaptured");
+}
+
+// 捕まえた斬撃・ナイフを、口へ 1 tick ぶん引き込む。入りきったら真。
+bool StepPull(const BossFrame& frame, BossWave& wave) {
+    const BossComponent& boss = frame.boss;
+    wave.previousPosition = wave.position;
+    ++wave.pullFrame;
+    const float t =
+        std::clamp(static_cast<float>(wave.pullFrame) / static_cast<float>(std::max(1, wave.pullFrames)), 0.0f, 1.0f);
+    // 初めゆっくり、終わり速く。
+    const float eased = std::pow(t, std::max(0.1f, boss.absorbPullEasePower));
+    // 口は動くので、毎 tick いまの口へ向け直す。道は、口への線から横へふくらむ弧（出だしの向きが
+    // absorbPullSwirlDegrees だけ横を向く）。
+    const Vec3 line = Sub(frame.mouth, wave.pullFrom);
+    const Vec3 side = Normalize(Vec3{line.z, 0.0f, -line.x}, Vec3{1.0f, 0.0f, 0.0f});
+    const float bow = FlatLength(line) * std::tan(boss.absorbPullSwirlDegrees * kRadiansPerDegree) / kPi *
+                      std::sin(kPi * eased) * wave.pullSide;
+    const Vec3 point = Add(Add(wave.pullFrom, Mul(line, eased)), Mul(side, bow));
+    wave.width = wave.pullWidth * Lerp(1.0f, std::clamp(boss.absorbPullEndScale, 0.01f, 1.0f), eased);
+    const Vec3 toMouth = Normalize(Sub(frame.mouth, point), Normalize(line, wave.pullDirection));
+    const float turn = std::clamp(eased / kPullTurnShare, 0.0f, 1.0f);
+    // ナイフは刃先を口へ向けきる。斬撃は absorbPullTurn の割合だけ回す（域ごと大きく回すと、域の中に残った霧が
+    // 大きな扇になって振り回される。霧を口へ寄せるのは、口の力に任せる）。
+    const float aligned =
+        turn * turn * (3.0f - 2.0f * turn) * (wave.knife ? 1.0f : std::clamp(boss.absorbPullTurn, 0.0f, 1.0f));
+    if (wave.knife) {
+        // ナイフ：刃先を口へ向けて飛び込む。
+        wave.direction = Normalize(Lerp(wave.pullDirection, toMouth, aligned), toMouth);
+        wave.across = Normalize(Sub(wave.pullAcross, Mul(wave.direction, Dot(wave.pullAcross, wave.direction))),
+                                Cross(wave.direction, Vec3{0.0f, 1.0f, 0.0f}));
+        wave.position = point;
+    } else {
+        // 斬撃：三日月の片方の端が口を向くように回り、その端から細い筋になって入る（中心は、幅の半分だけ口の手前）。
+        const Vec3 tipward = Mul(toMouth, wave.pullTip);
+        wave.across = Normalize(Lerp(wave.pullAcross, tipward, aligned), tipward);
+        wave.direction = Normalize(Sub(wave.pullDirection, Mul(wave.across, Dot(wave.pullDirection, wave.across))),
+                                   Cross(wave.across, Vec3{0.0f, 1.0f, 0.0f}));
+        wave.position = Sub(point, Mul(wave.across, wave.pullTip * wave.width * 0.5f * aligned));
+    }
+    return wave.pullFrame >= wave.pullFrames;
 }
 
 // 霞の輪：広がりながら、輪の線がプレイヤーの体を通った時に当てる（高さは見ない。試作と同じ）。
@@ -278,12 +349,22 @@ void BossWaves::Step(BossFrame& frame) {
             StepRing(frame, wave);
             continue;
         }
-        // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに吸われて消える（振っている剣そのものは吸えない）。
+        // 捕まえた斬撃・ナイフ：口へ引き込み、入りきった tick に煙と吸い取りの知らせを渡す。プレイヤーやヒョウタンが
+        // いなくなったら（倒れた・シーンが変わった）、渡さずに捨てる。
+        if (wave.captured) {
+            if (!frame.hasMouth || frame.player == nullptr) {
+                wave.active = false;
+            } else if (StepPull(frame, wave)) {
+                DeliverCatch(boss, wave);
+                LogWave(boss, wave, "WaveSwallowed");
+                wave.active = false;
+            }
+            continue;
+        }
+        // 吸い込み中なら、扇に入った斬撃・ナイフは当たらずに捕まる（振っている剣そのものは吸えない）。
         const Vec3 edge = Mul(wave.across, wave.width * 0.5f);
-        if (!wave.done && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
-            DeliverCatch(boss, wave);
-            LogWave(boss, wave, "WaveAbsorbed");
-            wave.active = false;
+        if (!wave.done && frame.hasMouth && InCatch(frame, Sub(wave.position, edge), Add(wave.position, edge))) {
+            Capture(frame, wave);
             continue;
         }
         // 放った直後の数 F で判定サイズまで伸びる。

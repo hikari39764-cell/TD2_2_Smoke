@@ -475,8 +475,15 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
     // 切なら、煙がもう入らなければ吸えずに当たる（試作と同じ）。
     // ボスがプレイヤーの様子として見るのは、煙が入るかどうかに関わらず吸い込みの構えをしているか。
     bool absorbing = false, inhaling = false;
+    // 捕まえた斬撃・ナイフを引き込む先（最初のヒョウタンの口）。
+    Vec3 mouth{};
+    bool hasMouth = false;
     world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView,
                                                                                         GourdComponent& gourd) {
+        if (!hasMouth) {
+            mouth = GourdRules::GetMouthPosition(gourd);
+            hasMouth = true;
+        }
         inhaling = inhaling || GourdRules::IsAbsorbing(gourd);
         absorbing = absorbing ||
                     (GourdRules::IsAbsorbing(gourd) &&
@@ -484,6 +491,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                       GourdRules::HasRoomToAbsorb(gourd)));
     });
     BossCatchHandoff caught;
+    // 口へ引き込んでいる途中の斬撃・ナイフの数（ある間は、ヒョウタンが口の吸う力と見た目を保つ）。
+    int pulling = 0;
     world.ForEachComponent<BossComponent>(
         HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
             if (!boss.initialized)
@@ -497,7 +506,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             boss.glintFrames = std::max(0, boss.glintFrames - 1);
             // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
             auto body = [&](PlayerComponent* player, Vec3 playerCenter, DamageableComponent* health) {
-                BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing};
+                BossFrame bossFrame{world, boss, player, playerCenter, frame.fixedDt, absorbing, mouth, hasMouth};
                 BossObserver::Observe(world, boss, player, playerCenter, inhaling);
                 // 兜が向く先（見た目だけが読む。規則は使わない）。
                 boss.bodyState.lookTarget = playerCenter;
@@ -572,11 +581,17 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             caught.count += boss.caught.count;
             caught.fireCount += boss.caught.fireCount;
             boss.caught = {};
+            for (const auto& wave : boss.waves)
+                pulling += wave.active && wave.captured ? 1 : 0;
         });
-    if (caught.smoke <= 0.0f && caught.count == 0)
+    if (caught.smoke <= 0.0f && caught.count == 0 && pulling == 0)
         return;
     world.ForEachComponent<GourdComponent>(
         HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+            // 引き込みの間と、入りきった直後は、吸い込みをやめていても口が飲み込み続ける。
+            GourdRules::NotifySwallowing(gourd);
+            if (caught.smoke <= 0.0f && caught.count == 0)
+                return;
             // 吸った合図は、ヒョウタン自身が次の描画フレームで見せる（ボスはカメラに触れない）。
             GourdRules::NotifyCatch(gourd, caught.count);
             // 火の刃を吸い取ったら火弾になる（満杯で煙が入らなくても）。
@@ -599,7 +614,8 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                           [&](HIKARI::ObjectView object, BossComponent& boss) {
                                               if (!boss.initialized)
                                                   return;
-                                              BossVisuals::Update(world, object, boss, frame.gameDt);
+                                              BossVisuals::Update(world, object, boss, frame.gameDt,
+                                                                  frame.fixedInterpolationAlpha);
                                               BossBodyVisuals::Update(world, object, boss, frame.gameDt);
                                               // 霞分身の外形（分身の物体は BossClones と同じく部品の型で回る）。
                                               world.ForEachComponent<BossCloneComponent>(

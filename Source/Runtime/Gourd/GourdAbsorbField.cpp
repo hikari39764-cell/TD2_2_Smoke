@@ -42,6 +42,8 @@ constexpr float kFullFlowScale = 0.15f;
 constexpr uint64_t kGlowInstanceBase = 60;
 // 口の上で霧を回収する力の ID（回読の対象）。
 constexpr uint64_t kCatchInstance = 50;
+// 捕まえた斬撃を飲み込む口の力の ID（回読しない：消した霧を煙に数えない）。
+constexpr uint64_t kSwallowInstance = 70;
 // 地面に沿って温める場所の数。口から遠いほど広く、ぬるくする（1 か所ごとの半径の増し分と、温度の減り分）。
 constexpr int kGlowGroundSpots = 3;
 constexpr float kGlowRadiusGrowth = 0.5f;
@@ -100,6 +102,22 @@ bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView 
     }
     outTotal = gourd.removedSum;
     return true;
+}
+
+void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+    if (!(gourd.swallowRadius > 0.0f))
+        return;
+    // 向きの無い負の力＝吸い口：半径の面から strength m/s で吸い込み、外の霧も口へ流れる。斬撃のエフェクトの域だけに届く。
+    HIKARI::GameProjectFluidInteraction swallow{};
+    swallow.kind = Kind::Force;
+    swallow.position = gourd.mouthPosition;
+    swallow.extents = {gourd.swallowRadius, 0.0f, 0.0f};
+    swallow.strength = -std::max(0.0f, gourd.swallowStrength);
+    swallow.absorption = std::max(0.0f, gourd.swallowAbsorption);
+    swallow.channels = FluidChannels::kSlash;
+    gourd.fluidAccepted =
+        world.GetFluid().Submit(object.GetHandle(), kSwallowInstance, swallow).Accepted() && gourd.fluidAccepted;
+    ++gourd.fluidSubmissions;
 }
 
 void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,

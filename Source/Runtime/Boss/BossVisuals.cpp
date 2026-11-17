@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/VfxView.h"
 #include "BossFlameRunVisuals.h"
 #include "BossGreatswordVisuals.h"
@@ -11,6 +12,7 @@
 #include "BossSkyfallVisuals.h"
 #include "BossVfx.h"
 #include "../Burn/BurnFieldRules.h"
+#include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
 #include "../Common/VfxPlayback.h"
 
@@ -43,8 +45,37 @@ const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
     return nullptr;
 }
 
+// 引き込まれる斬撃の両翼を押し寄せる力の提出 ID（斬撃のエフェクトの枠 1 つに 2 個。ほかのボスの提出と重ねない）と、
+// 力を置く所（刃の中心から、捕まった時の幅のこの割合だけ外）。
+constexpr uint64_t kSqueezeBase = 1300;
+constexpr float kSqueezeReachShare = 0.3f;
+
+// 引き込みの間、域に残った三日月の両翼の霧を、刃の中心（口へ向かっている）へ押し寄せる。域は根と一緒に動くが、
+// 中の霧は捕まった時の幅のまま残るので、押さないと、口の左右に大きな翼が残る。斬撃のエフェクトの域だけに届く。
+void Squeeze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossSlashEffect& effect,
+             size_t slot) {
+    if (!(boss.absorbPullSqueeze > 0.0f) || !(boss.absorbPullSqueezeRadius > 0.0f) || !(effect.pullWidth > 0.0f))
+        return;
+    const float t = std::clamp(effect.pullProgress, 0.0f, 1.0f);
+    const float ramp = t * t * (3.0f - 2.0f * t);
+    for (uint64_t wing = 0; wing < 2; ++wing) {
+        const float sign = wing == 0 ? 1.0f : -1.0f;
+        HIKARI::GameProjectFluidInteraction force{};
+        force.kind = HIKARI::GameProjectFluidInteractionKind::Force;
+        force.position = Add(effect.position, Mul(effect.pullAcross, sign * effect.pullWidth * kSqueezeReachShare));
+        force.extents = {boss.absorbPullSqueezeRadius, 0.0f, 0.0f};
+        force.direction = Mul(effect.pullAcross, -sign);
+        force.strength = boss.absorbPullSqueeze * ramp;
+        force.channels = FluidChannels::kSlash;
+        boss.fluidAccepted =
+            world.GetFluid().Submit(object.GetHandle(), kSqueezeBase + slot * 2 + wing, force).Accepted() &&
+            boss.fluidAccepted;
+    }
+}
+
 // 飛ぶ斬撃の本体：斬撃 1 つにつき、自前の流体域を持つ三日月の霧のエフェクトを 1 つ飛ばす。
-void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
+void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds,
+                   float alpha) {
     const auto vfx = world.GetVfx();
     for (auto& effect : boss.slashEffects) {
         if (!effect.handle.IsValid())
@@ -58,6 +89,23 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
             effect.position = wave->position;
             effect.scale = wave->width / std::max(0.01f, boss.slashEffectWidth);
             effect.travelled = wave->travelled;
+            if (wave->captured) {
+                // 吸い込みに捕まった：規則が口へ引き込む位置・向き・幅へ、根ごと付いて行く（域も一緒に動く）。刃の霧は
+                // 弱めて出し続け（すぐ止めると何も見えなくなる）、幅のほかの向きを細くして、筋になって入るように見せる。
+                // 入りきった後は、口の所で短く消える（元の速さで後ろへ飛んで行かない）。
+                const float progress =
+                    static_cast<float>(wave->pullFrame) / static_cast<float>(std::max(1, wave->pullFrames));
+                effect.captured = true;
+                effect.pullProgress = progress;
+                effect.pullAcross = wave->pullAcross;
+                effect.pullWidth = wave->pullWidth;
+                effect.velocity = {};
+                effect.position = Lerp(wave->previousPosition, wave->position, std::clamp(alpha, 0.0f, 1.0f));
+                effect.rotation = BasisRotation(wave->direction, wave->across);
+                // 霧の源は、入りきる時に 0 になるように絞っていく（終わりまで出し続けると、端の霧が口へ届く前に補われる）。
+                effect.fly = boss.absorbPullFly * (1.0f - std::clamp(progress, 0.0f, 1.0f));
+                effect.pinch = Lerp(1.0f, boss.absorbPullPinch, std::clamp(progress, 0.0f, 1.0f));
+            }
             if (wave->struck && !effect.struck) {
                 // プレイヤーに当たった：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
                 // （そのままの刃がプレイヤーの後ろのカメラを通り抜けて、画面を白く覆わないように）。
@@ -71,7 +119,8 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
             // 斬撃が消えた：刃を出すのをやめ、残った霧が消えるまで同じ速さで飛ばしてから止める（域ごと急に消さない）。
             if (effect.flying) {
                 effect.flying = false;
-                effect.fadeSeconds = boss.slashFadeSeconds;
+                effect.fadeSeconds = effect.captured ? boss.absorbPullFadeSeconds : boss.slashFadeSeconds;
+                effect.pullProgress = 1.0f;
             }
             effect.fadeSeconds -= seconds;
             if (effect.fadeSeconds <= 0.0f) {
@@ -85,6 +134,8 @@ void UpdateSlashes(HIKARI::WorldView& world, BossComponent& boss, float seconds)
             effect.glow = std::max(0.0f, effect.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
         effect.impactSeconds = std::max(0.0f, effect.impactSeconds - seconds);
         SendSlash(world, boss, effect);
+        if (effect.captured)
+            Squeeze(world, object, boss, effect, static_cast<size_t>(&effect - boss.slashEffects.data()));
     }
     if (boss.slashEffect.IsEmpty())
         return;
@@ -222,7 +273,7 @@ void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss) {
 }
 
 // ナイフ：刃と光点のエフェクトを飛ばし、尾は場の霧へ霞を入れるエフェクトで出す。どちらもエフェクト側の速度で進める。
-void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss) {
+void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
         auto& handle = boss.waveVfx[i];
@@ -231,6 +282,23 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss) {
         if (!wave.active || !wave.knife || boss.waveVfxId[i] != wave.id) {
             StopHandle(world, handle);
             StopHandle(world, knife);
+        }
+        if (wave.active && wave.knife && wave.captured && boss.waveVfxId[i] == wave.id) {
+            // 吸い込みに捕まった：尾の霞を止め、刃を口へ向けて曲げ、細くしながら引き込む（規則の位置へ毎フレーム置く）。
+            StopHandle(world, handle);
+            if (knife.IsValid()) {
+                const float progress =
+                    static_cast<float>(wave.pullFrame) / static_cast<float>(std::max(1, wave.pullFrames));
+                const float scale =
+                    Lerp(1.0f, std::clamp(boss.absorbPullEndScale, 0.01f, 1.0f), std::clamp(progress, 0.0f, 1.0f));
+                const auto vfx = world.GetVfx();
+                HIKARI::GameProjectVfxUpdateRequest update{};
+                update.updateTransform = 1u;
+                update.transform = Placed(Lerp(wave.previousPosition, wave.position, std::clamp(alpha, 0.0f, 1.0f)),
+                                          scale, BasisRotation(wave.direction, wave.across));
+                boss.vfxAccepted = vfx.SetVelocity(knife, {}) && vfx.Update(knife, update) && boss.vfxAccepted;
+            }
+            continue;
         }
         if (!wave.active || !wave.knife || boss.waveVfxId[i] == wave.id)
             continue;
@@ -317,16 +385,17 @@ void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss) {
 
 } // namespace
 
-void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
+void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds,
+                         float alpha) {
     UpdateChargeGather(world, boss);
     // 天降り斬り・霞の大剣は爆発の枠へ塊・霧の押しを入れるので、枠を出す所より前に進める。
     BossSkyfallVisuals::Update(world, object, boss, seconds);
     BossGreatswordVisuals::Update(world, object, boss, seconds);
     BossFlameRunVisuals::Update(world, object, boss);
-    UpdateSlashes(world, boss, seconds);
+    UpdateSlashes(world, object, boss, seconds, alpha);
     UpdateRing(world, boss, seconds);
     PlayBlasts(world, boss);
-    UpdateKnives(world, boss);
+    UpdateKnives(world, boss, alpha);
     UpdateSwordHaze(world, boss);
 }
 

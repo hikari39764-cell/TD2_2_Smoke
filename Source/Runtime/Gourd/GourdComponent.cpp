@@ -137,6 +137,8 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("吸い取りの手応え")) {
         fields.Int("catchHitStopFrames", "ボスの斬撃を吸い取った時の止め (F、0 は無効)", catchHitStopFrames, 0, 30);
         fields.Float("catchHitStopScale", "…止め中の時間倍率", catchHitStopScale, 0.0f, 1.0f);
+        fields.Int("catchHitStopCooldownFrames", "…続けて吸い取った時に、止めを重ねない間隔 (F)",
+                   catchHitStopCooldownFrames, 0, 240);
         fields.Float("catchRumbleLow", "…振動：重いモーター (0〜1)", catchRumbleLow, 0.0f, 1.0f);
         fields.Float("catchRumbleHigh", "…振動：軽いモーター (0〜1)", catchRumbleHigh, 0.0f, 1.0f);
         fields.Int("catchRumbleFrames", "…振動時間 (F、0 は無効)", catchRumbleFrames, 0, 120);
@@ -145,6 +147,15 @@ void GourdComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Vfx("catchEffect", "吸い取った瞬間に口で出すエフェクト（空なら出さない）", catchEffect);
         fields.Float("catchPulseScale", "吸い取った時にヒョウタンが膨らむ割合（0 は無効）", catchPulseScale, 0.0f, 2.0f);
         fields.Float("catchPulseSeconds", "…膨らみが戻るまで (秒)", catchPulseSeconds, 0.0f, 2.0f);
+        fields.Float("swallowRadius", "斬撃を飲み込む口の吸い口の半径 (m)", swallowRadius, 0.1f, 10.0f);
+        fields.Float("swallowStrength", "…吸い込む速さ (m/s。半径の面を通る速さ。外の霧は距離の 2 乗で遅くなる)",
+                     swallowStrength, 0.0f, 2000.0f);
+        fields.Float("swallowAbsorption", "…半径の中の霧を消す率 (/s)", swallowAbsorption, 0.0f, 400.0f);
+        fields.Int("swallowTailFrames", "…最後の斬撃が入った後も飲み込み続ける長さ (F)", swallowTailFrames, 0, 240);
+        fields.Note(
+            "捕まえたボスの斬撃は、口へ引き込まれて入りきった瞬間に、止め・振動・画角・膨らみ・エフェクトが出ます"
+            "（引き込みの速さと動きはボスの項目 absorbPull…）。飲み込む口の力は、斬撃の霧だけに届き、場の霧には"
+            "触りません。消した霧は煙に数えません。");
     }
     if (fields.Section("検証")) {
         fields.Int("traceEveryFrames", "状態ログ間隔（0 は無効）", traceEveryFrames, 0, 7200);
