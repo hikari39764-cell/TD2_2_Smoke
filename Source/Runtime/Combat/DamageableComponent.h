@@ -62,6 +62,12 @@ public:
     int pendingFlashFrames = 0;
     // 命中のカメラの揺れの強さ（0〜1）。命中ごとに決める。
     float hitCameraScale = 1.0f;
+    // 攻撃側が頼んだ、直前の命中の手応えの強め（DamageableRules::BoostHitFeedback）。手応えの始まりで取り込む。
+    float pendingPushScale = 1.0f;
+    int pendingStopFrames = 0;
+    // いまの手応えの、押しと視野角の倍率と、止めの F 数。
+    float hitPushScale = 1.0f;
+    int activeStopFrames = 0;
     bool feedbackActive = false;
     bool flashActive = false;
     bool flashSourceValid = false;

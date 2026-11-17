@@ -59,12 +59,19 @@ struct GourdShotResidue {
     HIKARI::GameProjectVfxPlaybackHandle smoke{};
 };
 
+// 一度だけ鳴らすエフェクトの種類。砲口と、火弾の状態の始まりの合図は砲口の枠を、命中は命中の枠を使う
+// （合図のために流体域の枠を増やさない）。
+enum class GourdBurstKind { Muzzle, Impact, FireStart };
+
 // 一度だけ鳴らすエフェクトの予約。規則（固定 tick）が積み、表現（描画フレーム）が再生して消す。
 struct GourdShotBurst {
     bool pending = false;
-    bool muzzle = false;
+    GourdBurstKind kind = GourdBurstKind::Impact;
+    // 火弾の発射・命中（火弾用の資産と倍率で出す）。
+    bool fire = false;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 direction{0.0f, 1.0f, 0.0f};
+    // 資産ごとの倍率（muzzleScale など）に掛ける割合（射程端の命中は小さい）。
     float scale = 1.0f;
 };
 
@@ -188,6 +195,27 @@ public:
     float impactScale = 1.0f;
     float impactFarScale = 0.6f;
     float impactStandoff = 0.6f;
+    // 火弾（GourdProjectile.fire）の見た目（c-5d738d）。ふだんの弾と同じ枠・同じ入力の、別の資産で出す
+    // （流体域の数は増やさない）。資産を空にすると、その部分はふだんの弾の資産と倍率で出る。
+    HIKARI::GameProjectVfxAssetReference fireShellEffect{"7e5d6bba578986bc1203bc0bac526420",
+                                                         "Assets/Vfx/GourdFireShotFlame.hvfx"};
+    HIKARI::GameProjectVfxAssetReference fireMuzzleEffect{"342315cc01503eae1bc77ccdd5b16e50",
+                                                          "Assets/Vfx/GourdFireShotMuzzle.hvfx"};
+    HIKARI::GameProjectVfxAssetReference fireImpactEffect{"e3d2200c3c34e9fea2dfc0d23118a048",
+                                                          "Assets/Vfx/GourdFireShotImpact.hvfx"};
+    // 火弾の状態が始まった瞬間に、ヒョウタンの口から短く炎を噴く合図（1 回だけ。延長では出さない）。
+    HIKARI::GameProjectVfxAssetReference fireStartEffect{"58ea134da39dbbe24b7379ba0159bf66",
+                                                         "Assets/Vfx/GourdFireShotStart.hvfx"};
+    float fireShellScale = 1.0f;
+    float fireMuzzleScale = 1.0f;
+    float fireImpactScale = 1.0f;
+    float fireStartScale = 1.0f;
+    // 火弾の発射でヒョウタンが跳ねる距離の倍率（プレイヤーの反動は変えない）。
+    float fireGourdRecoilScale = 1.4f;
+    // 火弾の命中の手応え：カメラの押しと視野角の広がりに掛ける倍率（揺れ幅には掛けない。連射で震え続けない）と、
+    // 止めの F 数（相手の Damageable.hitStopFrames より長い時だけ効く）。
+    float fireHitCameraScale = 1.5f;
+    int fireHitStopFrames = 3;
     GourdFeedback feedback{};
     int traceEveryFrames = 0;
 
@@ -201,6 +229,8 @@ public:
     uint64_t recoveryEndTick = 0;
     uint64_t lastShotTick = 0;
     uint64_t shotsFired = 0;
+    // 最後に撃った弾が火弾だったか（発射の手応えを強めるかを、手応えの側が読む）。
+    bool lastShotFire = false;
     // 押し続けている間の何発目か。離すと 0 に戻り、次の長押しは最初の間隔から。
     int chainShots = 0;
     bool chainHeld = false;

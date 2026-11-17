@@ -16,6 +16,11 @@ void GourdFeedback::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("shotRumbleLow", "発射の振動：重いモーター (0〜1)", rumbleLow, 0.0f, 1.0f);
         fields.Float("shotRumbleHigh", "発射の振動：軽いモーター (0〜1)", rumbleHigh, 0.0f, 1.0f);
         fields.Note("プレイヤーの反動距離・時間は変えず、描画カメラと振動だけに短い反動を加えます。");
+        fields.Float("fireShotCameraScale", "火弾の発射：カメラの後退幅と視野角の倍率", fireCameraScale, 0.0f, 10.0f);
+        fields.Float("fireShotChromaScale", "火弾の発射：色ずれの幅とコントラストの倍率", fireChromaScale, 0.0f, 10.0f);
+        fields.Float("fireShotRumbleScale", "火弾の発射：振動の倍率（強さは 1 まで）", fireRumbleScale, 0.0f, 10.0f);
+        fields.Note("火弾の倍率は、上の発射の値に掛けます。カメラの揺れ幅には掛けません（連射で画面が震え続けない"
+                    "ように、後ろへ押されて戻る動きと視野角だけを強めます）。");
     }
     if (fields.Section("空撃ち（煙・スタミナ不足）の手応え")) {
         fields.Float("dryFireKickDistance", "空撃ちでヒョウタンが小さく跳ねる距離 (m、0 は無効)", dryFireKickDistance,

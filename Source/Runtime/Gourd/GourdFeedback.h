@@ -21,6 +21,11 @@ struct GourdFeedback {
     int rumbleFrames = 10;
     float rumbleLow = 0.6f;
     float rumbleHigh = 0.35f;
+    // 火弾を撃った時だけ掛ける倍率（c-5d738d）。カメラは後退幅と視野角だけを強め、揺れ幅には掛けない
+    // （8F 間隔の連射で重なっても震え続けないように）。
+    float fireCameraScale = 1.6f;
+    float fireChromaScale = 1.5f;
+    float fireRumbleScale = 1.4f;
     float dryFireKickDistance = 0.05f;
     int dryFireKickFrames = 3;
     int dryFireRumbleFrames = 5;
@@ -31,6 +36,11 @@ struct GourdFeedback {
     float ageSeconds = 0.0f;
     bool active = false;
     HIKARI::GameProjectFloat3 direction{};
+    // いまの発射の、カメラ（後退幅・視野角）と色ずれの倍率。火弾なら fire〜Scale、ふだんの弾は 1。
+    float cameraScale = 1.0f;
+    float chromaScale = 1.0f;
+    // 前のフレームにヒョウタンが火弾の状態だったか（始まりの合図を 1 回だけ出すため）。
+    bool observedFireShot = false;
 };
 
 } // namespace Project_TD2_2

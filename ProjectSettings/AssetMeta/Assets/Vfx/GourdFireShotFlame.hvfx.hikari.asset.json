@@ -1,0 +1,14 @@
+{
+  "displayName": "Gourd Fire Shot Flame",
+  "guid": "7e5d6bba578986bc1203bc0bac526420",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdFireShotFlame.hvfx",
+  "type": "VfxEffect"
+}

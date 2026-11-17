@@ -71,6 +71,28 @@ void GourdShotComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("爆発を敵の体に重ねて出すと隠れて小さく暗く見えるので、少し手前で出します。霧散（射程切れ）"
                     "では爆発を出しません。");
     }
+    if (fields.Section("火弾のエフェクトと手応え")) {
+        fields.Vfx("fireShellEffect", "火弾：飛んでいる弾（空ならふだんの弾の資産）", fireShellEffect);
+        fields.Float("fireShellScale", "火弾：弾の源の大きさ倍率（0 は無効）", fireShellScale, 0.0f, 8.0f);
+        fields.Vfx("fireMuzzleEffect", "火弾：砲口の発射エフェクト（空ならふだんの資産）", fireMuzzleEffect);
+        fields.Float("fireMuzzleScale", "火弾：砲口のエフェクトの源の大きさ倍率（0 は無効）", fireMuzzleScale, 0.0f,
+                     8.0f);
+        fields.Vfx("fireImpactEffect", "火弾：命中の爆発エフェクト（空ならふだんの資産）", fireImpactEffect);
+        fields.Float("fireImpactScale", "火弾：命中の爆発の源の大きさ倍率（0 は無効）", fireImpactScale, 0.0f, 8.0f);
+        fields.Vfx("fireStartEffect", "火弾の状態が始まった合図（ヒョウタンの口から短く噴く炎。空なら出さない）",
+                   fireStartEffect);
+        fields.Float("fireStartScale", "…合図の源の大きさ倍率（0 は無効）", fireStartScale, 0.0f, 8.0f);
+        fields.Float("fireGourdRecoilScale", "火弾の発射：ヒョウタンが跳ねる距離の倍率", fireGourdRecoilScale, 0.0f,
+                     10.0f);
+        fields.Float("fireHitCameraScale", "火弾の命中：カメラの押しと視野角の広がりの倍率", fireHitCameraScale, 0.0f,
+                     10.0f);
+        fields.Int("fireHitStopFrames", "火弾の命中の止め (F。相手の止めより長い時だけ効く)", fireHitStopFrames, 0, 60);
+        fields.Note("火弾（火を吸った後の弾）は、ふだんの弾と同じ枠で、火弾用の資産に替えて出します（流体の域の数は"
+                    "増えません）。色・明るさ・太さ・消える速さは各資産で調整します。始まりの合図は、火弾の状態が"
+                    "始まった時に 1 回だけ出ます（吸い続けて残りを延ばした時は出ません）。");
+        fields.Note("火弾の発射のカメラ・色ずれ・振動の倍率は「発射の手応え」にあります。命中の倍率は、相手の"
+                    "Damageable の命中のカメラの値に掛けます（揺れ幅には掛けません）。");
+    }
     if (fields.Section("煙の演出")) {
         fields.Vfx("trailEffect", "弾道の流体注入エフェクト", trailEffect);
         fields.Float("muzzleRadius", "砲口の押し広げ半径 (m)", muzzleRadius, 0.01f, 10.0f);

@@ -1,0 +1,14 @@
+{
+  "displayName": "Gourd Fire Shot Muzzle",
+  "guid": "342315cc01503eae1bc77ccdd5b16e50",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdFireShotMuzzle.hvfx",
+  "type": "VfxEffect"
+}

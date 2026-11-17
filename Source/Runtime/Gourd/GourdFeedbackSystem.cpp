@@ -9,6 +9,7 @@
 #include "GourdShotComponent.h"
 #include "GourdComponent.h"
 #include "GourdRules.h"
+#include "GourdShotVisuals.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Combat/Feedback.h"
@@ -37,10 +38,12 @@ void LogStart(const GourdShotComponent& shot) {
         return;
     const auto& feedback = shot.feedback;
     char message[256]{};
-    std::snprintf(message, sizeof(message), "Start tick=%llu shot=%llu frames=%d kick=%.6f shake=%.6f active=%d",
+    std::snprintf(message, sizeof(message),
+                  "Start tick=%llu shot=%llu frames=%d kick=%.6f shake=%.6f active=%d fire=%d cameraScale=%.3f",
                   static_cast<unsigned long long>(shot.processedTick), static_cast<unsigned long long>(shot.shotsFired),
-                  feedback.cameraFrames, static_cast<double>(feedback.cameraKickDistance),
-                  static_cast<double>(feedback.cameraShakeAmplitude), static_cast<int>(feedback.active));
+                  feedback.cameraFrames, static_cast<double>(feedback.cameraKickDistance * feedback.cameraScale),
+                  static_cast<double>(feedback.cameraShakeAmplitude), static_cast<int>(feedback.active),
+                  static_cast<int>(shot.lastShotFire), static_cast<double>(feedback.cameraScale));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
 }
 
@@ -51,7 +54,8 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     const float strength = envelope * envelope;
     const float phase = kTau * feedback.cameraShakeFrequency * feedback.ageSeconds;
     const float shake = feedback.cameraShakeAmplitude * strength;
-    const float kick = feedback.cameraKickDistance * strength;
+    // 火弾は後退幅と視野角だけを強める（cameraScale）。揺れ幅は変えない。
+    const float kick = feedback.cameraKickDistance * feedback.cameraScale * strength;
     modifier.sourceId = kCameraSource ^ object.GetHandle().value;
     modifier.priority = kCameraPriority;
     modifier.worldPositionOffset = {-feedback.direction.x * kick, -feedback.direction.y * kick,
@@ -59,7 +63,7 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     modifier.worldTargetOffset = modifier.worldPositionOffset;
     modifier.localPositionOffset = {std::sin(phase) * shake, std::cos(phase) * shake, 0.0f};
     modifier.localTargetOffset = modifier.localPositionOffset;
-    modifier.verticalFovOffsetRadians = feedback.cameraFovDegrees * kRadiansPerDegree * strength;
+    modifier.verticalFovOffsetRadians = feedback.cameraFovDegrees * feedback.cameraScale * kRadiansPerDegree * strength;
     uint64_t cameraId = 0;
     ForEachOnObject<GourdComponent>(world, kGourdType, object,
                                     [&](HIKARI::ObjectView, GourdComponent& gourd) { cameraId = gourd.cameraId; });
@@ -67,6 +71,31 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     if (modifier.cameraObjectHandle == 0)
         return false;
     return world.GetCamera().SubmitModifier(modifier);
+}
+
+// 火弾の状態が始まった瞬間に、ヒョウタンの口から短く炎を噴く合図を 1 回だけ出す（残りを延ばしただけの時は出さない）。
+// 合図は砲撃の一度きりのエフェクトの枠（砲口の枠）で出すので、流体域の数は増えない。
+void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot) {
+    bool fire = false;
+    HIKARI::GameProjectFloat3 mouth{}, aim{0.0f, 0.0f, 1.0f};
+    ForEachOnObject<GourdComponent>(world, kGourdType, object, [&](HIKARI::ObjectView, GourdComponent& gourd) {
+        fire = GourdRules::IsFireShot(gourd);
+        mouth = GourdRules::GetMouthPosition(gourd);
+        aim = GourdRules::GetAimDirection(gourd);
+    });
+    const bool started = fire && !shot.feedback.observedFireShot;
+    shot.feedback.observedFireShot = fire;
+    if (!started)
+        return;
+    GourdShotVisuals::QueueBurst(shot, GourdBurstKind::FireStart, true, mouth, aim, 1.0f);
+    if (shot.traceEveryFrames > 0) {
+        char message[192]{};
+        std::snprintf(message, sizeof(message), "FireShotStart tick=%llu mouth=(%.3f,%.3f,%.3f) effect=%d",
+                      static_cast<unsigned long long>(shot.processedTick), static_cast<double>(mouth.x),
+                      static_cast<double>(mouth.y), static_cast<double>(mouth.z),
+                      static_cast<int>(!shot.fireStartEffect.IsEmpty() && shot.fireStartScale > 0.0f));
+        HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
+    }
 }
 
 void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
@@ -83,7 +112,13 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
         feedback.ageSeconds = 0.0f;
         feedback.direction = shot.muzzleDirection;
         feedback.active = feedback.cameraFrames > 0 && hasCameraMotion;
-        Feedback::Rumble(world, feedback.rumbleLow, feedback.rumbleHigh, feedback.rumbleFrames);
+        // 火弾の発射は、カメラ・色ずれ・振動を倍率の分だけ強める。
+        const bool fire = shot.lastShotFire;
+        feedback.cameraScale = fire ? std::max(0.0f, feedback.fireCameraScale) : 1.0f;
+        feedback.chromaScale = fire ? std::max(0.0f, feedback.fireChromaScale) : 1.0f;
+        const float rumbleScale = fire ? std::max(0.0f, feedback.fireRumbleScale) : 1.0f;
+        Feedback::Rumble(world, std::min(1.0f, feedback.rumbleLow * rumbleScale),
+                         std::min(1.0f, feedback.rumbleHigh * rumbleScale), feedback.rumbleFrames);
         LogStart(shot);
     }
     const float duration = static_cast<float>(feedback.cameraFrames) / kFramesPerSecond;
@@ -101,8 +136,8 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
         grade.sourceId = kChromaSource ^ object.GetHandle().value;
         grade.priority = kChromaPriority;
         grade.weight = fade;
-        grade.chromaticSeparationPixels = feedback.chromaPixels * fade;
-        grade.contrastStrength = feedback.chromaContrast * fade;
+        grade.chromaticSeparationPixels = feedback.chromaPixels * feedback.chromaScale * fade;
+        grade.contrastStrength = feedback.chromaContrast * feedback.chromaScale * fade;
         world.GetPresentationVfx().SubmitActionCinematicGrade(grade);
     }
     if (shot.traceEveryFrames > 0) {
@@ -171,9 +206,11 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
 void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!GameSession::IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType),
-        [&](HIKARI::ObjectView object, GourdShotComponent& shot) { StepFeedback(world, object, shot, frame); });
+    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
+                                               [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
+                                                   StepFireStart(world, object, shot);
+                                                   StepFeedback(world, object, shot, frame);
+                                               });
     world.ForEachComponent<GourdComponent>(
         HIKARI::MakeComponentTypeId(kGourdType),
         [&](HIKARI::ObjectView object, GourdComponent& gourd) { StepCatch(world, object, gourd, frame); });

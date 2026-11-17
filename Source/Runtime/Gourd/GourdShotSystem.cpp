@@ -213,14 +213,17 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
     const bool grounded =
         GourdShotFogReturn::FindGround(world, origin, shot.impactGroundReach, playerObject.GetHandle().value, ground);
     SpawnPellets(shot, playerObject.GetHandle(), origin, direction, grounded ? origin.y - ground.y : -1.0f, fire);
-    GourdShotVisuals::QueueBurst(shot, true, origin, direction, shot.muzzleScale);
+    GourdShotVisuals::QueueBurst(shot, GourdBurstKind::Muzzle, fire, origin, direction, 1.0f);
     GourdShotFogReturn::MarkFire(shot, origin, shot.muzzleFireFrames);
     PlayerRules::LockActions(player, shot.recoveryFrames);
     PlayerRules::AddRecoil(player, Scale(direction, -1.0f), shot.recoilDistance, shot.recoilFrames,
                            shot.recoilEasePower);
-    GourdRules::AddRecoil(gourd, Scale(direction, -1.0f), shot.gourdRecoilDistance, shot.gourdRecoilFrames);
+    // 火弾はヒョウタンの跳ねだけを大きくする（プレイヤーの反動＝立ち位置は変えない）。
+    GourdRules::AddRecoil(gourd, Scale(direction, -1.0f),
+                          shot.gourdRecoilDistance * (fire ? shot.fireGourdRecoilScale : 1.0f), shot.gourdRecoilFrames);
     shot.phase = GourdShotPhase::Recovery;
     shot.lastShotTick = shot.processedTick;
+    shot.lastShotFire = fire;
     shot.nextFireTick =
         shot.processedTick + static_cast<uint64_t>(GourdShotRules::GetRepeatFrames(shot, shot.chainShots));
     shot.recoveryEndTick = shot.processedTick + static_cast<uint64_t>(shot.recoveryFrames);
@@ -373,12 +376,17 @@ void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 positio
     residue.position = position;
 }
 
-bool ApplyHit(HIKARI::WorldView& world, uint64_t target, float amount, Vec3 direction, float& health) {
+bool ApplyHit(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdProjectile& projectile,
+              uint64_t target, float& health) {
     bool accepted = false;
     world.ForEachComponent<DamageableComponent>(
         HIKARI::MakeComponentTypeId(kDamageableType), [&](HIKARI::ObjectView object, DamageableComponent& damageable) {
             if (object.GetHandle().value == target) {
-                accepted = DamageableRules::ApplyDamage(damageable, amount, direction);
+                accepted = DamageableRules::ApplyDamage(
+                    damageable, GourdShotRules::GetProjectileDamage(shot, projectile), projectile.direction);
+                // 火弾は、この命中の手応えだけを強めてもらう。
+                if (accepted && projectile.fire)
+                    DamageableRules::BoostHitFeedback(damageable, shot.fireHitCameraScale, shot.fireHitStopFrames);
                 health = DamageableRules::GetHealth(damageable);
             }
         });
@@ -431,8 +439,7 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
     projectile.densityScale = GourdShotRules::GetDensityAtDistance(shot, projectile.distance);
     if (didHit) {
         float health = 0.0f;
-        const bool accepted = ApplyHit(world, hit.objectHandle, GourdShotRules::GetProjectileDamage(shot, projectile),
-                                       projectile.direction, health);
+        const bool accepted = ApplyHit(world, shot, projectile, hit.objectHandle, health);
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;
@@ -441,8 +448,8 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
         // 体に重なる所で爆ぜると隠れて小さく暗く見えるので、飛んで来た距離を超えない範囲で手前へ戻す。
         const float standoff = std::min(shot.impactStandoff, projectile.distance);
         const Vec3 burst = Add(projectile.position, Scale(projectile.direction, -standoff));
-        GourdShotVisuals::QueueBurst(shot, false, burst, projectile.direction,
-                                     shot.impactScale * (1.0f - (1.0f - shot.impactFarScale) * farBlend));
+        GourdShotVisuals::QueueBurst(shot, GourdBurstKind::Impact, projectile.fire, burst, projectile.direction,
+                                     1.0f - (1.0f - shot.impactFarScale) * farBlend);
         GourdShotFogReturn::MarkFire(shot, burst, shot.impactFireFrames);
         projectile.flashFramesLeft = shot.shellFlashFrames;
         projectile.fadeFramesLeft = std::max(shot.shellFadeFrames, shot.shellFlashFrames);

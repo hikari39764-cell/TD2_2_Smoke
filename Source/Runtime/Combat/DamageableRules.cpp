@@ -35,6 +35,9 @@ bool DamageableRules::ApplyDamage(DamageableComponent& target, float amount, HIK
                                                                     static_cast<float>(direction.z / length)}
                                         : HIKARI::GameProjectFloat3{};
     ++target.hitCount;
+    // 手応えの強めは命中ごとに頼み直してもらう（前の命中の分を持ち越さない）。
+    target.pendingPushScale = 1.0f;
+    target.pendingStopFrames = 0;
     if (target.traceEveryHit) {
         char message[384]{};
         std::snprintf(message, sizeof(message),
@@ -46,6 +49,11 @@ bool DamageableRules::ApplyDamage(DamageableComponent& target, float amount, HIK
         HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Damageable", message);
     }
     return true;
+}
+
+void DamageableRules::BoostHitFeedback(DamageableComponent& target, float pushScale, int stopFrames) {
+    target.pendingPushScale = std::isfinite(pushScale) ? std::max(0.0f, pushScale) : 1.0f;
+    target.pendingStopFrames = std::max(0, stopFrames);
 }
 
 bool DamageableRules::IsAlive(const DamageableComponent& target) { return GetHealth(target) > 0.0f; }

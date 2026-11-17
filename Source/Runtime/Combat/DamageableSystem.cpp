@@ -52,19 +52,25 @@ void BeginFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageab
                    const HIKARI::FrameContext& frame) {
     // 前の止めがまだ続いている間の命中では、止めを延ばさず作り直さない（連射で止めが積み上がらない）。
     const bool stopRunning = target.hitStopToken != 0 && target.feedbackActive &&
-                             target.feedbackAgeSeconds < static_cast<float>(target.hitStopFrames) / kFramesPerSecond;
+                             target.feedbackAgeSeconds < static_cast<float>(target.activeStopFrames) / kFramesPerSecond;
     target.feedbackHitCount = target.hitCount;
     target.feedbackAgeSeconds = 0.0f;
     target.feedbackActive = true;
     // 威力が減った弾（距離で減衰した弾）は、カメラも同じ割合で弱く揺らす。
     target.hitCameraScale = std::clamp(target.lastRawDamage / std::max(1.0f, target.hitFeedbackFullDamage),
                                        std::clamp(target.hitFeedbackMinScale, 0.0f, 1.0f), 1.0f);
+    // 攻撃側が頼んだ強め（火弾）を取り込む：押しと視野角だけを強め、止めは長い方を取る。
+    target.hitPushScale = target.pendingPushScale;
+    const int stopFrames = std::max(target.hitStopFrames, target.pendingStopFrames);
+    target.pendingPushScale = 1.0f;
+    target.pendingStopFrames = 0;
     bool stopRequested = false;
     if (!stopRunning) {
         if (target.hitStopToken != 0)
             world.GetTimeDilation().Release(target.hitStopToken);
         target.hitStopToken = Feedback::RequestHitStop(world, kHitStopSource ^ object.GetHandle().value,
-                                                       kFeedbackPriority, target.hitStopFrames, target.hitStopScale);
+                                                       kFeedbackPriority, stopFrames, target.hitStopScale);
+        target.activeStopFrames = stopFrames;
         stopRequested = target.hitStopToken != 0;
     }
     StartFlash(object, target, target.hitFlashFrames);
@@ -75,15 +81,15 @@ void BeginFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageab
         std::snprintf(message, sizeof(message),
                       "Start tick=%llu count=%llu stopFrames=%d stopScale=%.6f token=%llu stopRunning=%d "
                       "stopRequested=%d effective=%.6f cameraAmplitude=%.6f cameraScale=%.6f flashStrength=%.6f "
-                      "flashSource=%d rumble=%d",
+                      "flashSource=%d rumble=%d pushScale=%.3f",
                       static_cast<unsigned long long>(frame.fixedTickIndex),
-                      static_cast<unsigned long long>(target.hitCount), target.hitStopFrames,
+                      static_cast<unsigned long long>(target.hitCount), stopFrames,
                       static_cast<double>(target.hitStopScale), static_cast<unsigned long long>(target.hitStopToken),
                       static_cast<int>(stopRunning), static_cast<int>(stopRequested),
                       static_cast<double>(world.GetTimeDilation().GetEffectiveScale()),
                       static_cast<double>(target.hitCameraAmplitude), static_cast<double>(target.hitCameraScale),
                       static_cast<double>(target.hitFlashStrength), static_cast<int>(target.flashSourceValid),
-                      static_cast<int>(rumbleAccepted));
+                      static_cast<int>(rumbleAccepted), static_cast<double>(target.hitPushScale));
         HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "DamageableFeedback", message);
     }
 }
@@ -116,7 +122,9 @@ bool ApplyCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Dama
     const float falloff = envelope * envelope;
     const float phase = kTau * target.hitCameraFrequency * target.feedbackAgeSeconds;
     const float strength = target.hitCameraAmplitude * falloff * target.hitCameraScale;
-    const float kick = target.hitCameraKickDistance * falloff * target.hitCameraScale;
+    // 押しと視野角は、攻撃側が頼んだ強め（火弾）の分だけ大きくする。揺れ幅は変えない（連射で震え続けない）。
+    const float push = falloff * target.hitCameraScale * target.hitPushScale;
+    const float kick = target.hitCameraKickDistance * push;
     modifier.sourceId = kCameraSource ^ object.GetHandle().value;
     modifier.priority = kFeedbackPriority;
     // 視点と注視点を一緒にずらし、傾きで酔わせない。攻撃の向きへ押してから戻すと、当たった重さが伝わる。
@@ -125,7 +133,7 @@ bool ApplyCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Dama
     modifier.worldPositionOffset = {target.lastDirection.x * kick, target.lastDirection.y * kick,
                                     target.lastDirection.z * kick};
     modifier.worldTargetOffset = modifier.worldPositionOffset;
-    modifier.verticalFovOffsetRadians = target.hitCameraFovDegrees * kRadiansPerDegree * falloff * target.hitCameraScale;
+    modifier.verticalFovOffsetRadians = target.hitCameraFovDegrees * kRadiansPerDegree * push;
     modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, target.feedbackCameraId);
     if (modifier.cameraObjectHandle == 0)
         return false;
@@ -170,16 +178,18 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageabl
         world.GetPresentationVfx().SubmitActionCinematicGrade(grade);
     }
     if (target.traceEveryHit) {
-        char message[384]{};
+        char message[448]{};
         std::snprintf(
             message, sizeof(message),
             "Visual tick=%llu count=%llu age=%.6f cameraAccepted=%d camera=%llu "
-            "offset=(%.6f,%.6f,%.6f) fov=%.6f flashActive=%d flashAccepted=%d flashClear=%d effective=%.6f",
+            "offset=(%.6f,%.6f,%.6f) kick=(%.6f,%.6f,%.6f) fov=%.6f flashActive=%d flashAccepted=%d flashClear=%d "
+            "effective=%.6f",
             static_cast<unsigned long long>(frame.fixedTickIndex), static_cast<unsigned long long>(target.hitCount),
             static_cast<double>(target.feedbackAgeSeconds), static_cast<int>(cameraAccepted),
             static_cast<unsigned long long>(modifier.cameraObjectHandle),
             static_cast<double>(modifier.localPositionOffset.x), static_cast<double>(modifier.localPositionOffset.y),
-            static_cast<double>(modifier.localPositionOffset.z),
+            static_cast<double>(modifier.localPositionOffset.z), static_cast<double>(modifier.worldPositionOffset.x),
+            static_cast<double>(modifier.worldPositionOffset.y), static_cast<double>(modifier.worldPositionOffset.z),
             static_cast<double>(modifier.verticalFovOffsetRadians), static_cast<int>(target.flashActive),
             static_cast<int>(flashAccepted), static_cast<int>(target.flashClearAccepted),
             static_cast<double>(world.GetTimeDilation().GetEffectiveScale()));
@@ -187,7 +197,7 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Damageabl
     }
     // ヒットストップ中も実時間で消える。固定 tick の戦闘ルールへ追加の停止を挟まない。
     target.feedbackAgeSeconds += std::max(0.0f, frame.unscaledDt);
-    const int durationFrames = std::max({target.hitStopFrames, target.hitCameraFrames, target.hitChromaFrames});
+    const int durationFrames = std::max({target.activeStopFrames, target.hitCameraFrames, target.hitChromaFrames});
     if (target.feedbackAgeSeconds >= static_cast<float>(durationFrames) / kFramesPerSecond)
         target.feedbackActive = false;
 }

@@ -11,6 +11,10 @@ public:
     // direction は攻撃が押す世界方向。有限の零ベクトルは方向なしとして受け付ける。
     // 無敵・死亡・非正の量は拒否し、成功時だけ被弾記録を更新する。
     static bool ApplyDamage(DamageableComponent& target, float amount, HIKARI::GameProjectFloat3 direction);
+    // 直前に受け付けられた命中の手応えだけを強める（火弾など。攻撃側が ApplyDamage の成功の直後に呼ぶ）。
+    // pushScale はカメラの押しと視野角の広がりに掛ける倍率（揺れ幅には掛けない）。stopFrames は止めの F 数で、
+    // hitStopFrames より長い時だけ効く。次の命中には持ち越さない。
+    static void BoostHitFeedback(DamageableComponent& target, float pushScale, int stopFrames);
     static bool IsAlive(const DamageableComponent& target);
     static float GetHealth(const DamageableComponent& target);
     static float GetMaxHealth(const DamageableComponent& target);

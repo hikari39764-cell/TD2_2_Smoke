@@ -1,0 +1,14 @@
+{
+  "displayName": "Gourd Fire Shot Impact",
+  "guid": "e3d2200c3c34e9fea2dfc0d23118a048",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdFireShotImpact.hvfx",
+  "type": "VfxEffect"
+}
