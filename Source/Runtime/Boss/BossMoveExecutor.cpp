@@ -6,6 +6,7 @@
 #include "BossBurnMarks.h"
 #include "BossFlameRun.h"
 #include "BossGreatsword.h"
+#include "BossKasumiStep.h"
 #include "BossMath.h"
 #include "BossPose.h"
 #include "BossSelection.h"
@@ -442,6 +443,14 @@ void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
     }
 }
 
+bool BossMoveExecutor::IsWalking(const BossComponent& boss) {
+    if (boss.state != BossState::Act || boss.phase != BossActPhase::Act || boss.move < 0 ||
+        static_cast<size_t>(boss.move) >= boss.table.GetMoves().size())
+        return false;
+    const BossMoveType type = CurrentMove(boss).type;
+    return type == BossMoveType::WalkSide || type == BossMoveType::WalkIn;
+}
+
 void BossMoveExecutor::FaceRate(BossFrame& frame, float degreesPerSecond) {
     BossComponent& boss = frame.boss;
     // 追尾を止めている間は向き直らない（どの型の、前隙・攻撃中のどの向き直りも）。
@@ -537,6 +546,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     BossBurnMarks::LightBlade(boss, move);
     BossSkyfall::Begin(frame, move);
     BossGreatsword::Begin(frame, move);
+    BossKasumiStep::Begin(frame, move);
 }
 
 BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {

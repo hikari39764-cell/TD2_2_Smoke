@@ -120,14 +120,16 @@ inline float SwordScale(const BossComponent& boss) {
 inline float HandScale(const BossComponent& boss) { return SwordScale(boss) * boss.body.handScale; }
 
 // 局所（体の向きの枠。足元が原点）の点・向きを世界へ移す。lock で「体の物体の変換（傾き・屈み込み）」と
-// 「規則の線の枠（足元と体の向きだけ）」を混ぜる。
+// 「規則の線の枠（足元と体の向きだけ）」を混ぜる。規則の線の枠も、外形を補間でずらした分だけずらす（体と刀を離さない）。
 struct MotionFrame {
     const BossComponent& boss;
     const HIKARI::GameProjectTransform& body;
     float lock;
 
     Vec3 Point(Vec3 local) const {
-        const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
+        const Vec3 shift = boss.bodyState.presentShift;
+        const Vec3 root{boss.ground.x + shift.x, boss.ground.y + BossPose::RootHeight(boss) + shift.y,
+                        boss.ground.z + shift.z};
         const Vec3 rule = Add(root, RotateY(local, boss.yaw));
         const Vec3 centered{local.x * body.scale.x, (local.y - boss.bodyHalfHeight) * body.scale.y,
                             local.z * body.scale.z};

@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "BossBodyMath.h"
+#include "../Boss/BossKasumiStep.h"
 #include "../Boss/BossRules.h"
 #include "../Boss/BossVfx.h"
 #include "../Common/VfxParameters.h"
@@ -57,6 +58,7 @@ bool UsesSword(BossMoveType type) {
     case BossMoveType::WalkSide:
     case BossMoveType::WalkIn:
     case BossMoveType::Backstep:
+    case BossMoveType::KasumiStep:
     case BossMoveType::Detonate:
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: return false;
@@ -64,9 +66,10 @@ bool UsesSword(BossMoveType type) {
     }
 }
 
-// 歩き・下がりのような、構えの合図を出さない技か。
+// 歩き・下がり・霞歩のような、構えの合図を出さない技か。
 bool IsFootwork(BossMoveType type) {
-    return type == BossMoveType::WalkSide || type == BossMoveType::WalkIn || type == BossMoveType::Backstep;
+    return type == BossMoveType::WalkSide || type == BossMoveType::WalkIn || type == BossMoveType::Backstep ||
+           type == BossMoveType::KasumiStep;
 }
 
 // 大技か（目の閃きを強くする）。
@@ -401,7 +404,10 @@ void BossBodyAccents::StepSmoke(BossComponent& boss, float seconds) {
         a.puff = 1.0f;
     a.wasWindow = boss.swordSmoke;
     a.puff = std::max(0.0f, a.puff - seconds / std::max(kTiny, s.smokeSwingPuffSeconds));
-    const float amount = Lerp(1.0f, s.smokeChargeAmount, ChargeAmount(boss)) * Lerp(1.0f, s.smokeSwingPuff, a.puff);
+    // 続けてかわせる回数を使い切った間（かわさない間）は、煙が薄く静かになる（息が切れている。地面や画面の印の代わり）。
+    const float spent = BossKasumiStep::Spent(boss) ? std::max(0.0f, boss.kasumiStep.spentSmoke) : 1.0f;
+    const float amount =
+        Lerp(1.0f, s.smokeChargeAmount, ChargeAmount(boss)) * Lerp(1.0f, s.smokeSwingPuff, a.puff) * spent;
     // 吹き出しはすぐ立ち上げ、ほかはなめらかに追う。
     a.smokeAmount = amount > a.smokeAmount ? amount : Lerp(a.smokeAmount, amount, Follow(seconds, kSmokeFollowSeconds));
     // フェーズ 1 で刀が燃えている間（火を残す技の前隙〜後隙）は、胴の煙も中から灼ける。

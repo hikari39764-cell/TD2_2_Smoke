@@ -29,6 +29,8 @@ public:
     static void StepBack(BossFrame& frame, float progress);
     // 動ける範囲（戦場の円）に収める。
     static void ClampToArena(const BossComponent& boss, HIKARI::GameProjectFloat3& point);
+    // 歩きの技（横歩き・間合いを詰める）の攻撃中か。木は、この間も歩きを切り上げる反応だけを試す。
+    static bool IsWalking(const BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

@@ -508,14 +508,15 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     // 剣先を地面の下へ入れない：突き抜ける分だけ、剣の向きを水平の側へ起こす（握りは動かさない。縦に振り下ろした
     // 後、規則の剣の線は地面の下へ入るが、見える刀は地面に当たって止まる）。霧へ沈んでいる間は掛けない。
     const Vec3 gripWorld = frame.Point(grip);
-    const float floorHeight = boss.ground.y + s.tipGroundClearance;
+    const float floorHeight = boss.ground.y + boss.bodyState.presentShift.y + s.tipGroundClearance;
     const bool sunk = BossPose::RootHeight(boss) < -kTiny;
     const Vec3 freeDirection = frame.Direction(direction);
     const Vec3 worldDirection = s.tipGroundClearance < 0.0f || sunk
                                     ? freeDirection
                                     : KeepTipAbove(gripWorld, freeDirection, VisibleBladeReach(boss), floorHeight,
                                                    RotateY({0.0f, 0.0f, 1.0f}, boss.yaw));
-    pose.swordTipClearance = sunk ? 1000.0f : gripWorld.y + freeDirection.y * VisibleBladeReach(boss) - boss.ground.y;
+    pose.swordTipClearance =
+        sunk ? 1000.0f : gripWorld.y + freeDirection.y * VisibleBladeReach(boss) - (floorHeight - s.tipGroundClearance);
     const Vec3 worldEdge = Perpendicular(frame.Direction(Perpendicular(m.edge, direction)), worldDirection);
     const float scale = SwordScale(boss);
     const float handScale = HandScale(boss);
@@ -548,7 +549,9 @@ void BossBodySword::Trace(const BossComponent& boss, const Transform& body, cons
     const Vec3 motion = RotateY(m.velocity, boss.yaw);
     const float speed = Length(motion);
     const BossSwordLine line = BossPose::SwordLine(boss, boss.swordPose);
-    const Vec3 tip = Add(pose.sword.position, Mul(direction, VisibleBladeReach(boss)));
+    // 見える刀は補間でずらしてあるので、規則の線と比べる時はずらす前へ戻す。
+    const Vec3 tip =
+        Sub(Add(pose.sword.position, Mul(direction, VisibleBladeReach(boss))), boss.bodyState.presentShift);
     const Vec3 far =
         Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength + boss.body.motion.armReach));
     char message[256]{};

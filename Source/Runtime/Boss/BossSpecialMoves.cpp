@@ -9,6 +9,7 @@
 #include "BossDetonate.h"
 #include "BossFlameRun.h"
 #include "BossGreatsword.h"
+#include "BossKasumiStep.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossSkyfall.h"
@@ -139,6 +140,7 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     case BossMoveType::Retreat: RetreatPre(frame, move); break;
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: BossGreatsword::Pre(frame, move); break;
+    case BossMoveType::KasumiStep: BossKasumiStep::Pre(boss, progress); break;
     default: break;
     }
 }
@@ -157,6 +159,7 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: BossGreatsword::Act(frame, move, g); break;
     case BossMoveType::FlameRun: BossFlameRun::Act(frame, move); break;
+    case BossMoveType::KasumiStep: BossKasumiStep::Act(frame, progress); break;
     case BossMoveType::Retreat:
         // 振り抜いて斬撃を放った tick（実行器の SwingStep がこの tick に放つ）。
         if (g.hit && g.tIn == g.swingLength)
@@ -201,6 +204,7 @@ void BossSpecialMoves::Post(BossComponent& boss, const BossMove& move, float pro
     case BossMoveType::Skyfall: BossSkyfall::Post(boss); break;
     case BossMoveType::Greatsword:
     case BossMoveType::GreatswordCleave: BossGreatsword::Post(boss); break;
+    case BossMoveType::KasumiStep: BossKasumiStep::Post(boss, progress); break;
     default: break;
     }
 }

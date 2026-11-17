@@ -238,6 +238,8 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  HIKARI::GameProjectAssetKind::Model, model);
     fields.Bool("bodyVisible", "外形の模型を出す", visible);
     fields.Bool("bodyCastShadow", "外形の模型が影を落とす（切ると軽くなる）", castShadow);
+    fields.Bool("bodyInterpolate", "外形を前の tick との間で補間して置く（描画が tick より速い時のがくつきを消す）",
+                interpolate);
     fields.Float("bodySwordModelLength", "刀の模型の、握りの中央から剣先までの長さ (m。見える刀の長さに合うよう拡大する)",
                  swordModelLength, 0.1f, 20.0f);
     fields.Float("bodySwordVisibleLength",

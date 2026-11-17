@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 
+#include "HIKARI/Project/ValueTypes.h"
+
 namespace Project_TD2_2 {
 
 // ローリングの向きを覚えておく数（「ローリングの癖」の節が見る最近の回数の上限）。
@@ -46,6 +48,11 @@ struct BossPlayerWatch {
     // 狙いの線がボスの体を通るか（水平に見て、体の軸からの外れ shotMiss m が体の半径＋余裕以下）。
     bool shotAimed = false;
     float shotMiss = 0.0f;
+    // 最後に見た狙いの線（構えの間と押し続けている間に読む。霞歩が弾の線から離れる側を決める）。shotLineSeen は一度でも
+    // 見たか。
+    bool shotLineSeen = false;
+    HIKARI::GameProjectFloat3 shotOrigin{};
+    HIKARI::GameProjectFloat3 shotDirection{0.0f, 0.0f, 1.0f};
     // 撃った弾の累計（砲撃の数え。増えたら撃った）、続けて撃った数、最後に撃った tick、その前の弾との間 (F)。
     uint64_t shotsSeen = 0;
     int shotStreak = 0;

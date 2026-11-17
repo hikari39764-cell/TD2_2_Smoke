@@ -7,6 +7,8 @@
 
 #include "BossBurnMarks.h"
 #include "BossCsv.h"
+#include "BossKasumiStep.h"
+#include "BossMoveLinks.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -14,9 +16,9 @@ namespace {
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
 constexpr const char* kTypeKeys[kTypeCount] = {
-    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",   "knife",    "string",
-    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn", "backstep", "detonate",
-    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun"};
+    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",      "knife",    "string",
+    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn",    "backstep", "detonate",
+    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -50,6 +52,9 @@ enum class Column {
     SwitchTo,
     SwitchChance,
     SwitchPre,
+    StepDirections,
+    StepDistance,
+    StepHeight,
     Count
 };
 // 「変化の前隙 F」が空欄の時の、切り替えた技の前隙 (F)。
@@ -61,6 +66,9 @@ struct HeaderKey {
 };
 // 「追尾を止める」は「追尾」より、「崩せる被弾数」は「被弾」より先に見る（後ろの短い見出しに取られないように）。
 constexpr HeaderKey kHeaders[] = {
+    {"跳ぶ向き", Column::StepDirections},
+    {"跳ぶ距離", Column::StepDistance},
+    {"跳ぶ高さ", Column::StepHeight},
     {"変化の前隙", Column::SwitchPre},
     {"変化確率", Column::SwitchChance},
     {"変化先", Column::SwitchTo},
@@ -263,69 +271,6 @@ struct Parsed {
     std::vector<int> strikeDamage;
     bool hasReference = false;
 };
-
-// コンボ先の名前を行につなぐ：完全一致 → 無ければ名前を含む行（自分は除く。合う行は全部）。
-// 「/」「、」「・」で複数書ける（試作と同じ）。
-void LinkCombos(std::vector<BossMove>& moves, std::vector<std::string>& warnings) {
-    for (size_t self = 0; self < moves.size(); ++self) {
-        BossMove& move = moves[self];
-        for (const auto& part : Split(move.comboText, false, true)) {
-            const std::string name = Trim(part);
-            if (name.empty())
-                continue;
-            std::vector<int> hits;
-            for (size_t i = 0; i < moves.size(); ++i) {
-                if (moves[i].name == name)
-                    hits.push_back(static_cast<int>(i));
-            }
-            if (hits.empty()) {
-                for (size_t i = 0; i < moves.size(); ++i) {
-                    if (i != self && (Contains(moves[i].name, name) || Contains(name, moves[i].name)))
-                        hits.push_back(static_cast<int>(i));
-                }
-            }
-            if (hits.empty())
-                warnings.push_back("「" + move.name + "」: コンボ先「" + name + "」という行動が表にありません");
-            for (const int hit : hits) {
-                if (std::find(move.comboTargets.begin(), move.comboTargets.end(), hit) == move.comboTargets.end())
-                    move.comboTargets.push_back(hit);
-            }
-        }
-    }
-}
-
-// 構えの途中の変化：変化先の行を、前隙だけ短くした行として末尾へ足し、元の行の switchMove に入れる。足した行は
-// 行動ツリーの技選びに出ない（コンボ用）。溜めの揺らぎ・崩せる被弾数・変化は持たない（切り替わった後は一気に振る）。
-void AddSwitches(std::vector<BossMove>& moves, std::vector<std::string>& warnings) {
-    const size_t original = moves.size();
-    for (size_t self = 0; self < original; ++self) {
-        const std::string name = moves[self].switchText;
-        if (name.empty() || moves[self].switchChance <= 0.0f)
-            continue;
-        int target = -1;
-        for (size_t i = 0; i < original; ++i) {
-            if (moves[i].name == name)
-                target = static_cast<int>(i);
-        }
-        if (target < 0 || target == static_cast<int>(self)) {
-            warnings.push_back("「" + moves[self].name + "」: 変化先「" + name + "」という行動が表にありません");
-            continue;
-        }
-        BossMove copy = moves[static_cast<size_t>(target)];
-        copy.name += "（変化）";
-        copy.pre = std::max(2, moves[self].switchPre);
-        copy.windupExtras.clear();
-        copy.breakHits = 0;
-        copy.switchText.clear();
-        copy.switchChance = 0.0f;
-        copy.switchMove = -1;
-        copy.comboOnly = true;
-        copy.use = BossMoveUse::Combo;
-        copy.distanceWeight = -1.0f;
-        moves[self].switchMove = static_cast<int>(moves.size());
-        moves.push_back(std::move(copy));
-    }
-}
 
 } // namespace
 
@@ -656,6 +601,10 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             const int dive = std::clamp(timing.skyfallDiveFrames, 1, total - 1);
             move.segments.push_back({dive, false, 0, false, 0, 0});
             move.segments.push_back({total - dive, true, 0, false, 0, 0});
+        } else if (move.type == BossMoveType::KasumiStep) {
+            // 霞歩：攻撃中は跳ぶ F の 1 区間だけ（当たりの区間は無い）。
+            const int frames = static_cast<int>(NumberOf(actText).value_or(NumberOf(T.act).value_or(1.0)));
+            move.segments.push_back({std::max(1, frames), false, 0, false, 0, 0});
         } else {
             std::vector<double> parts;
             for (const auto& part : Split(actText, false)) {
@@ -716,7 +665,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             move.damage = std::max(1, RoundHalfUp(autoDamage(pre + post) / 2.0));
         } else if (move.type == BossMoveType::Ambush) {
             move.damage = autoDamage((pre + post) / 2.0);
-        } else if (IsMoveType(move.type) || move.type == BossMoveType::Clone) {
+        } else if (IsMoveType(move.type) || move.type == BossMoveType::Clone || move.type == BossMoveType::KasumiStep) {
             move.damage = 0;
         } else {
             move.damage = autoDamage(pre + post);
@@ -741,6 +690,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         ReadWindup(raw, move);
         ReadBlast(raw, move);
         ReadKnockDistance(raw, move);
+        if (move.type == BossMoveType::KasumiStep)
+            BossKasumiStep::Read(raw[Column::StepDirections], raw[Column::StepDistance], raw[Column::StepHeight], move);
         move.act = 0;
         move.hitCount = 0;
         for (const auto& segment : move.segments) {
@@ -803,8 +754,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             warnings.push_back("「" + move.name + "」: " + warning);
         moves_.push_back(std::move(move));
     }
-    LinkCombos(moves_, warnings);
-    AddSwitches(moves_, warnings);
+    BossMoveLinks::LinkCombos(moves_, warnings);
+    BossMoveLinks::AddSwitches(moves_, warnings);
     return !moves_.empty();
 }
 

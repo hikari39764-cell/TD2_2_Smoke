@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "BossFrame.h"
+#include "BossKasumiStep.h"
 #include "BossRules.h"
 
 namespace Project_TD2_2 {
@@ -39,10 +40,12 @@ bool HasComboTarget(const BossMove& move, int row) {
 
 bool BossSelection::CanPerform(const BossComponent& boss, int row, const BossSituation& situation) {
     const BossMove* move = BossRules::GetMove(boss, row);
-    // 引爆は爆ぜさせる火が無ければ出せない（木の枝はここで断られて失敗し、次の枝へ進む）。
+    // 引爆は爆ぜさせる火が無ければ出せない（木の枝はここで断られて失敗し、次の枝へ進む）。霞歩は、かわさない間
+    // （息が切れている）は出さない（Boss.kasumiStepRestWhileSpent）。
     return move != nullptr && move->executable && situation.distance >= 0.0f &&
            BossMoveConditionHolds(move->when, situation) &&
-           (move->type != BossMoveType::Detonate || boss.watch.burningPercent > 0.0f);
+           (move->type != BossMoveType::Detonate || boss.watch.burningPercent > 0.0f) &&
+           BossKasumiStep::Allows(boss, *move);
 }
 
 float BossSelection::NeutralWeight(const BossComponent& boss, int row, const BossSituation& situation) {
@@ -77,21 +80,33 @@ int BossSelection::PickCombo(const BossComponent& boss, const BossSituation& sit
     const BossMove* current = BossRules::GetMove(boss, BossRules::GetCurrentMove(boss));
     if (current == nullptr || BossRules::GetChain(boss) + 1 >= boss.comboMaxChain)
         return -1;
-    int count = 0;
-    for (const int target : current->comboTargets)
-        count += IsComboCandidate(boss, target, situation) ? 1 : 0;
-    if (count == 0)
+    // 候補ごとの重み（表の「名前:重み」。書いていなければ 1）。
+    const auto weightOf = [&](size_t k) {
+        return k < current->comboWeights.size() ? std::max(0.0f, current->comboWeights[k]) : 1.0f;
+    };
+    float total = 0.0f;
+    int last = -1;
+    for (size_t k = 0; k < current->comboTargets.size(); ++k) {
+        if (IsComboCandidate(boss, current->comboTargets[k], situation) && weightOf(k) > 0.0f) {
+            total += weightOf(k);
+            last = current->comboTargets[k];
+        }
+    }
+    if (last < 0)
         return -1;
     const float chance = current->comboChance >= 0.0f ? current->comboChance : boss.comboChancePercent;
     if (!(roll * 100.0f < chance))
         return -1;
-    // 候補が何行もあれば同じ確率で 1 つ。
-    int skip = std::min(count - 1, static_cast<int>(pick * static_cast<float>(count)));
-    for (const int target : current->comboTargets) {
-        if (IsComboCandidate(boss, target, situation) && skip-- == 0)
-            return target;
+    // 候補が何行もあれば、重みに比例した確率で 1 つ（重みが全部 1 なら同じ確率）。
+    float left = std::clamp(pick, 0.0f, 1.0f) * total;
+    for (size_t k = 0; k < current->comboTargets.size(); ++k) {
+        if (!IsComboCandidate(boss, current->comboTargets[k], situation) || !(weightOf(k) > 0.0f))
+            continue;
+        left -= weightOf(k);
+        if (left < 0.0f)
+            return current->comboTargets[k];
     }
-    return -1;
+    return last;
 }
 
 bool BossSelection::IsComboOfCurrent(const BossComponent& boss, int row) {

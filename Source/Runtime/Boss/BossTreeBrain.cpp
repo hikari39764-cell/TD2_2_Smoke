@@ -19,6 +19,8 @@ void BossTreeBrain::OnActFinished(BossBrainContext& context) { Think(context, Bo
 
 void BossTreeBrain::OnRecovery(BossBrainContext& context) { Think(context, BossBrainMoment::Recovery); }
 
+void BossTreeBrain::OnWalking(BossBrainContext& context) { Think(context, BossBrainMoment::Walking); }
+
 void BossTreeBrain::Think(BossBrainContext& context, BossBrainMoment moment) {
     if (nodes_ == nullptr)
         return;

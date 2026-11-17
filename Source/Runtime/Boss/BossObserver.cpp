@@ -127,6 +127,9 @@ void ObserveShot(BossComponent& boss, const BossGearSight& gear, Vec3 playerCent
     if (pending) {
         watch.shotMiss = AimMiss(boss, gear);
         watch.shotAimed = watch.shotMiss <= boss.bodyRadius + std::max(0.0f, boss.watchShotAimMargin);
+        watch.shotLineSeen = true;
+        watch.shotOrigin = gear.aimOrigin;
+        watch.shotDirection = gear.aimDirection;
     }
     if (gear.shotsFired > watch.shotsSeen) {
         const uint64_t gap = boss.tick - watch.shotLastTick;

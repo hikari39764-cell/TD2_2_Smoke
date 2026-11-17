@@ -46,4 +46,8 @@ void BossTestBrain::OnRecovery(BossBrainContext&) {
     // 確かめ用は後隙を切り上げない。
 }
 
+void BossTestBrain::OnWalking(BossBrainContext&) {
+    // 確かめ用は歩きを切り上げない。
+}
+
 } // namespace Project_TD2_2

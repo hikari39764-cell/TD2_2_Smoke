@@ -262,9 +262,12 @@ Status RequestFirst(INodeContext& context, MoveState& run, BossThought& thought)
                   "phase=%d%s",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(name.size()), name.data(),
                   reaction ? "reaction" : ModeName(mode),
-                  thought.moment == BossBrainMoment::Recovery ? "recovery" : "idle", static_cast<int>(continues),
-                  static_cast<double>(thought.situation.distance), static_cast<double>(weight), boss.brain.lastStarted,
-                  boss.brain.moveHits, thought.situation.phase, branch);
+                  thought.moment == BossBrainMoment::Recovery  ? "recovery"
+                  : thought.moment == BossBrainMoment::Walking ? "walk"
+                                                               : "idle",
+                  static_cast<int>(continues), static_cast<double>(thought.situation.distance),
+                  static_cast<double>(weight), boss.brain.lastStarted, boss.brain.moveHits, thought.situation.phase,
+                  branch);
     BossLog::Write(message);
     return Status::Running;
 }

@@ -29,6 +29,8 @@ public:
     // 後隙の固定 tick ごと。後隙を切り上げて次の技を出すなら RequestMove する
     // （asCombo が true ならコンボの続きとして数える）。
     virtual void OnRecovery(BossBrainContext& context) = 0;
+    // 歩きの技（横歩き・間合いを詰める）の攻撃中の固定 tick ごと。歩きを切り上げて技を出すなら RequestMove する。
+    virtual void OnWalking(BossBrainContext& context) = 0;
 };
 
 // 確かめ用：「試す技」を 1 つ、または表の技を順番に出す。表の順で、実行器が動かせない型は飛ばす。
@@ -39,6 +41,7 @@ public:
     void OnIdle(BossBrainContext& context) override;
     void OnActFinished(BossBrainContext& context) override;
     void OnRecovery(BossBrainContext& context) override;
+    void OnWalking(BossBrainContext& context) override;
 };
 
 } // namespace Project_TD2_2

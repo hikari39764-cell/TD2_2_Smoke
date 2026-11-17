@@ -12,6 +12,7 @@
 #include "BossDetonate.h"
 #include "BossFeedback.h"
 #include "BossFlameRun.h"
+#include "BossKasumiStep.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossObserver.h"
@@ -302,10 +303,12 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
         BossLog::Write(message);
     }
     DamageableRules::SetIncomingDamageScale(health, boss.state == BossState::Stunned ? boss.stunDamageScale : 1.0f);
-    // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。
-    if (boss.hidden != boss.hiddenApplied) {
-        health.invulnerable = boss.hidden;
-        boss.hiddenApplied = boss.hidden;
+    // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。弾をかわす霞歩の
+    // 跳び始め（kasumiStepGuardFrames）も当たらない。
+    const bool shielded = boss.hidden || BossKasumiStep::Guarding(boss);
+    if (shielded != boss.hiddenApplied) {
+        health.invulnerable = shielded;
+        boss.hiddenApplied = shielded;
     }
     return hits;
 }
@@ -380,6 +383,11 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
                 StartRequested(frame, boss.requestedAsCombo ? boss.chain + 1 : 0);
             else if (context.recoveryDone)
                 BossMoveExecutor::EnterIdle(boss);
+        } else if (BossMoveExecutor::IsWalking(boss)) {
+            // 歩きの技の間も木を進める。「移動中も反応する」反応の枝（射撃をかわす霞歩）だけが、歩きを切り上げて技を出す。
+            brain.OnWalking(context);
+            if (boss.requestedMove >= 0)
+                StartRequested(frame, 0);
         }
         return;
     }
@@ -419,7 +427,9 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     float lean = boss.leanForward +
                  oneHand * boss.poseLeanDegrees * kRadiansPerDegree * (boss.poseX - kPoseLeanNeutral) / 100.0f +
                  boss.poseLean;
-    const float sway = boss.leanSide - boss.poseSwayDegrees * kRadiansPerDegree * boss.poseY / 100.0f;
+    float sway = boss.leanSide - boss.poseSwayDegrees * kRadiansPerDegree * boss.poseY / 100.0f;
+    // 霞歩：跳ぶ向きへ傾ける（速さの傾きは瞬間移動とみなす速さで切れるので、跳ぶ間は別に足す）。
+    BossKasumiStep::AddLean(boss, lean, sway);
     if (boss.state == BossState::Stunned)
         lean += boss.stunLeanRadians + std::sin(boss.floatClock * kStunWobbleRate) * kStunWobble;
     if (boss.state == BossState::Dead)
@@ -443,6 +453,8 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     }
     transform.scale = {vanish, squash * vanish, vanish};
     object.SetWorldTransform(transform);
+    // 外形は描画のフレームで、前の tick とこの tick の間を補間して置く。
+    BossBodyVisuals::NoteTick(boss, transform.position);
 }
 
 // プレイヤーの砲撃（最初の 1 つ）を、砲撃の規則の読むだけの関数から見る。
@@ -655,7 +667,8 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                   return;
                                               BossVisuals::Update(world, object, boss, frame.gameDt,
                                                                   frame.fixedInterpolationAlpha);
-                                              BossBodyVisuals::Update(world, object, boss, frame.gameDt);
+                                              BossBodyVisuals::Update(world, object, boss, frame.gameDt,
+                                                                      frame.fixedInterpolationAlpha);
                                               // 霞分身の外形（分身の物体は BossClones と同じく部品の型で回る）。
                                               world.ForEachComponent<BossCloneComponent>(
                                                   HIKARI::MakeComponentTypeId(kBossCloneType),

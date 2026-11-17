@@ -8,7 +8,7 @@ namespace Project_TD2_2 {
 // 跳躍→X字2段・回転→霞の輪・霞隠れ→回り込み突進・霞分身の体の動き（試作の preMotion／actMotion／segEnter／
 // ambushMotion／postMotion のうち、この 4 つの型の分）と、引爆の時間の進め方（中身は BossDetonate）、
 // 天降り斬りの跳ぶ・溜める・落ちる・着地（中身は BossSkyfall）、退き溜めの退く・溜める、霞の大剣（中身は BossGreatsword）、
-// 炎走りの前線を放つ（中身は BossFlameRun）。
+// 炎走りの前線を放つ（中身は BossFlameRun）、霞歩の屈む・跳ぶ・着地に沈む（中身は BossKasumiStep）。
 // 剣の振りと斬撃は実行器の共通の流れ（BossMoveExecutor）が出す。
 class BossSpecialMoves final {
 public:

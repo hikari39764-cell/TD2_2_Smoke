@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "BossFrame.h"
+#include "BossKasumiStep.h"
 #include "BossObserver.h"
 #include "BossRules.h"
 
@@ -167,7 +168,8 @@ enum : uint32_t {
     kReactionReroll,
     kReactionCutRecovery,
     kReactionDelayMin,
-    kReactionDelayMax
+    kReactionDelayMax,
+    kReactionDuringWalk
 };
 constexpr ParamDesc kReactionParams[] = {
     {"label", ValueType::Text, "名前", 0.0, "反応", false, nullptr,
@@ -189,6 +191,9 @@ constexpr ParamDesc kReactionParams[] = {
      "遅れの長い方。当たるたびに最小〜最大のどれかになる。待つ間に条件が崩れても反応は出る（見てから動き出した後）。"
      "待つ間にボスが待機（「後隙を切り上げる」なら後隙）でなくなったら取りやめる。",
      0.0, 60.0, "F"},
+    {"duringWalk", ValueType::Bool, "移動中も反応する", 0.0, nullptr, false, nullptr,
+     "オンにすると、歩きの技（横歩き・間合いを詰める）の間も反応して歩きを切り上げる。オフ（既定）は待機中だけ。"
+     "技の前隙・攻撃中・後隙（「後隙を切り上げる」がオフなら）の間は、どちらでも反応しない。"},
 };
 
 // 反応の遅れを待っている間の、節ごとの状態（確率に当たってから後ろの技を始めるまで）。走り始めるたびに 0 から。
@@ -265,9 +270,12 @@ Status TickReaction(INodeContext& context, void* state, void* user) noexcept {
     BossThought* thought = BossBehaviorNodes::ThoughtOf(user);
     if (thought == nullptr)
         return Status::Failure;
-    // 反応して技を出せるのは待機中（待ちを切り上げる）だけ。「後隙を切り上げる」節は後隙の間も。
+    // 反応して技を出せるのは待機中（待ちを切り上げる）だけ。「後隙を切り上げる」節は後隙の間も、「移動中も反応する」節は
+    // 歩きの技の間も。
     const bool recovery = thought->moment == BossBrainMoment::Recovery;
-    if (thought->moment != BossBrainMoment::Idle && !(recovery && context.ParamBool(kReactionCutRecovery)))
+    const bool walking = thought->moment == BossBrainMoment::Walking;
+    if (thought->moment != BossBrainMoment::Idle && !(recovery && context.ParamBool(kReactionCutRecovery)) &&
+        !(walking && context.ParamBool(kReactionDuringWalk)))
         return Status::Failure;
     auto& gate = *static_cast<ReactionState*>(state);
     const std::string_view label = context.ParamText(kReactionLabel);
@@ -288,7 +296,10 @@ Status TickReaction(INodeContext& context, void* state, void* user) noexcept {
                   "Reaction tick=%llu branch=%.*s roll=%.2f chance=%.2f pass=%d from=%s delay=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(label.size()), label.data(),
                   static_cast<double>(roll), static_cast<double>(chance), static_cast<int>(pass),
-                  recovery ? "recovery" : "idle", delay);
+                  recovery  ? "recovery"
+                  : walking ? "walk"
+                            : "idle",
+                  delay);
     BossLog::Write(message);
     if (!pass)
         return Status::Failure;
@@ -477,6 +488,13 @@ Status TickRemaining(INodeContext& context, void*, void* user) noexcept {
                   watch->healCharges <= context.ParamInt(kRemainHealsMost));
 }
 
+// ---- 霞歩でかわせる：続けてかわせる回数を使い切った後の、かわさない間でない（c-dbd81e）。 ----
+
+Status TickStepReady(INodeContext&, void*, void* user) noexcept {
+    const BossThought* thought = BossBehaviorNodes::ThoughtOf(user);
+    return Result(thought != nullptr && BossKasumiStep::CanDodge(thought->boss));
+}
+
 NodeTypeDesc Condition(const char* typeName, const char* displayName, const char* description,
                        Status (*tick)(INodeContext&, void*, void*) noexcept, void* user) {
     NodeTypeDesc desc{};
@@ -530,8 +548,15 @@ bool RegisterWatch(NodeRegistration& registration, void* user) {
                   "問わない項目は既定のまま（any・100 %・0〜100 %・0〜99 回）にする。",
                   &TickRemaining, user);
     SetParams(remaining, kRemainParams);
+    const NodeTypeDesc stepReady = Condition(
+        "Project_TD2_2.BossStepReady", "霞歩でかわせる",
+        "続けてかわせる回数（ボスの項目「続けてかわせる回数」）を使い切った後の、かわさない間（「使い切った後、"
+        "かわさない間」秒）でなければ成功する。射撃をかわす枝の、反応の間隔の前に置く。かわさない間は胴の煙が"
+        "薄くなる。",
+        &TickStepReady, user);
     return registration.Register(shooting) && registration.Register(habit) && registration.Register(punished) &&
-           registration.Register(behind) && registration.Register(farAway) && registration.Register(remaining);
+           registration.Register(behind) && registration.Register(farAway) && registration.Register(remaining) &&
+           registration.Register(stepReady);
 }
 
 } // namespace

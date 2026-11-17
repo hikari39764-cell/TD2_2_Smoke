@@ -7,6 +7,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "BossKasumiStepSettings.h"
 #include "BossMoveTable.h"
 #include "BossSwingShapes.h"
 #include "BossSwordPose.h"
@@ -873,6 +874,8 @@ public:
     float swordHazeLength = 0.6075f;
     // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
     BossSwingSettings swing;
+    // 霞歩（横っ飛び）とかわし。
+    BossKasumiStepSettings kasumiStep;
     float waveForward = 1.324f;
     float waveMinHeight = 0.941f;
     float waveMaxHeight = 2.788f;
@@ -1088,6 +1091,7 @@ public:
     BossGreatswordState greatsword;
     BossFlameRunState flameRun;
     BossFlameRunVisualState flameRunVisual;
+    BossKasumiStepState kasumiStepState;
     // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに
     // 書き、それ以外の tick は 0（BossSystem が tick の始めに戻す）。規則は読まず、見た目（BossVisuals）が読む。
     float chargeVisual = 0.0f;

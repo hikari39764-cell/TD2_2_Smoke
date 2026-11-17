@@ -45,7 +45,27 @@ enum class BossMoveType {
     // （判定サイズ＝前線の線から当たる距離、斬撃速度＝前線の速さ）。放つ数・角度・間隔・走る長さはボスの項目。
     // 攻撃中＝最後の前線を放ってからの F（放つ間の（数−1）×間隔はフェーズで変わるので、技を始めた時に足す）。
     FlameRun,
+    // 霞歩：プレイヤーを見たまま、横・斜め前・斜め後ろ、またはプレイヤーの弾の線から離れる側へ 1 歩で跳ぶ
+    // （攻撃中＝跳ぶ F、後隙＝着地の止まり。向き・距離・高さは表の「跳ぶ向き」「跳ぶ距離 m」「跳ぶ高さ m」）。当たりは無い。
+    KasumiStep,
     Count
+};
+
+// 霞歩の向き（表の「跳ぶ向き」の 1 項目）。左右は、ボスがプレイヤーへ向いた時のボスの左右（プレイヤーから見ると逆）。
+// 弾＝プレイヤーが撃とうとしている弾の線から離れる側（線に直交する向き）。
+enum class BossStepDirection { Left, Right, LeftForward, RightForward, LeftBack, RightBack, AwayFromShot };
+
+// 「跳ぶ向き」に書ける項目の数（同じ向きを何度か書くと、その向きが選ばれやすくなる）。
+inline constexpr size_t kBossStepDirectionCapacity = 8;
+
+// 霞歩の行の値（「跳ぶ向き」「跳ぶ距離 m」「跳ぶ高さ m」）。距離・高さの空欄はボスの項目（kasumiStepDistance・Height）。
+struct BossStepSpec {
+    std::array<BossStepDirection, kBossStepDirectionCapacity> directions{};
+    int directionCount = 0;
+    // 0 以下は空欄（ボスの項目）。
+    float distance = 0.0f;
+    // 負は空欄（ボスの項目）。
+    float height = -1.0f;
 };
 
 // 被弾の種類：のけぞり／吹っ飛び／最後の一撃だけ吹っ飛び。
@@ -169,8 +189,12 @@ struct BossMove {
     BossMoveUse use = BossMoveUse::Start;
     // 発生条件を読んだもの。
     BossMoveCondition when;
-    // コンボ先の行（「コンボ先」の名前に合う行。1 つの名前が何行にも合えば全部）。
+    // コンボ先の行（「コンボ先」の名前に合う行。1 つの名前が何行にも合えば全部）と、それぞれの重み（「名前:重み」の数。
+    // 書いていなければ 1）。コンボする時は、出せる候補の中から重みに比例した確率で 1 つ選ぶ。
     std::vector<int> comboTargets;
+    std::vector<float> comboWeights;
+    // 霞歩の向き・距離・高さ（型が霞歩の行だけが使う）。
+    BossStepSpec kasumiStep;
     int hitCount = 0;
     // 実行器が動かせる型か。動かせない型の行は読み込むが、出そうとすると断る。
     bool executable = false;

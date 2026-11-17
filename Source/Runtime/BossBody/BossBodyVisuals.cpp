@@ -161,7 +161,18 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
 
 } // namespace
 
-void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
+void BossBodyVisuals::NoteTick(BossComponent& boss, HIKARI::GameProjectFloat3 position) {
+    BossBodyState& state = boss.bodyState;
+    // 瞬間移動した tick（霞隠れの現れる・分身との入れ替え）は補間しない。
+    const bool jumped = boss.teleportCount != state.tickTeleports;
+    state.tickTeleports = boss.teleportCount;
+    state.tickFrom = state.ticksSeen > 0 && !jumped ? state.tickTo : position;
+    state.tickTo = position;
+    state.ticksSeen = std::min(state.ticksSeen + 1, 2);
+}
+
+void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds,
+                             float alpha) {
     // 撃破の後に体が縮んで消える間は、外形も出さない。
     const bool vanishing = boss.state == BossState::Dead && boss.stateFrame > boss.deadVanishDelayFrames;
     HIKARI::GameProjectTransform body{};
@@ -169,6 +180,14 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
         Stop(world, boss);
         return;
     }
+    // 体の位置は tick ごとに変わるので、描画のフレームでは前の tick との間を補間した所に置く（ナレッジ k-c2a8a4。
+    // エンジンが体を描くのと同じ）。向きは tick の値のまま（1 tick に変わる角度は小さい）。
+    const BossBodyState& state = boss.bodyState;
+    boss.bodyState.presentShift = {};
+    if (boss.body.interpolate && state.ticksSeen >= 2)
+        boss.bodyState.presentShift =
+            BossMath::Mul(BossMath::Sub(state.tickFrom, state.tickTo), 1.0f - std::clamp(alpha, 0.0f, 1.0f));
+    body.position = BossMath::Add(body.position, boss.bodyState.presentShift);
     BossBodyAccents::StepSmoke(boss, seconds);
     UpdateSmoke(world, boss, body);
     if (boss.body.model.empty())

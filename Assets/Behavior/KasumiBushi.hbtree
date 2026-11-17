@@ -111,7 +111,8 @@
         61,
         62,
         63,
-        64
+        64,
+        65
       ]
     },
     {
@@ -312,6 +313,7 @@
       "name": "プレイヤーへの反応",
       "note": "条件 → 反応の間隔 → 技を実行 の枝を並べる。左から順に試し、成り立った枝の技を待ちを切り上げて出す。反応の間隔の「後隙を切り上げる」がオフの枝は、ボスの後隙の間は反応しない（大技の後隙は咎められるまま）。",
       "children": [
+        81,
         30,
         34,
         38,
@@ -606,6 +608,166 @@
         "move": "引爆",
         "pick": "always"
       }
+    },
+    {
+      "id": 65,
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞歩",
+      "params": {
+        "move": "霞歩"
+      }
+    },
+    {
+      "id": 66,
+      "type": "Project_TD2_2.BossPlayerShooting",
+      "params": {
+        "aimedOnly": true,
+        "minStreak": 1,
+        "withinFrames": 8
+      }
+    },
+    {
+      "id": 67,
+      "type": "Project_TD2_2.BossStepReady"
+    },
+    {
+      "id": 68,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "射撃をかわす",
+      "params": {
+        "chance": 60.0,
+        "cooldown": 3.0,
+        "cutRecovery": false,
+        "delayMaxFrames": 6,
+        "delayMinFrames": 2,
+        "duringWalk": true,
+        "label": "射撃をかわす",
+        "rerollSeconds": 0.5
+      }
+    },
+    {
+      "id": 69,
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞歩でかわす",
+      "params": {
+        "move": "霞歩でかわす",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 70,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "かわした後の反撃",
+      "params": {
+        "chance": 80.0,
+        "cooldown": 0.0,
+        "cutRecovery": true,
+        "label": "かわした後の反撃",
+        "rerollSeconds": 0.0
+      }
+    },
+    {
+      "id": 71,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 7.0,
+        "min": 0.0
+      }
+    },
+    {
+      "id": 72,
+      "type": "Project_TD2_2.BossMove",
+      "name": "踏み込み横なぎ",
+      "params": {
+        "move": "踏み込み横なぎ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 73,
+      "type": "Sequence",
+      "name": "近い：踏み込み横なぎ",
+      "children": [
+        71,
+        72
+      ]
+    },
+    {
+      "id": 74,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 14.0,
+        "min": 7.0
+      }
+    },
+    {
+      "id": 75,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横なぎ",
+      "params": {
+        "move": "突進横なぎ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 76,
+      "type": "Sequence",
+      "name": "中くらい：突進横なぎ",
+      "children": [
+        74,
+        75
+      ]
+    },
+    {
+      "id": 77,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 40.0,
+        "min": 14.0
+      }
+    },
+    {
+      "id": 78,
+      "type": "Project_TD2_2.BossMove",
+      "name": "投げナイフ",
+      "params": {
+        "move": "投げナイフ",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 79,
+      "type": "Sequence",
+      "name": "遠い：投げナイフ",
+      "children": [
+        77,
+        78
+      ]
+    },
+    {
+      "id": 80,
+      "type": "Selector",
+      "name": "距離で反撃",
+      "note": "かわして着地した時の距離で、反撃の技を上から順に試す（近い＝踏み込み横なぎ、中くらい＝突進横なぎ、遠い＝投げナイフ）。距離の境は各枝の「距離」の節。",
+      "children": [
+        73,
+        76,
+        79
+      ]
+    },
+    {
+      "id": 81,
+      "type": "Sequence",
+      "name": "射撃をかわす",
+      "children": [
+        66,
+        67,
+        68,
+        69,
+        70,
+        80
+      ],
+      "note": "待機中と歩きの間に、プレイヤーが撃とうとしたら（構えから 8 F 以内）、反応の遅れ 2〜6 F の後に霞歩で弾の線から離れる側へ跳ぶ（60 %・3 秒ごと）。続けてかわせる回数を使い切ったら、しばらくかわさない（ボスの項目 kasumiStep…）。着地したら、反撃の確率（かわした後の反撃）に当たれば距離で技を選んで斬り返す。外れたら何もしない。技の前隙・攻撃中・後隙の間はかわさない。"
     }
   ]
 }

@@ -350,6 +350,9 @@ struct BossBodySettings {
     // 外形の模型の資産（GUID）。空なら何も出さない。
     std::string model{"b1a52cf03fe7473cbbe74c310e9c5c29"};
     bool visible = true;
+    // 描画のフレームで、外形（鎧・刀・手・胴の煙・突進の尾）を前の tick とこの tick の間で補間して置く（エンジンが体を
+    // 描くのと同じ。切ると tick の位置に置く：描画が tick より速い時、速い動きでがくつく）。
+    bool interpolate = true;
     // 外形の模型が影を落とすか。切ると軽くなるが、鎧の影が地面と鎧自身に落ちなくなる。
     bool castShadow = true;
     // 刀の模型の、握りの中央（ノードの原点）から剣先までの長さ。見える刀の長さ（swordVisibleLength）に合うように拡大する。
@@ -502,6 +505,14 @@ struct BossBodyState {
     // 兜が向く先：プレイヤーの位置（BossSystem が固定 tick ごとに書く。見た目だけが読む）。
     HIKARI::GameProjectFloat3 lookTarget{};
     bool lookTargetSeen = false;
+    // 補間：前の tick とこの tick の終わりに体の物体へ置いた位置、覚えた tick の数（2 で補間できる）、前に見た
+    // teleportCount（瞬間移動した tick は補間しない）。BossSystem が固定 tick の終わりに書く（BossBodyVisuals::NoteTick）。
+    HIKARI::GameProjectFloat3 tickFrom{};
+    HIKARI::GameProjectFloat3 tickTo{};
+    int ticksSeen = 0;
+    uint64_t tickTeleports = 0;
+    // このフレームに外形をずらした量（補間した位置 − この tick の位置）。刀を規則の線へ寄せる枠も同じだけずらす。
+    HIKARI::GameProjectFloat3 presentShift{};
     BossBodyMotionState motion;
     BossBodyAccentState accents;
 };
