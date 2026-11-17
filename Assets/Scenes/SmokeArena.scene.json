@@ -211,13 +211,13 @@
         {
           "id": 2,
           "properties": {
-            "depth": 3.0,
+            "depth": 2.7,
             "doubleSided": false,
             "generateTangents": true,
-            "height": 7.5,
+            "height": 6.75,
             "kind": "Capsule",
             "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 3.0
+            "width": 2.7
           },
           "type": "ProceduralMeshComponent"
         },
@@ -231,8 +231,8 @@
             ],
             "enabled": true,
             "fitMode": "Manual",
-            "height": 7.5,
-            "radius": 1.5,
+            "height": 6.75,
+            "radius": 1.35,
             "rotation": [
               0.0,
               0.0,
@@ -288,7 +288,7 @@
       "transform": {
         "position": [
           0.0,
-          3403.75,
+          3403.375,
           6.0
         ],
         "rotationEulerDeg": [
@@ -520,13 +520,13 @@
         {
           "id": 2,
           "properties": {
-            "depth": 3.0,
+            "depth": 2.7,
             "doubleSided": false,
             "generateTangents": true,
-            "height": 7.5,
+            "height": 6.75,
             "kind": "Capsule",
             "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 3.0
+            "width": 2.7
           },
           "type": "ProceduralMeshComponent"
         },
@@ -540,8 +540,8 @@
             ],
             "enabled": true,
             "fitMode": "Manual",
-            "height": 7.5,
-            "radius": 1.5,
+            "height": 6.75,
+            "radius": 1.35,
             "rotation": [
               0.0,
               0.0,
@@ -586,7 +586,7 @@
       "transform": {
         "position": [
           0.0,
-          3363.75,
+          3363.375,
           6.0
         ],
         "rotationEulerDeg": [
@@ -617,13 +617,13 @@
         {
           "id": 2,
           "properties": {
-            "depth": 3.0,
+            "depth": 2.7,
             "doubleSided": false,
             "generateTangents": true,
-            "height": 7.5,
+            "height": 6.75,
             "kind": "Capsule",
             "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 3.0
+            "width": 2.7
           },
           "type": "ProceduralMeshComponent"
         },
@@ -637,8 +637,8 @@
             ],
             "enabled": true,
             "fitMode": "Manual",
-            "height": 7.5,
-            "radius": 1.5,
+            "height": 6.75,
+            "radius": 1.35,
             "rotation": [
               0.0,
               0.0,
@@ -683,7 +683,7 @@
       "transform": {
         "position": [
           0.0,
-          3363.75,
+          3363.375,
           6.0
         ],
         "rotationEulerDeg": [

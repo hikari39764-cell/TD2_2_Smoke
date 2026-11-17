@@ -594,11 +594,12 @@ public:
     float comboChancePercent = 65.0f;
     // ローリングの向きを分ける角度：ボスへ向かう・離れる向きからこの角度以内なら前後、それより外れたら横。
     float rollAxisDegrees = 45.0f;
-    // 体。身長 7.5 m・半径 1.5 m（c-a30eaf で 5.0 m・1.0 m の 1.5 倍に）。以下の「体に付く値」は、同じ倍率で揃えてある：
-    // 体の位置・高さに付く値は倍率を掛け、体の中心どうしの距離で表した隙間は、半径が増えた分（0.5 m）を足す。
+    // 体。身長 6.75 m・半径 1.35 m（5.0 m・1.0 m の 1.35 倍：c-a30eaf で 1.5 倍にした後、c-e97b18 でその 0.9 倍に）。
+    // 以下の「体に付く値」は、同じ倍率で揃えてある：
+    // 体の位置・高さに付く値と、体の中心どうしの距離（近づく・止まる距離）は、倍率を掛ける。
     // 体の大きさを変える時に一緒に変える所の一覧は、調整ガイド g-fe0396 の【大きさ】。
-    float bodyHalfHeight = 3.75f;
-    float bodyRadius = 1.5f;
+    float bodyHalfHeight = 3.375f;
+    float bodyRadius = 1.35f;
     HIKARI::GameProjectFloat3 arenaCenter{0.0f, 3400.0f, 0.0f};
     float arenaRadius = 21.0f;
     float walkSpeed = 2.2f;
@@ -620,24 +621,25 @@ public:
     int deadVanishFrames = 30;
     // 動きの型ごとの体の動き
     // 中心どうしの距離。体を大きくした時、c-146b66・c-f91bd1 は体の表面の隙間を保つよう半径の増分を足したが、
-    // c-a30eaf（1.5 倍）では距離ごと倍率を掛けた：振りの型の握りも前へ 1.5 倍出るので、半径の差を足すだけだと
+    // c-a30eaf（1.5 倍）・c-e97b18（その 0.9 倍）では距離ごと倍率を掛けた：振りの型の握りも同じ倍率で前へ出るので、
+    // 半径の差を足すだけだと
     // プレイヤーが刀の根元に入り、横なぎの刀が頭上を通って当たらなかった（握りからプレイヤーまでの間を保つ）。
-    float dashStopDistance = 4.74f;
+    float dashStopDistance = 4.266f;
     int dashTeleportFrames = 12;
     float slashApproachSpeed = 1.2f;
     float stringApproachSpeed = 1.6f;
-    float stringApproachStop = 4.38f;
-    float overheadLungeDistance = 2.7f;
-    float stepInClearance = 1.8f;
-    float walkInStopDistance = 7.23f;
+    float stringApproachStop = 3.942f;
+    float overheadLungeDistance = 2.43f;
+    float stepInClearance = 1.62f;
+    float walkInStopDistance = 6.507f;
     float walkInSpeedScale = 1.25f;
-    float backstepDistance = 5.25f;
-    float backstepHeight = 0.9375f;
+    float backstepDistance = 4.725f;
+    float backstepHeight = 0.84375f;
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
     float jumpHeight = 3.6f;
     float detonateRaiseShare = 0.42f;
     float detonatePlantShare = 0.58f;
-    float detonateLift = 1.125f;
+    float detonateLift = 1.0125f;
     float detonatePlantBlast = 0.9f;
     int detonatePulses = 3;
     float detonatePulseDepth = 0.45f;
@@ -651,7 +653,7 @@ public:
     int skyfallRiseFrames = 16;
     int skyfallDiveFrames = 14;
     float skyfallDiveEasePower = 2.0f;
-    float skyfallStopDistance = 1.9f;
+    float skyfallStopDistance = 1.7f;
     float skyfallMaxTravel = 16.0f;
     int skyfallLandCrouchFrames = 30;
     float skyfallBlastScale = 1.8f;
@@ -674,37 +676,37 @@ public:
     int retreatStepFrames = 20;
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
     // 剣の長さ。柄を体の外へ出すたびに同じだけ縮めて、届く距離（柄の距離＋長さ）を保つ（c-8c8d95 で 10.3 m、
-    // c-f91bd1 で 10.6 m。c-a30eaf で柄を 2.25 m へ出した時も 10.6 m のまま）。
-    float greatswordLength = 8.35f;
+    // c-f91bd1 で 10.6 m。c-a30eaf で柄を 2.25 m へ、c-e97b18 で 2.025 m へ変えた時も 10.6 m のまま）。
+    float greatswordLength = 8.575f;
     // 薙ぐ間の柄の、ボスの中心からの距離 (m)。両手で握る左手が胴に入らないよう、体の外へ出してある（c-8c8d95 で 0.8→1.2）。
-    float greatswordHiltOffset = 2.25f;
+    float greatswordHiltOffset = 2.025f;
     int greatswordFillFrames = 80;
     float greatswordRaiseTilt = 15.0f;
-    float greatswordRaiseHeight = 4.875f;
+    float greatswordRaiseHeight = 4.3875f;
     // 作り出す間の柄の横・前（足元から局所 m。右が負）。右肩の真上だと、両手で握る刀が右の大袖に入り、左手が体を
     // 横切って届かない（c-8c8d95 で右の胸の前へ出した）。
-    float greatswordRaiseSide = -0.84375f;
-    float greatswordRaiseForward = 1.78125f;
+    float greatswordRaiseSide = -0.759375f;
+    float greatswordRaiseForward = 1.603125f;
     int greatswordWindFrames = 14;
     float greatswordSweepDegrees = 200.0f;
     // 薙ぐ高さ（柄。見た目だけ：薙ぎの当たりは角度と距離だけで見る）と、剣先を下げる角度（度）。腰の高さで握り、
-    // 剣先へ下げて、プレイヤーの体の高さを通す（膝の高さで握ると、両手が肩から遠い）。体を 7.5 m にした時（c-a30eaf）に、
-    // 柄を 2.6 m へ上げ、剣先を 14 度下げた（4 度のままだと、大剣がプレイヤーの頭の上を通って見える）。
-    float greatswordSweepHeight = 2.6f;
-    float greatswordSweepTiltDegrees = 14.0f;
+    // 剣先へ下げて、プレイヤーの体の高さを通す（膝の高さで握ると、両手が肩から遠い）。体を大きくした時（c-a30eaf・c-e97b18）に、
+    // 柄を 2.45 m へ上げ、剣先を 13 度下げた（4 度のままだと、大剣がプレイヤーの頭の上を通って見える）。
+    float greatswordSweepHeight = 2.45f;
+    float greatswordSweepTiltDegrees = 13.0f;
     float greatswordHitMarginDegrees = 4.0f;
-    float greatswordInnerRadius = 1.98f;
+    float greatswordInnerRadius = 1.782f;
     int greatswordDissolveFrames = 24;
     // 縦割り（型 greatswordCleave。前隙・叩きつける F・後隙・刃の威力と被弾・追尾を止める F・崩せる被弾数・残す火は技の表）。
     // 頭上の構え：柄の高さ（足元から m）・前への位置 m・真上から後ろへ倒す角度（度）。作り出してから振りかぶる F。
-    float greatswordOverheadHeight = 7.5f;
+    float greatswordOverheadHeight = 6.75f;
     // 振りかぶりの柄の前への位置。兜の真上に近いと、叩きつけで両手が顔の前を通って兜に当たる（c-8c8d95 で 0.3→0.8）。
-    float greatswordOverheadForward = 1.5f;
+    float greatswordOverheadForward = 1.35f;
     float greatswordOverheadTilt = 10.0f;
     int greatswordCleaveLiftFrames = 16;
     // 叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）。
     // 刃の当たり：正面の線の半幅 m と、叩きつける進みのどこから当たるか（0〜1）。
-    float greatswordCleaveHiltHeight = 2.25f;
+    float greatswordCleaveHiltHeight = 2.025f;
     float greatswordCleaveHalfWidth = 1.1f;
     float greatswordCleaveHitFrom = 0.5f;
     // 剣が地面に刺さったままの長さ（F。後隙の始めから。その後 greatswordDissolveFrames でほどける）。
@@ -722,7 +724,7 @@ public:
     int flameRunCountPhase2 = 5;
     float flameRunStepDegrees = 22.0f;
     int flameRunIntervalFrames = 10;
-    float flameRunStartDistance = 1.98f;
+    float flameRunStartDistance = 1.782f;
     float flameRunLength = 26.0f;
     float flameRunFuel = 220.0f;
     float flameRunFuelRadius = 1.2f;
@@ -795,7 +797,7 @@ public:
     // 溜める間（規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
     // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
     HIKARI::GameProjectVfxAssetReference gatherEffect{"b84f0c6d2e9a4f17a35d6c1e0f7b92d4", "Assets/Vfx/BossChargeGather.hvfx"};
-    float chargeGatherScale = 2.865f;
+    float chargeGatherScale = 2.5785f;
     // 溜め切った時の、剣の光の大きさと霞の量（構えの時に対する倍）。
     float chargeGlowScale = 3.0f;
     float chargeHazeScale = 3.0f;
@@ -815,7 +817,7 @@ public:
     float skyfallRingRadius = 4.5f;
     float skyfallRingSeconds = 0.22f;
     // 回転→霞の輪（試作：半径 0.8 m から判定サイズまで、斬撃速度で広がる。消えた所の 0.7 倍の円に残り煙 6 か所）
-    float kickRingStartRadius = 1.68f;
+    float kickRingStartRadius = 1.512f;
     float kickResidueScale = 0.6f;
     float kickResidueRadiusShare = 0.7f;
     // 地面に残す火の形（形そのものは技の表の「残す火」。交差の線の長さと、上段溜めの池を置く前の距離）
@@ -823,14 +825,14 @@ public:
     float burnPoolForward = 2.5f;
     float burnLineLag = 1.2f;
     // 霞隠れ→回り込み突進（試作：プレイヤーの向きの反対 ±100°、3.64 m に現れ、振りの間に 2.2 m 突っ込む）
-    float ambushAppearDistance = 5.94f;
+    float ambushAppearDistance = 5.346f;
     float ambushAppearSpreadDegrees = 100.0f;
-    float ambushLungeDistance = 3.3f;
+    float ambushLungeDistance = 2.97f;
     float ambushAppearTurnRate = 400.0f;
     // 霞に隠れる見せ方：霧へ沈む深さ（前隙の間に少し、隠れたら見えない所まで）と、沈む・浮かぶ長さ
-    float hidePreSinkDepth = 2.2125f;
-    // 体（7.5 m）が地面の下へ隠れ切る深さ。
-    float hideSinkDepth = 12.0f;
+    float hidePreSinkDepth = 1.99125f;
+    // 体（6.75 m）が地面の下へ隠れ切る深さ。
+    float hideSinkDepth = 10.8f;
     int hideSinkFrames = 6;
     int appearRiseFrames = 8;
     // 霞分身（試作：再使用 22 秒・消えるまで 25 秒。プレイヤーから 6〜16 m の円に、0.9〜1.2 rad ずつ離して並べる）
@@ -869,14 +871,14 @@ public:
     BossBodySettings body;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
     // 両手の斬りは斬りの型（swing）の握りを使うので、ここは片手の技（回し蹴り・霞分身・引爆・天降り斬り・投げナイフ・
-    // 炎走りの前隙）の剣の付け根。体の倍率どおり（c-a30eaf で 1.5 倍）。
-    HIKARI::GameProjectFloat3 swordShoulder{-1.6035f, 4.4475f, 0.34875f};
+    // 炎走りの前隙）の剣の付け根。体の倍率どおり（5 m の体の 1.35 倍）。
+    HIKARI::GameProjectFloat3 swordShoulder{-1.44315f, 4.00275f, 0.313875f};
     // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（Boss.bodySwordVisibleLength）に
     // 合わせる：両手の斬りで当たりを見える刀に合わせた時（c-8c8d95）に、刀を 3.4 m へ大きくし、霞を剣先の少し先までにした。
-    // 刀をもう一回り大きくした時（c-be27a9、見える刀 3.8 m）と、体を 1.5 倍にした時（c-a30eaf、見える刀 5.7 m）に、
+    // 刀をもう一回り大きくした時（c-be27a9、見える刀 3.8 m）と、体を大きくした時（c-a30eaf・c-e97b18、見える刀 5.13 m）に、
     // 当たりの線も同じだけ伸ばした。
-    float swordLength = 5.1f;
-    float swordHazeLength = 0.675f;
+    float swordLength = 4.59f;
+    float swordHazeLength = 0.6075f;
     // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
     BossSwingSettings swing;
     float waveForward = 1.324f;
@@ -891,8 +893,8 @@ public:
     // 三日月の向きを、刀が斬った面へ合わせる割合（1＝面に合わせる。0＝剣先の最初と最後を結ぶ線＝前の作りの向き）。
     float wavePlaneMatch = 1.0f;
     int waveGrowFrames = 8;
-    float knifeHeight = 5.2275f;
-    float knifeForward = 1.7415f;
+    float knifeHeight = 4.70475f;
+    float knifeForward = 1.56735f;
     float knifeSpreadDegrees = 14.0f;
     float knifeWidth = 0.3f;
     float knifeThickness = 0.2f;
@@ -916,7 +918,7 @@ public:
     float waveSmokeDrag = 0.1f;
     float waveResidueLag = 5.0f;
     float waveResidueHeight = 0.7f;
-    float swordSmokeRadius = 0.795f;
+    float swordSmokeRadius = 0.7155f;
     float depositRadius = 1.5f;
     float depositHeight = 0.6f;
     int depositFrames = 24;
@@ -934,8 +936,8 @@ public:
     float detonationFogMergeDistance = 1.5f;
     float bodySmokeRadius = 1.3f;
     // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
-    float fireObstacleRadius = 1.5375f;
-    float fireObstacleHeight = 7.5f;
+    float fireObstacleRadius = 1.38375f;
+    float fireObstacleHeight = 6.75f;
     // 見た目：飛ぶ斬撃（自前の流体域を持つ三日月の霧。局所 +X が飛ぶ向き、刃は局所 XY 面）
     HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
                                                      "Assets/Vfx/BossSlashWave.hvfx"};

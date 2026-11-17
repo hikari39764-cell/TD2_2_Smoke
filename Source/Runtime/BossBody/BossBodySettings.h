@@ -54,7 +54,7 @@ struct BossBodyLeftHandSettings {
     float wipeEndShare = 0.70f;
     float wipeFrom = 0.15f;
     float wipeTo = 0.85f;
-    float bladeStart = 0.45f;
+    float bladeStart = 0.405f;
     // 左手の模型の掌の真ん中（模型の座標・実寸 m）。刀身をなぞる時、ここが刀身に付く。
     HIKARI::GameProjectFloat3 palmCenter{0.0f, -0.045f, 0.148f};
     // 退き溜め（溜めている間）：手を前へ伸ばしてプレイヤーへ掌を向ける（指先は上）。
@@ -63,7 +63,7 @@ struct BossBodyLeftHandSettings {
     HIKARI::GameProjectFloat3 aimBack{0.0f, 0.0f, -1.0f};
     // 両手持ち（霞の大剣・天降り斬り）：拳を右手の後ろ（柄頭の側。握りから刀の -Z へ twoHandBehind m）に握る。
     // 親指の側は剣先へ、手の甲は twoHandBack（刀の座標：+X が刀の左、+Y が棟）。拳の真ん中（模型の座標・実寸 m）が柄に乗る。
-    float twoHandBehind = 0.90f;
+    float twoHandBehind = 0.81f;
     HIKARI::GameProjectFloat3 twoHandBack{0.4f, 0.92f, 0.0f};
     HIKARI::GameProjectFloat3 fistCenter{0.0f, -0.102f, 0.239f};
     // 回し蹴り：左の外へ手を上げて釣り合いを取る（指先は外、手の甲は上）。
@@ -89,7 +89,7 @@ struct BossBodyMotionSettings {
     float swordHitFrequency = 9.0f;
     float swordHitDamping = 0.9f;
     // 命中の窓の間に許す、剣先と規則の線のずれ (m)。
-    float hitMaxTipGap = 0.09f;
+    float hitMaxTipGap = 0.081f;
     // 振り抜いた勢いを、窓の後へ持ち越す割合（大きいほど振り抜いた先へ行き過ぎる）。
     float overshootCarry = 0.30f;
     // 両手の型の間（規則の構えの twoHand の重み）は、窓の外も刀と握りを行き過ぎずに追う（規則の振りが速さの途切れない
@@ -106,23 +106,23 @@ struct BossBodyMotionSettings {
     HIKARI::GameProjectFloat3 idleDirection{-0.60f, -0.36f, 0.71f};
     float restBlendDegrees = 40.0f;
     // 待機の息：握りの上下 (m)、剣先の上下 (度)、速さ (1 秒あたりの回数)。
-    float breathMeters = 0.0375f;
+    float breathMeters = 0.03375f;
     float breathDegrees = 1.5f;
     float breathFrequency = 0.28f;
     // 後隙のうち、振り終わりの形を保つ割合（残りで待機の構えへ戻す）。
     float postHoldShare = 0.5f;
 
     // 溜め：握りを剣の向きへ送り出す長さ (m) と、持ち上げる高さ (m)。構えている間の小さな震え（握り m・剣先 度・速さ）。
-    float chargeReach = 0.45f;
-    float chargeLift = 0.225f;
-    float chargeTremorMeters = 0.015f;
+    float chargeReach = 0.405f;
+    float chargeLift = 0.2025f;
+    float chargeTremorMeters = 0.0135f;
     float chargeTremorDegrees = 0.6f;
     float chargeTremorFrequency = 11.0f;
     // 握りのばね（窓の外）：速さ（1 秒あたりの揺れの回数）と収まりの強さ。
     float gripFrequency = 3.2f;
     float gripDamping = 0.75f;
     // 振りの中ほどで握りを剣の線に沿って外へ伸ばす長さ (m) と、振りのどこ（0〜1）で伸び切るか。
-    float armReach = 0.525f;
+    float armReach = 0.4725f;
     float armReachPeak = 0.55f;
 
     // 刃の向き：刃を動きへ向け始める剣先の速さ（度/秒。これより遅い時は前の向きを保つ）、合わせる時間 (秒)、
@@ -152,7 +152,7 @@ struct BossBodyMotionSettings {
 
     // 霞の大剣が出ている間は、見せる刀を大剣の柄と向きに重ねる（霧の大剣が刀を包む）。握りを柄から剣の向きへ
     // ずらす長さ (m) と、重ね始める・離す時間 (秒)。
-    float greatswordGripAlong = 0.15f;
+    float greatswordGripAlong = 0.135f;
     float greatswordBlendSeconds = 0.15f;
 
     // 確かめ用：命中の窓の間、毎フレーム刃の向き・規則の線とのずれを記録に出す。
@@ -358,16 +358,16 @@ struct BossBodySettings {
     // 見える刀の、剣の付け根（Boss.swordShoulder）から剣先までの長さ。刀も手もこの長さに合わせて大きくなる。
     // 当たりの線（Boss.swordLength＋swordHazeLength）より先へは伸ばさない（当たらない刃を見せない）。0 なら Boss.swordLength。
     // 刀の長さに付く見た目の値（握りの位置・両手の間隔・鍔の位置・溜めと振りの手の動き）は、刀と同じ倍率で揃えてある。
-    float swordVisibleLength = 5.7f;
+    float swordVisibleLength = 5.13f;
     // 握りの中央を、剣の付け根（Boss.swordShoulder）から剣の向きへどれだけ先に置くか。
-    float swordGripAlong = 0.105f;
+    float swordGripAlong = 0.0945f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
     float handScale = 1.25f;
     // 体の大きさ（倍率）：鎧（胴・兜・大袖・草摺）の置き場所と大きさ、肩、左手の手振りと待機の置き場所、待機の構えの握りに
     // 掛ける（下の位置の値は 1 倍の体での値）。体を大きくする時は、Boss.bodyHalfHeight・bodyRadius・シーンのカプセル・
     // 胴の煙のエフェクト（make_body_smoke.py の scale）も一緒に変える（調整ガイド g-fe0396 の一覧）。
-    // 1.875＝身長 7.5 m（c-a30eaf）。
-    float bodyScale = 1.875f;
+    // 1.6875＝身長 6.75 m（c-a30eaf で 1.875、c-e97b18 でその 0.9 倍）。
+    float bodyScale = 1.6875f;
     // 握りの右手の模型の形（刀の座標、模型の実寸）：手首の位置・肘の向き・手の甲の向き。籠手の筒を手首に付けるのに使う。
     // 模型を作るスクリプトが出す値（GRIP_WRIST・GRIP_ELBOW・GRIP_BACK）に合わせる。
     HIKARI::GameProjectFloat3 gripWrist{-0.0289f, 0.2395f, -0.1030f};

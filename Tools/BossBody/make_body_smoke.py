@@ -4,7 +4,7 @@
   襟（兜の後ろへ昇る筋）、両の袖口（肩から外へ垂れる）。
 - 入力：input.amount（出す量の倍率）、input.heat（源の温度の倍率。上げると熱い煙が光る＝フェーズ 2）。
 霞の大剣 BossGreatswordMist.hvfx の域と源の層を写して作る（描画まわりの値を引き継ぐ）。
-引数：[out=<フォルダ>]（既定は D:/PJ/TD2_2/Assets/Vfx） [scale=<体の倍率。既定 1.25>] [d.<項目>=値] [rate=<全体の倍率>] [<源の名前>.<項目>=値]"""
+引数：[out=<フォルダ>]（既定は D:/PJ/TD2_2/Assets/Vfx） [scale=<体の倍率。既定 1.6875＝身長 6.75 m>] [d.<項目>=値] [rate=<全体の倍率>] [<源の名前>.<項目>=値]"""
 import copy, hashlib, json, pathlib, sys
 
 ROOT = pathlib.Path("D:/PJ/TD2_2")
@@ -14,7 +14,7 @@ args = dict(a.split("=", 1) for a in sys.argv[1:] if "=" in a)
 out_dir = pathlib.Path(args.get("out", str(ROOT / "Assets/Vfx")))
 layers = {e["name"]: e for e in src["emitters"]}
 # 体の大きさ（Boss.bodyScale と同じ倍率）。域・源の位置と大きさに掛ける（1 倍は身長 4 m の体）。
-SCALE = float(args.get("scale", 1.25))
+SCALE = float(args.get("scale", 1.6875))
 SIZE = [3.0 * SCALE, 5.2 * SCALE, 3.0 * SCALE]
 CENTER_Y = 2.1 * SCALE   # 域の中心（ボスの足元から）。足元の下 0.5 m から、兜の上 0.7 m まで入る。
 
