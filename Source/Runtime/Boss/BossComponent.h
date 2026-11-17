@@ -519,7 +519,8 @@ public:
     float swingPeakShare = 0.66f;
     // 振りの気勢（c-4a8ea1。値は型の振りの角度の幅に対する割合）：振り上げは構えより swingOverwind だけ後ろまで行き過ぎ、
     // swingOverwindFrames F で構えへ戻り、残りの構えの間に swingCoil まで引き絞る（刀がわずかに震える）。振りは引き絞った
-    // 所から振り終わりの swingOvershoot 先まで回り（勢いで流れる）、振り終わりの後 swingSettleFrames F で振り終わりへ戻る。
+    // 所から振り終わりの swingOvershoot 先まで回り（勢いで流れる）、そこから止まらずに構えへ戻る（戻りの道は型の returnVia。
+    // c-999264）。振り終わりの後 swingSettleFrames F は、見せる刀を規則の刀に付けておく（霞隠れだけは振り終わりへ戻る F）。
     float swingOverwind = 0.08f;
     int swingOverwindFrames = 6;
     float swingCoil = 0.05f;

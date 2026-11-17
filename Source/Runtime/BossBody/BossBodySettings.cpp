@@ -191,8 +191,6 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyBreathMeters", "待機の息：握りの上下 (m)", breathMeters, 0.0f, 0.3f);
     fields.Float("bodyBreathDegrees", "待機の息：剣先の上下 (度)", breathDegrees, 0.0f, 20.0f);
     fields.Float("bodyBreathFrequency", "待機の息：速さ (1 秒あたりの回数)", breathFrequency, 0.0f, 5.0f);
-    fields.Float("bodyPostHoldShare", "後隙のうち、振り終わりの形を保つ割合 (0〜1。残りで待機の構えへ戻す)",
-                 postHoldShare, 0.0f, 1.0f);
     fields.Float("bodyChargeReach", "溜め：握りを剣の向きへ送り出す長さ (m)", chargeReach, 0.0f, 2.0f);
     fields.Float("bodyChargeLift", "溜め：握りを持ち上げる高さ (m)", chargeLift, 0.0f, 2.0f);
     fields.Float("bodyChargeTremorMeters", "溜め：構えている間の握りの震え (m)", chargeTremorMeters, 0.0f, 0.2f);
@@ -205,7 +203,9 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyArmReachPeak", "腕が伸び切る、振りの進み (0〜1)", armReachPeak, 0.05f, 1.0f);
     fields.Float("bodyEdgeMinDegreesPerSecond", "刃の向き：動きへ向け始める剣先の速さ (度/秒。遅い時は前の向きを保つ)",
                  edgeMinDegreesPerSecond, 0.0f, 2000.0f);
-    fields.Float("bodyEdgeTurnSeconds", "刃の向き：合わせる時間 (秒)", edgeTurnSeconds, 0.005f, 1.0f);
+    fields.Float("bodyEdgeTurnSeconds", "刃の向き：振っている間に合わせる時間 (秒)", edgeTurnSeconds, 0.005f, 1.0f);
+    fields.Float("bodyEdgeStanceSeconds", "刃の向き：構えを移る間（振り上げ）に、斬る向きへ回す時間 (秒)",
+                 edgeStanceSeconds, 0.005f, 1.0f);
     fields.Float("bodyEdgeIdleSeconds", "刃の向き：待機の向きへ戻る時間 (秒)", edgeIdleSeconds, 0.01f, 5.0f);
     fields.Float3("bodyIdleEdge", "刃の向き：待機 (局所。刀に直交する成分を使う)", idleEdge);
     fields.Float3("bodyChargeEdgeToward", "刃の向き：溜めの間に向ける先＝これから斬る向き (局所)", chargeEdgeToward);

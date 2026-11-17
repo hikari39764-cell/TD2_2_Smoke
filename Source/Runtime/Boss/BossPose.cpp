@@ -93,6 +93,11 @@ BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees,
     // 斬る向き：構えから振り終わりへ回る向き。
     const Vec3 sweep = Mul(Cross(axis, pose.direction), sense);
     pose.edge = Normalize(ProjectOut(sweep, pose.direction), {0.0f, -1.0f, 0.0f});
+    // 刃の面：斬る向きを刀身の軸のまわりに回す（左右に映した型では逆へ）。
+    if (shape.edgeRollDegrees != 0.0f)
+        pose.edge = Normalize(RotateAbout(pose.edge, pose.direction,
+                                          (mirror ? -1.0f : 1.0f) * shape.edgeRollDegrees * kRadiansPerDegree),
+                              pose.edge);
     // 振り込むほど沈み、前へ傾く（構えの値から振り終わりの値へ、振りの進みで寄せる）。
     const float weight = Smooth(share);
     pose.crouch = Lerp(shape.crouch, shape.crouchTo, weight);
@@ -128,13 +133,17 @@ BossSwordPose StrikeAt(const Strike& strike, float e) {
 BossSwordPose StrikeCocked(const Strike& strike) { return StrikeAt(strike, 0.0f); }
 BossSwordPose StrikeEnd(const Strike& strike) { return StrikeAt(strike, 1.0f); }
 
-// 振りの進み：ゆっくり動き始めて加速し、swingPeakShare で最も速く、振り終わりへ減速して止まる。速さは途中で途切れない
-// （進みを peak で速さが最大になるように曲げてから、両端で速さ 0 の 5 次の曲線に通す）。
-float SwingProgress(const BossComponent& boss, int tIn, int length) {
-    const float u = std::clamp(static_cast<float>(tIn) / static_cast<float>(std::max(1, length)), 0.0f, 1.0f);
-    const float peak = std::clamp(boss.swingPeakShare, 0.5f, 0.9f);
-    const float x = std::pow(u, std::log(0.5f) / std::log(peak));
+// 0〜1 の進み u を、peak で速さが最も大きくなる 0〜1 の進みへ。速さは途中で途切れない（u を peak で速さが最大になる
+// ように曲げてから、両端で速さ 0 の 5 次の曲線に通す）。
+float PeakCurve(float u, float peak) {
+    const float x = std::pow(std::clamp(u, 0.0f, 1.0f), std::log(0.5f) / std::log(std::clamp(peak, 0.1f, 0.9f)));
     return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
+}
+
+// 振りの進み：ゆっくり動き始めて加速し、swingPeakShare で最も速く、振り終わりへ減速して止まる。
+float SwingProgress(const BossComponent& boss, int tIn, int length) {
+    return PeakCurve(static_cast<float>(tIn) / static_cast<float>(std::max(1, length)),
+                     std::clamp(boss.swingPeakShare, 0.5f, 0.9f));
 }
 
 // 振り終わりの後：振り終わりの行き過ぎ（1＋swingOvershoot）から、振り終わりへ swingSettleFrames F で戻る（勢いで流れた
@@ -150,6 +159,30 @@ BossSwordPose Swing(const BossComponent& boss, const Strike& strike, int tIn, in
     if (tIn > length)
         return Follow(boss, strike, tIn - length);
     return StrikeAt(strike, Lerp(-boss.swingCoil, 1.0f + boss.swingOvershoot, SwingProgress(boss, tIn, length)));
+}
+
+// 戻り（c-999264）：振り終わりの行き過ぎ（1＋swingOvershoot）から、中段（刀を体の前へ戻し、剣先をプレイヤーへ向ける）へ
+// 寄る 1 本の曲線を通って、下ろした構えへ戻る（振り終わり・中段・中段・構えを制御点にした 3 次の曲線。中段は型の
+// returnLift の強さで寄せる）。t は振り終わってからの F、total は戻りの全体の F（攻撃中の残り＋後隙）。止まらずに、
+// 振り終わりから加速して returnPeakShare で最も速く、だんだん遅くなって構えに収まる。刃は斬る向きのまま（棟が先に戻る）。
+// 胴の捻りは道より先に戻す（体が先）。
+BossSwordPose Recover(const BossComponent& boss, const Strike& strike, int t, int total) {
+    const BossSwingShape& shape = *strike.shape;
+    const BossSwingSettings& swing = boss.swing;
+    const float s = PeakCurve(Share(t, std::max(1, total)), shape.returnPeakShare);
+    const BossSwordPose end = StrikeAt(strike, 1.0f + boss.swingOvershoot);
+    const BossSwordPose rest = BossPose::Rest(boss);
+    BossSwordPose chudan;
+    chudan.grip = swing.returnGrip;
+    chudan.direction = Normalize(swing.returnDirection, {0.0f, 0.0f, 1.0f});
+    chudan.crouch = swing.returnCrouch;
+    chudan.lean = swing.returnLean;
+    chudan.twoHand = 1.0f;
+    const BossSwordPose via = Blend(Blend(end, rest, 0.5f), chudan, std::clamp(shape.returnLift, 0.0f, 1.0f));
+    const BossSwordPose a = Blend(end, via, s), c = Blend(via, rest, s);
+    BossSwordPose pose = Blend(Blend(a, via, s), Blend(via, c, s), s);
+    pose.twist = Lerp(end.twist, rest.twist, Smooth(std::min(1.0f, s * 1.6f)));
+    return pose;
 }
 
 // 振り上げ：今の構え previous から一撃の構え（振りの進み end。行き過ぎは負）へ（k は 0〜1）。型の raiseVia が 0 より
@@ -183,8 +216,9 @@ float CockedShare(const BossComponent& boss, int t, int kamae) {
 
 // 振り上げ→構え。剣を振る方向と反対へ大きく引いて、構えの間は止める。
 // フェイント（遅）は、いつものテンポで「振り出し」まで見せてから引き戻し、溜めて（小さく震えて）待つ。
+// direct：前の振りの終わり・コンボの続きから、止まらずに振り上げ始める（振り上げを構えの前の間いっぱいに延ばす）。
 BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, const Strike& strike, int tIn,
-                     int length, bool feint) {
+                     int length, bool feint, bool direct = false) {
     const BossSwordPose cocked = StrikeAt(strike, -boss.swingCoil);
     const int base = feint ? std::max(1, length - boss.feintFrames) : length;
     // 前隙が構え＋振り上げより短い時（変化で切り替えた技など）は比で分ける（構えへ 1 F で跳ばない）。
@@ -192,7 +226,7 @@ BossSwordPose Windup(const BossComponent& boss, const BossSwordPose& previous, c
     if (base < boss.kamaeFrames + boss.raiseFrames)
         kamae = std::max(1, base * boss.kamaeFrames / std::max(1, boss.kamaeFrames + boss.raiseFrames));
     const int raiseEnd = std::max(1, base - kamae);
-    const int raiseStart = std::max(0, raiseEnd - boss.raiseFrames);
+    const int raiseStart = direct ? 0 : std::max(0, raiseEnd - boss.raiseFrames);
     if (tIn < base || !feint) {
         if (tIn < raiseStart)
             return previous;
@@ -271,6 +305,33 @@ BossSegmentProgress BossPose::Progress(const BossComponent& boss, const BossMove
 
 namespace {
 
+// 最後の当たりの区間の、振りが終わる攻撃中の F（当たりの区間が無ければ攻撃中の終わり）。
+int LastSwingEnd(const BossComponent& boss, const BossMove& move) {
+    int accumulated = 0, end = boss.actFrames;
+    for (size_t k = 0; k < move.segments.size(); ++k) {
+        const int length = SegmentLength(boss, move, k);
+        if (move.segments[k].hit)
+            end = accumulated + std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames));
+        accumulated += length;
+    }
+    return end;
+}
+
+// 最後の振りの後（攻撃中の残りと後隙）：止まらずに構えへ戻る（Recover）。
+BossSwordPose RecoverAfterLast(const BossComponent& boss, const BossMove& move, const Strike& strike) {
+    const int end = LastSwingEnd(boss, move);
+    const int rest = std::max(0, boss.actFrames - end);
+    const int t = boss.phase == BossActPhase::Post ? rest + boss.stateFrame : boss.stateFrame - end;
+    return Recover(boss, strike, std::max(0, t), rest + move.post);
+}
+
+// 振りの後、次の一撃へ：振り終わり（行き過ぎ）から止まらずに次の一撃の構えへ振り上げる。t は振り終わってからの F、
+// span は次の振りの前までの F（当たりの区間の残り＋間の区間）。
+BossSwordPose ToNextStrike(const BossComponent& boss, const Strike& done, const Strike& next, int t, int span,
+                           bool feint) {
+    return Windup(boss, StrikeAt(done, 1.0f + boss.swingOvershoot), next, t, std::max(1, span), feint, true);
+}
+
 // 後隙・待機の戻り：from から下ろした構えへ、frame F 目（全体 frames F）までに戻す。
 BossSwordPose BackToRest(const BossComponent& boss, const BossSwordPose& from, int frame, int frames) {
     return Sweep(from, BossPose::Rest(boss), Share(frame, frames));
@@ -306,20 +367,21 @@ BossSwordPose HoldThenRest(const BossComponent& boss, const BossSwordPose& end, 
     return Sweep(end, BossPose::Rest(boss), Share(boss.stateFrame - (post - recover), recover));
 }
 
-// ひとつの振りの技（前隙で構え、攻撃中に振り、後隙は振り終わりを保ってから下ろす）。
+// ひとつの振りの技（前隙で構え、攻撃中に振り、振り終わりから後隙の終わりまで止まらずに構えへ戻る）。コンボの続き
+// （chain が 1 以上）は、いまの刀の位置から止まらずに振り上げる。
 BossSwordPose SingleStrikePose(const BossComponent& boss, const BossMove& move, const Strike& strike) {
     if (boss.phase == BossActPhase::Pre)
-        return Windup(boss, boss.moveStartPose, strike, boss.stateFrame, move.pre, false);
-    if (boss.phase == BossActPhase::Post)
-        return HoldThenRest(boss, StrikeEnd(strike), move.post);
-    const auto g = BossPose::Progress(boss, move);
-    return g.hit ? Swing(boss, strike, g.tIn, g.swingLength) : StrikeEnd(strike);
+        return Windup(boss, boss.moveStartPose, strike, boss.stateFrame, move.pre, false, boss.chain > 0);
+    if (boss.phase == BossActPhase::Act) {
+        const auto g = BossPose::Progress(boss, move);
+        if (g.hit && g.tIn <= g.swingLength)
+            return Swing(boss, strike, g.tIn, g.swingLength);
+    }
+    return RecoverAfterLast(boss, move, strike);
 }
 
-// 突進横なぎ：ひとつの振りと同じで、後隙だけ下ろした構えへ戻す。
+// 突進横なぎ：ひとつの横なぎ。
 BossSwordPose DashPose(const BossComponent& boss, const BossMove& move) {
-    if (boss.phase == BossActPhase::Post)
-        return BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post);
     return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, false));
 }
 
@@ -337,17 +399,25 @@ BossSwordPose RetreatPose(const BossComponent& boss, const BossMove& move) {
 
 // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の当たりの無い区間で、1 撃目の振り終わりから 2 撃目の構えへ
 // 振り上げる（前は間の区間も 2 撃目の振りで、間に入る tick に構えが跳んでいた）。
+// 1 撃目の振り終わりからは、止まらずに 2 撃目の構えへ振り上げ（当たりの区間の残り＋間の区間）、2 撃目の後は後隙の終わり
+// まで止まらずに構えへ戻る。
 BossSwordPose JumpPose(const BossComponent& boss, const BossMove& move) {
     const Strike first = ShapeStrike(boss.swing.kesa, false);
     const Strike second = ShapeStrike(boss.swing.kesa, true);
     if (boss.phase == BossActPhase::Pre)
-        return Windup(boss, boss.moveStartPose, first, boss.stateFrame, move.pre, false);
-    if (boss.phase == BossActPhase::Post)
-        return BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post);
+        return Windup(boss, boss.moveStartPose, first, boss.stateFrame, move.pre, false, boss.chain > 0);
+    if (boss.phase == BossActPhase::Post || move.segments.size() < 3)
+        return RecoverAfterLast(boss, move, second);
     const auto g = BossPose::Progress(boss, move);
-    if (g.hit)
+    if (g.hit && g.tIn <= g.swingLength)
         return Swing(boss, g.hitIndex % 2 == 0 ? first : second, g.tIn, g.swingLength);
-    return Raise(StrikeEnd(first), second, g.progress);
+    if (g.segment >= 2)
+        return RecoverAfterLast(boss, move, second);
+    // 1 撃目の振りの後と間の区間：1 撃目の振り終わりから 2 撃目の構えへ。
+    const int firstLength = SegmentLength(boss, move, 0);
+    const int firstSwing = std::max(1, std::min(firstLength, boss.swingInFrames + boss.swingFrames));
+    const int t = g.segment == 0 ? g.tIn - firstSwing : firstLength - firstSwing + g.tIn;
+    return ToNextStrike(boss, first, second, t, firstLength - firstSwing + SegmentLength(boss, move, 1), false);
 }
 
 // 剣を頭上へ掲げ、切っ先を下へ向けて地面へ突き立て、溜めの間・爆ぜる間は突き立てたまま。後隙で抜いて戻す。
@@ -473,21 +543,39 @@ BossSwordPose KnifePose(const BossComponent& boss, const BossMove& move) {
     return BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post);
 }
 
-// 連撃：一撃ごとの構えと振りは StrikeOf。後隙は最後の一撃の振り終わりを保ってから下ろす。
+// 連撃：一撃ごとの構えと振りは StrikeOf。一撃の振り終わりからは止まらずに次の一撃の構えへ振り上げ（当たりの区間の残り
+// ＋間の区間）、最後の一撃の後は後隙の終わりまで止まらずに構えへ戻る。
 BossSwordPose StringPose(const BossComponent& boss, const BossMove& move) {
     const size_t last = std::max<size_t>(1, move.strikes.size()) - 1;
     if (boss.phase == BossActPhase::Pre)
         return Windup(boss, boss.moveStartPose, StrikeOf(boss, move, 0), boss.stateFrame, move.pre,
-                      !move.strikes.empty() && move.strikes[0].feint);
+                      !move.strikes.empty() && move.strikes[0].feint, boss.chain > 0);
     if (boss.phase == BossActPhase::Post)
-        return HoldThenRest(boss, StrikeEnd(StrikeOf(boss, move, last)), move.post);
+        return RecoverAfterLast(boss, move, StrikeOf(boss, move, last));
     const auto g = BossPose::Progress(boss, move);
-    const BossSegment& segment = move.segments[static_cast<size_t>(g.segment)];
+    const size_t index = static_cast<size_t>(g.segment);
+    const BossSegment& segment = move.segments[index];
     const size_t k = std::min(static_cast<size_t>(std::max(0, segment.strike)), last);
     const Strike now = StrikeOf(boss, move, k);
-    if (g.hit)
+    if (g.hit && g.tIn <= g.swingLength)
         return Swing(boss, now, g.tIn, g.swingLength);
-    return Windup(boss, StrikeEnd(StrikeOf(boss, move, k > 0 ? k - 1 : 0)), now, g.tIn, segment.length, segment.feint);
+    // 振りの後：次の間の区間と当たりの区間があれば次の一撃へ、無ければ構えへ戻る。
+    if (g.hit) {
+        if (index + 2 >= move.segments.size() || move.segments[index + 1].hit)
+            return RecoverAfterLast(boss, move, now);
+        const int length = SegmentLength(boss, move, index);
+        const BossSegment& gap = move.segments[index + 1];
+        return ToNextStrike(boss, now, StrikeOf(boss, move, std::min(k + 1, last)), g.tIn - g.swingLength,
+                            length - g.swingLength + gap.length, gap.feint);
+    }
+    // 間の区間（2 撃目から）：前の当たりの区間の振り終わりからの続き。
+    if (index == 0 || !move.segments[index - 1].hit)
+        return Windup(boss, StrikeEnd(StrikeOf(boss, move, k > 0 ? k - 1 : 0)), now, g.tIn, segment.length,
+                      segment.feint);
+    const int previous = SegmentLength(boss, move, index - 1);
+    const int previousSwing = std::max(1, std::min(previous, boss.swingInFrames + boss.swingFrames));
+    return ToNextStrike(boss, StrikeOf(boss, move, k > 0 ? k - 1 : 0), now, previous - previousSwing + g.tIn,
+                        previous - previousSwing + segment.length, segment.feint);
 }
 
 } // namespace

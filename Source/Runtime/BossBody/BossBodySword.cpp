@@ -118,7 +118,8 @@ void Kamae(const BossComponent& boss, Vec3& direction, Vec3& grip) {
     grip = BodyPoint(boss.body, grip);
 }
 
-// 待機の構えを混ぜる重み。待機・溜めの始めは「規則の剣が下ろした構えに近いほど」、後隙は後半で待機の構えへ戻す。
+// 待機の構えを混ぜる重み。待機・溜めの始めは「規則の剣が下ろした構えに近いほど」、後隙は始めから終わりまで少しずつ
+// 待機の構えへ寄せる（振り終わりの形で止めない。c-999264）。
 float CalmWeight(const BossComponent& boss, const BossMove* move, bool swing, float rest) {
     if (boss.state == BossState::Idle)
         return rest;
@@ -128,8 +129,7 @@ float CalmWeight(const BossComponent& boss, const BossMove* move, bool swing, fl
         return rest;
     if (boss.phase == BossActPhase::Act)
         return swing ? 0.0f : rest;
-    const float hold = std::clamp(boss.body.motion.postHoldShare, 0.0f, 1.0f);
-    return Smooth((Share(boss.stateFrame, move->post) - hold) / std::max(kTiny, 1.0f - hold));
+    return Smooth(Share(boss.stateFrame, move->post));
 }
 
 MotionTargets Targets(const BossComponent& boss) {
@@ -233,24 +233,31 @@ void StepDirection(const BossBodyMotionSettings& s, const MotionTargets& t, Boss
                    Lerp(damping, 1.0f, t.twoHand), dt);
 }
 
-// 刃の向き：振る間は剣先の動きの先、溜めの間はこれから斬る向き、待機では待機の向き。ほかは前の向きを保つ
-// （振り抜いて行き過ぎる間も、振り終わりの刃の向きのまま。裏返らない）。刀身の軸まわりに、近い回りで回す。
-void StepEdge(const BossBodyMotionSettings& s, const MotionTargets& t, BossBodyMotionState& m, float dt) {
+// 刃の向き（c-999264）：両手の型の技は、その一振りの斬る向き（規則の型の振りの面が決める）。振り上げで斬る向きへ回し、
+// 構え・振り・戻りの終わりまで同じ向き（振りの後に刀が戻っても、棟が先に戻るだけで裏返らない）。片手の振りは剣先の
+// 動きの先、片手の溜めは決まった向き。待機では待機の向きへ。ほかは前の向きを保つ。刀身の軸まわりに、近い回りで回す。
+void StepEdge(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState& m, float dt) {
+    const BossBodyMotionSettings& s = boss.body.motion;
     m.edge = Perpendicular(m.edge, m.direction);
     float seconds = s.edgeTurnSeconds;
+    const Vec3 cut = ProjectOut(t.ruleEdge, m.direction);
     if (t.great) {
         if (Length(t.greatEdge) > kGreatEdgeMinLength)
             m.edgeGoal = Normalize(t.greatEdge);
+    } else if (Length(t.ruleEdge) > kEdgeGoalMinLength) {
+        if (Length(cut) > kEdgeGoalMinLength)
+            m.edgeGoal = Normalize(cut);
+        if (!t.window)
+            seconds = s.edgeStanceSeconds;
     } else if (t.window) {
         if (Length(m.velocity) > s.edgeMinDegreesPerSecond * kRadiansPerDegree)
             m.edgeGoal = Normalize(m.velocity);
     } else if (t.charging && t.calm < kCalmEdgeShare) {
-        // 両手の型は、型が決めた斬る向き（振りの軸のまわりに回る向き）へ。片手の振りは決まった向きへ。
-        const Vec3 goal = Length(t.ruleEdge) > kEdgeGoalMinLength ? t.ruleEdge : Normalize(s.chargeEdgeToward);
-        const Vec3 toward = ProjectOut(goal, m.direction);
+        const Vec3 toward = ProjectOut(Normalize(s.chargeEdgeToward), m.direction);
         if (Length(toward) > kEdgeGoalMinLength)
             m.edgeGoal = Normalize(toward);
-    } else if (t.calm > kCalmEdgeShare) {
+    } else if (boss.state != BossState::Act && t.calm > kCalmEdgeShare) {
+        // 待機の刃へは技の外でだけ回す（戻りの終わりまでは斬る向きのまま）。
         m.edgeGoal = Perpendicular(s.idleEdge, m.direction);
         seconds = s.edgeIdleSeconds;
     }
@@ -487,7 +494,7 @@ void BossBodySword::Step(BossComponent& boss, float seconds) {
     StepDirection(boss.body.motion, t, m, dt);
     StepGrip(boss, t, m, dt);
     StepGreat(boss.body.motion, t, m, dt);
-    StepEdge(boss.body.motion, t, m, dt);
+    StepEdge(boss, t, m, dt);
     StepBody(boss, t, m, dt);
     TraceGreat(boss, t, m);
     BossBodyLeftHand::Step(boss, dt, false);
@@ -538,8 +545,42 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     BossBodyLeftHand::Solve(boss, body, pose);
 }
 
+namespace {
+
+// 確かめ用（bodyTraceMotion）：技の間、毎フレーム、見せる刃の向きと「斬る向き」（規則の型が決めた刃の向き）の内積
+// rule・剣先の動きの向きとの内積 motion（遅い時は 9）・刀の向きの角速度（度/秒）を記録に出す。規則の刃の向きが
+// 決まっていない時（片手の構え・下ろした構え）の rule は 9。
+void TraceEdge(const BossComponent& boss, const Transform& body, const BossBodyPose& pose) {
+    const BossMove* move = CurrentMove(boss);
+    if (!boss.body.motion.traceMotion || move == nullptr)
+        return;
+    const BossBodyMotionState& m = boss.bodyState.motion;
+    const MotionFrame frame{boss, body, m.lock};
+    const Vec3 direction = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
+    const Vec3 edge = Rotate(pose.sword.rotation, {0.0f, -1.0f, 0.0f});
+    const Vec3 ruleEdge = boss.swordPose.edge;
+    const float rule = Length(ruleEdge) > kEdgeGoalMinLength
+                           ? Dot(edge, Perpendicular(frame.Direction(ruleEdge), direction))
+                           : 9.0f;
+    const float speed = Length(m.velocity);
+    const float motion = speed > boss.body.motion.edgeMinDegreesPerSecond * kRadiansPerDegree
+                             ? Dot(edge, Perpendicular(frame.Direction(m.velocity), direction))
+                             : 9.0f;
+    char message[256]{};
+    std::snprintf(message, sizeof(message),
+                  "[BossBody] EdgeTrace tick=%llu move=%d phase=%d stateFrame=%d twoHand=%.2f window=%d rule=%.3f "
+                  "motion=%.3f speed=%.0f",
+                  static_cast<unsigned long long>(boss.tick), boss.move, static_cast<int>(boss.phase), boss.stateFrame,
+                  static_cast<double>(boss.swordPose.twoHand), boss.swordSmoke ? 1 : 0, static_cast<double>(rule),
+                  static_cast<double>(motion), static_cast<double>(speed / kRadiansPerDegree));
+    BossLog::Write(message);
+}
+
+} // namespace
+
 void BossBodySword::Trace(const BossComponent& boss, const Transform& body, const BossBodyPose& pose) {
     TraceClearance(boss, body, pose);
+    TraceEdge(boss, body, pose);
     if (!boss.body.motion.traceMotion || !boss.swordSmoke)
         return;
     const BossBodyMotionState& m = boss.bodyState.motion;

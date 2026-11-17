@@ -109,8 +109,6 @@ struct BossBodyMotionSettings {
     float breathMeters = 0.03375f;
     float breathDegrees = 1.5f;
     float breathFrequency = 0.28f;
-    // 後隙のうち、振り終わりの形を保つ割合（残りで待機の構えへ戻す）。
-    float postHoldShare = 0.5f;
 
     // 溜め：握りを剣の向きへ送り出す長さ (m) と、持ち上げる高さ (m)。構えている間の小さな震え（握り m・剣先 度・速さ）。
     float chargeReach = 0.405f;
@@ -125,10 +123,11 @@ struct BossBodyMotionSettings {
     float armReach = 0.4725f;
     float armReachPeak = 0.55f;
 
-    // 刃の向き：刃を動きへ向け始める剣先の速さ（度/秒。これより遅い時は前の向きを保つ）、合わせる時間 (秒)、
-    // 待機の刃の向きへ戻る時間 (秒)。
+    // 刃の向き：刃を動きへ向け始める剣先の速さ（度/秒。これより遅い時は前の向きを保つ。片手の振り）、振っている間に
+    // 合わせる時間 (秒)、構えを移る間（振り上げ・両手の型の斬る向きへ）に回す時間 (秒)、待機の刃の向きへ戻る時間 (秒)。
     float edgeMinDegreesPerSecond = 40.0f;
     float edgeTurnSeconds = 0.04f;
+    float edgeStanceSeconds = 0.12f;
     float edgeIdleSeconds = 0.6f;
     // 待機の刃の向き（局所。刀に直交する成分を使う）と、溜めの間に刃を向ける先（これから斬る向き。局所）。
     HIKARI::GameProjectFloat3 idleEdge{-0.5f, -1.0f, 0.35f};

@@ -24,6 +24,12 @@ void BossSwingShape::Describe(HIKARI::PropertyFields& fields, std::string_view k
     fields.Float(k + "LeanTo", l + "：振り終わりの前傾 (度。構えから寄せる。見た目だけ)", leanTo, -30.0f, 30.0f);
     fields.Float(k + "RaiseVia", l + "：振り上げの道（型の振りのこの進みを通って構えへ。0 は直に）", raiseVia, 0.0f,
                  1.0f);
+    fields.Float(k + "ReturnLift", l + "：戻りの道を中段へ寄せる強さ（0〜1。0 は振り終わりからそのまま構えへ）",
+                 returnLift, 0.0f, 1.0f);
+    fields.Float(k + "ReturnPeakShare", l + "：戻りが最も速い所（戻りの長さに対する割合。小さいほど早く戻り始める）",
+                 returnPeakShare, 0.1f, 0.9f);
+    fields.Float(k + "EdgeRollDegrees", l + "：刃の面（斬る向きを刀身の軸のまわりに回す角度、度）", edgeRollDegrees,
+                 -90.0f, 90.0f);
 }
 
 void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
@@ -35,6 +41,10 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     horizontal.Describe(fields, "swingHorizontal", "横なぎ");
     kesa.Describe(fields, "swingKesa", "袈裟（逆袈裟は左右に映す）");
     vertical.Describe(fields, "swingVertical", "縦");
+    fields.Float3("swingReturnGrip", "戻りの中段：握り（体の足元から、局所 m）", returnGrip);
+    fields.Float3("swingReturnDirection", "戻りの中段：刀の向き（局所。剣先をプレイヤーの胸へ）", returnDirection);
+    fields.Float("swingReturnCrouch", "戻りの中段：腰を落とす量 (m。見た目だけ)", returnCrouch, 0.0f, 3.0f);
+    fields.Float("swingReturnLean", "戻りの中段：前傾 (度。見た目だけ)", returnLean, -30.0f, 30.0f);
     fields.Float("swingRiseFromDegrees", "炎走りの斬り上げ：縦の型のこの角度から（度）", riseFromDegrees, -180.0f,
                  180.0f);
     fields.Float("swingRiseToDegrees", "炎走りの斬り上げ：この角度まで逆に回す（度）", riseToDegrees, -180.0f, 180.0f);
