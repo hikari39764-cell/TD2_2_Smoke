@@ -150,8 +150,10 @@ public:
     HIKARI::GameProjectFloat3 smokeColor{0.86f, 0.88f, 0.92f};
     float trailSmokeScale = 0.0f;
     float fallbackTrailRate = 6.0f;
-    float fogReturnSmoke = 20.0f;
-    float fogReturnTrailShare = 0.3f;
+    // 1 発の戻りは 1 発の消費（SmokeArena は 15）より少なくする：多いと、場の霧が無くても足元へ撃って吸い直すだけで
+    // 煙が増える（2026-11-17 に 20 → 8）。通り道へは戻さず、当たった所だけに湧かせる（0.3 → 0）。
+    float fogReturnSmoke = 8.0f;
+    float fogReturnTrailShare = 0.0f;
     float fogReturnTrailSpacing = 2.5f;
     float fogReturnRadius = 1.4f;
     float fogReturnHeight = 0.35f;

@@ -449,6 +449,28 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("depositRadius", "斬撃が消えた所の煙の半径 (m)", depositRadius, 0.05f, 10.0f);
         fields.Float("depositHeight", "残す煙の高さ（地面から m）", depositHeight, 0.0f, 5.0f);
         fields.Int("depositFrames", "消えた所の煙を出し切る長さ (F)", depositFrames, 1, 600);
+        fields.Float("blastFogSmoke", "爆発の跡に残す煙（爆発の大きさ 1 あたり。0 は残さない）", blastFogSmoke, 0.0f,
+                     1000.0f);
+        fields.Float("blastFogRadius", "…その半径 (m。爆発の大きさ 1 の時)", blastFogRadius, 0.05f, 10.0f);
+        fields.Int("blastFogDelayFrames", "…爆発から出し始めるまで (F。爆発の炎と光が消えてから出す)",
+                   blastFogDelayFrames, 0, 600);
+        fields.Int("blastFogFrames", "…出し切る長さ (F)", blastFogFrames, 1, 600);
+        fields.Float("detonationFogSmokePerArea", "引爆の跡：爆ぜた火 1 m² あたりに残す煙（0 は残さない）",
+                     detonationFogSmokePerArea, 0.0f, 100.0f);
+        fields.Float("detonationFogSmokeMax", "引爆の跡：1 回の引爆で残す煙の上限", detonationFogSmokeMax, 0.0f,
+                     10000.0f);
+        fields.Float("detonationFogMergeDistance", "引爆の跡：近くの跡へまとめる距離 (m)", detonationFogMergeDistance,
+                     0.0f, 10.0f);
+        fields.Note(
+            "爆発（当たった所・外れて地面で爆ぜた所・着地・崩し・大剣の叩きつけ・引爆の突き立てなど）の後、"
+            "真下の地面の近く（残す煙の高さ）へ吸える煙を入れます。量は爆発の大きさに比例し、"
+            "半径は大きさの平方根に比例します（広がる面積あたりの濃さが、爆発の大きさによらず同じ）。"
+            "霞隠れ・分身の煙（puffResidue）と、引爆の爆発がプレイヤーに当たった所には足しません。"
+            "引爆（天降り斬りの着地の火が爆ぜるのも）は、爆ぜた火の面積に応じて、爆ぜた所（燃える地面の blastBlockSize の升ごと）へ"
+            "残します。1 回の合計は上限で止まります（上限に届くと、前線が後から通る外側には残りません。火の全体に"
+            "行き渡らせるなら 1 m² あたりを下げます）。半径・待つ長さ・出し切る長さは爆発（大きさ 1）と同じ値です。"
+            "残り煙の枠は 12 個なので、広い火を一度に引爆すると、遠い所の分は近くの跡へまとまります。"
+            "足した煙は消散でしか減らないので、長い対戦の後半で霧が画面を埋めないかを見て決めます。");
         fields.Float("bodySmokeRadius", "ボスの通った跡の煙の半径 (m)", bodySmokeRadius, 0.05f, 10.0f);
         fields.Float("fireObstacleRadius", "場の火が体をよける半径 (m。0 でよけない)", fireObstacleRadius, 0.0f, 10.0f);
         fields.Float("fireObstacleHeight", "場の火が体をよける高さ (m)", fireObstacleHeight, 0.0f, 20.0f);

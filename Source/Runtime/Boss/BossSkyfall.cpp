@@ -305,6 +305,8 @@ void BossSkyfall::StepBurst(BossFrame& frame) {
     BurnFieldRules::ExplodeDisc(frame.world, burst.center, reach, hitRadius,
                                 frame.player != nullptr ? &frame.playerCenter : nullptr, boss.skyfallBurstPower,
                                 explosion);
+    // 爆ぜた塊の跡に吸える煙を残す（全部が同じ tick に爆ぜるので、この 1 回で detonationFogSmokeMax まで）。
+    const float fog = BossWaves::AddDetonationFog(boss, explosion, boss.detonationFogSmokeMax, "skyfallBurst");
     // 1 回の爆発で当たるのは 1 回だけ。無敵でよけた時は当たらない（斬撃と同じ）。全部が同じ tick に爆ぜるので、
     // 一番近い火で輪を決める：爆心は威力のまま skyfallBurstBlow、外の輪は減らした威力でのけぞる。
     bool hit = false, dodged = false;
@@ -327,15 +329,17 @@ void BossSkyfall::StepBurst(BossFrame& frame) {
         if (const BossMove* move = BossRules::GetMove(boss, burst.move))
             BossBurnMarks::SkyfallBurst(frame, *move, burst.center);
     }
-    char extra[192]{};
-    std::snprintf(extra, sizeof(extra),
-                  " cells=%u blasts=%u caught=%d zone=%s fireDistance=%.3f hit=%d dodged=%d playerDistance=%.3f",
-                  explosion.cells, explosion.blasts, static_cast<int>(explosion.zone != BurnBlastZone::None),
-                  BurnFieldRules::ZoneKey(explosion.zone), static_cast<double>(explosion.playerDistance),
-                  static_cast<int>(hit), static_cast<int>(dodged),
-                  frame.player != nullptr
-                      ? static_cast<double>(FlatLength(Sub(AimGround(frame, frame.playerCenter), burst.center)))
-                      : -1.0);
+    char extra[224]{};
+    std::snprintf(
+        extra, sizeof(extra),
+        " cells=%u blasts=%u caught=%d zone=%s fireDistance=%.3f hit=%d dodged=%d playerDistance=%.3f fog=%.3f",
+        explosion.cells, explosion.blasts, static_cast<int>(explosion.zone != BurnBlastZone::None),
+        BurnFieldRules::ZoneKey(explosion.zone), static_cast<double>(explosion.playerDistance), static_cast<int>(hit),
+        static_cast<int>(dodged),
+        frame.player != nullptr
+            ? static_cast<double>(FlatLength(Sub(AimGround(frame, frame.playerCenter), burst.center)))
+            : -1.0,
+        static_cast<double>(fog));
     LogBurst(boss, "burst", extra);
     burst = {};
 }

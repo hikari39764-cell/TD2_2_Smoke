@@ -28,6 +28,8 @@ constexpr float kFramesPerSecond = 60.0f;
 // 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
 constexpr int kRingResiduePoints = 6;
 constexpr float kTau = 6.28318530718f;
+// 爆発の跡の煙の半径の下限 (m)。注入の量の換算（FluidEmit::EmitVolume）は 0 より大きい半径が要る。
+constexpr float kMinimumFogRadius = 0.05f;
 
 BossWave* FreeWave(BossComponent& boss) {
     for (auto& wave : boss.waves) {
@@ -98,7 +100,7 @@ void StepRing(BossFrame& frame, BossWave& wave) {
         const Vec3 at = Add(wave.position, Mul(Vec3{std::sin(angle), 0.0f, std::cos(angle)},
                                                wave.maxRadius * boss.kickResidueRadiusShare));
         BossWaves::AddDeposit(boss, {at.x, boss.ground.y + boss.depositHeight, at.z},
-                              boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius);
+                              boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius, boss.depositFrames);
     }
     if (const BossMove* move = BossRules::GetMove(boss, wave.move))
         BossBurnMarks::RingEnded(frame, *move, wave);
@@ -338,7 +340,7 @@ void BossWaves::Step(BossFrame& frame) {
             const float smoke =
                 boss.residuePerTwoMeters * (wave.knife ? boss.knifeEndResidueScale : 1.0f) + wave.smokeOwed;
             AddDeposit(boss, {wave.position.x, boss.ground.y + boss.depositHeight, wave.position.z}, smoke,
-                       boss.depositRadius);
+                       boss.depositRadius, boss.depositFrames);
             if (boss.traceEveryFrames > 0)
                 LogWave(boss, wave, "WaveEnd");
             wave.active = false;
@@ -346,9 +348,31 @@ void BossWaves::Step(BossFrame& frame) {
     }
 }
 
-void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius) {
+void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames,
+                           float mergeDistance) {
     if (smoke <= 0.0f)
         return;
+    const float perFrameShare = 1.0f / static_cast<float>(std::max(1, frames));
+    if (mergeDistance > 0.0f) {
+        // 近くに、まだ出し始めていない煙があれば、そこへ足す（同じ所で続けて爆ぜる引爆が、枠を使い切らないように）。
+        BossSmokeDeposit* waiting = nullptr;
+        float best = mergeDistance;
+        for (auto& deposit : boss.deposits) {
+            if (!deposit.active || deposit.waitFrames <= 0)
+                continue;
+            const float distance = FlatLength(Sub(deposit.position, position));
+            if (distance <= best) {
+                best = distance;
+                waiting = &deposit;
+            }
+        }
+        if (waiting != nullptr) {
+            waiting->smokeLeft += smoke;
+            waiting->smokePerFrame = waiting->smokeLeft * perFrameShare;
+            waiting->waitFrames = std::max(waiting->waitFrames, waitFrames);
+            return;
+        }
+    }
     BossSmokeDeposit* target = nullptr;
     for (auto& deposit : boss.deposits) {
         if (!deposit.active) {
@@ -357,7 +381,7 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
         }
     }
     if (target == nullptr) {
-        // 空きが無ければ一番近い所へ足す（煙の総量を保つ）。
+        // 空きが無ければ一番近い所へ足す（煙の総量を保つ）。待つ煙を足した時は、長い方の待ちに揃える（炎の中へ出さない）。
         float best = 0.0f;
         for (auto& deposit : boss.deposits) {
             const float distance = FlatLength(Sub(deposit.position, position));
@@ -367,7 +391,8 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
             }
         }
         target->smokeLeft += smoke;
-        target->smokePerFrame = target->smokeLeft / static_cast<float>(std::max(1, boss.depositFrames));
+        target->smokePerFrame = target->smokeLeft * perFrameShare;
+        target->waitFrames = std::max(target->waitFrames, waitFrames);
         return;
     }
     *target = {};
@@ -375,11 +400,69 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
     target->position = position;
     target->radius = radius;
     target->smokeLeft = smoke;
-    target->smokePerFrame = smoke / static_cast<float>(std::max(1, boss.depositFrames));
+    target->smokePerFrame = smoke * perFrameShare;
+    target->waitFrames = std::max(0, waitFrames);
 }
 
 void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
     boss.blasts[boss.blastCursor++ % boss.blasts.size()] = blast;
+    // 爆発の跡：真下の地面の近くへ、吸える煙を残す。霞の塊は puffResidue が、爆発がプレイヤーに当たった所は
+    // 燃える地面の爆ぜた塊（AddDetonationFog）が残すので、ここでは足さない（二重にしない）。
+    if (!blast.leavesFog || blast.puff || blast.explosion)
+        return;
+    const float scale = std::max(0.0f, blast.scale);
+    const float smoke = boss.blastFogSmoke * scale;
+    // 量は大きさに比例、半径は大きさの平方根に比例：場の霧は床に近い薄い層なので、広がる面積あたりの濃さが同じになる
+    // （半径も大きさに比例させると、大きい爆発ほど薄くなり、層より上へ出た分はすぐ消えて吸える量も減る）。
+    const float radius = std::max(kMinimumFogRadius, boss.blastFogRadius * std::sqrt(scale));
+    if (!(smoke > 0.0f))
+        return;
+    const Vec3 at{blast.position.x, boss.ground.y + boss.depositHeight, blast.position.z};
+    AddDeposit(boss, at, smoke, radius, boss.blastFogFrames, boss.blastFogDelayFrames);
+    boss.blastFogTotal += static_cast<double>(smoke);
+    char message[320]{};
+    std::snprintf(message, sizeof(message),
+                  "BlastFog tick=%llu smoke=%.3f radius=%.3f scale=%.3f wait=%d frames=%d fire=%d playerHit=%d "
+                  "position=(%.3f,%.3f,%.3f) total=%.3f",
+                  static_cast<unsigned long long>(boss.tick), static_cast<double>(smoke), static_cast<double>(radius),
+                  static_cast<double>(scale), boss.blastFogDelayFrames, boss.blastFogFrames,
+                  static_cast<int>(blast.fire), static_cast<int>(blast.playerHit), static_cast<double>(at.x),
+                  static_cast<double>(at.y), static_cast<double>(at.z), boss.blastFogTotal);
+    BossLog::Write(message);
+}
+
+float BossWaves::AddDetonationFog(BossComponent& boss, const BurnExplosion& explosion, float limit,
+                                  const char* source) {
+    const float perArea = std::max(0.0f, boss.detonationFogSmokePerArea);
+    const float radius = std::max(kMinimumFogRadius, boss.blastFogRadius);
+    float left = std::max(0.0f, limit);
+    float placed = 0.0f;
+    uint32_t blocks = 0;
+    // 爆ぜた面積に応じて、爆ぜた所へ置く。前線は内側から外へ進むので、上限に届いた後の（外側の）塊には置かない。
+    for (uint32_t k = 0; k < explosion.blockCount && left > 0.0f; ++k) {
+        const Vec3 center = explosion.blockCenters[k];
+        const float smoke = std::min(explosion.blockAreas[k] * perArea, left);
+        if (!(smoke > 0.0f))
+            continue;
+        AddDeposit(boss, {center.x, center.y + boss.depositHeight, center.z}, smoke, radius, boss.blastFogFrames,
+                   boss.blastFogDelayFrames, boss.detonationFogMergeDistance);
+        left -= smoke;
+        placed += smoke;
+        ++blocks;
+    }
+    // 上限に届いた後の tick（置いた塊が無い）は書かない。1 回の合計は DetonateEnd・SkyfallBurst の fog に出る。
+    if (blocks == 0)
+        return 0.0f;
+    boss.blastFogTotal += static_cast<double>(placed);
+    char message[256]{};
+    std::snprintf(message, sizeof(message),
+                  "DetonationFog tick=%llu source=%s blocks=%u placed=%u smoke=%.3f limit=%.3f perArea=%.3f "
+                  "total=%.3f",
+                  static_cast<unsigned long long>(boss.tick), source, explosion.blockCount, blocks,
+                  static_cast<double>(placed), static_cast<double>(std::max(0.0f, limit)), static_cast<double>(perArea),
+                  boss.blastFogTotal);
+    BossLog::Write(message);
+    return placed;
 }
 
 void BossWaves::StepDeposits(BossComponent& boss) {
@@ -387,6 +470,10 @@ void BossWaves::StepDeposits(BossComponent& boss) {
         deposit.rate = 0.0f;
         if (!deposit.active)
             continue;
+        if (deposit.waitFrames > 0) {
+            --deposit.waitFrames;
+            continue;
+        }
         if (deposit.smokeLeft <= 0.0001f) {
             deposit.active = false;
             continue;

@@ -218,7 +218,7 @@ void BossSpecialMoves::EndRetreatCharge(BossComponent& boss, const char* state) 
 void BossSpecialMoves::Puff(BossComponent& boss, Vec3 ground, bool residue) {
     if (residue)
         BossWaves::AddDeposit(boss, {ground.x, ground.y + boss.depositHeight, ground.z}, boss.puffResidue,
-                              boss.puffRadius);
+                              boss.puffRadius, boss.depositFrames);
     if (!(boss.puffEffectScale > 0.0f))
         return;
     BossWaves::AddBlast(boss, {.effectPending = true,

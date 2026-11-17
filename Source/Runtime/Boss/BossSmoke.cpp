@@ -18,6 +18,8 @@ using namespace BossMath;
 constexpr uint32_t kEmitBudget = 20;
 // 流体への提出 ID（持ち主はボスの物体なので、ヒョウタンの ID とは重ならない）。
 constexpr uint64_t kSwordOuterId = 1, kSwordInnerId = 2, kKamaeId = 3, kBodyId = 4, kDepositBase = 10, kWaveBase = 32;
+// 残り煙の枠（爆発の跡の煙も含む）の ID は kDepositBase から枠の数だけ。斬撃の ID と重ねない。
+static_assert(kDepositBase + kBossDepositCapacity <= kWaveBase);
 // 爆発が足元の霧を押す力の提出 ID と、押す向きの数、地面からの高さ (m)。
 // 向きのある押しを輪に並べる（向きの無い膨張は霧を上へも持ち上げ、連撃でカメラが霧の中に入った）。
 constexpr uint64_t kBlastPushBase = 110;

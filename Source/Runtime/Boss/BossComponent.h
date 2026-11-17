@@ -30,8 +30,9 @@ inline constexpr size_t kBossSlashEffectCapacity = 2;
 inline constexpr size_t kBossBlastCapacity = 6;
 // 霞分身で一度に出せる分身の数の上限（実際の数は表の判定サイズと、シーンに置いた分身の物体の数で決まる）。
 inline constexpr size_t kBossCloneCapacity = 4;
-// 斬撃が消えた所などに置く残り煙の枠。
-inline constexpr size_t kBossDepositCapacity = 8;
+// 斬撃が消えた所などに置く残り煙の枠。爆発の跡の煙（炎が消えるまで待つ）と引爆の塊の煙も入るので 8 から増やした。
+// 出している枠は 1 つが場の霧の域の干渉を 1 つ使う（BossSmoke の kEmitBudget の中）。
+inline constexpr size_t kBossDepositCapacity = 12;
 // 連続攻撃の判定に覚えておく命中の数（試作と同じ 40）。
 inline constexpr size_t kBossHitMemory = 40;
 
@@ -121,12 +122,15 @@ struct BossBlast {
     bool playerHit = false;
     // 当たったのが爆発（引爆・着地の火の爆発）。爆発そのものの火球があるので、当たった所には何も足さない。
     bool explosion = false;
+    // 爆発の後、真下の地面へ吸える煙を残す（BossWaves::AddBlast）。霧を押すだけに枠を使う所（大剣の薙ぎ終わり）は偽。
+    // 霞の塊（puff。puffResidue がある）と、爆発がプレイヤーに当たった所（燃える地面の塊の側で残す）は、ここに関わらず残さない。
+    bool leavesFog = true;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 direction{};
 };
 
-// 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡）。
+// 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡・爆発の跡）。
 struct BossSmokeDeposit {
     bool active = false;
     HIKARI::GameProjectFloat3 position{};
@@ -134,6 +138,8 @@ struct BossSmokeDeposit {
     float smokeLeft = 0.0f;
     float smokePerFrame = 0.0f;
     float rate = 0.0f;
+    // 出し始めるまでの残りの tick（爆発の跡は、爆発の炎と光が消えるまで待つ。0 ならすぐ出す）。
+    int waitFrames = 0;
 };
 
 // 剣を振っている一撃（判定区間ごと）。振り抜いた瞬間に、剣先の霞の弧から斬撃を飛ばす。
@@ -166,6 +172,8 @@ struct BossDetonation {
     uint32_t exploded = 0;
     uint32_t blasts = 0;
     uint32_t blastsDropped = 0;
+    // この引爆で、爆ぜた塊の跡に残した煙の合計（煙の単位。detonationFogSmokeMax で止める）。
+    float fogSmoke = 0.0f;
     // 当たり（1 回の引爆で 1 回だけ）：当てた・無敵でよけられた。
     bool caught = false;
     bool hit = false;
@@ -833,6 +841,18 @@ public:
     float depositRadius = 1.5f;
     float depositHeight = 0.6f;
     int depositFrames = 24;
+    // 爆発の跡に残す吸える煙（爆発の大きさ 1 の時の量と半径。量は大きさに、半径は大きさの平方根に比例する。
+    // 爆発の炎と光が消えるまで待ってから、少しずつ出す）。
+    float blastFogSmoke = 12.0f;
+    float blastFogRadius = 1.2f;
+    int blastFogDelayFrames = 30;
+    int blastFogFrames = 40;
+    // 引爆（燃える地面が爆ぜる。天降り斬りの着地の火も）：爆ぜた火の面積 1 m² あたりに残す煙と、1 回の引爆で残す煙の上限。
+    // 爆ぜた所に面積に応じて残すので、火の線・火の輪に沿って霧が湧く（上限に届くと、前線が後から通る外側には残らない）。
+    float detonationFogSmokePerArea = 2.0f;
+    float detonationFogSmokeMax = 60.0f;
+    // 同じ所で続けて爆ぜた分は、この距離より近い「まだ出していない跡の煙」へ足す（残り煙の枠を使い切らないため）。
+    float detonationFogMergeDistance = 1.5f;
     float bodySmokeRadius = 1.3f;
     // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
     float fireObstacleRadius = 1.025f;
@@ -1030,6 +1050,8 @@ public:
     std::array<BossSmokeDeposit, kBossDepositCapacity> deposits{};
     std::array<BossBlast, kBossBlastCapacity> blasts{};
     size_t blastCursor = 0;
+    // 爆発の跡（引爆の塊を含む）に残した煙の累計（煙の単位。ログ用）。
+    double blastFogTotal = 0.0;
     float bodyTrail = 0.0f;
     float bodySmokeRate = 0.0f;
     HIKARI::GameProjectFloat3 lastBodyPosition{};

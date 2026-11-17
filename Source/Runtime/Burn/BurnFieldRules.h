@@ -1,9 +1,15 @@
 #pragma once
 
+#include <array>
+
 #include "HIKARI/Project/WorldView.h"
 #include "BurnFieldComponent.h"
 
 namespace Project_TD2_2 {
+
+// 引爆で 1 tick に爆ぜたセルを、塊（blastBlockSize の升）にまとめられる数。前線の輪は細いので、闘技場いっぱいの火でも
+// 1 tick に通る升はこれより少ない。あふれたセルは塊にせず、捨てた塊として数える。
+inline constexpr size_t kBurnExplosionBlockCapacity = 64;
 
 // 引爆の前線が 1 tick に通った輪の結果。
 struct BurnExplosion {
@@ -21,6 +27,11 @@ struct BurnExplosion {
     // 爆ぜたセルの中心の、origin からの最小・最大の距離 (m。爆ぜたセルが無ければ負)。
     float nearest = -1.0f;
     float farthest = -1.0f;
+    // この tick に出来た塊の中心（床の高さ）と、その塊で爆ぜた火の面積 (m²)。見た目への受け渡しがあふれて捨てた塊も入る
+    // （跡に煙を残すのに使う）。
+    std::array<HIKARI::GameProjectFloat3, kBurnExplosionBlockCapacity> blockCenters{};
+    std::array<float, kBurnExplosionBlockCapacity> blockAreas{};
+    uint32_t blockCount = 0;
 };
 
 // ほかの機能（ボスの技）が燃える地面に触る入口。どれも最初の有効な BurnField を使い、

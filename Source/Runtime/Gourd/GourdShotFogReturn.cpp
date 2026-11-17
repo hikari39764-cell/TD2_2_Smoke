@@ -127,12 +127,14 @@ void GourdShotFogReturn::Queue(HIKARI::WorldView& world, GourdShotComponent& sho
                                uint64_t ignoredObject) {
     if (shot.fogReturnSmoke <= 0.0f)
         return;
-    // 通り道：砲口の炎と終点の炎に重なる両端を除いて、等間隔に落とす。
+    // 通り道：砲口の炎と終点の炎に重なる両端を除いて、等間隔に落とす（通り道へ戻さない設定なら、地面も探さない）。
     const float spacing = std::max(0.5f, shot.fogReturnTrailSpacing);
     const float last = projectile.distance - spacing;
-    const int count =
-        last >= spacing ? std::min(kTrailPointLimit, static_cast<int>((last - spacing) / spacing) + 1) : 0;
-    const float trailSmoke = count > 0 ? shot.fogReturnSmoke * std::clamp(shot.fogReturnTrailShare, 0.0f, 1.0f) : 0.0f;
+    const float trailShare = std::clamp(shot.fogReturnTrailShare, 0.0f, 1.0f);
+    const int count = trailShare > 0.0f && last >= spacing
+                          ? std::min(kTrailPointLimit, static_cast<int>((last - spacing) / spacing) + 1)
+                          : 0;
+    const float trailSmoke = count > 0 ? shot.fogReturnSmoke * trailShare : 0.0f;
     float placedSmoke = 0.0f;
     for (int k = 0; k < count; ++k) {
         const float along = spacing * static_cast<float>(k + 1);

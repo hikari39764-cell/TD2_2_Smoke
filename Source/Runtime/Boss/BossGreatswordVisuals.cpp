@@ -49,7 +49,8 @@ void Pour(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& bo
         Submit(world, object, boss, id, pour);
 }
 
-// 薙ぎ終わった瞬間：剣が通った扇に沿って、場の霧を外へ押す（爆発の枠の「押し」だけを使う。光は出さない）。
+// 薙ぎ終わった瞬間：剣が通った扇に沿って、場の霧を外へ押す（爆発の枠の「押し」だけを使う。光は出さない。爆発ではないので
+// 跡の煙も残さない）。
 void PushSweptFog(BossComponent& boss) {
     if (boss.greatswordSweepPushes <= 0 || !(boss.greatswordSweepPushDistance > 0.0f))
         return;
@@ -58,7 +59,9 @@ void PushSweptFog(BossComponent& boss) {
     for (int i = 0; i < boss.greatswordSweepPushes; ++i) {
         const float back = swept * (static_cast<float>(i) + 0.5f) / static_cast<float>(boss.greatswordSweepPushes);
         const Vec3 at = Add(boss.ground, Mul(Forward(yawEnd - back), boss.greatswordSweepPushDistance));
-        BossWaves::AddBlast(boss, {.pushPending = true, .position = {at.x, boss.ground.y + kGreatswordPushLift, at.z}});
+        BossWaves::AddBlast(
+            boss,
+            {.pushPending = true, .leavesFog = false, .position = {at.x, boss.ground.y + kGreatswordPushLift, at.z}});
     }
 }
 

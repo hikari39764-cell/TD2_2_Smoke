@@ -30,11 +30,11 @@ void Finish(BossFrame& frame, bool interrupted) {
     char message[320]{};
     std::snprintf(message, sizeof(message),
                   "DetonateEnd tick=%llu exploded=%u hit=%d dodged=%d zone=%s cleared=%.3f interrupted=%d frames=%d "
-                  "blasts=%u blastsDropped=%u",
+                  "blasts=%u blastsDropped=%u fog=%.3f",
                   static_cast<unsigned long long>(boss.tick), detonation.exploded, static_cast<int>(detonation.hit),
                   static_cast<int>(detonation.dodged), BurnFieldRules::ZoneKey(detonation.zone),
                   static_cast<double>(cleared), static_cast<int>(interrupted), boss.stateFrame, detonation.blasts,
-                  detonation.blastsDropped);
+                  detonation.blastsDropped, static_cast<double>(detonation.fogSmoke));
     BossLog::Write(message);
 }
 
@@ -161,6 +161,9 @@ void BossDetonate::Step(BossFrame& frame, const BossMove& move) {
     detonation.exploded += explosion.cells;
     detonation.blasts += explosion.blasts;
     detonation.blastsDropped += explosion.blastsDropped;
+    // 爆ぜた塊の跡に吸える煙を残す（1 回の引爆の合計は detonationFogSmokeMax まで）。
+    detonation.fogSmoke +=
+        BossWaves::AddDetonationFog(boss, explosion, boss.detonationFogSmokeMax - detonation.fogSmoke, "detonate");
     if (explosion.zone != BurnBlastZone::None && !detonation.caught) {
         // 1 回の引爆で当たるのは 1 回だけ。無敵でよけた時も、その引爆はもう当たらない（斬撃と同じ）。
         // 前線が届いた tick に当てる（爆心を待って遅らせない）：爆心は表の威力と被弾、外の輪は減らした威力でのけぞる。

@@ -11,9 +11,6 @@ namespace Project_TD2_2 {
 namespace {
 
 using VectorMath::kPi;
-// 1 tick に爆ぜたセルを升ごとに足し合わせる作業場所の数。前線の輪は細いので、闘技場いっぱいの火でも
-// 1 tick に通る升はこれより少ない。あふれたセルは塊にせず、捨てた塊として数える。
-constexpr size_t kBlastBlockWork = 64;
 
 // 引爆で同じ tick に爆ぜた、1 つの升の中のセル。
 struct BlastBlock {
@@ -152,7 +149,7 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
                                  float planReach, float power, BurnExplosion& result) {
     result = {};
     return WithField(world, [&](BurnFieldComponent& field) {
-        std::array<BlastBlock, kBlastBlockWork> blocks{};
+        std::array<BlastBlock, kBurnExplosionBlockCapacity> blocks{};
         size_t blockCount = 0;
         const float block = std::max(field.map.CellSize(), field.blastBlockSize);
         float nearestSquared = -1.0f;
@@ -202,19 +199,19 @@ bool BurnFieldRules::ExplodeBand(HIKARI::WorldView& world, HIKARI::GameProjectFl
         }
         for (size_t k = 0; k < blockCount; ++k) {
             const BlastBlock& b = blocks[k];
+            const float n = static_cast<float>(b.cells);
+            const HIKARI::GameProjectFloat3 center{b.sumX / n, field.map.FloorY(), b.sumZ / n};
+            result.blockAreas[result.blockCount] = n * field.map.CellArea();
+            result.blockCenters[result.blockCount++] = center;
             // 捨てる塊にも番号を振る（見込みの数と同じ数え方にして、間引きの間隔をずらさない）。
             ++field.blastOrder;
             if (field.blastCount >= field.blasts.size()) {
                 ++result.blastsDropped;
                 continue;
             }
-            const float n = static_cast<float>(b.cells);
             // 半径は、塊のセルを合わせた面積の円。
-            field.blasts[field.blastCount++] = {{b.sumX / n, field.map.FloorY(), b.sumZ / n},
-                                                std::sqrt(n * field.map.CellArea() / kPi),
-                                                BurnBlastKind::Detonation,
-                                                field.blastOrder,
-                                                std::max(0.0f, power)};
+            field.blasts[field.blastCount++] = {center, std::sqrt(n * field.map.CellArea() / kPi),
+                                                BurnBlastKind::Detonation, field.blastOrder, std::max(0.0f, power)};
             ++result.blasts;
         }
     });

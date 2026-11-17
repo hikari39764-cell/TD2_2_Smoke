@@ -4,6 +4,8 @@
 
 namespace Project_TD2_2 {
 
+struct BurnExplosion;
+
 // 放った斬撃をどう飛ばすか（振った剣の弧から決めた値）。
 struct BossSlashLaunch {
     HIKARI::GameProjectFloat3 from{};
@@ -35,10 +37,17 @@ public:
     // type は Slash か Explosion。当たれば、爆発か、火の付いた一撃（fire）ならプレイヤーが炎上する。
     static bool HitPlayer(BossFrame& frame, int damage, HIKARI::GameProjectFloat3 direction, bool blow, int move,
                           int strike, const char* source, PlayerDamageType type, bool fire, bool* dodged = nullptr);
-    // 場の霧へ少しずつ入れる煙を置く（煙の単位）。
-    static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius);
+    // 場の霧へ少しずつ入れる煙を置く（煙の単位）。waitFrames tick 待ってから、frames tick かけて出し切る。
+    // mergeDistance が正なら、その距離より近い「まだ待っている煙」があれば、新しい枠を使わずにそこへ足す。
+    static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius,
+                           int frames, int waitFrames = 0, float mergeDistance = 0.0f);
     // 爆発の枠へ 1 つ入れる。枠は輪で使い回し、埋まっていれば一番古いものを上書きする。
+    // 爆発の跡に残す煙（blast.leavesFog）は、ここで置く（枠が上書きされても煙は残る）。
     static void AddBlast(BossComponent& boss, const BossBlast& blast);
+    // 引爆の前線が 1 tick に爆ぜさせた塊（BurnFieldRules::Explode／ExplodeDisc の結果）の跡に煙を置く。
+    // 塊ごとに、爆ぜた面積 × detonationFogSmokePerArea。合計は limit まで（前線が先に通った塊から）。置いた煙の合計を返す。
+    // source はログの名前。
+    static float AddDetonationFog(BossComponent& boss, const BurnExplosion& explosion, float limit, const char* source);
     static void StepDeposits(BossComponent& boss);
     static void Clear(BossComponent& boss);
 };
