@@ -190,6 +190,18 @@ struct BossSwing {
     HIKARI::GameProjectFloat3 lastOuter{};
     // 前の tick の剣の根元（剣の当たりを、前の tick から今の tick までの間でも確かめる）。
     HIKARI::GameProjectFloat3 lastBase{};
+    // 刀が正面を斬った部分（振りの後ろ waveCutShare から先）の記録。斬撃は、ここから決めた所・面で放つ。
+    // 刀の線が掃いた面の法線の合計、その部分の最初の剣先、前の tick の刀の向き。
+    bool cutStarted = false;
+    HIKARI::GameProjectFloat3 cutNormal{};
+    HIKARI::GameProjectFloat3 cutFirstOuter{};
+    HIKARI::GameProjectFloat3 lastBlade{};
+    // 剣先がボスの前へ一番出た時の、前への距離と刀の線（そこを過ぎた tick に斬撃を放つ）。
+    float reach = -1.0e9f;
+    HIKARI::GameProjectFloat3 reachBase{};
+    HIKARI::GameProjectFloat3 reachOuter{};
+    // 放った斬撃の id（0 は無い）。同じ一撃なので、剣と斬撃のどちらかが当たったら、もう片方は当たらない。
+    uint64_t waveId = 0;
 };
 
 // 引爆の 1 回ぶん。攻撃中に入った tick に始め、前線が火を通り過ぎたら（または打ち切られたら）終える。
@@ -863,6 +875,14 @@ public:
     float waveForward = 1.324f;
     float waveMinHeight = 0.941f;
     float waveMaxHeight = 2.788f;
+    // 斬撃を、振った刀に合わせて放つ（c-1ed669）：刀が正面を斬った部分（振りのこの割合から先）で、剣先が前へ一番出た所を
+    // 過ぎた tick に、その時の刃の waveBladeShare の所（0＝付け根、1＝剣先）から、刀の線が掃いた面の向きで放つ。
+    // 偽なら、振り抜いた tick に体の正面から放つ（前の作り）。
+    bool waveFromBlade = true;
+    float waveCutShare = 0.5f;
+    float waveBladeShare = 0.5f;
+    // 三日月の向きを、刀が斬った面へ合わせる割合（1＝面に合わせる。0＝剣先の最初と最後を結ぶ線＝前の作りの向き）。
+    float wavePlaneMatch = 1.0f;
     int waveGrowFrames = 8;
     float knifeHeight = 3.485f;
     float knifeForward = 1.161f;

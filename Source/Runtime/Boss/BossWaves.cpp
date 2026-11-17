@@ -242,11 +242,20 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     return accepted;
 }
 
-void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
+void BossWaves::SpendWave(BossComponent& boss, uint64_t waveId) {
+    if (waveId == 0)
+        return;
+    for (auto& wave : boss.waves) {
+        if (wave.active && wave.id == waveId)
+            wave.done = true;
+    }
+}
+
+uint64_t BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
     BossComponent& boss = frame.boss;
     const BossMove* move = BossRules::GetMove(boss, launch.move);
     if (move == nullptr)
-        return;
+        return 0;
     const BossStrikeData& strike = BossMoveTable::Strike(*move, launch.strike);
     BossWave& wave = *FreeWave(boss);
     wave = {};
@@ -271,6 +280,7 @@ void BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
     // 火は放った行そのものの値（連撃が参照した「縦振り」の行の火は持ってこない）。
     BossBurnMarks::ArmWave(boss, *move, wave);
     LogWave(boss, wave, "WaveRelease");
+    return wave.id;
 }
 
 void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim) {
@@ -384,6 +394,11 @@ void BossWaves::Step(BossFrame& frame) {
                 wave.struck = HitPlayer(frame, wave.damage, wave.direction, wave.blow, wave.move, wave.strike,
                                         wave.knife ? "knife" : "wave", PlayerDamageType::Slash, wave.fire);
                 wave.done = true;
+                // 振り抜く前に放った斬撃が当たった（か、無敵で抜けられた）：同じ一撃の剣は、もう当たらない。
+                for (auto& swing : boss.swings) {
+                    if (swing.active && swing.waveId == wave.id)
+                        swing.done = true;
+                }
             }
         }
         const bool ending =

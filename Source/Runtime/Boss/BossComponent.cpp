@@ -442,6 +442,17 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("waveForward", "斬撃を放つ位置：体の前 (m)", waveForward, 0.0f, 10.0f);
         fields.Float("waveMinHeight", "斬撃を放つ高さ 最低 (m)", waveMinHeight, 0.0f, 10.0f);
         fields.Float("waveMaxHeight", "斬撃を放つ高さ 最高 (m、跳んだ高さを足す)", waveMaxHeight, 0.0f, 10.0f);
+        fields.Bool("waveFromBlade", "斬撃を、振った刀の通った所・面・時に合わせて放つ", waveFromBlade);
+        fields.Float("waveCutShare", "…刀が正面を斬る部分の始まり（振りの長さに対する割合）", waveCutShare, 0.0f,
+                     0.95f);
+        fields.Float("waveBladeShare", "…斬撃の中心を置く刃の位置（0 は付け根、1 は剣先）", waveBladeShare, 0.0f, 1.0f);
+        fields.Float("wavePlaneMatch", "…三日月の向きを、刀が斬った面へ合わせる割合（0 は前の向き）", wavePlaneMatch,
+                     0.0f, 1.0f);
+        fields.Note(
+            "合わせて放つ時：振りの後ろの部分で、剣先がボスの前へ一番出た所を過ぎた瞬間に放ちます（振り抜くより"
+            "数 F 早い）。放つ所は、その時の刃の上の点（体の前 waveForward より手前には出さず、高さは最低〜最高に"
+            "切り詰める）。三日月の向きは、刀の線が掃いた面に合わせます（斜めに斬れば斜めの三日月）。"
+            "切ると、振り抜いた瞬間に体の正面から、剣先の最初と最後を結ぶ向きで放ちます。");
         fields.Int("waveGrowFrames", "放った斬撃が判定サイズまで伸びる長さ (F)", waveGrowFrames, 1, 120);
         fields.Float("knifeHeight", "ナイフを投げる高さ (m)", knifeHeight, 0.0f, 10.0f);
         fields.Float("knifeForward", "ナイフを投げる位置：体の前 (m)", knifeForward, 0.0f, 10.0f);

@@ -22,7 +22,10 @@ struct BossSlashLaunch {
 // 霞の斬撃とナイフ：飛ばす・プレイヤーに当てる・通った跡に残り煙を置く。
 class BossWaves final {
 public:
-    static void SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch);
+    // 放った斬撃の id を返す（放てなければ 0）。
+    static uint64_t SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch);
+    // 剣そのものが当たった：同じ一撃の、もう放ってある斬撃は当たらなくする。
+    static void SpendWave(BossComponent& boss, uint64_t waveId);
     static void SpawnKnives(BossFrame& frame, int moveIndex, HIKARI::GameProjectFloat3 from,
                             HIKARI::GameProjectFloat3 aim);
     // 回し蹴りの霞の輪：ボスの足元から、表の判定サイズ（最大半径）まで斬撃速度で広がる。

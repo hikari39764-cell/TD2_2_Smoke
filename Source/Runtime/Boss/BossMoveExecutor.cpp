@@ -271,28 +271,76 @@ void StepIn(BossFrame& frame, const BossStrikeData& strike, const BossSegmentPro
 }
 
 // 剣を振り抜いた瞬間：剣先が描いた霞の弧から、ボスが向いている方向へまっすぐ斬撃を飛ばす（斬撃は追尾しない）。
-void Release(BossFrame& frame, const BossSwing& swing) {
+void Release(BossFrame& frame, BossSwing& swing) {
     BossComponent& boss = frame.boss;
-    if (swing.samples < 2)
+    if (swing.samples < 2 || swing.released)
         return;
+    swing.released = true;
     const Vec3 forward = Forward(boss.yaw);
-    const float averageHeight = swing.heightSum / static_cast<float>(swing.samples);
-    Vec3 from = Add(boss.ground, Mul(forward, boss.bodyRadius + boss.waveForward));
-    from.y = boss.ground.y + std::clamp(averageHeight, boss.waveMinHeight, boss.waveMaxHeight + boss.height);
+    const float minimumAhead = boss.bodyRadius + boss.waveForward;
+    // 刀に合わせる：刀が正面を斬った部分の記録がある時（刀の線が面を掃いている）だけ。無ければ前の作りで放つ。
+    const bool fromBlade = boss.waveFromBlade && swing.cutStarted && swing.reach > -1.0e8f &&
+                           Dot(swing.cutNormal, swing.cutNormal) > 1e-6f;
+    Vec3 from{};
+    if (fromBlade) {
+        // 剣先が前へ一番出た時の、刃の上の点。体の中からは出さない。
+        from = Lerp(swing.reachBase, swing.reachOuter, std::clamp(boss.waveBladeShare, 0.0f, 1.0f));
+        const Vec3 offset = Sub(from, boss.ground);
+        const float ahead = offset.x * forward.x + offset.z * forward.z;
+        if (ahead < minimumAhead)
+            from = Add(from, Mul(forward, minimumAhead - ahead));
+        from.y =
+            boss.ground.y + std::clamp(from.y - boss.ground.y, boss.waveMinHeight, boss.waveMaxHeight + boss.height);
+    } else {
+        const float averageHeight = swing.heightSum / static_cast<float>(swing.samples);
+        from = Add(boss.ground, Mul(forward, minimumAhead));
+        from.y = boss.ground.y + std::clamp(averageHeight, boss.waveMinHeight, boss.waveMaxHeight + boss.height);
+    }
     const Vec3 direction = AimDirection(frame, from);
-    Vec3 across = Sub(swing.lastOuter, swing.firstOuter);
-    across = Sub(across, Mul(direction, Dot(across, direction)));
+    // 三日月の幅の向き：刀の線が掃いた面の中で、飛ぶ向きに直交する向き（剣先が動いた側を正にする）。
+    // 合わせない時は、剣先の最初と最後を結ぶ線を、飛ぶ向きに直交させる。
+    const Vec3 travel = fromBlade ? Sub(swing.reachOuter, swing.cutFirstOuter) : Sub(swing.lastOuter, swing.firstOuter);
+    const Vec3 chord = Sub(swing.lastOuter, swing.firstOuter);
+    Vec3 across = Sub(chord, Mul(direction, Dot(chord, direction)));
+    if (fromBlade) {
+        Vec3 plane = Normalize(Cross(swing.cutNormal, direction), across);
+        if (Dot(plane, travel) < 0.0f)
+            plane = Mul(plane, -1.0f);
+        // wavePlaneMatch で、前の作りの向き（剣先の最初と最後を結ぶ線）から、刀が斬った面の向きへ寄せる。
+        Vec3 loose = Normalize(across, plane);
+        if (Dot(loose, plane) < 0.0f)
+            loose = Mul(loose, -1.0f);
+        across = Lerp(loose, plane, std::clamp(boss.wavePlaneMatch, 0.0f, 1.0f));
+    }
     if (Dot(across, across) < 1e-4f)
         across = Cross(direction, {0.0f, 1.0f, 0.0f});
     BossSlashLaunch launch;
     launch.from = from;
     launch.direction = direction;
     launch.across = Normalize(across, {1.0f, 0.0f, 0.0f});
-    launch.startWidth = Length(Sub(swing.lastOuter, swing.firstOuter));
+    launch.startWidth = Length(travel);
     launch.noHit = swing.done;
     launch.move = boss.move;
     launch.strike = swing.strike;
-    BossWaves::SpawnSlash(frame, launch);
+    if (boss.traceEveryFrames > 0) {
+        // 振った剣の弧（剣先の最初と最後）と、斬撃を放つ所のずれを確かめる記録。
+        char message[384]{};
+        std::snprintf(
+            message, sizeof(message),
+            "SlashArc tick=%llu strike=%d samples=%d fromBlade=%d firstOuter=(%.3f,%.3f,%.3f) "
+            "lastOuter=(%.3f,%.3f,%.3f) "
+            "lastBase=(%.3f,%.3f,%.3f) from=(%.3f,%.3f,%.3f) ground=(%.3f,%.3f,%.3f) forward=(%.3f,%.3f)",
+            static_cast<unsigned long long>(boss.tick), swing.strike, swing.samples, static_cast<int>(fromBlade),
+            static_cast<double>(swing.firstOuter.x), static_cast<double>(swing.firstOuter.y),
+            static_cast<double>(swing.firstOuter.z), static_cast<double>(swing.lastOuter.x),
+            static_cast<double>(swing.lastOuter.y), static_cast<double>(swing.lastOuter.z),
+            static_cast<double>(swing.lastBase.x), static_cast<double>(swing.lastBase.y),
+            static_cast<double>(swing.lastBase.z), static_cast<double>(from.x), static_cast<double>(from.y),
+            static_cast<double>(from.z), static_cast<double>(boss.ground.x), static_cast<double>(boss.ground.y),
+            static_cast<double>(boss.ground.z), static_cast<double>(forward.x), static_cast<double>(forward.z));
+        BossLog::Write(message);
+    }
+    swing.waveId = BossWaves::SpawnSlash(frame, launch);
     BossBurnMarks::Released(frame, CurrentMove(boss), swing.strike);
 }
 
@@ -322,6 +370,28 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
     swing.lastBase = sword.base;
     swing.heightSum += sword.outer.y - boss.ground.y;
     ++swing.samples;
+    // 刀が正面を斬る部分：刀の線が掃いた面と、剣先がボスの前へ一番出た所を覚える。そこを過ぎた tick に斬撃を放つ。
+    const Vec3 blade = Normalize(Sub(sword.outer, sword.base), Forward(boss.yaw));
+    bool passedFront = false;
+    if (static_cast<float>(g.tIn) >= static_cast<float>(g.swingLength) * boss.waveCutShare) {
+        if (!swing.cutStarted) {
+            swing.cutStarted = true;
+            swing.cutFirstOuter = previousOuter;
+        }
+        if (!first)
+            swing.cutNormal = Add(swing.cutNormal, Cross(swing.lastBlade, blade));
+        const Vec3 ahead = Forward(boss.yaw);
+        const Vec3 tip = Sub(sword.outer, boss.ground);
+        const float reach = tip.x * ahead.x + tip.z * ahead.z;
+        if (reach > swing.reach) {
+            swing.reach = reach;
+            swing.reachBase = sword.base;
+            swing.reachOuter = sword.outer;
+        } else {
+            passedFront = true;
+        }
+    }
+    swing.lastBlade = blade;
     // 剣が描く霞（場の霧へ入れる。描画フレームで注入する）。
     boss.swordSmoke = true;
     boss.swordInner = sword.inner;
@@ -340,7 +410,12 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
         BossWaves::HitPlayer(frame, strike.damage, Sub(PlayerGround(frame), boss.ground), strike.blow, boss.move,
                              g.hitIndex, "sword", PlayerDamageType::Slash, boss.bladeLit);
         swing.done = true;
+        // 同じ一撃の斬撃をもう放っていたら、そちらは当たらなくする。
+        BossWaves::SpendWave(boss, swing.waveId);
     }
+    // 刀に合わせて放つ：剣先が前へ一番出た所を過ぎた tick。振り抜くまでに放っていなければ、振り抜いた tick に放つ。
+    if (boss.waveFromBlade && passedFront)
+        Release(frame, swing);
     if (g.tIn >= g.swingLength) {
         boss.segmentDone[static_cast<size_t>(g.segment)] = true;
         Release(frame, swing);
