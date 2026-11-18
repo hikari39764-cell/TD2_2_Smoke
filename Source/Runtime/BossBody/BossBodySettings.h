@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "HIKARI/Project/EnvironmentTypes.h"
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 
@@ -131,6 +132,16 @@ struct BossBodyMotionSettings {
     float edgeIdleSeconds = 0.6f;
     // 待機の刃の向き（局所。刀に直交する成分を使う）と、溜めの間に刃を向ける先（これから斬る向き。局所）。
     HIKARI::GameProjectFloat3 idleEdge{-0.5f, -1.0f, 0.35f};
+    // フェーズ 2 の待機の構え（見せる姿だけ。規則の剣線は変えない。c-857ae3）：0＝いまの下段、1＝案 A 担ぎ（刀を右肩に
+    // 担ぎ、棟を肩に乗せて刃を上へ）、2＝案 B 脇構え（切っ先を下げて右の後ろへ引く）。各案の握り（1 倍の体の局所 m）・
+    // 剣先の向き・刃の向き（局所）。
+    int phaseTwoKamae = 0;
+    HIKARI::GameProjectFloat3 shoulderKamaeGrip{-0.42f, 2.62f, 0.42f};
+    HIKARI::GameProjectFloat3 shoulderKamaeDirection{-0.42f, 0.62f, -0.66f};
+    HIKARI::GameProjectFloat3 shoulderKamaeEdge{0.0f, 1.0f, 0.25f};
+    HIKARI::GameProjectFloat3 wakiKamaeGrip{-0.76f, 1.95f, 0.42f};
+    HIKARI::GameProjectFloat3 wakiKamaeDirection{-0.38f, -0.42f, -0.82f};
+    HIKARI::GameProjectFloat3 wakiKamaeEdge{-0.35f, -1.0f, 0.1f};
     HIKARI::GameProjectFloat3 chargeEdgeToward{0.0f, -0.45f, 0.9f};
 
     // 胴の捻り：刀の横の向き（局所 x）1 あたりの角度 (度)、上限 (度)、追う時間 (秒)、草摺に掛ける割合。
@@ -185,6 +196,8 @@ struct BossBodyAccentSettings {
     // 燃える刀身：炎の明るさ（倍率。0 で出さない）と、火が付く・消える時間 (秒)。
     float bladeHeat = 1.0f;
     float bladeHeatSeconds = 0.25f;
+    // 燃える刀身から立つ火の粉の量（倍率。刀のエフェクトの入力 embers。0 で出さない。c-857ae3）。
+    float bladeEmbers = 1.0f;
     // 刀身の輪郭の光（刀身の模型に掛ける材質の効果 HIKARI_Dissolve の輪郭の発光。シェーダーで刀身の全長が光る。色は
     // エンジンの青白）：両手の斬りの構え・溜めで灯り（溜めの強さで増す）、振る間は強く、振り終わりで消える。
     // 0 で掛けない。燃える刀身の間はこの割合へ弱める（炎と重ねて白く飛ばない）。
@@ -464,9 +477,52 @@ struct BossBodySettings {
     // 煙の量（倍率）と、フェーズ 2 で煙を熱くする倍率（熱い煙は橙に光る。1 で光らない）。
     // （c-9143b5：視界を塞がないよう 1.0 → 0.8。）
     float smokeAmount = 0.8f;
-    float smokeHeatPhaseTwo = 5.0f;
+    // （c-857ae3：胴の煙の発光を強めて火の色にしたので 5 → 1.6。芯の煙は暗い橙の熾火の色に留まり（鎧を覆う大きな光に
+    // ならない）、炎は襟と袖口の火の舌が受け持つ。）
+    float smokeHeatPhaseTwo = 1.6f;
     // 気絶している間の煙の量（倍率。煙が薄れて、鎧がからっぽに見える）。
     float smokeAmountStunned = 0.35f;
+    // フェーズ 2 の本体の鎧を、灼けた鎧（継ぎ目の糸と隙間の闇が熾火に光る模型のノード ○○Hot）に差し替える（c-857ae3）。
+    bool armorHot = true;
+
+    // フェーズ 2 の燃える胴（c-857ae3）：フェーズ 2 に入ると fireRiseSeconds かけて火が付き、撃破で同じ速さで消える。
+    // 熱さは smokeHeatPhaseTwo へ寄せ、煙の量は smokeAmountPhaseTwo 倍、火の粉と熱のゆがみ（胴の煙の資産の入力 burn）は
+    // fireBurn 倍。気絶の間は火を fireStunnedShare の割合に弱める。
+    float fireRiseSeconds = 1.5f;
+    float smokeAmountPhaseTwo = 1.0f;
+    float fireBurn = 1.0f;
+    float fireStunnedShare = 0.35f;
+    // 火の舌：襟の両脇（胴の中心から、1 倍の体の局所 m。右。左は左右を反転）と、籠手の筒の口（手首 0 〜 肘の側 1 の
+    // 割合 fireCuffAlong）から、燃料を上へ吹き出す（胴の煙の域だけに届く注入。昇りながら燃えて光る煤になる）。濃さは
+    // 1 秒に入れる燃料（中心）、半径は 1 倍の体の m（体の大きさを掛ける）、熱さは入れる燃料の温度（0.3 で燃え始める）、
+    // 速さは上へ m/秒。
+    // 袖口の火は、襟の火に fireCuffShare を掛けた強さ。襟の火は片側に 2 本、前後に fireCollarSpread（1 倍の体の m）だけ
+    // 離して並べる（太い 1 本より、細い本数で見せる方が大きさが揺れない）。
+    HIKARI::GameProjectFloat3 fireCollar{-0.24f, 0.6f, -0.08f};
+    float fireCollarSpread = 0.1f;
+    float fireCuffAlong = 0.85f;
+    float fireTongueDensity = 16.0f;
+    float fireTongueRadius = 0.15f;
+    float fireTongueHeat = 2.0f;
+    float fireTongueRise = 1.6f;
+    float fireCuffShare = 0.6f;
+
+    // フェーズ 2 の場（c-857ae3）：場の色（環境の色調整を、暗部・中間・明部の色味で暖かく置き換える。1 で変えない）が
+    // fieldWarmSeconds かけて変わり、撃破で戻る。漂う火の粉はボスの足元に付けて出し（量は fieldEmbers 倍）、焦げた輪は
+    // 変わり目にボスが立っていた所に fieldScorchSeconds かけて現れる（濃さ fieldScorch・熾火の明るさ fieldScorchGlow・
+    // 大きさ fieldScorchSize 倍）。エフェクトが空なら火の粉と焦げた輪を出さない。
+    HIKARI::GameProjectVfxAssetReference fieldEffect{"5be8f2a1c94d4e7b8a3f61d2c7e09b54",
+                                                     "Assets/Vfx/BossPhaseTwoField.hvfx"};
+    float fieldWarmSeconds = 4.0f;
+    HIKARI::GameProjectFloat3 fieldShadowsTint{1.18f, 0.92f, 0.76f};
+    HIKARI::GameProjectFloat3 fieldMidtonesTint{1.2f, 0.98f, 0.76f};
+    HIKARI::GameProjectFloat3 fieldHighlightsTint{1.08f, 0.98f, 0.86f};
+    float fieldEmbers = 1.0f;
+    float fieldScorch = 1.0f;
+    // （stageB：熾火の橙の斑は「燃える地面」と紛れるので、既定は出さない。焦げは黒い斑だけ。）
+    float fieldScorchGlow = 0.0f;
+    float fieldScorchSize = 1.0f;
+    float fieldScorchSeconds = 2.5f;
 
     // 垂れた部品（大袖・草摺）の揺れ。体が動くと、動きと反対へ遅れて振れ、止まると行き過ぎて戻る。
     // 体の速さ 1 m/s あたりの振れ（度）、振れの上限（度）、戻る速さ（1 秒あたりの揺れの回数）、収まりの強さ（1 で揺れ戻さない）。
@@ -541,6 +597,21 @@ struct BossBodyState {
     // 模型を出せなかった知らせは、1 回だけ記録に出す（毎フレーム出さない）。
     bool submitWarned = false;
     HIKARI::GameProjectVfxPlaybackHandle smokeVfx{};
+    // フェーズ 2 の燃える胴の強さ（0〜1。c-857ae3）と、火の舌の注入で前に見た teleportCount（瞬間移動したフレームは
+    // 注入を休み、移った線に沿って火を引かない）。
+    float fire = 0.0f;
+    uint64_t fireTeleports = 0;
+    // フェーズ 2 の場（BossPhaseTwoField）：場の色の進み（0〜1）と、最後に送った進み（負は「置き換えていない」）、
+    // 置き換える前の色調整（初めて置き換える時に覚える）、火の粉と焦げた輪のエフェクト、焦げた輪の場所と進み。
+    float fieldWarm = 0.0f;
+    float fieldWarmSent = -1.0f;
+    bool fieldBaseSeen = false;
+    HIKARI::GameProjectColorGrading fieldBase{};
+    HIKARI::GameProjectVfxPlaybackHandle fieldEmbersVfx{};
+    HIKARI::GameProjectVfxPlaybackHandle fieldScorchVfx{};
+    HIKARI::GameProjectFloat3 fieldScorchAt{};
+    bool fieldScorchPlaced = false;
+    float fieldScorchShow = 0.0f;
     // 垂れた部品の振れ（度。世界座標の x・z が水平の向き、y が持ち上がり）と、その速さ。
     HIKARI::GameProjectFloat3 sway{};
     HIKARI::GameProjectFloat3 swayVelocity{};

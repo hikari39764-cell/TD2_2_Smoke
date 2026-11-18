@@ -21,5 +21,8 @@ inline constexpr uint32_t kCoil = 1u << 4u;
 // 登場の前に広く立ち込める黒い煙の域（BossIntroHaze の Haze Domain）は Channel5 で受ける。届くのは、登場の間に中央へ
 // 流す力（BossIntroVisuals）だけ。
 inline constexpr uint32_t kHaze = 1u << 5u;
+// ボスの胴の煙の域（BossBodySmoke の Body Domain）は Channel6 で受ける。届くのは、フェーズ 2 の襟と袖口の火の舌の
+// 注入（BossBodyVisuals）だけ（場の霧・場の火・体の障害物・技の力に崩されない。c-857ae3）。
+inline constexpr uint32_t kBodyFire = 1u << 6u;
 
 } // namespace Project_TD2_2::FluidChannels

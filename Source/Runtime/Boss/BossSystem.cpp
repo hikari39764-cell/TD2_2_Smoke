@@ -33,6 +33,7 @@
 #include "../BossBody/BossBodyVisuals.h"
 #include "../BossBody/BossIntroCamera.h"
 #include "../BossBody/BossIntroVisuals.h"
+#include "../BossBody/BossPhaseTwoField.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
 #include "../Gourd/GourdShotComponent.h"
@@ -781,6 +782,8 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                   frame.fixedInterpolationAlpha);
                                               BossBodyVisuals::Update(world, object, boss, frame.gameDt,
                                                                       frame.fixedInterpolationAlpha);
+                                              // フェーズ 2 の場の色・火の粉・焦げた輪（外形を出さないフレームも進める。c-857ae3）。
+                                              BossPhaseTwoField::Update(world, boss, frame.gameDt);
                                               // 霞分身の外形（分身の物体は BossClones と同じく部品の型で回る）。
                                               world.ForEachComponent<BossCloneComponent>(
                                                   HIKARI::MakeComponentTypeId(kBossCloneType),
@@ -836,6 +839,7 @@ void BossSystem::OnWorldDetached(HIKARI::WorldView& world) {
                                           [&](HIKARI::ObjectView, BossComponent& boss) {
                                               BossVisuals::Stop(world, boss);
                                               BossBodyVisuals::Stop(world, boss);
+                                              BossPhaseTwoField::Stop(world, boss);
                                               BossIntroVisuals::Stop(world, boss);
                                               BossWaves::Clear(boss);
                                           });

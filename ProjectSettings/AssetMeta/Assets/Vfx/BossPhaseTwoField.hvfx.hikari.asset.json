@@ -1,0 +1,14 @@
+{
+  "displayName": "BossPhaseTwoField",
+  "guid": "5be8f2a1c94d4e7b8a3f61d2c7e09b54",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossPhaseTwoField.hvfx",
+  "type": "VfxEffect"
+}

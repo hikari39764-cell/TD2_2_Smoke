@@ -107,6 +107,21 @@ class Parts:
         return node
 
 
+def hot_copy(node, mats):
+    """灼けた鎧（フェーズ 2 でコードが差し替える。名前は元の名前 + Hot）：同じ形で、紅の糸（Silk）と鎧の中の闇（Void）を
+    熾火の材質に替える。板・金具・面頬の色はそのまま（光るのは継ぎ目と隙間だけ）。c-857ae3。"""
+    hot = node.copy()
+    hot.data = node.data.copy()
+    hot.name = node.name + "Hot"
+    hot.data.name = node.data.name + "Hot"
+    node.users_collection[0].objects.link(hot)
+    swap = {"Silk": mats["ember_silk"], "Void": mats["ember_void"]}
+    for slot, material in enumerate(hot.data.materials):
+        if material is not None and material.name in swap:
+            hot.data.materials[slot] = swap[material.name]
+    return hot
+
+
 def cord_between(parts, p0, p1, normal, width=0.016, key="silk"):
     """2 点の間の糸（平たい箱）。normal は板の外向き。"""
     p0, p1, normal = Vector(p0), Vector(p1), Vector(normal).normalized()

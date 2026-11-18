@@ -4,6 +4,8 @@
   襟（兜の後ろへ昇る筋）、両の袖口（肩から外へ垂れる）。
 - 入力：input.amount（出す量の倍率）、input.heat（源の温度の倍率。上げると熱い煙が光る＝フェーズ 2）。
 霞の大剣 BossGreatswordMist.hvfx の域と源の層を写して作る（描画まわりの値を引き継ぐ）。
+フェーズ 2 の燃える胴（c-857ae3）はこの道具では作らない。作り直した後は Tools/BossBody/phase2/edit_body_fire.py を流して足す
+（その道具は BASE のコミットの資産を土台にしているので、BASE を作り直した資産に合わせて読み替える）。
 引数：[out=<フォルダ>]（既定は D:/PJ/TD2_2/Assets/Vfx） [scale=<体の倍率。既定 1.6875＝身長 6.75 m>] [d.<項目>=値] [rate=<全体の倍率>] [<源の名前>.<項目>=値]"""
 import copy, hashlib, json, pathlib, sys
 

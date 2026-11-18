@@ -28,6 +28,11 @@ def make():
                                       emission=(1.0, 0.72, 0.30), emission_strength=30000.0),
         # 鎧の中の闇（胴と兜の中が空へ抜けて見えないようにする、つやの無い黒）
         "void": bb.material("Void", (0.004, 0.004, 0.005), metallic=0.0, roughness=1.0),
+        # 灼けた鎧（フェーズ 2。c-857ae3）：板をつなぐ紅の糸と、鎧の中の闇（板の隙間から見える芯）が熾火に光る。
+        "ember_silk": bb.material("EmberSilk", (0.30, 0.03, 0.01), metallic=0.0, roughness=0.8,
+                                  emission=(1.0, 0.22, 0.02), emission_strength=1200.0),
+        "ember_void": bb.material("EmberVoid", (0.02, 0.005, 0.0), metallic=0.0, roughness=1.0,
+                                  emission=(1.0, 0.24, 0.03), emission_strength=2500.0),
         # 目の光（霞の色・火の色）。昼の戦場でも光って見える強さ。
         "eye_mist": bb.material("EyeMist", (0.0, 0.0, 0.0), roughness=1.0, emission=(0.62, 0.86, 1.0),
                                 emission_strength=60000.0),

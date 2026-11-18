@@ -224,7 +224,8 @@ LeftTarget Target(const BossComponent& boss) {
 
 Vec3 BalanceOffset(const BossComponent& boss) {
     const BossBodyMotionSettings& s = boss.body.motion;
-    return ClampLength(Mul(Sub(boss.bodyState.motion.direction, Normalize(s.idleDirection)), -s.leftBalanceMeters),
+    return ClampLength(Mul(Sub(boss.bodyState.motion.direction, Normalize(IdleShape(s, PhaseTwoLook(boss)).direction)),
+                           -s.leftBalanceMeters),
                        s.leftBalanceMax);
 }
 

@@ -116,7 +116,7 @@ void GreatTargets(const BossComponent& boss, MotionTargets& t) {
 
 // 待機の構え：下段で、息に合わせて握りと剣先が少し上下する。
 void Kamae(const BossComponent& boss, Vec3& direction, Vec3& grip) {
-    IdleKamae(boss.body.motion, boss.bodyState.clock, direction, grip);
+    IdleKamae(boss.body.motion, PhaseTwoLook(boss), boss.bodyState.clock, direction, grip);
     grip = BodyPoint(boss.body, grip);
 }
 
@@ -264,7 +264,7 @@ void StepEdge(const BossComponent& boss, const MotionTargets& t, BossBodyMotionS
             m.edgeGoal = Normalize(toward);
     } else if (boss.state != BossState::Act && t.calm > kCalmEdgeShare) {
         // 待機の刃へは技の外でだけ回す（戻りの終わりまでは斬る向きのまま）。
-        m.edgeGoal = Perpendicular(s.idleEdge, m.direction);
+        m.edgeGoal = Perpendicular(IdleShape(s, PhaseTwoLook(boss)).edge, m.direction);
         seconds = s.edgeIdleSeconds;
     }
     m.edge = TurnAbout(m.edge, Perpendicular(m.edgeGoal, m.direction), m.direction, Follow(dt, seconds));
@@ -456,7 +456,7 @@ void Snap(const BossComponent& boss, const MotionTargets& t, BossBodyMotionState
     const BossBodyMotionSettings& s = boss.body.motion;
     m.direction = t.window ? t.ruleDirection : t.direction;
     m.velocity = {};
-    m.edgeGoal = Perpendicular(s.idleEdge, m.direction);
+    m.edgeGoal = Perpendicular(IdleShape(s, PhaseTwoLook(boss)).edge, m.direction);
     m.edge = m.edgeGoal;
     m.grip = t.window ? Add(t.ruleRoot, Mul(m.direction, boss.body.swordGripAlong + t.reach)) : t.grip;
     m.gripVelocity = {};

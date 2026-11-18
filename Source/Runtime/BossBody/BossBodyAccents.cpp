@@ -32,6 +32,8 @@ constexpr const char* kEdgeDarkInput = "input.edgeDark"; // 刃のまわりの�
 constexpr const char* kFlowInput = "input.flow";         // 刃文に沿って流れる光の色と明るさ
 constexpr const char* kMistInput = "input.mist";         // 刀身を包む霞の帯の色と明るさ
 constexpr const char* kWakeInput = "input.wake";         // 剣先の残光の色と明るさ
+constexpr const char* kEmbersInput = "input.embers";     // 刀身から立つ火の粉の量（Float。c-857ae3）
+constexpr const char* kFlameInput = "input.flame";       // 刀身に沿って流れる炎（RGB と A に強さ。c-857ae3）
 // 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
 constexpr float kReleaseCharge = 0.85f;
 // 突進の尾の明るさを追う時間 (秒)。
@@ -179,6 +181,8 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
                             Mul(pose.bladeHot ? s.trailFireColor : s.trailMistColor, a.trailGain));
     const float heat = s.bladeHeat * a.heatGain;
     VfxParameters::SetColor(parameters, kHeatInput, {heat, heat, heat});
+    VfxParameters::SetFloat(parameters, kEmbersInput, s.bladeEmbers * a.heatGain);
+    VfxParameters::SetColorAlpha(parameters, kFlameInput, {heat, heat, heat}, std::clamp(heat, 0.0f, 1.0f));
     VfxParameters::SetColor(parameters, kHazeInput, {s.swingHaze * a.hazeGain, 1.0f, 1.0f});
     SetEdge(parameters, boss, pose, great, seconds);
     // 常時の層：刃文の流れと霞の帯は、待機でも見える。霞の技の間は強め、実体の刀の技の間は弱める。大剣の間は出さない。

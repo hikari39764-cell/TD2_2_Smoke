@@ -42,6 +42,8 @@ eyes_fire = bb_armor.build_eyes(mats, "EyesFire", "eye_fire")
 sode = bb_armor.build_sode(mats)
 kusazuri = bb_armor.build_kusazuri(mats)
 nodes += [do, kabuto, eyes_mist, eyes_fire, sode, kusazuri]
+# 灼けた鎧（フェーズ 2。継ぎ目の糸と隙間の闇が熾火に光る。c-857ae3）
+nodes += [bb_armor.hot_copy(node, mats) for node in (do, kabuto, sode, kusazuri)]
 for node in nodes:
     print("NODE %-16s %6d tris" % (node.name, bb.triangle_count([node])))
 print("TRIANGLES", bb.triangle_count(nodes))

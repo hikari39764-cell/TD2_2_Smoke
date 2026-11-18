@@ -38,6 +38,8 @@ struct BossBodyPose {
     // 目の光を火の色で出す（フェーズ 2）。気絶・撃破の間は目の光を出さない。
     bool eyesFire = false;
     bool eyesLit = true;
+    // 鎧を灼けた鎧（継ぎ目の糸と隙間の闇が熾火に光るノード ○○Hot）で出す（フェーズ 2 の本体。分身は霞のまま。c-857ae3）。
+    bool armorHot = false;
 };
 
 // 鎧と待機の構えを置くのに要る入力（本体と霞分身で共通。分身のために BossComponent を写さない）。

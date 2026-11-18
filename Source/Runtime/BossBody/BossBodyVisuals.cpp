@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string_view>
 
+#include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/PresentationViews.h"
 #include "BossBodyAccents.h"
 #include "BossBodyMath.h"
@@ -13,6 +14,7 @@
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
 #include "../Boss/BossVfx.h"
+#include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
 
 namespace Project_TD2_2 {
@@ -33,6 +35,11 @@ constexpr BossBodyPart kLeftCuff{"Cuff", 5u};
 constexpr uint64_t kLeftHandInstance = 6u;
 constexpr BossBodyPart kTorso{"Do", 7u};
 constexpr BossBodyPart kHead{"Kabuto", 8u};
+// 灼けた鎧（フェーズ 2）は、ふだんの鎧と同じ番号でノードだけ差し替える（同じフレームに両方は出ない。c-857ae3）。
+constexpr BossBodyPart kTorsoHot{"DoHot", 7u};
+constexpr BossBodyPart kHeadHot{"KabutoHot", 8u};
+constexpr std::string_view kSodeHotNode = "SodeHot";
+constexpr std::string_view kTassetHotNode = "KusazuriPanelHot";
 // 目の光は、霞の色と火の色を同じ番号で差し替える。
 constexpr BossBodyPart kEyesMist{"EyesMist", 9u};
 constexpr BossBodyPart kEyesFire{"EyesFire", 9u};
@@ -55,6 +62,23 @@ constexpr float kTachiHiddenAmount = 0.98f;
 // 輪郭の光がこれより弱ければ、強さ 0 を送る。
 constexpr float kBladeRimMinimum = 0.01f;
 
+// 胴の煙の入力：火の粉・熱のゆがみの粒・裾と首の熾火の源の量（フェーズ 1 は 0）。
+constexpr const char* kSmokeBurnInput = "input.burn";
+// 火の舌の注入の番号（ボスの物体ごと）：襟の右 2 本・左 2 本、右・左の袖口。
+constexpr uint64_t kFireTongueBase = 1600;
+
+// フェーズ 2 の燃える胴の強さ（0〜1）を進める：フェーズ 2 で付き、撃破で消える。気絶の間は弱める。一定の速さで寄せる
+// （火の大きさが急に跳ばない）。
+void StepFire(BossComponent& boss, float seconds) {
+    const BossBodySettings& s = boss.body;
+    float target = 0.0f;
+    if (BossBodyMath::PhaseTwoLook(boss) && boss.state != BossState::Dead)
+        target = boss.state == BossState::Stunned ? std::clamp(s.fireStunnedShare, 0.0f, 1.0f) : 1.0f;
+    float& fire = boss.bodyState.fire;
+    const float step = s.fireRiseSeconds > 0.0f ? std::max(0.0f, seconds) / s.fireRiseSeconds : 1.0f;
+    fire = fire < target ? std::min(target, fire + step) : std::max(target, fire - step);
+}
+
 // 胴の煙：体の足元に付けて出し続ける。量と熱さは、気絶・フェーズで変える。
 void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body) {
     using namespace BossVfx;
@@ -73,13 +97,16 @@ void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Ga
     const float intro = BossIntroVisuals::SmokeScale(boss);
     if (intro <= 0.0f && !boss.bodyState.smokeVfx.IsValid())
         return;
+    // フェーズ 2 の燃える胴（c-857ae3）：火の強さに合わせて、熱さを smokeHeatPhaseTwo へ寄せ、量を変え、火の粉と
+    // 熱のゆがみを出す。フェーズ 1 は火の強さが 0 なので、いままでと同じ値を送る。
+    const float fire = boss.bodyState.fire;
     VfxParameters::SetFloat(parameters, kAmountInput,
                             boss.body.smokeAmount * intro *
-                                (stunned ? boss.body.smokeAmountStunned : accents.smokeAmount));
+                                (stunned ? boss.body.smokeAmountStunned : accents.smokeAmount) *
+                                BossMath::Lerp(1.0f, boss.body.smokeAmountPhaseTwo, fire));
     VfxParameters::SetFloat(parameters, kSmokeHeatInput,
-                            stunned                      ? 1.0f
-                            : boss.lastPhaseNumber >= 2 ? boss.body.smokeHeatPhaseTwo
-                                                         : accents.smokeHeat);
+                            BossMath::Lerp(stunned ? 1.0f : accents.smokeHeat, boss.body.smokeHeatPhaseTwo, fire));
+    VfxParameters::SetFloat(parameters, kSmokeBurnInput, boss.body.fireBurn * fire);
     StartOrSend(world, boss, boss.bodyState.smokeVfx, boss.body.smokeEffect, transform, parameters);
 }
 
@@ -182,15 +209,68 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     }
     Submit(world, object, boss, kRightCuff, pose.rightCuff);
     Submit(world, object, boss, kLeftCuff, pose.leftCuff);
-    Submit(world, object, boss, kTorso, pose.torso);
-    Submit(world, object, boss, kHead, pose.head);
+    Submit(world, object, boss, pose.armorHot ? kTorsoHot : kTorso, pose.torso);
+    Submit(world, object, boss, pose.armorHot ? kHeadHot : kHead, pose.head);
     if (pose.eyesLit)
         Submit(world, object, boss, pose.eyesFire ? kEyesFire : kEyesMist, pose.head);
     for (size_t side = 0; side < pose.sode.size(); ++side)
-        Submit(world, object, boss, {kSodeNode, kSodeInstance + side}, pose.sode[side]);
+        Submit(world, object, boss, {pose.armorHot ? kSodeHotNode : kSodeNode, kSodeInstance + side}, pose.sode[side]);
     for (int k = 0; k < pose.tassetCount; ++k)
-        Submit(world, object, boss, {kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},
+        Submit(world, object, boss,
+               {pose.armorHot ? kTassetHotNode : kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},
                pose.tassets[static_cast<size_t>(k)]);
+}
+
+// 火の舌を 1 つ入れる：胴の煙の域だけに届く燃料（燃え始める温度より熱くして入れるので、すぐ燃える）。燃料は昇りながら
+// 燃えて熱と煤になり、熱い煤が光る（燃焼の値は胴の煙の資産の域）。冷めた煤は薄い黒い煙になって昇る。
+void EmitTongue(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, uint64_t id,
+                HIKARI::GameProjectFloat3 at, float share) {
+    const BossBodySettings& s = boss.body;
+    const float strength = s.fireTongueDensity * share * boss.bodyState.fire;
+    if (strength <= 0.0f)
+        return;
+    HIKARI::GameProjectFluidInteraction emit{};
+    emit.kind = HIKARI::GameProjectFluidInteractionKind::Fuel;
+    emit.position = at;
+    // extents.x は半径、extents.y は温度。
+    emit.extents = {std::max(0.02f, s.fireTongueRadius * s.bodyScale), s.fireTongueHeat, 0.0f};
+    emit.direction = {0.0f, s.fireTongueRise, 0.0f};
+    emit.strength = std::min(10000.0f, strength);
+    emit.channels = FluidChannels::kBodyFire;
+    boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, emit).Accepted() && boss.fluidAccepted;
+}
+
+// 籠手の筒の口（手首 0 〜 肘の側 1 の割合 along）。筒は手首から局所 -Z へ伸びる。
+HIKARI::GameProjectFloat3 CuffMouth(const BossBodySettings& s, const BossBodyPlacement& cuff, float along) {
+    const float length = s.cuffModelLength * cuff.scale * cuff.lengthScale * along;
+    return BossMath::Add(cuff.position, BossMath::Rotate(cuff.rotation, {0.0f, 0.0f, -length}));
+}
+
+// フェーズ 2 の火の舌：襟の両脇と両の袖口から、燃料を上へ吹き出す（見える鎧の口に付けて動かす）。瞬間移動した
+// フレームと、霧へ沈んでいる間は入れない（移った線に沿って火を引かない。地面の下で燃えない）。
+void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+                       const BossBodyPose& pose) {
+    const BossBodySettings& s = boss.body;
+    BossBodyState& state = boss.bodyState;
+    const bool teleported = boss.teleportCount != state.fireTeleports;
+    state.fireTeleports = boss.teleportCount;
+    if (state.fire <= 0.0f || teleported || boss.hidden || BossPose::RootHeight(boss) < -BossBodyMath::kTiny ||
+        s.smokeEffect.IsEmpty())
+        return;
+    // 襟：左右に 2 本ずつ（前後へ fireCollarSpread ずらす）。左は右を左右に反転した所。
+    const float spread = 0.5f * s.fireCollarSpread;
+    for (uint64_t k = 0; k < 4u; ++k) {
+        const float side = k < 2u ? 1.0f : -1.0f;
+        const float along = (k % 2u) == 0u ? spread : -spread;
+        const HIKARI::GameProjectFloat3 local =
+            BossMath::Mul({s.fireCollar.x * side, s.fireCollar.y, s.fireCollar.z + along}, pose.torso.scale);
+        EmitTongue(world, object, boss, kFireTongueBase + k,
+                   BossMath::Add(pose.torso.position, BossMath::Rotate(pose.torso.rotation, local)), 1.0f);
+    }
+    EmitTongue(world, object, boss, kFireTongueBase + 4u, CuffMouth(s, pose.rightCuff, s.fireCuffAlong),
+               s.fireCuffShare);
+    EmitTongue(world, object, boss, kFireTongueBase + 5u, CuffMouth(s, pose.leftCuff, s.fireCuffAlong),
+               s.fireCuffShare);
 }
 
 } // namespace
@@ -224,6 +304,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     body.position = BossMath::Add(body.position, boss.bodyState.presentShift);
     BossIntroVisuals::Advance(boss, seconds);
     BossBodyAccents::StepSmoke(boss, seconds);
+    StepFire(boss, seconds);
     UpdateSmoke(world, boss, body);
     if (boss.body.model.empty())
         return;
@@ -234,6 +315,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     // 登場の間は、置いてある所・飛んでいる途中の鎧と、地面に刺さった刀に直す。
     BossIntroVisuals::ApplyPose(boss, body, pose, seconds);
     SubmitPose(world, object, boss, pose);
+    UpdateFireTongues(world, object, boss, pose);
     UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
     BossBodyAccents::Update(world, boss, body, pose, seconds);
 }
@@ -248,7 +330,7 @@ void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView o
     // 待機の構えの入力：分身の物体の変換（霧から浮かび上がる高さ・向き）と、分身の時計。振れは持たず、
     // 大袖・草摺は揺らぎだけ。胴の捻りは本体の待機と同じく刀の横の向きから。
     HIKARI::GameProjectFloat3 blade{}, grip{};
-    BossBodyMath::IdleKamae(boss.body.motion, clone.bodyClock, blade, grip);
+    BossBodyMath::IdleKamae(boss.body.motion, BossBodyMath::PhaseTwoLook(boss), clone.bodyClock, blade, grip);
     grip = BossBodyMath::Mul(grip, boss.body.bodyScale);
     const BossBodyRigInput input{boss.body,
                                  body,

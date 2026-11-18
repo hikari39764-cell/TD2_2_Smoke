@@ -36,6 +36,8 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
                  swingHazeMinTipSpeed, 0.0f, 300.0f);
     fields.Float("bodyBladeHeat", "燃える刀身：炎の明るさ（倍率。0 で出さない）", bladeHeat, 0.0f, 8.0f);
     fields.Float("bodyBladeHeatSeconds", "燃える刀身：火が付く・消える時間 (秒)", bladeHeatSeconds, 0.01f, 3.0f);
+    fields.Float("bodyBladeEmbers", "燃える刀身：刀身から立つ火の粉の量（倍率。0 で出さない）", bladeEmbers, 0.0f,
+                 8.0f);
     fields.Vfx("bodyEyesEffect", "目の光のエフェクト（兜に付く。尾を引く光・暈・閃き。空なら出さない）", eyesEffect);
     fields.Float3("bodyEyesMistColor", "目の光：ふだんの色と明るさ", eyesMistColor);
     fields.Float3("bodyEyesFireColor", "目の光：フェーズ 2 の色と明るさ", eyesFireColor);
@@ -236,6 +238,16 @@ void BossBodyMotionSettings::Describe(HIKARI::PropertyFields& fields) {
                  edgeStanceSeconds, 0.005f, 1.0f);
     fields.Float("bodyEdgeIdleSeconds", "刃の向き：待機の向きへ戻る時間 (秒)", edgeIdleSeconds, 0.01f, 5.0f);
     fields.Float3("bodyIdleEdge", "刃の向き：待機 (局所。刀に直交する成分を使う)", idleEdge);
+    fields.Int("bodyPhaseTwoKamae",
+               "フェーズ 2 の待機の構え（見せる姿だけ）：0＝いまの下段、1＝案 A 担ぎ、2＝案 B 脇構え", phaseTwoKamae, 0,
+               2);
+    fields.Float3("bodyShoulderKamaeGrip", "案 A 担ぎ：握りの位置 (体の足元から、局所 m。+X が左、+Z が前)",
+                  shoulderKamaeGrip);
+    fields.Float3("bodyShoulderKamaeDirection", "案 A 担ぎ：剣先の向き (局所)", shoulderKamaeDirection);
+    fields.Float3("bodyShoulderKamaeEdge", "案 A 担ぎ：刃の向き (局所)", shoulderKamaeEdge);
+    fields.Float3("bodyWakiKamaeGrip", "案 B 脇構え：握りの位置 (体の足元から、局所 m)", wakiKamaeGrip);
+    fields.Float3("bodyWakiKamaeDirection", "案 B 脇構え：剣先の向き (局所)", wakiKamaeDirection);
+    fields.Float3("bodyWakiKamaeEdge", "案 B 脇構え：刃の向き (局所)", wakiKamaeEdge);
     fields.Float3("bodyChargeEdgeToward", "刃の向き：溜めの間に向ける先＝これから斬る向き (局所)", chargeEdgeToward);
     fields.Float("bodyTwistDegrees", "胴の捻り：刀の横の向き (局所 x) 1 あたりの角度 (度)", twistDegrees, 0.0f, 90.0f);
     fields.Float("bodyTwistMaxDegrees", "胴の捻り：上限 (度)", twistMaxDegrees, 0.0f, 90.0f);
@@ -310,6 +322,44 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
     fields.Float("bodySmokeHeatPhaseTwo", "フェーズ 2 で胴の煙を熱くする倍率（熱い煙は橙に光る。1 で光らない）",
                  smokeHeatPhaseTwo, 0.0f, 64.0f);
     fields.Float("bodySmokeAmountStunned", "気絶の間の胴の煙の量（倍率）", smokeAmountStunned, 0.0f, 8.0f);
+    fields.Bool("bodyArmorHot", "フェーズ 2 の本体の鎧を灼けた鎧（継ぎ目と隙間が熾火に光る）に差し替える", armorHot);
+    fields.Float("bodyFireRiseSeconds", "フェーズ 2 の燃える胴：火が付く・消える時間 (秒)", fireRiseSeconds, 0.0f,
+                 10.0f);
+    fields.Float("bodySmokeAmountPhaseTwo", "フェーズ 2 の燃える胴：胴の煙の量（倍率）", smokeAmountPhaseTwo, 0.0f,
+                 4.0f);
+    fields.Float("bodyFireBurn", "フェーズ 2 の燃える胴：火の粉と熱のゆがみの量（倍率。0 で出さない）", fireBurn, 0.0f,
+                 4.0f);
+    fields.Float("bodyFireStunnedShare", "フェーズ 2 の燃える胴：気絶の間の火の強さ（割合）", fireStunnedShare, 0.0f,
+                 1.0f);
+    fields.Float3("bodyFireCollar", "火の舌：襟の口（胴の中心から、1 倍の体の局所 m。右。左は左右を反転）", fireCollar);
+    fields.Float("bodyFireCollarSpread", "火の舌：襟の片側 2 本の前後の間隔 (1 倍の体の m。0 で 1 本に重なる)",
+                 fireCollarSpread, 0.0f, 1.0f);
+    fields.Float("bodyFireCuffAlong", "火の舌：袖口の位置（籠手の筒の手首 0 〜 肘の側の口 1）", fireCuffAlong, 0.0f,
+                 1.5f);
+    fields.Float("bodyFireTongueDensity", "火の舌：1 秒に入れる燃料の濃さ（襟。0 で出さない）", fireTongueDensity, 0.0f,
+                 500.0f);
+    fields.Float("bodyFireTongueRadius", "火の舌：入れる半径 (1 倍の体の m。体の大きさを掛ける)", fireTongueRadius,
+                 0.02f, 2.0f);
+    fields.Float("bodyFireTongueHeat",
+                 "火の舌：入れる燃料の温度（0.3 で燃え始める。燃えて熱くなった煤が 1.5 から光り、4.5 で橙黄）",
+                 fireTongueHeat, 0.0f, 50.0f);
+    fields.Float("bodyFireTongueRise", "火の舌：上へ吹き出す速さ (m/秒)", fireTongueRise, 0.0f, 20.0f);
+    fields.Float("bodyFireCuffShare", "火の舌：袖口の強さ（襟に対する割合。0 で出さない）", fireCuffShare, 0.0f, 4.0f);
+    fields.Vfx("bodyFieldEffect", "フェーズ 2 の場：漂う火の粉と焦げた輪のエフェクト（空なら出さない）", fieldEffect);
+    fields.Float("bodyFieldWarmSeconds", "フェーズ 2 の場：場の色が変わる・戻る時間 (秒)", fieldWarmSeconds, 0.0f,
+                 30.0f);
+    fields.Float3("bodyFieldShadowsTint", "フェーズ 2 の場の色：暗部の色味（倍率。1 で変えない）", fieldShadowsTint);
+    fields.Float3("bodyFieldMidtonesTint", "フェーズ 2 の場の色：中間の色味（倍率。1 で変えない）", fieldMidtonesTint);
+    fields.Float3("bodyFieldHighlightsTint", "フェーズ 2 の場の色：明部の色味（倍率。1 で変えない）",
+                  fieldHighlightsTint);
+    fields.Float("bodyFieldEmbers", "フェーズ 2 の場：漂う火の粉の量（倍率。0 で出さない）", fieldEmbers, 0.0f, 8.0f);
+    fields.Float("bodyFieldScorch", "フェーズ 2 の場：焦げた輪の濃さ（0 で出さない）", fieldScorch, 0.0f, 1.0f);
+    fields.Float("bodyFieldScorchGlow", "フェーズ 2 の場：焦げた輪に残る熾火の明るさ（倍率）", fieldScorchGlow, 0.0f,
+                 8.0f);
+    fields.Float("bodyFieldScorchSize", "フェーズ 2 の場：焦げた輪の大きさ（倍率。1 で直径 約 9 m）", fieldScorchSize,
+                 0.1f, 4.0f);
+    fields.Float("bodyFieldScorchSeconds", "フェーズ 2 の場：焦げた輪が現れる時間 (秒)", fieldScorchSeconds, 0.0f,
+                 30.0f);
     fields.Float("bodySwayDegreesPerSpeed", "揺れ：体の速さ 1 m/s あたり、大袖・草摺が後ろへ振れる角度 (度)",
                  swayDegreesPerSpeed, 0.0f, 30.0f);
     fields.Float("bodySwayMaxDegrees", "揺れ：振れの上限 (度)", swayMaxDegrees, 0.0f, 90.0f);

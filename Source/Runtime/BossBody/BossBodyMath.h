@@ -76,13 +76,34 @@ inline const BossMove* CurrentMove(const BossComponent& boss) {
     return &moves[static_cast<size_t>(boss.move)];
 }
 
-// 待機の構え（下段）：息に合わせて握りと剣先が少し上下する。局所（体の向きの枠。足元が原点）。
-inline void IdleKamae(const BossBodyMotionSettings& s, float clock, Vec3& direction, Vec3& grip) {
+// フェーズ 2 の見た目（燃える胴・灼けた鎧・場の色・待機の構え）を出すか。見た目の切り替えの入口はここ 1 か所
+// （c-857ae3）。いまは規則がフェーズ 2 に入った tick（1 本目の条が空になった瞬間）から。次のカード c-8dd296 で
+// 変わり目の閃光の中で切り替える時は、この中身を「閃光が出た」という状態に替えれば、胴の火・鎧・場・構えが同じ
+// フレームでそろって変わる（刀の火と目の色は規則の IsBladeLit が決めるので別）。
+inline bool PhaseTwoLook(const BossComponent& boss) { return boss.lastPhaseNumber >= 2; }
+
+// 待機の構えの形：握り（局所。1 倍の体の値）・剣先の向き・刃の向き。フェーズ 2 は phaseTwoKamae で案を選ぶ。
+struct KamaeShape {
+    Vec3 grip;
+    Vec3 direction;
+    Vec3 edge;
+};
+inline KamaeShape IdleShape(const BossBodyMotionSettings& s, bool phaseTwo) {
+    if (phaseTwo && s.phaseTwoKamae == 1)
+        return {s.shoulderKamaeGrip, s.shoulderKamaeDirection, s.shoulderKamaeEdge};
+    if (phaseTwo && s.phaseTwoKamae == 2)
+        return {s.wakiKamaeGrip, s.wakiKamaeDirection, s.wakiKamaeEdge};
+    return {s.idleGrip, s.idleDirection, s.idleEdge};
+}
+
+// 待機の構え：息に合わせて握りと剣先が少し上下する。局所（体の向きの枠。足元が原点）。
+inline void IdleKamae(const BossBodyMotionSettings& s, bool phaseTwo, float clock, Vec3& direction, Vec3& grip) {
+    const KamaeShape shape = IdleShape(s, phaseTwo);
     const float breath = std::sin(2.0f * kPi * s.breathFrequency * clock);
-    const Vec3 base = Normalize(s.idleDirection);
+    const Vec3 base = Normalize(shape.direction);
     const Vec3 up = Perpendicular({0.0f, 1.0f, 0.0f}, base);
     direction = ExpMap(base, Mul(up, s.breathDegrees * kRadiansPerDegree * breath));
-    grip = Add(s.idleGrip, Vec3{0.0f, s.breathMeters * breath, 0.0f});
+    grip = Add(shape.grip, Vec3{0.0f, s.breathMeters * breath, 0.0f});
 }
 
 // 胴の捻りの目標：刀の横の向き（局所 x）に比例し、上限で止める。

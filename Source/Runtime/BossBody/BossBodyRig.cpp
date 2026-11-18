@@ -106,9 +106,9 @@ void SolveIdleHands(const BossBodyRigInput& in, BossBodyPose& pose) {
     const BodyFrame frame{in.body, in.halfHeight};
     const auto direction = [&](Vec3 local) { return Normalize(Rotate(in.body.rotation, local), local); };
     Vec3 blade{}, grip{};
-    IdleKamae(s.motion, in.clock, blade, grip);
+    IdleKamae(s.motion, in.phaseTwo, in.clock, blade, grip);
     grip = BodyPoint(s, grip);
-    const Vec3 edge = Perpendicular(s.motion.idleEdge, blade);
+    const Vec3 edge = Perpendicular(IdleShape(s.motion, in.phaseTwo).edge, blade);
     pose.sword.position = frame.Point(grip);
     pose.sword.rotation = AimZ(direction(blade), Mul(direction(edge), -1.0f));
     pose.sword.scale = in.swordScale;
@@ -174,6 +174,7 @@ BossBodyPose BossBodyRig::Solve(const BossComponent& boss, const HIKARI::GamePro
     // 刀・手・籠手は、見せる姿勢（BossBodySword が進める）から置く。
     BossBodySword::Solve(boss, bodyTransform, pose);
     SolveArmor(InputOf(boss, bodyTransform), pose);
+    pose.armorHot = boss.body.armorHot && PhaseTwoLook(boss);
     return pose;
 }
 
@@ -186,7 +187,7 @@ BossBodyRigInput BossBodyRig::InputOf(const BossComponent& boss, const HIKARI::G
             state.sway,
             state.motion.twist,
             state.motion.headYaw,
-            boss.lastPhaseNumber >= 2,
+            PhaseTwoLook(boss),
             boss.state != BossState::Stunned && boss.state != BossState::Dead,
             SwordScale(boss),
             HandScale(boss)};
