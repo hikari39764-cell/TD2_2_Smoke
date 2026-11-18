@@ -464,8 +464,15 @@ void BossBodyAccents::StepSmoke(BossComponent& boss, float seconds) {
     a.puff = std::max(0.0f, a.puff - seconds / std::max(kTiny, s.smokeSwingPuffSeconds));
     // 続けてかわせる回数を使い切った間（かわさない間）は、煙が薄く静かになる（息が切れている。地面や画面の印の代わり）。
     const float spent = BossKasumiStep::Spent(boss) ? std::max(0.0f, boss.kasumiStep.spentSmoke) : 1.0f;
+    // プレイヤーが近い時は薄く（カメラの前を覆わない。c-66ec5e）。
+    float nearShare = 1.0f;
+    if (boss.bodyState.lookTargetSeen) {
+        const float distance = FlatLength(Sub(boss.bodyState.lookTarget, boss.ground));
+        const float span = std::max(kTiny, s.smokeFarMeters - s.smokeNearMeters);
+        nearShare = Lerp(s.smokeNearScale, 1.0f, Smooth(std::clamp((distance - s.smokeNearMeters) / span, 0.0f, 1.0f)));
+    }
     const float amount =
-        Lerp(1.0f, s.smokeChargeAmount, ChargeAmount(boss)) * Lerp(1.0f, s.smokeSwingPuff, a.puff) * spent;
+        Lerp(1.0f, s.smokeChargeAmount, ChargeAmount(boss)) * Lerp(1.0f, s.smokeSwingPuff, a.puff) * spent * nearShare;
     // 吹き出しはすぐ立ち上げ、ほかはなめらかに追う。
     a.smokeAmount = amount > a.smokeAmount ? amount : Lerp(a.smokeAmount, amount, Follow(seconds, kSmokeFollowSeconds));
     // フェーズ 1 で刀が燃えている間（火を残す技の前隙〜後隙）は、胴の煙も中から灼ける。

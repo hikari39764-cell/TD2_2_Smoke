@@ -277,10 +277,16 @@ struct BossBodyAccentSettings {
 
     // 胴の煙を技に合わせる：溜め切った時の量（倍率）、フェーズ 1 で刀が燃えている間の熱さ（熱い煙は橙に光る）、
     // 振り終わった直後に吹き出す量（倍率）とその時間 (秒)。
-    float smokeChargeAmount = 2.4f;
+    // （c-66ec5e：溜め 2.4・吹き出し 2.5 倍では煙が膨らんで画面を塞いだので下げた。）
+    float smokeChargeAmount = 1.6f;
     float smokeLitHeat = 5.0f;
-    float smokeSwingPuff = 2.5f;
+    float smokeSwingPuff = 1.5f;
     float smokeSwingPuffSeconds = 0.30f;
+    // プレイヤーが近い時は胴の煙を薄くする（カメラがボスの近くまで寄って、煙が画面を覆わないように。c-66ec5e）：
+    // smokeNearMeters 以内で smokeNearScale 倍、smokeFarMeters 以遠で元の量、その間はなめらかに。
+    float smokeNearScale = 0.55f;
+    float smokeNearMeters = 4.0f;
+    float smokeFarMeters = 10.0f;
 
     // 衝撃の輪：重い一撃が当たった瞬間に、地面に沿って広がるゆがみと光の輪（1 回きりのエフェクト）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference shockEffect{"e1a7c3f05b2d4d96a8c4f7b16d0e3a29", "Assets/Vfx/BossShock.hvfx"};

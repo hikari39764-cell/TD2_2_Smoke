@@ -1,22 +1,5 @@
 {
   "durationSeconds": 3600.0,
-  "loop": true,
-  "version": 15,
-  "name": "Boss Body Smoke",
-  "inputs": [
-    {
-      "defaultValue": 1.0,
-      "id": "input.amount",
-      "name": "amount",
-      "type": "Float"
-    },
-    {
-      "defaultValue": 1.0,
-      "id": "input.heat",
-      "name": "heat",
-      "type": "Float"
-    }
-  ],
   "emitters": [
     {
       "activeDuration": 0.0,
@@ -255,7 +238,7 @@
           "transform": {
             "position": [
               0.0,
-              3.54375,
+              3.543750047683716,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -272,64 +255,64 @@
         },
         "fluidDomain": {
           "ambientStrength": 3.0,
-          "anisotropy": 0.3,
+          "anisotropy": 0.30000001192092896,
           "boundary": "Open",
-          "buoyancy": 0.9,
+          "buoyancy": 0.8999999761581421,
           "burnRate": 10.0,
           "castShadows": false,
           "cellColor": false,
+          "channel": "None",
           "combustion": false,
-          "densityDissipation": 1.5,
-          "detailScale": 0.12,
-          "detailStrength": 0.55,
+          "densityDissipation": 2.2,
+          "detailScale": 0.11999999731779099,
+          "detailStrength": 0.550000011920929,
           "domainSize": [
             5.0625,
-            8.775,
+            8.774999618530273,
             5.0625
           ],
           "emissionColor": [
             1.0,
-            0.3,
-            0.05
+            0.30000001192092896,
+            0.05000000074505806
           ],
           "emissionHotColor": [
             1.0,
-            0.62,
-            0.22
+            0.6200000047683716,
+            0.2199999988079071
           ],
           "emissionHotTemperature": 4.0,
           "emissionIntensity": 90000.0,
-          "emissionTemperature": 1.6,
-          "expansionPerBurn": 0.3,
+          "emissionTemperature": 1.600000023841858,
+          "expansionPerBurn": 0.30000001192092896,
           "extinction": 10.0,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 2.5,
           "id": "module.fluidDomain.f6116fb4b06e1c0d844ab3afc1c72fd2",
-          "ignitionTemperature": 0.3,
+          "ignitionTemperature": 0.30000001192092896,
           "inertia": 0.5,
           "maxSubsteps": 2,
-          "multipleScattering": 0.8,
+          "multipleScattering": 0.800000011920929,
           "prewarmSeconds": 1.5,
           "priority": 90,
-          "relativeWind": 0.35,
+          "relativeWind": 0.3499999940395355,
           "resolution": 72,
           "scatteringColor": [
-            0.78,
-            0.8,
-            0.84
+            0.7799999713897705,
+            0.800000011920929,
+            0.8399999737739563
           ],
-          "smokePerBurn": 0.6,
+          "smokePerBurn": 0.6000000238418579,
           "substepRate": 60.0,
-          "temperatureDissipation": 1.6,
-          "vorticity": 2.2,
-          "weight": 0.45,
-          "channel": "None"
+          "temperatureDissipation": 1.600000023841858,
+          "vorticity": 2.200000047683716,
+          "weight": 0.44999998807907104
         },
         "forces": {
           "collisionPlaneEnabled": false,
           "collisionPlaneHeight": 0.0,
           "collisionThickness": 0.5,
-          "drag": 0.6,
+          "drag": 0.6000000238418579,
           "field": {
             "attraction": 0.0,
             "axis": [
@@ -345,7 +328,7 @@
             "evolution": 3.0,
             "frequency": 4.0,
             "radius": 0.0,
-            "turbulence": 1.2,
+            "turbulence": 1.2000000476837158,
             "vortex": 0.0
           },
           "fluidCoupling": 0.0,
@@ -1147,8 +1130,8 @@
           "transform": {
             "position": [
               0.0,
-              0.6749999999999998,
-              -0.16875
+              0.675000011920929,
+              -0.16875000298023224
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -1164,8 +1147,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.4,
-          "emissionNoiseScale": 0.35,
+          "channel": "Default",
+          "emissionNoise": 0.4000000059604645,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -1173,17 +1157,17 @@
           "id": "module.fluidSource.a1b2be37e1f04b9bc7f7b2880e351d55",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.25,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.25,
           "velocity": [
             0.0,
             0.0,
             0.0
-          ],
-          "shapeModel": "",
-          "shapeFill": 1.0,
-          "shapeFillAxis": "PositiveY",
-          "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -1202,7 +1186,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -1708,20 +1692,20 @@
         },
         "shape": {
           "boxHalfExtents": [
-            0.6074999999999999,
-            0.675,
-            0.3375
+            0.6075000166893005,
+            0.675000011920929,
+            0.3375000059604645
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.6a6a94fe8db01983fa685958e4e69264",
           "radius": {
-            "maximum": 9.08895737591604,
-            "minimum": 9.08895737591604,
+            "maximum": 9.088957786560059,
+            "minimum": 9.088957786560059,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -2007,7 +1991,7 @@
           "transform": {
             "position": [
               0.0,
-              -0.6412500000000003,
+              -0.6412500143051147,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2024,8 +2008,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
+          "channel": "Default",
           "emissionNoise": 0.5,
-          "emissionNoiseScale": 0.35,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -2033,17 +2018,17 @@
           "id": "module.fluidSource.96eb5538bb46bce93aa74c1946c265df",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.0,
-          "velocity": [
-            0.0,
-            -0.8,
-            0.0
-          ],
-          "shapeModel": "",
           "shapeFill": 1.0,
           "shapeFillAxis": "PositiveY",
           "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          "shapeModel": "",
+          "shapeOffset": 0.0,
+          "temperature": 0.0,
+          "velocity": [
+            0.0,
+            -0.800000011920929,
+            0.0
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -2062,7 +2047,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -2572,16 +2557,16 @@
             0.5,
             0.5
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.c4c3558cc6fde5a02d2a9714e86e14ac",
           "radius": {
-            "maximum": 0.70875,
-            "minimum": 0.70875,
+            "maximum": 0.7087500095367432,
+            "minimum": 0.7087500095367432,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -2867,7 +2852,7 @@
           "transform": {
             "position": [
               0.0,
-              -1.8562500000000002,
+              -1.8562500476837158,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2884,8 +2869,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.6,
-          "emissionNoiseScale": 0.35,
+          "channel": "Default",
+          "emissionNoise": 0.6000000238418579,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -2893,17 +2879,17 @@
           "id": "module.fluidSource.0c283c5b58fa4d456780a3d7312303d0",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.25,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.0,
           "velocity": [
             0.0,
             -0.5,
             0.0
-          ],
-          "shapeModel": "",
-          "shapeFill": 1.0,
-          "shapeFillAxis": "PositiveY",
-          "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -2922,7 +2908,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -3432,16 +3418,16 @@
             0.5,
             0.5
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.0724739b903f207a702c975e71c00228",
           "radius": {
-            "maximum": 0.5737500000000001,
-            "minimum": 0.5737500000000001,
+            "maximum": 0.5737500190734863,
+            "minimum": 0.5737500190734863,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -3727,8 +3713,8 @@
           "transform": {
             "position": [
               0.0,
-              1.755,
-              -0.23625000000000002
+              1.7549999952316284,
+              -0.23624999821186066
             ],
             "rotationEulerDegrees": [
               0.0,
@@ -3744,8 +3730,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.8,
-          "emissionNoiseScale": 0.35,
+          "channel": "Default",
+          "emissionNoise": 0.800000011920929,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -3753,17 +3740,17 @@
           "id": "module.fluidSource.b70218cadcc9f94691fe49facd65be02",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 1.0,
-          "velocity": [
-            0.0,
-            0.35,
-            -0.12
-          ],
-          "shapeModel": "",
           "shapeFill": 1.0,
           "shapeFillAxis": "PositiveY",
           "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          "shapeModel": "",
+          "shapeOffset": 0.0,
+          "temperature": 1.0,
+          "velocity": [
+            0.0,
+            0.3499999940395355,
+            -0.11999999731779099
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -3782,7 +3769,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -4292,16 +4279,16 @@
             0.5,
             0.5
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.b87abf93728d53557e0786cc7b5903c2",
           "radius": {
-            "maximum": 0.27,
-            "minimum": 0.27,
+            "maximum": 0.27000001072883606,
+            "minimum": 0.27000001072883606,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -4586,8 +4573,8 @@
           "id": "module.emitterTransform.5ee84bb93c8df4dca95b000cf1a1bebd",
           "transform": {
             "position": [
-              1.11375,
-              1.38375,
+              1.1137499809265137,
+              1.3837499618530273,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -4604,8 +4591,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.8,
-          "emissionNoiseScale": 0.35,
+          "channel": "Default",
+          "emissionNoise": 0.800000011920929,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -4613,17 +4601,17 @@
           "id": "module.fluidSource.534f8304309d2191b36f936fbdb0a43e",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.3,
-          "velocity": [
-            0.25,
-            -0.3,
-            0.0
-          ],
-          "shapeModel": "",
           "shapeFill": 1.0,
           "shapeFillAxis": "PositiveY",
           "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          "shapeModel": "",
+          "shapeOffset": 0.0,
+          "temperature": 0.30000001192092896,
+          "velocity": [
+            0.25,
+            -0.30000001192092896,
+            0.0
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -4642,7 +4630,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -5152,16 +5140,16 @@
             0.5,
             0.5
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.07bbc9a309d552deaf0e1257a9557b90",
           "radius": {
-            "maximum": 0.253125,
-            "minimum": 0.253125,
+            "maximum": 0.25312501192092896,
+            "minimum": 0.25312501192092896,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -5446,8 +5434,8 @@
           "id": "module.emitterTransform.eb79ae94c776f766f9403950261ebbf7",
           "transform": {
             "position": [
-              -1.11375,
-              1.38375,
+              -1.1137499809265137,
+              1.3837499618530273,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -5464,8 +5452,9 @@
         },
         "fluidSource": {
           "absorption": 0.0,
-          "emissionNoise": 0.8,
-          "emissionNoiseScale": 0.35,
+          "channel": "Default",
+          "emissionNoise": 0.800000011920929,
+          "emissionNoiseScale": 0.3499999940395355,
           "forceMode": "Acceleration",
           "fuelFraction": 0.0,
           "guideStrength": 0.0,
@@ -5473,17 +5462,17 @@
           "id": "module.fluidSource.ce0f3aa1e3fe3cc10646430c2b0afd4c",
           "outflow": 0.0,
           "radialSpeed": 0.0,
-          "temperature": 0.3,
-          "velocity": [
-            -0.25,
-            -0.3,
-            0.0
-          ],
-          "shapeModel": "",
           "shapeFill": 1.0,
           "shapeFillAxis": "PositiveY",
           "shapeFillSoftness": 0.25,
-          "shapeOffset": 0.0
+          "shapeModel": "",
+          "shapeOffset": 0.0,
+          "temperature": 0.30000001192092896,
+          "velocity": [
+            -0.25,
+            -0.30000001192092896,
+            0.0
+          ]
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -5502,7 +5491,7 @@
               0.0,
               0.0
             ],
-            "evolution": 0.3,
+            "evolution": 0.30000001192092896,
             "frequency": 1.0,
             "radius": 0.0,
             "turbulence": 0.0,
@@ -6012,16 +6001,16 @@
             0.5,
             0.5
           ],
-          "circleArcDegrees": 50.4,
+          "circleArcDegrees": 50.400001525878906,
           "circleEmitOnEdge": false,
-          "circleInnerRadius": 7.988957375916041,
+          "circleInnerRadius": 7.988957405090332,
           "coneAngleDegrees": 30.0,
           "cylinderHeight": 1.0,
           "edgeLength": 1.0,
           "id": "module.shape.0906ef93d75c59279554191bd0052816",
           "radius": {
-            "maximum": 0.253125,
-            "minimum": 0.253125,
+            "maximum": 0.25312501192092896,
+            "minimum": 0.25312501192092896,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -6047,5 +6036,22 @@
       "specialOutputs": [],
       "startDelay": 0.0
     }
-  ]
+  ],
+  "inputs": [
+    {
+      "defaultValue": 1.0,
+      "id": "input.amount",
+      "name": "amount",
+      "type": "Float"
+    },
+    {
+      "defaultValue": 1.0,
+      "id": "input.heat",
+      "name": "heat",
+      "type": "Float"
+    }
+  ],
+  "loop": true,
+  "name": "Boss Body Smoke",
+  "version": 15
 }
