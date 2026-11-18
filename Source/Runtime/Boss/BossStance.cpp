@@ -41,6 +41,27 @@ int BetweenInt(BossComponent& boss, int low, int high) {
     return std::min(top, low + static_cast<int>(BossRandom(boss) * static_cast<float>(top - low + 1)));
 }
 
+// 散歩・見る・長い間の長さ（秒）。フェーズ 2 ではフェーズ 2 の項目（c-dc91cc）。
+bool PhaseTwo(const BossComponent& boss) { return boss.lastPhaseNumber >= 2; }
+
+float LongPauseSeconds(BossComponent& boss) {
+    const BossStanceSettings& s = boss.stance;
+    return PhaseTwo(boss) ? Between(boss, s.longPauseMinSecondsPhase2, s.longPauseMaxSecondsPhase2)
+                          : Between(boss, s.longPauseMinSeconds, s.longPauseMaxSeconds);
+}
+
+float StrollSeconds(BossComponent& boss) {
+    const BossStanceSettings& s = boss.stance;
+    return PhaseTwo(boss) ? Between(boss, s.strollMinSecondsPhase2, s.strollMaxSecondsPhase2)
+                          : Between(boss, s.strollMinSeconds, s.strollMaxSeconds);
+}
+
+float ObserveSeconds(BossComponent& boss) {
+    const BossStanceSettings& s = boss.stance;
+    return PhaseTwo(boss) ? Between(boss, s.observeMinSecondsPhase2, s.observeMaxSecondsPhase2)
+                          : Between(boss, s.observeMinSeconds, s.observeMaxSeconds);
+}
+
 // 技の型で、最初の行（散歩・見るの横歩き、離脱の後ろ跳び、圏外から歩いて入る）。
 int FirstOfType(const BossComponent& boss, BossMoveType type) {
     const auto& moves = boss.table.GetMoves();
@@ -85,8 +106,7 @@ void Enter(BossComponent& boss, BossStanceKind stance, const char* reason) {
             m.nextLongPause = m.aggroCount + BetweenInt(boss, std::max(1, s.longPauseEveryMin), s.longPauseEveryMax);
         m.slowStart = true;
         if (stance == BossStanceKind::Stroll)
-            m.until = boss.clockSeconds + (m.longPause ? Between(boss, s.longPauseMinSeconds, s.longPauseMaxSeconds)
-                                                       : Between(boss, s.strollMinSeconds, s.strollMaxSeconds));
+            m.until = boss.clockSeconds + (m.longPause ? LongPauseSeconds(boss) : StrollSeconds(boss));
     }
     char extra[160]{};
     std::snprintf(extra, sizeof(extra), "from=%s reason=%s combos=%d long=%d until=%.2f",
@@ -106,11 +126,9 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     BossSituation situation;
     situation.phase = phase;
     situation.distance = distance;
-    // フェーズの行：いまのフェーズの行がこの帯にあればそれを、無ければフェーズ 1 の行を使う。
-    bool phaseRows = false;
-    for (const auto& row : rows)
-        phaseRows = phaseRows || (row.stance == BossStanceKind::Aggro && row.band == band && row.phase == phase);
-    const int usePhase = phaseRows ? phase : 1;
+    // フェーズの行：いまのフェーズの行が表にあればその行だけ（この帯に無ければ歩く。フェーズ 1 の行へは落ちない）、
+    // 表に無いフェーズはフェーズ 1 の行を使う（c-dc91cc）。
+    const int usePhase = boss.stanceTable.RowsPhase(phase);
     struct Candidate {
         const BossStanceRow* row;
         float weight;
@@ -163,18 +181,21 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     BossStanceChoice choice{chosen->row->row, !BossMoveTable::IsMoveType(move.type), chosen->row->kind,
                             chosen->weight / total};
     char extra[256]{};
-    std::snprintf(extra, sizeof(extra), "band=%s dist=%.2f move=%s kind=%s share=%.2f candidates=%zu combo=%d/%d",
+    std::snprintf(extra, sizeof(extra),
+                  "band=%s dist=%.2f move=%s kind=%s share=%.2f candidates=%zu combo=%d/%d rows=%d",
                   kBandNames[static_cast<int>(band)], static_cast<double>(distance), move.name.c_str(),
                   kClassNames[static_cast<int>(chosen->row->kind)], static_cast<double>(choice.weight),
-                  candidates.size(), m.combos + 1, m.combosTarget);
+                  candidates.size(), m.combos + 1, m.combosTarget, usePhase);
     Log(boss, "Pick", extra);
     return choice;
 }
 
+// 冷却（秒）：いまのフェーズで使う行のうち、その技の行の一番長い冷却。
 float CooldownOf(const BossComponent& boss, int row) {
+    const int usePhase = boss.stanceTable.RowsPhase(boss.lastPhaseNumber);
     float cooldown = 0.0f;
     for (const auto& r : boss.stanceTable.GetRows()) {
-        if (r.row == row)
+        if (r.row == row && r.phase == usePhase)
             cooldown = std::max(cooldown, r.cooldown);
     }
     return cooldown;
@@ -210,6 +231,14 @@ bool BossStanceTable::Load(std::string_view csv, std::vector<std::string>& warni
         rows_.push_back(row);
     }
     return !rows_.empty();
+}
+
+int BossStanceTable::RowsPhase(int phase) const {
+    for (const auto& row : rows_) {
+        if (row.phase == phase)
+            return phase;
+    }
+    return 1;
 }
 
 void BossStanceTable::Resolve(const BossMoveTable& moves, std::vector<std::string>& warnings) {
@@ -268,6 +297,20 @@ void BossStanceSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("stanceMirrorSpeed",
                  "散歩で回り合う：プレイヤーの横の速さがこれを超えたら逆の向きへ回る (m/秒。0 で回らない)", mirrorSpeed,
                  0.0f, 20.0f);
+    fields.Note(
+        "フェーズ 2 の間の長さ：フェーズ 2 では散歩・見る・長い間をこちらの長さにする（技の重みは表のフェーズ 2 の行）。");
+    fields.Float("stanceStrollMinSecondsPhase2", "フェーズ 2：散歩の長さ（最小、秒）", strollMinSecondsPhase2, 0.0f,
+                 30.0f);
+    fields.Float("stanceStrollMaxSecondsPhase2", "フェーズ 2：散歩の長さ（最大、秒）", strollMaxSecondsPhase2, 0.0f,
+                 30.0f);
+    fields.Float("stanceObserveMinSecondsPhase2", "フェーズ 2：離脱の後に圏外で見る長さ（最小、秒）",
+                 observeMinSecondsPhase2, 0.0f, 30.0f);
+    fields.Float("stanceObserveMaxSecondsPhase2", "フェーズ 2：離脱の後に圏外で見る長さ（最大、秒）",
+                 observeMaxSecondsPhase2, 0.0f, 30.0f);
+    fields.Float("stanceLongPauseMinSecondsPhase2", "フェーズ 2：長い間の長さ（最小、秒）", longPauseMinSecondsPhase2,
+                 0.0f, 30.0f);
+    fields.Float("stanceLongPauseMaxSecondsPhase2", "フェーズ 2：長い間の長さ（最大、秒）", longPauseMaxSecondsPhase2,
+                 0.0f, 30.0f);
 }
 
 BossBand BossStance::BandOf(const BossStanceSettings& s, float distance) {
@@ -306,8 +349,7 @@ BossStanceChoice BossStance::Decide(BossComponent& boss, int phase, float distan
             // 圏外へ出られた、または跳び切って遠の帯にいる：そこで見る（射程の端。プレイヤーの弾は弱まる）。
             if (band == BossBand::Out || band == BossBand::Far) {
                 m.observing = true;
-                m.until = boss.clockSeconds + (m.longPause ? Between(boss, s.longPauseMinSeconds, s.longPauseMaxSeconds)
-                                                           : Between(boss, s.observeMinSeconds, s.observeMaxSeconds));
+                m.until = boss.clockSeconds + (m.longPause ? LongPauseSeconds(boss) : ObserveSeconds(boss));
                 char extra[96]{};
                 std::snprintf(extra, sizeof(extra), "dist=%.2f for=%.2f", static_cast<double>(distance),
                               static_cast<double>(m.until - boss.clockSeconds));

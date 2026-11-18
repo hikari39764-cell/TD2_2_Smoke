@@ -24,6 +24,7 @@ enum class BossStanceKind { Aggro, Stroll, Withdraw, Count };
 enum class BossMoveClass { Far, Near, Counter, Count };
 
 // 姿勢と帯の重みの表（Data/Boss/kasumi_bushi_stance.csv）の 1 行：その姿勢・帯で出せる技と、その重み・種類・冷却。
+// フェーズの行が表に 1 行でもあれば、そのフェーズではその行だけで選ぶ（無いフェーズはフェーズ 1 の行。c-dc91cc）。
 struct BossStanceRow {
     int phase = 1;
     BossStanceKind stance = BossStanceKind::Aggro;
@@ -43,6 +44,8 @@ public:
     bool Load(std::string_view csv, std::vector<std::string>& warnings);
     void Resolve(const BossMoveTable& moves, std::vector<std::string>& warnings);
     const std::vector<BossStanceRow>& GetRows() const { return rows_; }
+    // phase で使う行のフェーズ：表にそのフェーズの行があれば phase、無ければ 1。
+    int RowsPhase(int phase) const;
 
 private:
     std::vector<BossStanceRow> rows_;
@@ -105,6 +108,14 @@ struct BossStanceSettings {
     float keepGain = 0.5f;
     float keepSpeedScale = 0.8f;
     float mirrorSpeed = 1.5f;
+    // フェーズ 2 の間の長さ（c-dc91cc）：フェーズ 2 では散歩・見る・長い間の長さ（秒）をこちらにする（攻めの間は短く。
+    // 長い間は残す）。技の重みは表のフェーズ 2 の行。
+    float strollMinSecondsPhase2 = 0.6f;
+    float strollMaxSecondsPhase2 = 1.4f;
+    float observeMinSecondsPhase2 = 0.5f;
+    float observeMaxSecondsPhase2 = 1.2f;
+    float longPauseMinSecondsPhase2 = 2.0f;
+    float longPauseMaxSecondsPhase2 = 3.0f;
 };
 
 // 姿勢の覚え（BossComponent が持つ）。
