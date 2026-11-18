@@ -280,12 +280,38 @@ void ActMotion(BossFrame& frame, const BossMove& move, float progress) {
         const float distance = FlatLength(offset);
         const Vec3 toPlayer = FlatNormalize(offset);
         BossMoveExecutor::FaceRate(frame, boss.idleTurnRate);
-        const Vec3 tangent = Mul(Vec3{toPlayer.z, 0.0f, -toPlayer.x}, boss.strafe);
+        // 散歩（c-58fcf0）：プレイヤーが横へ速く動いたら逆の向きへ回り（向き合って回り合う）、間合いを保つように前後へ寄る。
+        const bool stroll = move.type == BossMoveType::WalkSide && boss.stanceMemory.started &&
+                            boss.stanceMemory.stance == BossStanceKind::Stroll;
+        const Vec3 side{toPlayer.z, 0.0f, -toPlayer.x};
+        if (stroll && boss.strollPlayerSeen) {
+            const Vec3 moved = Sub(PlayerGround(frame), boss.strollPlayerLast);
+            // プレイヤー自身がボスへ寄った分を積む（散歩の切り上げの「寄って来た」「離れた」）。のけぞり・吹っ飛びなどで
+            // 動かされた分は数えない（当てた後に追い打ちしない）。
+            BossStanceMemory& m = boss.stanceMemory;
+            const bool own = frame.player != nullptr &&
+                             (frame.player->state == PlayerState::Normal || frame.player->state == PlayerState::Roll);
+            if (own)
+                m.playerIn -= moved.x * toPlayer.x + moved.z * toPlayer.z;
+            m.playerInMin = std::min(m.playerInMin, m.playerIn);
+            m.playerInMax = std::max(m.playerInMax, m.playerIn);
+            const float lateral = (moved.x * side.x + moved.z * side.z) / std::max(1e-4f, frame.dt);
+            if (boss.stance.mirrorSpeed > 0.0f && std::abs(lateral) > boss.stance.mirrorSpeed)
+                boss.strafe = lateral > 0.0f ? -1.0f : 1.0f;
+        }
+        boss.strollPlayerLast = PlayerGround(frame);
+        boss.strollPlayerSeen = stroll;
+        const Vec3 tangent = Mul(side, boss.strafe);
         const bool sideways = move.type == BossMoveType::WalkSide ||
                               (move.type == BossMoveType::WalkIn && distance < boss.walkInStopDistance);
         if (sideways || move.type == BossMoveType::WalkIn) {
-            const Vec3 want =
-                sideways ? Mul(tangent, boss.walkSpeed) : Mul(toPlayer, boss.walkSpeed * boss.walkInSpeedScale);
+            Vec3 want = sideways ? Mul(tangent, boss.walkSpeed) : Mul(toPlayer, boss.walkSpeed * boss.walkInSpeedScale);
+            if (stroll) {
+                const float keep = boss.stance.keepSpeedScale;
+                const float radial =
+                    std::clamp((distance - boss.stance.keepMeters) * boss.stance.keepGain, -keep, keep);
+                want = Add(want, Mul(toPlayer, radial * boss.walkSpeed));
+            }
             boss.velocity = Lerp(boss.velocity, want, kVelocityBlend);
             boss.ground = Add(boss.ground, Mul(boss.velocity, frame.dt));
         } else if (move.type == BossMoveType::Backstep) {

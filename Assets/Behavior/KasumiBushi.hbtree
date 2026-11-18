@@ -7,14 +7,12 @@
       "id": 1,
       "type": "Selector",
       "name": "霞武士",
-      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。火が広く燃えていたら（引爆（火が広い））、待ちを切り上げて引爆する。プレイヤーの回復・吸い込み・後ろへのローリング・密着には、待ちを切り上げて咎める技を出す。",
+      "note": "上の枝が先。分身を撃たれたら本体が突進で来る。連続攻撃されたら、待ちや後隙を切り上げて割り込みの技を出す。プレイヤーの回復・吸い込み・後ろへのローリング・密着には、待ちを切り上げて咎める技を出す。（引爆の枝は当面外してある：Library/Handover/soul/c-58fcf0/detonate_branches.json。c-58fcf0）",
       "params": {
         "reactive": true
       },
       "children": [
         2,
-        55,
-        46,
         29,
         7
       ]
@@ -25,8 +23,10 @@
       "name": "割り込み",
       "children": [
         3,
+        82,
         4
-      ]
+      ],
+      "note": "連続攻撃されたら回し蹴りで割り込む（霞の輪が届く 6 m 以内だけ。遠くから撃たれた時は姿勢の切り上げと霞歩が返す）。"
     },
     {
       "id": 3,
@@ -73,7 +73,6 @@
       "name": "次の技",
       "note": "左から順に試す。火が少し燃えていれば、燃えている面積に比例した確率で引爆。そうでなければ姿勢で技を選ぶ。",
       "children": [
-        50,
         64
       ]
     },
@@ -155,7 +154,8 @@
         "cooldown": 5.0,
         "cutRecovery": false,
         "label": "後ろローリングを追う",
-        "rerollSeconds": 0.5
+        "rerollSeconds": 0.5,
+        "duringWalk": true
       }
     },
     {
@@ -208,144 +208,6 @@
       }
     },
     {
-      "id": 46,
-      "type": "Sequence",
-      "name": "引爆（火が広い）",
-      "note": "場の火が広い（以上 12 %）と、次に待っている時に引爆する。間隔は「引爆（ときどき）」と同じ名前「引爆」で分け合う。",
-      "children": [
-        47,
-        48,
-        49
-      ]
-    },
-    {
-      "id": 47,
-      "type": "Project_TD2_2.BossBurning",
-      "params": {
-        "atLeastPercent": 8.0,
-        "atMostPercent": 100.0
-      }
-    },
-    {
-      "id": 48,
-      "type": "Project_TD2_2.BossReaction",
-      "name": "引爆",
-      "params": {
-        "chance": 100.0,
-        "cooldown": 20.0,
-        "cutRecovery": false,
-        "label": "引爆",
-        "rerollSeconds": 0.5
-      }
-    },
-    {
-      "id": 49,
-      "type": "Project_TD2_2.BossMove",
-      "name": "引爆",
-      "params": {
-        "move": "引爆",
-        "pick": "always"
-      }
-    },
-    {
-      "id": 50,
-      "type": "Sequence",
-      "name": "引爆（ときどき）",
-      "note": "火が少し燃えている（1〜12 %）間、技を選ぶたびに、燃えている面積に比例した確率で引爆する。",
-      "children": [
-        51,
-        52,
-        53,
-        54
-      ]
-    },
-    {
-      "id": 51,
-      "type": "Project_TD2_2.BossBurning",
-      "params": {
-        "atLeastPercent": 1.0,
-        "atMostPercent": 8.0
-      }
-    },
-    {
-      "id": 52,
-      "type": "Project_TD2_2.BossBurningRoll",
-      "params": {
-        "chancePerPercent": 4.0,
-        "maxChance": 60.0
-      }
-    },
-    {
-      "id": 53,
-      "type": "Project_TD2_2.BossReaction",
-      "name": "引爆",
-      "params": {
-        "chance": 100.0,
-        "cooldown": 20.0,
-        "cutRecovery": false,
-        "label": "引爆",
-        "rerollSeconds": 0.5
-      }
-    },
-    {
-      "id": 54,
-      "type": "Project_TD2_2.BossMove",
-      "name": "引爆",
-      "params": {
-        "move": "引爆",
-        "pick": "always"
-      }
-    },
-    {
-      "id": 55,
-      "type": "Sequence",
-      "name": "引爆（フェーズ 2）",
-      "note": "場の火が広い（以上 12 %）と、次に待っている時に引爆する。間隔は「引爆（ときどき）」と同じ名前「引爆」で分け合う。",
-      "children": [
-        56,
-        57,
-        58,
-        59
-      ]
-    },
-    {
-      "id": 56,
-      "type": "Project_TD2_2.BossSituation",
-      "params": {
-        "phaseAtLeast": 2,
-        "healthAtMost": 100.0
-      }
-    },
-    {
-      "id": 57,
-      "type": "Project_TD2_2.BossBurning",
-      "params": {
-        "atLeastPercent": 6.0,
-        "atMostPercent": 100.0
-      }
-    },
-    {
-      "id": 58,
-      "type": "Project_TD2_2.BossReaction",
-      "name": "引爆",
-      "params": {
-        "chance": 100.0,
-        "cooldown": 20.0,
-        "cutRecovery": false,
-        "label": "引爆",
-        "rerollSeconds": 0.5
-      }
-    },
-    {
-      "id": 59,
-      "type": "Project_TD2_2.BossMove",
-      "name": "引爆",
-      "params": {
-        "move": "引爆",
-        "pick": "always"
-      }
-    },
-    {
       "id": 64,
       "type": "Project_TD2_2.BossStance",
       "name": "姿勢で技を選ぶ",
@@ -376,14 +238,14 @@
       "name": "散歩：撃てばかわして返す",
       "params": {
         "label": "散歩：撃てばかわして返す",
-        "chance": 85.0,
-        "cooldown": 2.0,
+        "chance": 100.0,
+        "cooldown": 1.5,
         "rerollSeconds": 0.5,
         "cutRecovery": false,
         "delayMinFrames": 2,
         "delayMaxFrames": 6,
         "duringWalk": true,
-        "hitSeconds": 6.0,
+        "hitSeconds": 0.0,
         "hitScale": 0.3
       },
       "id": 68
@@ -435,7 +297,7 @@
       "name": "攻勢：撃てばかわして返す",
       "params": {
         "label": "攻勢：撃てばかわして返す",
-        "chance": 15.0,
+        "chance": 30.0,
         "cooldown": 4.0,
         "rerollSeconds": 0.5,
         "cutRecovery": false,
@@ -506,6 +368,7 @@
       "name": "背後を払う",
       "children": [
         77,
+        83,
         78,
         79
       ],
@@ -519,6 +382,22 @@
         "max": 15.0
       },
       "id": 81
+    },
+    {
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "min": 0.0,
+        "max": 6.0
+      },
+      "id": 82
+    },
+    {
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "min": 0.0,
+        "max": 6.0
+      },
+      "id": 83
     }
   ]
 }

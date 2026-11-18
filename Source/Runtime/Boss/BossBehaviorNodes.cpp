@@ -369,6 +369,28 @@ Status TickStance(INodeContext& context, void* state, void* user) noexcept {
         BossLog::Write(message);
         return Status::Running;
     }
+    // 散歩・見るの歩きの間：プレイヤーの動きで攻勢へ移ったら、歩きを切り上げて攻勢の技を頼む（待機を待たない）。
+    if (!run.attack && thought->moment == BossBrainMoment::Walking &&
+        BossStance::Engage(boss, thought->situation.distance)) {
+        const float r0 = context.Random();
+        const float r1 = context.Random();
+        const BossStanceChoice choice =
+            BossStance::Decide(boss, thought->situation.phase, thought->situation.distance, r0, r1);
+        if (choice.row >= 0 && BossRules::RequestMove(boss, choice.row, false)) {
+            run.row = choice.row;
+            run.kind = static_cast<int32_t>(choice.kind);
+            run.attack = choice.attack;
+            run.chain = 0;
+            const BossMove* move = BossRules::GetMove(boss, choice.row);
+            char message[256]{};
+            std::snprintf(message, sizeof(message), "Pick tick=%llu move=%s why=engage stance=%s dist=%.3f phase=%d",
+                          static_cast<unsigned long long>(boss.tick), move != nullptr ? move->name.c_str() : "?",
+                          BossStance::StanceName(boss.stanceMemory.stance),
+                          static_cast<double>(thought->situation.distance), thought->situation.phase);
+            BossLog::Write(message);
+        }
+        return Status::Running;
+    }
     if (BossRules::GetState(boss) != BossState::Act) {
         BossStanceChoice done;
         done.row = run.row;

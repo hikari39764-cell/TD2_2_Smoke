@@ -18,6 +18,9 @@ constexpr const char* kStanceNames[] = {"攻勢", "散歩", "離脱"};
 constexpr const char* kBandNames[] = {"密着", "中", "遠", "圏外"};
 constexpr const char* kClassNames[] = {"遠距離", "接近", "受け返し"};
 
+// 歩いて詰める間、1 回の歩きでこれだけ詰まらなければ止められたとみなす (m)。
+constexpr float kApproachProgressMeters = 0.3f;
+
 template <typename E, size_t N>
 bool ReadName(const std::string& text, const char* const (&names)[N], E& out) {
     for (size_t i = 0; i < N; ++i) {
@@ -65,6 +68,11 @@ void Enter(BossComponent& boss, BossStanceKind stance, const char* reason) {
     m.observing = false;
     m.withdrawSteps = 0;
     m.approaching = false;
+    m.playerIn = 0.0f;
+    m.playerInMin = 0.0f;
+    m.playerInMax = 0.0f;
+    m.closeSince = -1.0f;
+    m.shotsAtStart = boss.watch.shotsSeen;
     if (stance == BossStanceKind::Aggro) {
         m.combos = 0;
         m.combosTarget = BetweenInt(boss, std::max(1, s.combosMin), std::max(1, s.combosMax));
@@ -90,7 +98,8 @@ void Enter(BossComponent& boss, BossStanceKind stance, const char* reason) {
 BossStanceChoice Walk(const BossComponent& boss, BossMoveType type) { return {FirstOfType(boss, type), false}; }
 
 // 攻勢の技選び：姿勢・帯・フェーズの行から、冷却中・出せない技を除き、種類の交互・最近の技で重みを動かして 1 つ。
-BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, BossBand band, float random) {
+BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, BossBand band, float random,
+                            bool noWalk = false) {
     const BossStanceSettings& s = boss.stance;
     BossStanceMemory& m = boss.stanceMemory;
     const auto& rows = boss.stanceTable.GetRows();
@@ -119,6 +128,8 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
                 continue;
             const BossMove& move = boss.table.GetMoves()[static_cast<size_t>(row.row)];
             const bool walking = BossMoveTable::IsMoveType(move.type);
+            if (noWalk && walking)
+                continue;
             if (strict && m.combos == 0 && m.slowStart && !walking && move.pre < s.slowStartFrames)
                 continue;
             if (strict && m.combos == 0 && s.noDashTwice && m.lastOpenerDash && move.type == BossMoveType::Dash)
@@ -239,6 +250,24 @@ void BossStanceSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("stanceRecentScale2", "最近出した技の重みに掛ける倍率（3 つ前）", recentScale2, 0.0f, 1.0f);
     fields.Int("stanceSlowStartFrames", "散歩・見るの後、攻勢の始めの技の前隙の下限 (F)", slowStartFrames, 0, 240);
     fields.Bool("stanceNoDashTwice", "圏外から入る時、突進を続けて出さない", noDashTwice);
+    fields.Note(
+        "散歩・見るの切り上げ：プレイヤーが撃つ・当てる・寄る・張り付く・離れる・見ている所へ入ると、歩きの途中でも"
+        "すぐ攻勢へ。");
+    fields.Float("stanceEngageAfterSeconds", "散歩に入ってから切り上げられるまで (秒)", engageAfterSeconds, 0.0f,
+                 10.0f);
+    fields.Float("stanceApproachMeters", "寄って来た：散歩の間の一番遠い距離からこれだけ近づく (m)", approachMeters,
+                 0.0f, 20.0f);
+    fields.Float("stanceCloseSeconds", "張り付いている：密着の帯にこれだけいる (秒)", closeSeconds, 0.0f, 10.0f);
+    fields.Float("stanceChaseMeters", "離れた：散歩の間の一番近い距離からこれだけ離れる (m。遠の帯より遠い時)",
+                 chaseMeters, 0.0f, 30.0f);
+    fields.Bool("stanceObserveEngage", "見る（離脱の後）の間、プレイヤーが中の帯へ入ったら攻勢へ", observeEngage);
+    fields.Float("stanceKeepMeters", "散歩で保つ間合い (m)", keepMeters, 0.0f, 30.0f);
+    fields.Float("stanceKeepGain", "散歩で間合いのずれ 1 m あたりに前後へ寄る速さ（歩く速さの割合）", keepGain, 0.0f,
+                 5.0f);
+    fields.Float("stanceKeepSpeedScale", "散歩で前後へ寄る速さの上限（歩く速さの割合）", keepSpeedScale, 0.0f, 3.0f);
+    fields.Float("stanceMirrorSpeed",
+                 "散歩で回り合う：プレイヤーの横の速さがこれを超えたら逆の向きへ回る (m/秒。0 で回らない)", mirrorSpeed,
+                 0.0f, 20.0f);
 }
 
 BossBand BossStance::BandOf(const BossStanceSettings& s, float distance) {
@@ -300,17 +329,90 @@ BossStanceChoice BossStance::Decide(BossComponent& boss, int phase, float distan
         Enter(boss, BossStanceKind::Aggro, "strolled");
     }
     // 歩いて詰めている間は、中の帯へ入るまで選び直さずに歩き続ける（毎回選び直すと、遠くで技を撃ってばかりになる）。
+    bool stalled = false;
     if (m.approaching) {
-        if (band == BossBand::Out || band == BossBand::Far)
+        // 前に頼んだ時より 0.3 m 以上詰まっていなければ（闘技場の縁で止められている）、歩くのをやめて今の帯の技を選ぶ。
+        stalled = distance > m.approachLast - kApproachProgressMeters;
+        m.approachLast = distance;
+        if ((band == BossBand::Out || band == BossBand::Far) && !stalled)
             return Walk(boss, BossMoveType::WalkIn);
         m.approaching = false;
+        if (stalled)
+            Log(boss, "ApproachStalled", "");
     }
-    BossStanceChoice choice = PickAttack(boss, phase, distance, band, random0);
+    BossStanceChoice choice = PickAttack(boss, phase, distance, band, random0, stalled || m.noWalkOnce);
+    m.noWalkOnce = false;
     const auto& moves = boss.table.GetMoves();
     if (choice.row >= 0 && static_cast<size_t>(choice.row) < moves.size() &&
-        moves[static_cast<size_t>(choice.row)].type == BossMoveType::WalkIn)
+        moves[static_cast<size_t>(choice.row)].type == BossMoveType::WalkIn) {
         m.approaching = true;
+        m.approachLast = distance;
+        m.approachSince = boss.clockSeconds;
+        m.approachShots = boss.watch.shotsSeen;
+    }
     return choice;
+}
+
+bool BossStance::Engage(BossComponent& boss, float distance) {
+    const BossStanceSettings& s = boss.stance;
+    BossStanceMemory& m = boss.stanceMemory;
+    if (!m.started)
+        return false;
+    const BossBand band = BandOf(s, distance);
+    const char* reason = nullptr;
+    // 散歩・見るに入ってから、プレイヤーが撃ったか・ボスが当てられたか。
+    const bool shot = boss.watch.shotsSeen > m.shotsAtStart;
+    bool hurt = false;
+    for (size_t i = 0; i < boss.brain.hitCount; ++i)
+        hurt = hurt || boss.brain.hitSeconds[i] > m.since;
+    if (m.stance == BossStanceKind::Aggro && m.approaching) {
+        bool struck = false;
+        for (size_t i = 0; i < boss.brain.hitCount; ++i)
+            struck = struck || boss.brain.hitSeconds[i] > m.approachSince;
+        if (!struck && boss.watch.shotsSeen <= m.approachShots)
+            return false;
+        m.approaching = false;
+        m.noWalkOnce = true;
+        char extra[64]{};
+        std::snprintf(extra, sizeof(extra), "why=%s dist=%.2f", struck ? "hurt" : "shot",
+                      static_cast<double>(distance));
+        Log(boss, "ApproachPunish", extra);
+        return true;
+    }
+    if (m.stance == BossStanceKind::Stroll) {
+        if (band == BossBand::Close) {
+            if (m.closeSince < 0.0f)
+                m.closeSince = boss.clockSeconds;
+        } else {
+            m.closeSince = -1.0f;
+        }
+        if (hurt || shot)
+            reason = hurt ? "hurt" : "shot";
+        else if (boss.clockSeconds - m.since < s.engageAfterSeconds)
+            return false;
+        else if (distance < s.midMeters && m.playerIn - m.playerInMin >= s.approachMeters)
+            reason = "approach";
+        else if (m.closeSince >= 0.0f && boss.clockSeconds - m.closeSince >= s.closeSeconds)
+            reason = "close";
+        else if (distance >= s.midMeters && m.playerInMax - m.playerIn >= s.chaseMeters)
+            reason = "chase";
+    } else if (m.stance == BossStanceKind::Withdraw && m.observing && s.observeEngage) {
+        if (distance < s.midMeters)
+            reason = "intrude";
+        else if (hurt || shot)
+            reason = hurt ? "hurt" : "shot";
+    }
+    if (reason == nullptr)
+        return false;
+    char extra[128]{};
+    std::snprintf(extra, sizeof(extra), "why=%s dist=%.2f in=%.2f min=%.2f max=%.2f", reason,
+                  static_cast<double>(distance), static_cast<double>(m.playerIn), static_cast<double>(m.playerInMin),
+                  static_cast<double>(m.playerInMax));
+    Log(boss, "Engage", extra);
+    Enter(boss, BossStanceKind::Aggro, reason);
+    // プレイヤーの動きへの返しなので、遅い始まりに限らない。
+    m.slowStart = false;
+    return true;
 }
 
 void BossStance::Force(BossComponent& boss, BossStanceKind stance, const char* reason) {

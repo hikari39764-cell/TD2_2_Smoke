@@ -1084,6 +1084,9 @@ public:
     int lastSegment = -1;
     float crouch = 0.0f;
     float strafe = 1.0f;
+    // 散歩で回り合う時の、前の tick のプレイヤーの足元（横の速さを測る）。
+    HIKARI::GameProjectFloat3 strollPlayerLast{};
+    bool strollPlayerSeen = false;
     float sideSign = 1.0f;
     float leanForward = 0.0f;
     float leanSide = 0.0f;
