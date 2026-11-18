@@ -138,7 +138,10 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     };
     std::vector<Candidate> candidates;
     float total = 0.0f;
+    // 続けて吸われた間に、霞の剣気を出すので外した行の数（ログ用）。
+    int noHaze = 0;
     for (int pass = 0; pass < 2 && candidates.empty(); ++pass) {
+        noHaze = 0;
         // 1 回目は遅い始まり・突進の続けを守る。候補が無ければ 2 回目はそれを外す。
         const bool strict = pass == 0;
         for (const auto& row : rows) {
@@ -151,6 +154,11 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
             const bool walking = BossMoveTable::IsMoveType(move.type);
             if (noWalk && walking)
                 continue;
+            // 続けて吸われた間は、霞の剣気（吸える刃）を出す技を選ばない（実体の刀で来る。c-14392d の残り）。
+            if (!walking && BossGourdRead::Excluded(boss, reading, row)) {
+                ++noHaze;
+                continue;
+            }
             if (strict && m.combos == 0 && m.slowStart && !walking && move.pre < s.slowStartFrames)
                 continue;
             if (strict && m.combos == 0 && s.noDashTwice && m.lastOpenerDash && move.type == BossMoveType::Dash)
@@ -201,12 +209,12 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     char extra[320]{};
     std::snprintf(extra, sizeof(extra),
                   "band=%s dist=%.2f move=%s kind=%s share=%.2f candidates=%zu combo=%d/%d rows=%d read=%s "
-                  "chain=%d easy=%d guarantee=%d gourd=%.1f",
+                  "chain=%d easy=%d guarantee=%d gourd=%.1f noHaze=%d",
                   kBandNames[static_cast<int>(band)], static_cast<double>(distance), move.name.c_str(),
                   kClassNames[static_cast<int>(chosen->row->kind)], static_cast<double>(choice.weight),
                   candidates.size(), m.combos + 1, m.combosTarget, usePhase, BossGourdRead::StateName(reading.state),
                   static_cast<int>(reading.chain), static_cast<int>(chosen->row->easy), static_cast<int>(guaranteed),
-                  static_cast<double>(boss.watch.gourdPercent));
+                  static_cast<double>(boss.watch.gourdPercent), noHaze);
     Log(boss, "Pick", extra);
     return choice;
 }

@@ -10,6 +10,7 @@ namespace Project_TD2_2 {
 
 class BossComponent;
 struct BossFrame;
+struct BossMove;
 struct BossWave;
 
 // ヒョウタンの読み（c-14392d）：弾と守りが同じヒョウタンなので、ボスはプレイヤーの残りを見て技の選び方を変える。
@@ -45,6 +46,9 @@ struct BossGourdReadSettings {
     float chainSeconds = 8.0f;
     float chainFarScale = 0.3f;
     float chainNearScale = 2.0f;
+    // 続けて吸われた間は、霞の剣気（吸える飛ぶ斬撃）を出す技を攻勢の技選びの候補から外す（実体の刀で来る）。見分けは
+    // 技の表：刀を振る型で、当て方が「実」でなく、どれかの一撃の斬撃速度が 0 より大きい技（表の種類が接近でも外す）。
+    bool chainNoHaze = true;
     // 一拍止め：吸い込みを holdAbsorbSeconds 秒以上構え続けている時に攻勢が遠距離の技を選んだら、holdChance % で
     // 構えを holdMinFrames〜holdMaxFrames F 止めてから出す（ローリングの無敵 15 F と重ならない長さ）。一度出したら
     // holdCooldownSeconds 秒は混ぜない。
@@ -94,6 +98,10 @@ public:
     static BossGourdReading Read(const BossComponent& boss);
     // 姿勢の表の 1 行（歩きでない）の重みに掛ける倍率。
     static float Scale(const BossComponent& boss, const BossGourdReading& reading, const BossStanceRow& row);
+    // 技が霞の剣気（吸える飛ぶ斬撃）を出すか：刀を振る型・当て方が「実」でない・どれかの一撃の斬撃速度が 0 より大きい。
+    static bool ThrowsHaze(const BossMove& move);
+    // 姿勢の表の 1 行を、いまの読みで候補から外すか（続けて吸われた間の霞の剣気。gourdChainNoHaze）。
+    static bool Excluded(const BossComponent& boss, const BossGourdReading& reading, const BossStanceRow& row);
     // 攻勢の技を選んだ：吸いやすい剣気の時刻を覚え、一拍止めを振る（待機・歩きの間に選んだ技だけ）。
     static void NotePicked(BossComponent& boss, const BossStanceRow& row, bool attack);
     // 剣気を吸われた（捕まえた tick）。

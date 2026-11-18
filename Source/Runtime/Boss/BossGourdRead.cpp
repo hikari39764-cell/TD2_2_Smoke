@@ -67,6 +67,11 @@ void BossGourdReadSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("gourdChainSeconds", "続けて吸われた：接近へ寄せる長さ (秒)", chainSeconds, 0.0f, 60.0f);
     fields.Float("gourdChainFarScale", "続けて吸われた：遠距離の重みに掛ける倍率", chainFarScale, 0.0f, 10.0f);
     fields.Float("gourdChainNearScale", "続けて吸われた：接近の重みに掛ける倍率", chainNearScale, 0.0f, 10.0f);
+    fields.Bool(
+        "gourdChainNoHaze",
+        "続けて吸われた：霞の剣気（吸える刃）を出す技を選ばない（技の表の当て方が「実」でなく、斬撃速度がある技。"
+        "表の種類が接近でも外す）",
+        chainNoHaze);
     fields.Bool("gourdHoldEnabled", "吸い込みを構え続けていたら、剣気の構えを一拍止める変化を混ぜる", holdEnabled);
     fields.Float("gourdHoldAbsorbSeconds", "一拍止め：吸い込みを構え続けている時間 (秒)", holdAbsorbSeconds, 0.0f,
                  5.0f);
@@ -128,6 +133,22 @@ float BossGourdRead::Scale(const BossComponent& boss, const BossGourdReading& re
     if (reading.chain)
         scale *= isFar ? s.chainFarScale : isNear ? s.chainNearScale : 1.0f;
     return std::max(0.0f, scale);
+}
+
+bool BossGourdRead::ThrowsHaze(const BossMove& move) {
+    // 斬撃を飛ばすのは刀を振る型だけ（BossMoveExecutor の Release）。当て方が「実」の技・斬撃速度が 0 の一撃は飛ばさない。
+    // 一撃の値が無い技は、放つ時の斬撃速度が 0（BossMoveTable::Strike）。
+    if (!BossMoveTable::IsSwingType(move.type) || move.delivery == BossDelivery::Blade)
+        return false;
+    return std::any_of(move.strikes.begin(), move.strikes.end(),
+                       [](const BossStrikeData& strike) { return strike.speed > 0.0f; });
+}
+
+bool BossGourdRead::Excluded(const BossComponent& boss, const BossGourdReading& reading, const BossStanceRow& row) {
+    if (!reading.chain || !boss.gourdRead.chainNoHaze || row.row < 0 ||
+        static_cast<size_t>(row.row) >= boss.table.GetMoves().size())
+        return false;
+    return ThrowsHaze(boss.table.GetMoves()[static_cast<size_t>(row.row)]);
 }
 
 void BossGourdRead::NotePicked(BossComponent& boss, const BossStanceRow& row, bool attack) {
