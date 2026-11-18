@@ -255,7 +255,7 @@
           "transform": {
             "position": [
               0.0,
-              4.18,
+              4.84,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -284,7 +284,7 @@
           "detailStrength": 0.3,
           "domainSize": [
             3.38,
-            12.28,
+            14.22,
             1.89
           ],
           "emissionColor": [
@@ -322,7 +322,8 @@
           "substepRate": 60.0,
           "temperatureDissipation": 6.0,
           "vorticity": 0.5,
-          "weight": 0.0
+          "weight": 0.0,
+          "channel": "Channel3"
         },
         "forces": {
           "collisionPlaneEnabled": false,
@@ -1146,7 +1147,7 @@
           "transform": {
             "position": [
               0.0,
-              -4.18,
+              -4.84,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -1156,7 +1157,7 @@
             ],
             "scale": [
               1.3,
-              1.4615384615384615,
+              1.6923076923076923,
               1.3
             ]
           }
@@ -2006,7 +2007,7 @@
           "transform": {
             "position": [
               0.0,
-              -4.18,
+              -4.84,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2016,7 +2017,7 @@
             ],
             "scale": [
               1.3,
-              1.4615384615384615,
+              1.6923076923076923,
               1.3
             ]
           }

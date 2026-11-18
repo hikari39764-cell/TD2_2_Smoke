@@ -264,6 +264,22 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("greatswordLength", "霞の大剣：剣の長さ (m)", greatswordLength, 0.5f, 30.0f);
         fields.Float("greatswordHiltOffset", "霞の大剣：薙ぐ時の柄の位置（ボスの中心から剣の向きへ m）",
                      greatswordHiltOffset, 0.0f, 10.0f);
+        fields.Int("greatswordLeapFrames", "霞の大剣：跳び割りの跳ぶ長さ (F。前隙の終わり)", greatswordLeapFrames, 1,
+                   120);
+        fields.Float("greatswordLeapHeight", "霞の大剣：跳び割りの弧の高さ (m)", greatswordLeapHeight, 0.0f, 20.0f);
+        fields.Float("greatswordLeapRiseShare", "霞の大剣：跳び割りの跳び上がる割合", greatswordLeapRiseShare, 0.05f,
+                     0.9f);
+        fields.Float("greatswordLeapHangShare", "霞の大剣：跳び割りの頂きで溜める割合", greatswordLeapHangShare, 0.0f,
+                     0.85f);
+        fields.Float("greatswordLeapHover", "霞の大剣：頂きで溜める間に浮く高さ (m)", greatswordLeapHover, 0.0f, 5.0f);
+        fields.Float("greatswordLeapStop", "霞の大剣：跳び割りで着地する、プレイヤーからの距離 (m)", greatswordLeapStop,
+                     0.0f, 30.0f);
+        fields.Float("greatswordSweepPeak", "霞の大剣：薙ぎが一番速くなる所 (0〜1。大きいほど重く振り出す)",
+                     greatswordSweepPeak, 0.1f, 0.9f);
+        fields.Float("greatswordApexBurstScale", "霞の大剣：跳び割りの頂きで溜め始めた瞬間の剣先の閃き（0 で出さない）",
+                     greatswordApexBurstScale, 0.0f, 10.0f);
+        fields.Float("greatswordConjureBurstScale", "霞の大剣：剣を作り終えた瞬間の爆ぜの大きさ（0 で出さない）",
+                     greatswordConjureBurstScale, 0.0f, 10.0f);
         fields.Int("greatswordFillFrames", "霞の大剣：剣が柄から剣先まで満ちる長さ (F。前隙の始めから)",
                    greatswordFillFrames, 1, 600);
         fields.Float("greatswordRaiseTilt", "霞の大剣：作り出す間、剣を真上から後ろへ倒す角度 (度)",

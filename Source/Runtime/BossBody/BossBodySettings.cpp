@@ -104,6 +104,8 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyAuraConjure", "溜めの気配：霞の大剣を作り出す間の強さ（溜め切りを 1 として）", auraConjure, 0.0f,
                  2.0f);
     fields.Float("bodySmokeChargeAmount", "胴の煙：溜め切った時の量（倍率）", smokeChargeAmount, 0.0f, 8.0f);
+    fields.Float("bodyTachiDissolveSpeed", "霞の大剣：太刀が霞にほどける速さ（大剣の満ちる割合に掛ける）",
+                 tachiDissolveSpeed, 0.1f, 10.0f);
     fields.Float("bodySmokeNearScale", "胴の煙：プレイヤーが近い時の量（倍率。画面を塞がないように）", smokeNearScale,
                  0.0f, 1.0f);
     fields.Float("bodySmokeNearMeters", "胴の煙：この距離 (m) 以内で近い時の量", smokeNearMeters, 0.0f, 40.0f);

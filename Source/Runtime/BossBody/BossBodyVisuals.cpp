@@ -47,6 +47,10 @@ constexpr std::string_view kBladeFxProfile = "HIKARI_Dissolve";
 constexpr std::string_view kRimStrength = "rimStrength";
 constexpr std::string_view kRimPower = "rimPower";
 constexpr std::string_view kPulseSpeed = "pulseSpeed";
+// 溶かす量（0〜1）。霞の大剣の間、太刀を霞にほどく（c-9143b5）。
+constexpr std::string_view kDissolveAmount = "amount";
+// 太刀がこれ以上ほどけたら、柄も刀身も描かない（大剣だけを持つ）。
+constexpr float kTachiHiddenAmount = 0.98f;
 // 輪郭の光がこれより弱ければ、強さ 0 を送る。
 constexpr float kBladeRimMinimum = 0.01f;
 
@@ -98,6 +102,17 @@ void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& 
     BossLog::Warn("[BossBody] 外形の模型を出せませんでした（Boss の「外形の模型」とノードの名前を確かめてください）");
 }
 
+// 太刀のほどけ（0〜1。c-9143b5）：霞の大剣が満ちるのに合わせて太刀が霞にほどけ、大剣がほどける間に戻る。
+float TachiDissolve(const BossComponent& boss) {
+    const BossGreatswordState& sword = boss.greatsword;
+    switch (sword.phase) {
+    case BossGreatswordPhase::None: return 0.0f;
+    case BossGreatswordPhase::Conjure: return std::clamp(sword.fill * boss.body.accents.tachiDissolveSpeed, 0.0f, 1.0f);
+    case BossGreatswordPhase::Dissolve: return std::clamp(1.0f - sword.dissolve, 0.0f, 1.0f);
+    default: return 1.0f;
+    }
+}
+
 // 刀身の輪郭の光の目標：両手の斬りの構え・溜め（前隙と、連撃の振りの間）で灯り、大きな溜めで増し、振る間は強い。
 float BladeRimTarget(const BossComponent& boss, bool hot) {
     const BossBodyAccentSettings& a = boss.body.accents;
@@ -144,13 +159,17 @@ void UpdateBladeShader(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         fx.SetFloat(kPulseSpeed, a.bladeRimPulse);
     }
     fx.SetFloat(kRimStrength, rim < kBladeRimMinimum ? 0.0f : rim);
+    fx.SetFloat(kDissolveAmount, TachiDissolve(boss));
 }
 
 // 置き場所の一式を、持ち主の物体（本体・分身）の表示専用の模型として頼む。番号は持ち主ごとなので、本体と分身で
 // 同じ番号を使っても重ならない。
 void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyPose& pose) {
-    Submit(world, object, boss, kHilt, pose.sword);
-    Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
+    // 霞の大剣の間は、ほどけきった太刀を描かない（両手は大剣の柄を握る。c-9143b5）。
+    if (TachiDissolve(boss) < kTachiHiddenAmount) {
+        Submit(world, object, boss, kHilt, pose.sword);
+        Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
+    }
     Submit(world, object, boss, kRightHand, pose.rightHand);
     Submit(world, object, boss, kRightCuff, pose.rightCuff);
     Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);

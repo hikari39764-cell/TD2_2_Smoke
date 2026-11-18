@@ -263,7 +263,7 @@
           "cellColor": false,
           "channel": "None",
           "combustion": false,
-          "densityDissipation": 2.2,
+          "densityDissipation": 2.8,
           "detailScale": 0.11999999731779099,
           "detailStrength": 0.550000011920929,
           "domainSize": [

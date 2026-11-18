@@ -279,14 +279,16 @@ struct BossBodyAccentSettings {
     // 振り終わった直後に吹き出す量（倍率）とその時間 (秒)。
     // （c-66ec5e：溜め 2.4・吹き出し 2.5 倍では煙が膨らんで画面を塞いだので下げた。）
     float smokeChargeAmount = 1.6f;
+    // 霞の大剣を作る間、太刀が霞にほどける速さ（大剣の満ちる割合に掛ける。2 で大剣が半分満ちた所で消えきる。c-9143b5）。
+    float tachiDissolveSpeed = 1.6f;
     float smokeLitHeat = 5.0f;
     float smokeSwingPuff = 1.5f;
     float smokeSwingPuffSeconds = 0.30f;
     // プレイヤーが近い時は胴の煙を薄くする（カメラがボスの近くまで寄って、煙が画面を覆わないように。c-66ec5e）：
     // smokeNearMeters 以内で smokeNearScale 倍、smokeFarMeters 以遠で元の量、その間はなめらかに。
-    float smokeNearScale = 0.55f;
-    float smokeNearMeters = 4.0f;
-    float smokeFarMeters = 10.0f;
+    float smokeNearScale = 0.35f;
+    float smokeNearMeters = 5.0f;
+    float smokeFarMeters = 12.0f;
 
     // 衝撃の輪：重い一撃が当たった瞬間に、地面に沿って広がるゆがみと光の輪（1 回きりのエフェクト）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference shockEffect{"e1a7c3f05b2d4d96a8c4f7b16d0e3a29", "Assets/Vfx/BossShock.hvfx"};
@@ -460,7 +462,8 @@ struct BossBodySettings {
     HIKARI::GameProjectVfxAssetReference smokeEffect{"7c41e9d2a05b4f6e9b3d8a1f2c6e5d04",
                                                      "Assets/Vfx/BossBodySmoke.hvfx"};
     // 煙の量（倍率）と、フェーズ 2 で煙を熱くする倍率（熱い煙は橙に光る。1 で光らない）。
-    float smokeAmount = 1.0f;
+    // （c-9143b5：視界を塞がないよう 1.0 → 0.8。）
+    float smokeAmount = 0.8f;
     float smokeHeatPhaseTwo = 5.0f;
     // 気絶している間の煙の量（倍率。煙が薄れて、鎧がからっぽに見える）。
     float smokeAmountStunned = 0.35f;

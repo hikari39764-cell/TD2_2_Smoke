@@ -303,6 +303,8 @@ struct BossGreatswordState {
     // 振りかぶる進み（振りかぶる間に 0→1。叩きつける・刺さっている・ほどける間は 1）と、叩きつける進み（攻撃中に 0→1）。
     float raise = 0.0f;
     float slam = 0.0f;
+    // 剣を作り終えた爆ぜを出したか。
+    bool burst = false;
     // 縦割りの向き（rad。振りかぶる間は毎 tick のボスの向き、叩きつけ始めた tick に決まる）。
     float cleaveYaw = 0.0f;
     // 剣先が地面に着いた tick（boss.tick。まだなら 0）と、その tick だけ立つ印。
@@ -711,17 +713,17 @@ public:
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
     // 剣の長さ。柄を体の外へ出すたびに同じだけ縮めて、届く距離（柄の距離＋長さ）を保つ（c-8c8d95 で 10.3 m、
     // c-f91bd1 で 10.6 m。c-a30eaf で柄を 2.25 m へ、c-e97b18 で 2.025 m へ変えた時も 10.6 m のまま）。
-    float greatswordLength = 8.575f;
+    float greatswordLength = 11.0f;
     // 薙ぐ間の柄の、ボスの中心からの距離 (m)。両手で握る左手が胴に入らないよう、体の外へ出してある（c-8c8d95 で 0.8→1.2）。
     float greatswordHiltOffset = 2.025f;
-    int greatswordFillFrames = 80;
+    int greatswordFillFrames = 54;
     float greatswordRaiseTilt = 15.0f;
     float greatswordRaiseHeight = 4.3875f;
     // 作り出す間の柄の横・前（足元から局所 m。右が負）。右肩の真上だと、両手で握る刀が右の大袖に入り、左手が体を
     // 横切って届かない（c-8c8d95 で右の胸の前へ出した）。
     float greatswordRaiseSide = -0.759375f;
     float greatswordRaiseForward = 1.603125f;
-    int greatswordWindFrames = 14;
+    int greatswordWindFrames = 24;
     float greatswordSweepDegrees = 200.0f;
     // 薙ぐ高さ（柄。見た目だけ：薙ぎの当たりは角度と距離だけで見る）と、剣先を下げる角度（度）。腰の高さで握り、
     // 剣先へ下げて、プレイヤーの体の高さを通す（膝の高さで握ると、両手が肩から遠い）。体を大きくした時（c-a30eaf・c-e97b18）に、
@@ -737,17 +739,34 @@ public:
     // 振りかぶりの柄の前への位置。兜の真上に近いと、叩きつけで両手が顔の前を通って兜に当たる（c-8c8d95 で 0.3→0.8）。
     float greatswordOverheadForward = 1.35f;
     float greatswordOverheadTilt = 10.0f;
-    int greatswordCleaveLiftFrames = 16;
+    int greatswordCleaveLiftFrames = 26;
     // 叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）。
     // 刃の当たり：正面の線の半幅 m と、叩きつける進みのどこから当たるか（0〜1）。
     float greatswordCleaveHiltHeight = 2.025f;
-    float greatswordCleaveHalfWidth = 1.1f;
+    float greatswordCleaveHalfWidth = 1.4f;
     float greatswordCleaveHitFrom = 0.5f;
     // 剣が地面に刺さったままの長さ（F。後隙の始めから。その後 greatswordDissolveFrames でほどける）。
     int greatswordCleaveStuckFrames = 40;
     // 地を走る噴き上がり：速さ m/s・届く所（ボスの中心から m）・線の半幅 m・威力・吹っ飛ぶか（切はのけぞり）。
     float greatswordEruptionSpeed = 30.0f;
-    float greatswordEruptionReach = 18.0f;
+    float greatswordEruptionReach = 22.0f;
+    // 跳び割り（c-9143b5。縦割りの行で「前隙の移動 m」が正）：前隙の終わりの greatswordLeapFrames F で、プレイヤーから
+    // greatswordLeapStop m の所へ（最長は表の「前隙の移動 m」）弧の高さ greatswordLeapHeight m で跳び、着地と同時に叩きつける。
+    // 跳ぶ間の割合：跳び上がる greatswordLeapRiseShare → 頂きで溜める greatswordLeapHangShare（greatswordLeapHover m だけ浮く）
+    // → 残りで一気に落ちる（オーナーの案：空中で溜めてから落ちる斬り）。
+    int greatswordLeapFrames = 64;
+    float greatswordLeapHeight = 4.5f;
+    float greatswordLeapStop = 6.0f;
+    float greatswordLeapRiseShare = 0.30f;
+    float greatswordLeapHangShare = 0.50f;
+    float greatswordLeapHover = 0.35f;
+    // 剣を作り終えた瞬間の爆ぜ（握りの上。爆発の倍率。0 で出さない）。
+    float greatswordConjureBurstScale = 1.4f;
+    // 跳び割りの頂きで溜め始めた瞬間の、剣先の閃き（爆発の倍率。0 で出さない）。
+    float greatswordApexBurstScale = 0.8f;
+    // 薙ぎの速さの山（0〜1。大きいほど、ゆっくり振り出して溜めてから一気に薙ぐ。c-9143b5）。
+    float greatswordSweepPeak = 0.62f;
+    bool greatswordApexBurst = false;
     float greatswordEruptionHalfWidth = 1.2f;
     int greatswordEruptionDamage = 25;
     bool greatswordEruptionBlow = false;
@@ -780,20 +799,22 @@ public:
                                                               "Assets/Vfx/BossGreatswordMist.hvfx"};
     HIKARI::GameProjectVfxAssetReference greatswordFireEffect{"d93a7b15e0c24f8ab46d2e9c7a01f5b3",
                                                               "Assets/Vfx/BossGreatswordFire.hvfx"};
-    float greatswordEffectLength = 9.5f;
+    // （c-9143b5：大剣を 11 m にしたので、資産を length=11 で作り直した。9.5 m の資産を 1.16 倍に置くと、流体の域が付いて来ず
+    // 剣先の霞が切れて形が崩れた。）
+    float greatswordEffectLength = 11.0f;
     // 技が終わった・崩された後、残った霞が消えるまでエフェクトを止めずに待つ秒。
     float greatswordFadeSeconds = 0.6f;
     // 振りかぶる間に流し込む量（振りかぶり終わりに、作る間のこの倍まで増やす。刃がふくらんで明るくなる）。
     float greatswordRaiseAmount = 3.0f;
     // 薙ぐ間に流し込む量（作る間に対する倍）。速く回る域の中で霞が薄まるのを補い、刃を明るく保つ。
-    float greatswordSweepAmount = 2.5f;
+    float greatswordSweepAmount = 3.0f;
     // 薙ぐ間の剣の平らな面の傾き（0＝真上を向く＝横から見ると線、1＝ボスの正面へ 45 度傾いて、前のプレイヤーから面が見える）。
     float greatswordSweepFaceTilt = 1.0f;
     // 薙ぐ間、剣が通った所に霞（フェーズ 2 は火の粉の光）を残す：剣先の霞のエフェクトを、握りから剣の長さのこの割合の所に
     // 置いて一緒に動かす。量と光は、ふだんの振りに対する倍（0 で出さない）。
     float greatswordTrailAlong = 0.6f;
-    float greatswordTrailAmount = 4.0f;
-    float greatswordTrailGlow = 2.0f;
+    float greatswordTrailAmount = 4.5f;
+    float greatswordTrailGlow = 2.5f;
     // 薙ぎ終わった時、剣が通った所の場の霧を外へ押す所の数と、ボスからの距離 m（0 で押さない）。
     int greatswordSweepPushes = 4;
     float greatswordSweepPushDistance = 6.5f;

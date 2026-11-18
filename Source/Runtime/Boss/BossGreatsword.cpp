@@ -6,6 +6,7 @@
 
 #include "BossBurnMarks.h"
 #include "BossMath.h"
+#include "BossMoveExecutor.h"
 #include "BossRules.h"
 #include "BossWaves.h"
 #include "../Common/TraceInterval.h"
@@ -111,6 +112,12 @@ void SweepPose(const BossComponent& boss, float yaw, float angle, Vec3& hilt, Ve
 
 float StartAngle(const BossComponent& boss) { return -boss.greatswordSweepDegrees * 0.5f; }
 
+// 0〜1 の進みを、peak で速さが最も大きくなる 0〜1 の進みへ（両端で速さ 0。振りの型の速さの曲線と同じ形）。
+float HeavyCurve(float u, float peak) {
+    const float x = std::pow(std::clamp(u, 0.0f, 1.0f), std::log(0.5f) / std::log(std::clamp(peak, 0.1f, 0.9f)));
+    return x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
+}
+
 // 叩きつけ終えた形：柄はボスの中心から縦割りの向きへ greatswordHiltOffset m・足元から greatswordCleaveHiltHeight m、
 // 剣先が地面に着く角度（rad。水平から下向きが負）。
 Vec3 LandHilt(const BossComponent& boss) {
@@ -158,8 +165,13 @@ void StepHit(BossFrame& frame, const BossMove& move, bool last) {
     const float reach = boss.greatswordHiltOffset + sword.length + boss.playerHitRadius;
     const float low = std::min(sword.previousAngle, sword.angle) - boss.greatswordHitMarginDegrees;
     const float high = std::max(sword.previousAngle, sword.angle) + boss.greatswordHitMarginDegrees;
-    const bool inside =
-        distance >= boss.greatswordInnerRadius && distance <= reach && playerAngle >= low && playerAngle <= high;
+    // 回転薙ぎ（c-9143b5）は剣の角度が 1 周を越えるので、プレイヤーの角度を 1 周ずつずらして見る。
+    bool within = false;
+    for (int turn = -1; turn <= 2 && !within; ++turn) {
+        const float a = playerAngle + 360.0f * static_cast<float>(turn);
+        within = a >= low && a <= high;
+    }
+    const bool inside = distance >= boss.greatswordInnerRadius && distance <= reach && within;
     if (inside) {
         sword.caught = true;
         const BossStrikeData& strike = BossMoveTable::Strike(move, 0);
@@ -240,6 +252,60 @@ void Land(BossFrame& frame, const BossMove& move, float reach) {
         LogEruption(boss, "begin");
 }
 
+// 跳び割り（c-9143b5。縦割りの行で「前隙の移動 m」が正）：前隙の終わりの greatswordLeapFrames F で、プレイヤーから
+// greatswordLeapStop m の所へ（最長は「前隙の移動 m」。近すぎれば跳ばずにその場で跳ね上がる）弧を描いて跳ぶ。
+// 行き先は跳び始めの tick に決め（dashFrom・dashTo）、前隙の終わりに着地する。
+void Leap(BossFrame& frame, const BossMove& move) {
+    BossComponent& boss = frame.boss;
+    if (move.type != BossMoveType::GreatswordCleave || !(move.preShift > 0.0f))
+        return;
+    const int leap = std::clamp(boss.greatswordLeapFrames, 1, std::max(1, move.pre - 1));
+    const int start = move.pre - leap;
+    const int t = boss.stateFrame;
+    if (t <= start)
+        return;
+    if (t == start + 1) {
+        const Vec3 offset = Sub(PlayerGround(frame), boss.ground);
+        const float distance = FlatLength(offset);
+        const float length = std::clamp(distance - boss.greatswordLeapStop, 0.0f, move.preShift);
+        boss.dashFrom = boss.ground;
+        boss.dashTo = Add(boss.ground, Mul(FlatNormalize(offset, Forward(boss.yaw)), length));
+        BossMoveExecutor::ClampToArena(boss, boss.dashTo);
+        char extra[64]{};
+        std::snprintf(extra, sizeof(extra), "distance=%.3f", static_cast<double>(length));
+        LogShape(boss, "GreatswordLeap", extra);
+    }
+    // 跳び上がり（だんだん遅く）→ 頂きで留まって溜める（少し浮く）→ 一気に落ちる（だんだん速く）。前へは跳び上がる間に
+    // ほとんど進み、落ちる間に残りを詰める。
+    const float k = Share(t - start, leap);
+    const float rise = std::clamp(boss.greatswordLeapRiseShare, 0.05f, 0.9f);
+    const float hang = std::clamp(boss.greatswordLeapHangShare, 0.0f, 0.9f - rise);
+    const float drop = std::max(0.05f, 1.0f - rise - hang);
+    const float top = boss.greatswordLeapHeight;
+    if (k < rise) {
+        boss.height = top * EaseOut(k / rise);
+        boss.greatswordApexBurst = false;
+    } else if (k < rise + hang) {
+        // 頂きで溜め始めた瞬間、振りかぶった剣先が閃く。
+        if (!boss.greatswordApexBurst && boss.greatswordApexBurstScale > 0.0f) {
+            boss.greatswordApexBurst = true;
+            const BossGreatswordState& sword = boss.greatsword;
+            BossWaves::AddBlast(boss, {.effectPending = true,
+                                       .fire = sword.fire,
+                                       .scale = boss.greatswordApexBurstScale,
+                                       .position = Add(sword.hilt, Mul(sword.direction, sword.length))});
+        }
+        boss.height = top + boss.greatswordLeapHover * std::sin(kPi * (k - rise) / std::max(0.01f, hang));
+    } else {
+        const float u = (k - rise - hang) / drop;
+        boss.height = top * (1.0f - u * u);
+    }
+    const float travel = k < rise          ? 0.75f * EaseOut(k / rise)
+                         : k < rise + hang ? 0.75f
+                                           : 0.75f + 0.25f * Smooth((k - rise - hang) / drop);
+    boss.ground = Lerp(boss.dashFrom, boss.dashTo, travel);
+}
+
 } // namespace
 
 void BossGreatsword::Begin(BossFrame& frame, const BossMove& move) {
@@ -260,7 +326,8 @@ void BossGreatsword::Begin(BossFrame& frame, const BossMove& move) {
     // 一振りごとの値を戻す（剣の長さ・炎・走っている噴き上がり・縦割りの向きは続ける）。
     sword.chained = true;
     sword.cleave = move.type == BossMoveType::GreatswordCleave;
-    sword.fromHilt = sword.hilt;
+    // つなぎの柄はボスの中心からの差で覚える（跳び割りで体が動いても、柄が置き去りにならない。c-9143b5）。
+    sword.fromHilt = Sub(sword.hilt, Center(boss, 0.0f));
     sword.fromDirection = sword.direction;
     sword.fill = 1.0f;
     sword.wind = sword.cleave ? 1.0f : 0.0f;
@@ -275,6 +342,8 @@ void BossGreatsword::Pre(BossFrame& frame, const BossMove& move) {
     BossGreatswordState& sword = boss.greatsword;
     const int t = boss.stateFrame;
     const bool cleave = move.type == BossMoveType::GreatswordCleave;
+    // 跳び割りの跳び（体を先に動かし、剣はその tick の体の所から構える）。
+    Leap(frame, move);
     Vec3 hilt{}, direction{};
     if (sword.chained) {
         // 連撃：前隙の全部で、前の一振りの終わりの形から、頭上へ振りかぶる（縦割り）・薙ぎ始めの構えへ回す（横薙ぎ）。
@@ -289,8 +358,10 @@ void BossGreatsword::Pre(BossFrame& frame, const BossMove& move) {
             sword.wind = share;
             SweepPose(boss, boss.yaw, StartAngle(boss), hilt, direction);
         }
+        // 柄は体の縦の軸のまわりを回って構え直す（まっすぐ結ぶと、左後ろから右後ろへ体の中を通った。c-9143b5）。
         const float e = Smooth(share);
-        sword.hilt = Lerp(sword.fromHilt, hilt, e);
+        const Vec3 center = Center(boss, 0.0f);
+        sword.hilt = Add(center, LerpAroundY(sword.fromHilt, Sub(hilt, center), e));
         sword.direction = Normalize(Lerp(sword.fromDirection, direction, e), direction);
         Trace(boss);
         return;
@@ -301,6 +372,15 @@ void BossGreatsword::Pre(BossFrame& frame, const BossMove& move) {
         std::clamp(cleave ? boss.greatswordCleaveLiftFrames : boss.greatswordWindFrames, 1, std::max(1, move.pre));
     const int bendStart = move.pre - bendFrames;
     sword.fill = Share(t, std::min(boss.greatswordFillFrames, std::max(1, bendStart)));
+    // 剣を作り終えた瞬間に、握りの上で爆ぜる（c-9143b5）。
+    if (sword.fill >= 1.0f && !sword.burst && boss.greatswordConjureBurstScale > 0.0f) {
+        sword.burst = true;
+        BossWaves::AddBlast(boss, {.effectPending = true,
+                                   .fire = sword.fire,
+                                   .scale = boss.greatswordConjureBurstScale,
+                                   .position = Add(sword.hilt, Mul(sword.direction, sword.length * 0.5f))});
+        LogShape(boss, "GreatswordForged");
+    }
     RaisePose(boss, hilt, direction);
     if (t > bendStart) {
         Vec3 bendHilt{}, bendDirection{};
@@ -383,11 +463,15 @@ void BossGreatsword::Act(BossFrame& frame, const BossMove& move, const BossSegme
     // 薙ぐ角度は、ゆっくり振り出して中ほどで一番速く、最後はゆっくり止める。
     sword.previousAngle = sword.angle;
     sword.sweep = Share(g.tIn, frames);
-    sword.angle = StartAngle(boss) + boss.greatswordSweepDegrees * Smooth(sword.sweep);
+    // 重い振り（c-9143b5）：ゆっくり振り出し、greatswordSweepPeak で一番速く、振り終わりへ重く止まる。
+    // 回転薙ぎ（表の「体の回転 °」）は体ごと回り、剣の角度にその回転を足す（1 周を越えて薙ぐ）。
+    const float turn = HeavyCurve(sword.sweep, boss.greatswordSweepPeak);
+    boss.spin = move.actSpin * turn;
+    sword.angle = StartAngle(boss) + boss.greatswordSweepDegrees * turn + boss.spin / kRadiansPerDegree;
     SweepPose(boss, sword.yaw, sword.angle, sword.hilt, sword.direction);
     StepHit(frame, move, g.tIn >= frames);
-    BossBurnMarks::SweptArc(frame, move, Center(boss, 0.0f), sword.yaw, StartAngle(boss), sword.angle,
-                            sword.firePainted);
+    BossBurnMarks::SweptArc(frame, move, Center(boss, 0.0f), sword.yaw, StartAngle(boss),
+                            std::min(sword.angle, StartAngle(boss) + 360.0f), sword.firePainted);
     Trace(boss);
 }
 

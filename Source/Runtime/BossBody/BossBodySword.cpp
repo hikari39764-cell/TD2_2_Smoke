@@ -100,11 +100,13 @@ void GreatTargets(const BossComponent& boss, MotionTargets& t) {
     const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
     const Vec3 up{0.0f, 1.0f, 0.0f};
     t.great = true;
-    t.greatDirection = Normalize(RotateY(sword.direction, -boss.yaw), up);
+    // 体の枠は体ごとの回転（回転薙ぎ）も含む（c-9143b5）。
+    const float facing = boss.yaw + boss.spin;
+    t.greatDirection = Normalize(RotateY(sword.direction, -facing), up);
     t.greatGrip =
-        Add(RotateY(Sub(sword.hilt, root), -boss.yaw), Mul(t.greatDirection, boss.body.motion.greatswordGripAlong));
+        Add(RotateY(Sub(sword.hilt, root), -facing), Mul(t.greatDirection, boss.body.motion.greatswordGripAlong));
     if (sword.cleave) {
-        const Vec3 forward = RotateY(Forward(sword.cleaveYaw), -boss.yaw);
+        const Vec3 forward = RotateY(Forward(sword.cleaveYaw), -facing);
         t.greatEdge = Cross(Cross(up, forward), t.greatDirection);
         return;
     }
