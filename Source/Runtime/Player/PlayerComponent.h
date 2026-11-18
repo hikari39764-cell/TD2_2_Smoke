@@ -211,10 +211,44 @@ public:
     // ロックオン中のカメラ。対象の向きへ lockYawSeconds でならして回り、回る速さは lockYawMaxSpeed まで。
     float lockYawSeconds = 0.16f;
     float lockYawMaxSpeed = 300.0f;
+    // 遠い時の見下ろし角（度）。近い時は lockPitchNear（c-880340）。演出の向く点を追う間（ロックしていない）もこの値。
     float lockPitch = 17.0f;
     // 対象が高い所にいる時に見上げる割合（0 で見上げない、1 で対象の高さの角度だけ）。
     float lockPitchFollow = 0.6f;
     float lockPitchSeconds = 0.28f;
+    // c-880340：距離に合わせた見せ方。対象との水平の距離が lockNearDistance 以下で「近い」の値、lockFarDistance 以上で
+    // 「遠い」の値、その間はなめらかに（smoothstep）混ぜる。混ぜる割合そのものも lockFramingSeconds でならす。
+    float lockNearDistance = 3.0f;
+    float lockFarDistance = 15.0f;
+    float lockFramingSeconds = 0.8f;
+    // 軸から視点までの距離 (m)・軸を上げる高さ (m)・見せるだけの見上げ（視点はそのまま見る向きだけ上げる。度）。
+    float lockCameraDistanceNear = 7.5f;
+    float lockCameraDistanceFar = 6.5f;
+    float lockPivotRiseNear = 0.9f;
+    float lockPivotRiseFar = 0.3f;
+    float lockLookUpNear = 6.0f;
+    float lockLookUpFar = 4.0f;
+    float lockPitchNear = 12.0f;
+    // ロック中の見上げの限度（度、負で見上げ。ボスの跳躍・天降りで高い所にいる時）。
+    float lockMinPitch = -10.0f;
+    // 見る点の高さ：対象の中心から、体の高さの半分に対するこの割合だけ上（0.35 で胸のあたり）。照準も同じ点。
+    float lockAimHeightShare = 0.35f;
+    // 近くで回り過ぎない：対象が lockTurnNearDistance 以下で「近い」のならし・速さの上限、lockTurnFarDistance 以上で
+    // lockYawSeconds・lockYawMaxSpeed。その間はなめらかに混ぜる。
+    float lockTurnNearDistance = 2.5f;
+    float lockTurnFarDistance = 7.0f;
+    float lockYawSecondsNear = 0.4f;
+    float lockYawMaxSpeedNear = 160.0f;
+    // 消えた時：対象が隠れている間は向きを保ち、現れた（一瞬で lockJumpDistance 以上動いた・対象が変わった）後は
+    // lockReacquireSeconds・lockReacquireMaxSpeed でゆっくり向き直す。切ると前の動き（隠れても追い、現れたらすぐ回る）。
+    bool lockReacquireEnabled = true;
+    float lockJumpDistance = 3.0f;
+    float lockReacquireSeconds = 0.45f;
+    float lockReacquireMaxSpeed = 120.0f;
+    // ロックの印（見る点に出す小さいひし形）。大きさは 1920×1080 の画面での画素、不透明度 0 で出さない。
+    float lockMarkerSize = 14.0f;
+    float lockMarkerOpacity = 0.75f;
+    HIKARI::GameProjectFloat3 lockMarkerColor{1.0f, 0.93f, 0.82f};
 
     // 実行時のデータは保存しない。ルールは PlayerRules と PlayerSystem が所有する。
     bool initialized = false;
@@ -254,6 +288,9 @@ public:
     size_t lockCandidateCount = 0;
     // ロック中のカメラが見る点を、対象の原点からずらす量（世界 m）。霧へ沈んだボスを見続ける時など、外部が毎 tick 入れる。
     HIKARI::GameProjectFloat3 lockPivotOffset{};
+    // ロック対象の体の高さの半分 (m) と、隠れている（霧へ沈んでいる）か。対象を知っている側（ボス）が毎 tick 入れる。
+    float lockTargetHalfHeight = 0.0f;
+    bool lockTargetHidden = false;
     bool rollFogPending = false;
     bool healApplied = false;
     bool motionAccepted = true;
@@ -311,6 +348,19 @@ public:
     float cameraFovRadians = 0.0f;
     HIKARI::GameProjectFloat3 cameraPivot{};
     HIKARI::GameProjectFloat3 cameraPivotVelocity{};
+    // ロックの見せ方（c-880340）：ロックの重み（0 で自由視点の見せ方、1 でロックの見せ方）と近さ（1 で近い、0 で遠い）の
+    // いまの値とならしの速さ。向き直しの間か、前のフレームの見る点と対象（跳んだ・切り替わったを知る）。
+    float lockAmount = 0.0f;
+    float lockAmountVelocity = 0.0f;
+    float lockNearness = 0.0f;
+    float lockNearnessVelocity = 0.0f;
+    bool lockReacquiring = false;
+    bool lockPointKnown = false;
+    HIKARI::GameProjectFloat3 lockPointLast{};
+    HIKARI::GameProjectObjectHandle lockTargetLast{};
+    // 出したロックの印の位置（1920×1080 の画面の画素。出していない時は負）。確かめの記録（cameraTrace）用。
+    float lockMarkerX = -1.0f;
+    float lockMarkerY = -1.0f;
     // カメラの見ている向き（見上げ・見下ろしを含む単位ベクトル。揺れ・肩越しのずらしは含まない）。筋斗雲が進む向きに使う。
     HIKARI::GameProjectFloat3 cameraLook{0.0f, 0.0f, 1.0f};
     // 外部のカメラの要求。PlayerCamera が使ったら消す（要求した側が消えても残さない）。

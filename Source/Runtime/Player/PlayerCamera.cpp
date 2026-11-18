@@ -8,6 +8,7 @@
 
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/ProjectLog.h"
+#include "HIKARI/Project/UiView.h"
 #include "PlayerComponent.h"
 #include "PlayerRules.h"
 #include "../Common/VectorMath.h"
@@ -120,7 +121,7 @@ float SmoothDampAngle(float current, float target, float& velocity, float smooth
                       dt);
 }
 
-// ロックオン中に見る点（対象の原点＋外部が入れたずらし）。ロックしていない・対象が無い時は false。
+// ロックオン中に見る点（PlayerRules::LockAimPoint。照準と同じ点）。ロックしていない・対象が無い時は false。
 bool LockPoint(HIKARI::WorldView& world, const PlayerComponent& player, Vec3& outPoint) {
     if (!player.lockedOn)
         return false;
@@ -128,9 +129,60 @@ bool LockPoint(HIKARI::WorldView& world, const PlayerComponent& player, Vec3& ou
     HIKARI::GameProjectTransform transform{};
     if (!target.IsValid() || !target.GetWorldTransform(transform))
         return false;
-    outPoint = {transform.position.x + player.lockPivotOffset.x, transform.position.y + player.lockPivotOffset.y,
-                transform.position.z + player.lockPivotOffset.z};
+    outPoint = PlayerRules::LockAimPoint(player, transform.position);
     return true;
+}
+
+float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+// a 以下で 0、b 以上で 1、その間はなめらかに（a ≥ b なら a で切り替える）。
+float SmoothStep(float a, float b, float x) {
+    if (b <= a)
+        return x < a ? 0.0f : 1.0f;
+    const float t = std::clamp((x - a) / (b - a), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// ロックの見せ方（c-880340）。近さ（1 で近い）とロックの重みで、Player の値から混ぜた、このフレームの値。
+struct LockFraming {
+    float distanceAdd = 0.0f; // 見せ方の距離に足す (m)
+    float rise = 0.0f;        // 軸を上げる (m)
+    float lookUp = 0.0f;      // 見る向きだけの見上げ (rad)
+};
+
+// 対象との水平の距離から、近さとロックの重みをならす。ロックしていない・外部の要求（騎乗）の間は重みを 0 へ戻す。
+LockFraming StepLockFraming(PlayerComponent& player, bool locked, float flatDistance, float dt) {
+    const bool active = locked;
+    if (active) {
+        const float nearness = 1.0f - SmoothStep(player.lockNearDistance, player.lockFarDistance, flatDistance);
+        player.lockNearness = SmoothDamp(player.lockNearness, nearness, player.lockNearnessVelocity,
+                                         player.lockFramingSeconds, kNoSpeedLimit, dt);
+    }
+    player.lockAmount = SmoothDamp(player.lockAmount, active ? 1.0f : 0.0f, player.lockAmountVelocity,
+                                   player.lockFramingSeconds, kNoSpeedLimit, dt);
+    const float n = player.lockNearness;
+    const float w = player.lockAmount;
+    LockFraming framing;
+    framing.distanceAdd =
+        w * (Lerp(player.lockCameraDistanceFar, player.lockCameraDistanceNear, n) - player.cameraDistance);
+    framing.rise = w * Lerp(player.lockPivotRiseFar, player.lockPivotRiseNear, n);
+    framing.lookUp = w * Lerp(player.lockLookUpFar, player.lockLookUpNear, n) * kRadiansPerDegree;
+    return framing;
+}
+
+// 対象が跳んだ（隠れた・一瞬で離れた所へ現れた・切り替わった）かを見て、向き直しの間かを決める。
+void NoteLockJump(PlayerComponent& player, Vec3 targetPoint) {
+    const bool switched = player.lockTargetLast.value != player.lockTarget.value;
+    const bool jumped = player.lockPointKnown &&
+                        std::hypot(targetPoint.x - player.lockPointLast.x, targetPoint.z - player.lockPointLast.z) >
+                            player.lockJumpDistance;
+    if (player.lockReacquireEnabled && (player.lockTargetHidden || (player.lockPointKnown && (switched || jumped))))
+        player.lockReacquiring = true;
+    if (!player.lockReacquireEnabled)
+        player.lockReacquiring = false;
+    player.lockPointLast = targetPoint;
+    player.lockPointKnown = true;
+    player.lockTargetLast = player.lockTarget;
 }
 
 void Start(HIKARI::WorldView& world, HIKARI::ObjectView camera, PlayerComponent& player, Vec3 goal) {
@@ -164,18 +216,49 @@ void FollowPivot(PlayerComponent& player, const CameraLimits& limits, Vec3 goal,
 }
 
 // ロックオン中：対象の向きへ回る。回る速さに上限を付け、対象が背後へ現れても振り回さない。
-// 対象が高い所にいる時（ボスの跳躍）は、その分だけ見上げる。
-void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targetPoint, float dt) {
+// 対象が高い所にいる時（ボスの跳躍）は、その分だけ見上げる。lockFraming が true の時（ロックオン。演出の向く点を
+// 追う時は false で前のまま）は、c-880340 の規則：近いほど追うならしを長く・回る速さの上限を低くし、見下ろしを
+// 近さで混ぜ、隠れている間は向きを保ち、現れた・切り替えた後はゆっくり向き直す。
+void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targetPoint, float dt, bool lockFraming) {
     const Vec3& pivot = player.cameraPivot;
     const float offsetX = targetPoint.x - pivot.x;
     const float offsetZ = targetPoint.z - pivot.z;
     const float flatDistance = std::hypot(offsetX, offsetZ);
+    float yawSeconds = player.lockYawSeconds;
+    float yawMaxSpeed = player.lockYawMaxSpeed;
+    float basePitch = player.lockPitch;
+    float minPitch = limits.minPitch;
+    bool hold = false;
+    if (lockFraming) {
+        const float closeness =
+            1.0f - SmoothStep(player.lockTurnNearDistance, player.lockTurnFarDistance, flatDistance);
+        yawSeconds = Lerp(player.lockYawSeconds, player.lockYawSecondsNear, closeness);
+        yawMaxSpeed = Lerp(player.lockYawMaxSpeed, player.lockYawMaxSpeedNear, closeness);
+        basePitch = Lerp(player.lockPitch, player.lockPitchNear, player.lockNearness);
+        minPitch = std::max(minPitch, player.lockMinPitch);
+        hold = player.lockReacquireEnabled && player.lockTargetHidden;
+        if (player.lockReacquiring && !hold) {
+            // 向き直しの間は、遅い方を使う。向きがそろったら普段の追いへ戻す。
+            yawSeconds = std::max(yawSeconds, player.lockReacquireSeconds);
+            yawMaxSpeed = std::min(yawMaxSpeed, player.lockReacquireMaxSpeed);
+            const float error = std::abs(std::remainder(std::atan2(offsetX, offsetZ) - player.cameraYaw, kTau));
+            if (flatDistance > kMinimumAimDistance && error < 3.0f * kRadiansPerDegree)
+                player.lockReacquiring = false;
+        }
+    }
+    if (hold) {
+        // 隠れている間は向きも見上げも保つ（地面の下・消えた所を追わない）。
+        player.cameraYawVelocity = 0.0f;
+        player.cameraPitchVelocity = 0.0f;
+        return;
+    }
     if (flatDistance > kMinimumAimDistance)
         player.cameraYaw = SmoothDampAngle(player.cameraYaw, std::atan2(offsetX, offsetZ), player.cameraYawVelocity,
-                                           player.lockYawSeconds, player.lockYawMaxSpeed * kRadiansPerDegree, dt);
+                                           yawSeconds, yawMaxSpeed * kRadiansPerDegree, dt);
     const float elevation = std::atan2(targetPoint.y - pivot.y, flatDistance + player.cameraDistance);
-    const float wantedPitch = std::clamp(player.lockPitch * kRadiansPerDegree - elevation * player.lockPitchFollow,
-                                         limits.minPitch * kRadiansPerDegree, limits.maxPitch * kRadiansPerDegree);
+    const float wantedPitch =
+        std::clamp(basePitch * kRadiansPerDegree - elevation * player.lockPitchFollow,
+                   std::min(minPitch, limits.maxPitch) * kRadiansPerDegree, limits.maxPitch * kRadiansPerDegree);
     player.cameraPitchNow = SmoothDamp(player.cameraPitchNow, wantedPitch, player.cameraPitchVelocity,
                                        player.lockPitchSeconds, kNoSpeedLimit, dt);
 }
@@ -275,11 +358,14 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         return;
     // eye・target は前のフレームに解決した姿勢（補正を含む）。後ろの値（距離・画角・傾き・見下ろし・水平に追うならし・角度）
     // は、このフレームの姿勢を作った時の値。modifier は、前のフレームに出した視点から補正（揺れなど）で動いた長さ (m)。
-    char message[448]{};
+    // lockNear・lockAmount・reacquire・hidden は、ロックの見せ方（c-880340）の近さ・重み・向き直しの間・対象が隠れているか。
+    // lockTarget・marker はロックの対象と、出した印の位置（1920×1080 の画面の画素。出していない時は負）。
+    char message[640]{};
     std::snprintf(
         message, sizeof(message),
         "CameraTrace eye=(%.4f,%.4f,%.4f) target=(%.4f,%.4f,%.4f) player=(%.4f,%.4f,%.4f) locked=%d "
-        "distance=%.4f fov=%.4f roll=%.4f lookDown=%.4f follow=%.4f pitch=%.4f yaw=%.4f dt=%.5f modifier=%.5f",
+        "distance=%.4f fov=%.4f roll=%.4f lookDown=%.4f follow=%.4f pitch=%.4f yaw=%.4f dt=%.5f modifier=%.5f "
+        "lockNear=%.3f lockAmount=%.3f reacquire=%d hidden=%d lockTarget=%llu marker=(%.1f,%.1f)",
         static_cast<double>(pose.eye.x), static_cast<double>(pose.eye.y), static_cast<double>(pose.eye.z),
         static_cast<double>(pose.target.x), static_cast<double>(pose.target.y), static_cast<double>(pose.target.z),
         static_cast<double>(body.x), static_cast<double>(body.y), static_cast<double>(body.z), static_cast<int>(locked),
@@ -289,9 +375,74 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         static_cast<double>(player.cameraPitchNow / kRadiansPerDegree),
         static_cast<double>(player.cameraYaw / kRadiansPerDegree), static_cast<double>(dt),
         static_cast<double>(std::hypot(pose.eye.x - player.cameraTraceEye.x, pose.eye.y - player.cameraTraceEye.y,
-                                       pose.eye.z - player.cameraTraceEye.z)));
+                                       pose.eye.z - player.cameraTraceEye.z)),
+        static_cast<double>(player.lockNearness), static_cast<double>(player.lockAmount),
+        static_cast<int>(player.lockReacquiring), static_cast<int>(player.lockTargetHidden),
+        static_cast<unsigned long long>(player.lockTarget.value), static_cast<double>(player.lockMarkerX),
+        static_cast<double>(player.lockMarkerY));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerCamera", message);
     player.cameraTraceEye = submittedEye;
+}
+
+// ロックの印（c-880340）：見る点に小さいひし形（縁取り付き）を出す。画面の大きさ・縦横比は直前に描けた画面の
+// 写し（TryGetViewSnapshot）から、姿勢と画角はこのフレームに出した値を使う（写しの姿勢は 1 フレーム遅れるので、
+// 回っている間に印が対象からずれないように）。写しが無い時は 1920×1080 とみなす。
+// 出した印の位置（1920×1080 の画面の画素）は player.lockMarkerX・Y（出していない時は負。確かめの記録用）。
+void DrawLockMarker(HIKARI::WorldView& world, PlayerComponent& player, const HIKARI::GameProjectCameraPose& pose,
+                    bool show, Vec3 point) {
+    constexpr uint64_t kMarkerEdgeId = 0x5444325010ull;
+    constexpr uint64_t kMarkerId = 0x5444325011ull;
+    constexpr int kMarkerOrder = 50;
+    constexpr float kReferenceWidth = 1920.0f;
+    constexpr float kReferenceHeight = 1080.0f;
+    constexpr float kEdgePixels = 3.0f;
+    player.lockMarkerX = player.lockMarkerY = -1.0f;
+    if (!show || player.lockMarkerOpacity <= 0.0f || player.lockMarkerSize <= 0.0f)
+        return;
+    HIKARI::GameProjectCameraViewSnapshot snapshot{};
+    if (!world.GetCamera().TryGetViewSnapshot(snapshot) || snapshot.uiLogicalWidth == 0u ||
+        snapshot.uiLogicalHeight == 0u) {
+        snapshot = {};
+        snapshot.aspectRatio = kReferenceWidth / kReferenceHeight;
+        snapshot.uiLogicalWidth = static_cast<uint32_t>(kReferenceWidth);
+        snapshot.uiLogicalHeight = static_cast<uint32_t>(kReferenceHeight);
+        snapshot.sceneContentLogical = {0.0f, 0.0f, kReferenceWidth, kReferenceHeight};
+    }
+    snapshot.pose.eye = pose.eye;
+    snapshot.pose.target = pose.target;
+    snapshot.pose.up = pose.up;
+    snapshot.lens.verticalFovRadians = pose.verticalFovRadians;
+    HIKARI::GameProjectWorldToScreenResult screen{};
+    if (!HIKARI::ProjectWorldToScreen(snapshot, point, HIKARI::GameProjectScreenCoordinateSpace::UiLogicalPixels,
+                                      screen) ||
+        (screen.flags & HIKARI::GameProjectWorldToScreenFlags(HIKARI::GameProjectWorldToScreenFlag::InFront)) == 0u)
+        return;
+    HIKARI::GameProjectUiCanvasFit fit{};
+    float x = 0.0f;
+    float y = 0.0f;
+    if (!HIKARI::ResolveGameProjectUiCanvasFit(snapshot.uiLogicalWidth, snapshot.uiLogicalHeight, kReferenceWidth,
+                                               kReferenceHeight, fit) ||
+        !HIKARI::ProjectGameUiScreenPointToCanvas(fit, screen.x, screen.y, x, y))
+        return;
+    player.lockMarkerX = x;
+    player.lockMarkerY = y;
+    const auto diamond = [&](uint64_t id, int order, float size, HIKARI::GameProjectFloat3 color, float opacity) {
+        HIKARI::GameProjectUiSpriteRequest request{};
+        request.sourceId = id;
+        request.order = order;
+        request.x = x;
+        request.y = y;
+        request.width = size;
+        request.height = size;
+        request.pivotX = 0.5f;
+        request.pivotY = 0.5f;
+        request.rotationRadians = 0.25f * VectorMath::kPi;
+        request.tint = {color.x, color.y, color.z, opacity};
+        world.GetUi().SubmitSprite("generated://solid/ffffffff", request);
+    };
+    const float size = player.lockMarkerSize;
+    diamond(kMarkerEdgeId, kMarkerOrder, size + kEdgePixels, {0.05f, 0.04f, 0.04f}, player.lockMarkerOpacity * 0.6f);
+    diamond(kMarkerId, kMarkerOrder + 1, size, player.lockMarkerColor, player.lockMarkerOpacity);
 }
 
 } // namespace
@@ -314,11 +465,23 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     FollowPivot(player, limits, goal, dt);
     Vec3 targetPoint{};
     const bool locked = LockPoint(world, player, targetPoint);
+    if (locked) {
+        NoteLockJump(player, targetPoint);
+    } else {
+        player.lockPointKnown = false;
+        player.lockReacquiring = false;
+        player.lockTargetLast = {};
+    }
+    // 距離に合わせた見せ方（騎乗などの外部の要求がある間は使わない＝要求の見せ方のまま）。
+    const LockFraming framing =
+        StepLockFraming(player, locked && !limits.requested,
+                        std::hypot(targetPoint.x - body.position.x, targetPoint.z - body.position.z), dt);
     if (locked)
-        TrackTarget(player, limits, targetPoint, dt);
+        // 騎乗などの外部の要求がある間は、前の追い方のまま（筋斗雲のカメラを変えない）。
+        TrackTarget(player, limits, targetPoint, dt, !limits.requested);
     else if (player.cinematicPending)
         // 演出の間は、ゲームのカメラを演出の向く点へ向けておく（戻った時にそちらを見ている）。
-        TrackTarget(player, limits, player.cinematic.focus, dt);
+        TrackTarget(player, limits, player.cinematic.focus, dt, false);
     else
         FreeLook(world, player, limits, dt);
     StepShape(player, limits, dt);
@@ -333,19 +496,21 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     player.cameraForward = flatForward;
     player.cameraLook = forward;
     // 見上げる向きでは視点が軸より下がる。地面へ潜らない所まで寄せる。
-    float distance = std::max(0.1f, shape.distance);
+    float distance = std::max(0.1f, shape.distance + framing.distanceAdd);
     if (pitchSin < 0.0f)
         distance = std::min(distance, std::max(0.0f, shape.eyeFloor) / -pitchSin);
     // 視点と注視点を同じだけ横へずらす（プレイヤーが画面の中心から少し外れ、見ている向きは変わらない）。
-    const Vec3 axis{player.cameraPivot.x + right.x * player.cameraSideOffset, player.cameraPivot.y,
+    // ロック中は軸を少し上げる（framing.rise。近い時に大きいボスを見上げやすく）。
+    const Vec3 axis{player.cameraPivot.x + right.x * player.cameraSideOffset, player.cameraPivot.y + framing.rise,
                     player.cameraPivot.z + right.z * player.cameraSideOffset};
     const Vec3 eye{axis.x - forward.x * distance, axis.y - forward.y * distance, axis.z - forward.z * distance};
     // 見せるだけの見下ろし：視点はそのまま、見る向きだけ下げる（プレイヤーが画面の少し上へ寄り、進む先が見える）。
-    const float viewPitch = player.cameraPitchNow + shape.lookDownRadians;
+    // ロック中の見上げ（framing.lookUp）も同じ仕組みで、見る向きだけ上げる（プレイヤーが画面の下の方に残る）。
+    const float viewPitch = player.cameraPitchNow + shape.lookDownRadians - framing.lookUp;
     Vec3 view = forward;
     Vec3 from = axis;
     float reach = kLookDistance;
-    if (shape.lookDownRadians != 0.0f) {
+    if (shape.lookDownRadians != 0.0f || framing.lookUp != 0.0f) {
         view = {flatForward.x * std::cos(viewPitch), -std::sin(viewPitch), flatForward.z * std::cos(viewPitch)};
         from = eye;
         reach = distance + kLookDistance;
@@ -368,11 +533,14 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     }
     request.pose.verticalFovRadians = shape.fovRadians + limits.fovKickRadians;
     // 演出のカメラ（ボスの登場）：ゲームのカメラの姿勢と重みで混ぜる。最後は重み 1 で、切れ目なくゲームのカメラへ戻る。
+    // 演出の間（混ぜている間・入力を止めている間）は、ロックの印を出さない。
+    const bool cinematic = player.cinematicPending || player.cinematicHold > 0;
     if (player.cinematicPending) {
         BlendCinematic(request.pose, player.cinematic);
         player.cinematicPending = false;
     }
     player.cameraAccepted = world.GetCamera().SubmitPose(request);
+    DrawLockMarker(world, player, request.pose, locked && !player.lockTargetHidden && !cinematic, targetPoint);
     if (player.cameraTrace)
         Trace(world, player, body.position, locked, eye, distance, request.pose.verticalFovRadians,
               limits.followSeconds, dt);

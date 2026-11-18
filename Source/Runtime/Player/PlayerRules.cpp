@@ -357,6 +357,23 @@ void PlayerRules::SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjec
     if (std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z))
         player.lockPivotOffset = offset;
 }
+
+void PlayerRules::SetLockTargetShape(PlayerComponent& player, float halfHeight, bool hidden) {
+    player.lockTargetHalfHeight = std::isfinite(halfHeight) ? std::max(0.0f, halfHeight) : 0.0f;
+    player.lockTargetHidden = hidden;
+}
+
+HIKARI::GameProjectFloat3 PlayerRules::LockAimPoint(const PlayerComponent& player, HIKARI::GameProjectFloat3 origin) {
+    const float rise = player.lockTargetHalfHeight * player.lockAimHeightShare;
+    return {origin.x + player.lockPivotOffset.x, origin.y + player.lockPivotOffset.y + rise,
+            origin.z + player.lockPivotOffset.z};
+}
+
+void PlayerRules::ReleaseLock(PlayerComponent& player) {
+    player.lockedOn = false;
+    player.lockTarget = {};
+    player.lockSwitchRequested = false;
+}
 float PlayerRules::GetHealth(const PlayerComponent& player) {
     return player.initialized ? player.health : player.maxHealth;
 }

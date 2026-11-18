@@ -118,12 +118,53 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.SceneObject("lockTarget", "ロック対象", lockTargetId);
         fields.SceneObject("camera", "ゲームカメラ", cameraId);
         fields.Note("ロックオン中、カメラは対象の向きへ回ります。回る速さに上限があるので、"
-                    "対象が背後へ現れても振り回されません。距離は変わりません。");
+                    "対象が背後へ現れても振り回されません。対象との距離に合わせて、近い時は少し引いて上げ、見上げを"
+                    "足します（大きいボスの頭と振りかぶった刀が入るように）。遠い時は前に近い見せ方です。");
         fields.Float("lockYawSeconds", "対象の向きへ回るならし (秒、小さいほど素早く追う)", lockYawSeconds, 0.0f, 2.0f);
         fields.Float("lockYawMaxSpeed", "回る速さの上限 (度/s)", lockYawMaxSpeed, 10.0f, 2000.0f);
-        fields.Float("lockPitch", "見下ろし角度 (度)", lockPitch, -80.0f, 80.0f);
+        fields.Float("lockPitch", "見下ろし角度：遠い時 (度)", lockPitch, -80.0f, 80.0f);
         fields.Float("lockPitchFollow", "対象が高い時に見上げる割合 (0 で見上げない)", lockPitchFollow, 0.0f, 1.5f);
         fields.Float("lockPitchSeconds", "見上げ・見下ろしのならし (秒)", lockPitchSeconds, 0.0f, 2.0f);
+        fields.Float("lockMinPitch", "見上げの限度 (度、負で見上げ。跳躍・天降りで高い時)", lockMinPitch, -89.0f,
+                     89.0f);
+        fields.Float("lockAimHeightShare", "見る点の高さ（対象の中心から、体の高さの半分に対する割合。照準も同じ点）",
+                     lockAimHeightShare, -1.0f, 1.0f);
+    }
+    if (fields.Section("ロックオン：距離に合わせた見せ方")) {
+        fields.Note(
+            "対象との水平の距離が「近い」以下で近い時の値、「遠い」以上で遠い時の値、その間はなめらかに混ぜます。"
+            "見上げは視点を動かさず、見る向きだけを上げます（プレイヤーが画面の下の方に残ります）。");
+        fields.Float("lockNearDistance", "近い：この距離まで (m)", lockNearDistance, 0.0f, 50.0f);
+        fields.Float("lockFarDistance", "遠い：この距離から (m)", lockFarDistance, 0.0f, 100.0f);
+        fields.Float("lockFramingSeconds", "見せ方が変わるならし (秒)", lockFramingSeconds, 0.0f, 3.0f);
+        fields.Float("lockCameraDistanceNear", "軸から視点までの距離：近い (m)", lockCameraDistanceNear, 0.5f, 30.0f);
+        fields.Float("lockCameraDistanceFar", "軸から視点までの距離：遠い (m)", lockCameraDistanceFar, 0.5f, 30.0f);
+        fields.Float("lockPivotRiseNear", "軸を上げる高さ：近い (m)", lockPivotRiseNear, -3.0f, 5.0f);
+        fields.Float("lockPivotRiseFar", "軸を上げる高さ：遠い (m)", lockPivotRiseFar, -3.0f, 5.0f);
+        fields.Float("lockPitchNear", "見下ろし角度：近い (度)", lockPitchNear, -80.0f, 80.0f);
+        fields.Float("lockLookUpNear", "見る向きだけの見上げ：近い (度)", lockLookUpNear, -30.0f, 30.0f);
+        fields.Float("lockLookUpFar", "見る向きだけの見上げ：遠い (度)", lockLookUpFar, -30.0f, 30.0f);
+    }
+    if (fields.Section("ロックオン：近くで回り過ぎない・消えた時")) {
+        fields.Note(
+            "対象が近いほど向きが速く変わるので、近い時は追うならしを長く、回る速さの上限を低くします。"
+            "対象が隠れている間は向きを保ち、一瞬で離れた所へ現れた時と対象を切り替えた時は、ゆっくり向き直します"
+            "（切ると前の動き）。");
+        fields.Float("lockTurnNearDistance", "近い：この距離まで (m)", lockTurnNearDistance, 0.0f, 50.0f);
+        fields.Float("lockTurnFarDistance", "普段の追い：この距離から (m)", lockTurnFarDistance, 0.0f, 100.0f);
+        fields.Float("lockYawSecondsNear", "近い時の追うならし (秒)", lockYawSecondsNear, 0.0f, 3.0f);
+        fields.Float("lockYawMaxSpeedNear", "近い時の回る速さの上限 (度/s)", lockYawMaxSpeedNear, 10.0f, 2000.0f);
+        fields.Bool("lockReacquireEnabled", "消えた・現れた時にゆっくり向き直す", lockReacquireEnabled);
+        fields.Float("lockJumpDistance", "現れたと見なす 1 フレームの移動 (m)", lockJumpDistance, 0.5f, 100.0f);
+        fields.Float("lockReacquireSeconds", "向き直すならし (秒)", lockReacquireSeconds, 0.0f, 3.0f);
+        fields.Float("lockReacquireMaxSpeed", "向き直す速さの上限 (度/s)", lockReacquireMaxSpeed, 10.0f, 2000.0f);
+    }
+    if (fields.Section("ロックオン：印")) {
+        fields.Note(
+            "ロック中、見る点に小さいひし形を出します（どれをロックしているかが分かるように。攻撃の予告ではありません）。");
+        fields.Float("lockMarkerSize", "大きさ (画素、1920×1080 の画面で)", lockMarkerSize, 0.0f, 100.0f);
+        fields.Float("lockMarkerOpacity", "不透明度 (0 で出さない)", lockMarkerOpacity, 0.0f, 1.0f);
+        fields.Color3("lockMarkerColor", "色", lockMarkerColor);
     }
     if (fields.Section("カメラ")) {
         fields.Note(

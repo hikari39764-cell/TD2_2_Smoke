@@ -251,6 +251,12 @@ void BossClones::Step(HIKARI::WorldView& world, HIKARI::ObjectView bossObject, B
     // 霧へ沈んだボスをロックしている間は、沈む前の高さを見続ける（カメラが地面の下を向かないように）。
     const bool lockingBoss = PlayerRules::GetLockTarget(*player).value == bossObject.GetHandle().value;
     PlayerRules::SetLockPivotOffset(*player, {0.0f, lockingBoss ? boss.sink : 0.0f, 0.0f});
+    // カメラの見る点の高さ（分身もボスと同じ体の高さ）と、霧へ沈んで隠れている間（体の半分より深く沈んだ）は向きを保つ
+    // ための知らせ（c-880340）。
+    PlayerRules::SetLockTargetShape(*player, boss.bodyHalfHeight, lockingBoss && boss.sink > boss.bodyHalfHeight);
+    // 倒れたボスはロックから外す。
+    if (lockingBoss && bossDown)
+        PlayerRules::ReleaseLock(*player);
 }
 
 } // namespace Project_TD2_2

@@ -86,6 +86,13 @@ public:
     // ロック中のカメラが見る点のずれ（世界 m）。外部が入れた値を次に入れ直すまで使う。
     static void SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset);
     static HIKARI::GameProjectFloat3 GetLockPivotOffset(const PlayerComponent& player);
+    // ロック対象の体の高さの半分 (m) と、隠れているか（c-880340）。対象を知っている側（ボス）が毎 tick 入れる。
+    static void SetLockTargetShape(PlayerComponent& player, float halfHeight, bool hidden);
+    // ロック中のカメラが見る点＝照準の点：対象の原点（物体の位置）＋ずれ＋体の高さの半分×lockAimHeightShare の上。
+    // カメラ（PlayerCamera）と砲撃の照準（GourdShotSystem）が同じ点を使う。
+    static HIKARI::GameProjectFloat3 LockAimPoint(const PlayerComponent& player, HIKARI::GameProjectFloat3 origin);
+    // ロックを外す（対象が倒れた時など）。
+    static void ReleaseLock(PlayerComponent& player);
     // 筋斗雲に乗る（Ride へ移す）。通常の状態で動作ロックが無い時だけ（地上でも落下中でも）。乗れたら true。
     // 押されていた回避・回復の先行入力と、歩きの速度・反動は捨てる。
     static bool BeginRide(PlayerComponent& player);

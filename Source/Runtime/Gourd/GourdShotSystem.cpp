@@ -57,9 +57,9 @@ float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
     return value;
 }
 
-// ロック中のカメラと同じ点（霧へ沈んだボスなど、対象の原点からずらした点）。
+// ロック中のカメラと同じ点（胸のあたり。霧へ沈んだボスなど、対象の原点からずらした点も同じ規則：PlayerRules::LockAimPoint）。
 Vec3 LockPoint(const HIKARI::GameProjectTransform& target, const PlayerComponent& player) {
-    return Add(target.position, PlayerRules::GetLockPivotOffset(player));
+    return PlayerRules::LockAimPoint(player, target.position);
 }
 
 // ロックしていない時の照準補助。カメラの正面（水平）から aimAssistDegrees 以内・aimAssistRange 以内の
