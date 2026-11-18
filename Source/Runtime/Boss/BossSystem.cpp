@@ -143,9 +143,10 @@ void LogMoves(const BossComponent& boss) {
 
 // 表を読む。中身が前と同じなら何もしない（技を出すたびに呼ぶので、Play 中に保存した CSV が次の技から効く）。
 void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
-    TextSink types, moves;
+    TextSink types, moves, stance;
     world.GetProjectData().ReadText(boss.typesPath, types);
     world.GetProjectData().ReadText(boss.movesPath, moves);
+    world.GetProjectData().ReadText(boss.stancePath, stance);
     if (!types.ok || !moves.ok) {
         if (!boss.tableLoaded) {
             char message[256]{};
@@ -156,7 +157,8 @@ void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
         }
         return;
     }
-    if (types.text == boss.loadedTypesText && moves.text == boss.loadedMovesText)
+    if (types.text == boss.loadedTypesText && moves.text == boss.loadedMovesText &&
+        (!stance.ok || stance.text == boss.loadedStanceText))
         return;
     std::vector<std::string> warnings;
     BossMoveTable table;
@@ -165,6 +167,15 @@ void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
     boss.table = std::move(table);
     boss.loadedTypesText = types.text;
     boss.loadedMovesText = moves.text;
+    // 姿勢と帯の重みの表（無ければ姿勢の節は歩くだけ）。技の名前を表の行へ結び付ける。
+    BossStanceTable stanceTable;
+    if (stance.ok) {
+        stanceTable.Load(stance.text, warnings);
+        stanceTable.Resolve(boss.table, warnings);
+        boss.loadedStanceText = stance.text;
+    }
+    boss.stanceTable = std::move(stanceTable);
+    boss.stanceMemory.readyAt.assign(boss.table.GetMoves().size(), 0.0f);
     boss.tableLoaded = true;
     // 行が変わったので、行動ツリーの節と表の突き合わせ（節の無い始動技・表に無い名前）をやり直す。
     boss.brain.scoredRows = 0;

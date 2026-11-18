@@ -63,154 +63,18 @@
       "type": "Sequence",
       "name": "中立",
       "children": [
-        8,
         25
-      ]
-    },
-    {
-      "id": 8,
-      "type": "Project_TD2_2.BossWait",
-      "params": {
-        "maxFrames": 120,
-        "minFrames": 30
-      }
-    },
-    {
-      "id": 9,
-      "type": "Selector",
-      "name": "技を選ぶ",
-      "note": "表の始動技を 1 行に 1 つ並べる。距離重みがいまの距離に近い技ほど出やすい。表に始動技を足したら、ここにも節を足す。",
-      "params": {
-        "order": "random"
-      },
-      "children": [
-        10,
-        11,
-        12,
-        13,
-        14,
-        16,
-        17,
-        19,
-        20,
-        21,
-        61,
-        62,
-        63
-      ]
-    },
-    {
-      "id": 10,
-      "type": "Project_TD2_2.BossMove",
-      "name": "突進横なぎ",
-      "params": {
-        "move": "突進横なぎ"
-      }
-    },
-    {
-      "id": 11,
-      "type": "Project_TD2_2.BossMove",
-      "name": "ジャンプ、2段",
-      "params": {
-        "move": "ジャンプ、2段"
-      }
-    },
-    {
-      "id": 12,
-      "type": "Project_TD2_2.BossMove",
-      "name": "上段溜め",
-      "params": {
-        "move": "上段溜め"
-      }
-    },
-    {
-      "id": 13,
-      "type": "Project_TD2_2.BossMove",
-      "name": "縦振り",
-      "params": {
-        "move": "縦振り"
-      }
-    },
-    {
-      "id": 14,
-      "type": "Project_TD2_2.BossMove",
-      "name": "回し蹴り",
-      "params": {
-        "move": "回し蹴り"
-      }
-    },
-    {
-      "id": 16,
-      "type": "Project_TD2_2.BossMove",
-      "name": "横横溜め縦縦横",
-      "params": {
-        "move": "横横溜め縦縦横"
-      }
-    },
-    {
-      "id": 17,
-      "type": "Project_TD2_2.BossMove",
-      "name": "横なぎ二連",
-      "params": {
-        "move": "横なぎ二連"
-      }
-    },
-    {
-      "id": 19,
-      "type": "Project_TD2_2.BossMove",
-      "name": "横歩き",
-      "params": {
-        "move": "横歩き"
-      }
-    },
-    {
-      "id": 20,
-      "type": "Project_TD2_2.BossMove",
-      "name": "間合いを詰める",
-      "params": {
-        "move": "間合いを詰める"
-      }
-    },
-    {
-      "id": 21,
-      "type": "Project_TD2_2.BossMove",
-      "name": "後ろへ下がる",
-      "params": {
-        "move": "後ろへ下がる"
-      }
-    },
-    {
-      "id": 61,
-      "type": "Project_TD2_2.BossMove",
-      "name": "退き溜め",
-      "params": {
-        "move": "退き溜め"
-      }
-    },
-    {
-      "id": 62,
-      "type": "Project_TD2_2.BossMove",
-      "name": "霞の大剣",
-      "params": {
-        "move": "霞の大剣"
-      }
-    },
-    {
-      "id": 63,
-      "type": "Project_TD2_2.BossMove",
-      "name": "霞の大剣・縦割り",
-      "params": {
-        "move": "霞の大剣・縦割り"
-      }
+      ],
+      "note": "姿勢（攻勢・散歩・離脱）と間合いの帯で次の技を決める（c-19e3b0）。待ちは姿勢の散歩・見るが持つ。"
     },
     {
       "id": 25,
       "type": "Selector",
       "name": "次の技",
-      "note": "左から順に試す。分身を出せる時（HP の条件は表）は分身が先。火が少し燃えていれば、燃えている面積に比例した確率で引爆。どちらでもなければ技を選ぶ。",
+      "note": "左から順に試す。火が少し燃えていれば、燃えている面積に比例した確率で引爆。そうでなければ姿勢で技を選ぶ。",
       "children": [
         50,
-        9
+        64
       ]
     },
     {
@@ -474,6 +338,12 @@
         "move": "引爆",
         "pick": "always"
       }
+    },
+    {
+      "id": 64,
+      "type": "Project_TD2_2.BossStance",
+      "name": "姿勢で技を選ぶ",
+      "note": "重みは Data/Boss/kasumi_bushi_stance.csv、姿勢の長さ・帯の境はボスの「姿勢と間合い」。"
     }
   ]
 }

@@ -9,6 +9,7 @@
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossKasumiStepSettings.h"
 #include "BossMoveTable.h"
+#include "BossStance.h"
 #include "BossSwingShapes.h"
 #include "BossSwordPose.h"
 #include "BossWatch.h"
@@ -501,6 +502,9 @@ public:
     // 表
     std::string movesPath = "Boss/kasumi_bushi_moves.csv";
     std::string typesPath = "Boss/kasumi_bushi_move_types.csv";
+    // 姿勢と帯の重みの表（c-19e3b0。行動ツリーの節「姿勢で技を選ぶ」が使う）。
+    std::string stancePath = "Boss/kasumi_bushi_stance.csv";
+    BossStanceSettings stance;
     // 斬撃の共通の値（試作の共通パラメータ）
     float range = 26.0f;
     int swingFrames = 10;
@@ -1020,6 +1024,11 @@ public:
     bool variableWriteWarned = false;
     bool tableLoaded = false;
     BossMoveTable table;
+    BossStanceTable stanceTable;
+    std::string loadedStanceText;
+    BossStanceMemory stanceMemory;
+    // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
+    unsigned playerHitCount = 0;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。
     std::string loadedMovesText;
     std::string loadedTypesText;

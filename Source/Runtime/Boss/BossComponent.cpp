@@ -7,6 +7,7 @@ namespace Project_TD2_2 {
 void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("技の表", true)) {
         fields.Text("movesPath", "技の表（Data/ からの場所）", movesPath);
+        fields.Text("stancePath", "姿勢と帯の重みの表（Data/ からの場所。行動ツリーの「姿勢で技を選ぶ」）", stancePath);
         fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", typesPath);
         fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
                     "HP は同じ物体の「被弾と HP」の最大 HP（試作 1500）です。");
@@ -30,7 +31,8 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("swingOverwindFrames", "行き過ぎから構えへ戻る (F)", swingOverwindFrames, 1, 60);
         fields.Float("swingCoil", "構えの間に引き絞る量（同じ割合。振りはここから始まる）", swingCoil, 0.0f, 0.5f);
         fields.Float("swingOvershoot", "振り終わりの行き過ぎ（同じ割合。勢いで流れる）", swingOvershoot, 0.0f, 0.5f);
-        fields.Int("swingSettleFrames", "振り終わりの後、見せる刀を規則の刀に付けておく (F。霞隠れは行き過ぎから振り終わりへ戻る F)",
+        fields.Int("swingSettleFrames",
+                   "振り終わりの後、見せる刀を規則の刀に付けておく (F。霞隠れは行き過ぎから振り終わりへ戻る F)",
                    swingSettleFrames, 1, 60);
         fields.Float("swingCoilTremorDegrees", "引き絞る間の刀の震え（度）", swingCoilTremorDegrees, 0.0f, 10.0f);
         fields.Int("poseRecoverFrames",
@@ -134,9 +136,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     if (fields.Section("動きの型ごとの体の動き")) {
         fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", dashStopDistance, 0.0f, 30.0f);
-        fields.Int("dashRaiseFrames", "突進横なぎ：前隙の始めに、刀を引きずる構えへ移る長さ (F)", dashRaiseFrames, 1, 120);
-        fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)", dashSlideFrames, 1,
+        fields.Int("dashRaiseFrames", "突進横なぎ：前隙の始めに、刀を引きずる構えへ移る長さ (F)", dashRaiseFrames, 1,
                    120);
+        fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)",
+                   dashSlideFrames, 1, 120);
         fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", slashApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachSpeed", "連撃：前隙に近づく速さ (m/秒)", stringApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachStop", "連撃：これより近いと近づかない (m)", stringApproachStop, 0.0f, 30.0f);
@@ -451,6 +454,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     body.Describe(fields);
     swing.Describe(fields);
     kasumiStep.Describe(fields);
+    stance.Describe(fields);
     if (fields.Section("剣と斬撃の出方")) {
         fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", swordShoulder);
         fields.Float("swordLength", "剣の長さ (m)", swordLength, 0.1f, 20.0f);
