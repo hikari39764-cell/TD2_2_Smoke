@@ -352,6 +352,8 @@ struct BossBodyAccentState {
     bool wasGlint = false;
     // 見た剣気を放った数（c-ecd963。BossComponent::releaseCount と比べて、放つ瞬間を見つける）。
     uint32_t releaseSeen = 0;
+    // 見た怯みの数（c-808641。怯みの始まりに胴の煙を吹き出す）。
+    uint32_t flinchSeen = 0;
     // 胴の煙へ掛ける量と熱さ（倍率）、振り終わりの吹き出しの残り（1→0）、前のフレームが命中の窓だったか。
     float smokeAmount = 1.0f;
     float smokeHeat = 1.0f;

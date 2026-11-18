@@ -235,14 +235,23 @@ void AddStun(BossComponent& boss, float amount) {
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(amount),
                   static_cast<double>(boss.stun), static_cast<double>(threshold));
     BossLog::Write(message);
-    if (boss.stun >= threshold)
-        EnterStun(boss);
+    if (boss.stun >= threshold) {
+        // 技・連段の途中は打ち切らない：満ちた事を覚えて、連段が終わった時にひざまずく（c-808641）。
+        if (boss.state == BossState::Act) {
+            boss.stun = threshold;
+            if (!boss.stunPending)
+                BossLog::Write(("StunPending tick=" + std::to_string(boss.tick)).c_str());
+            boss.stunPending = true;
+        } else {
+            EnterStun(boss);
+        }
+    }
 }
 
 // 崩せる大技：前隙（溜めを含む）の間に表の「崩せる被弾数」だけ当てられたら、技を打ち切って気絶させる。
 // 当たりは Damageable が受け付けた命中（無敵で弾かれたものは数えない）。崩れた気絶も気絶の回数に数える。
 void CheckBreak(BossComponent& boss, uint64_t freshHits) {
-    if (freshHits == 0 || boss.state != BossState::Act || boss.phase != BossActPhase::Pre)
+    if (!boss.breakDuringWindup || freshHits == 0 || boss.state != BossState::Act || boss.phase != BossActPhase::Pre)
         return;
     const BossMove* move = BossRules::GetMove(boss, boss.move);
     if (move == nullptr || move->breakHits <= 0)
@@ -287,8 +296,11 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
+    // 戻り（後隙）の間に当てた弾は、気絶値が多く入る（c-808641）。
+    const bool recovering = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
     if (delta > 0.0)
-        AddStun(boss, static_cast<float>(delta) / std::max(0.01f, boss.stunReferenceDamage) * boss.stunPerShot);
+        AddStun(boss, static_cast<float>(delta) / std::max(0.01f, boss.stunReferenceDamage) * boss.stunPerShot *
+                          (recovering ? boss.recoveryStunScale : 1.0f));
     // しばらく当てないと気絶値が減る。
     if (boss.state != BossState::Stunned && boss.stun > 0.0f &&
         boss.clockSeconds - boss.stunHitSeconds > boss.stunDecayDelaySeconds)
@@ -313,7 +325,18 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
                       static_cast<unsigned long long>(object.GetSceneObjectId()));
         BossLog::Write(message);
     }
-    DamageableRules::SetIncomingDamageScale(health, boss.state == BossState::Stunned ? boss.stunDamageScale : 1.0f);
+    // 気絶（ひざまずき）の間と、戻り（後隙）の間は、受ける威力が増える。戻りの当たりは手応えも強める（次の当たりに効く）。
+    const bool inRecovery = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
+    DamageableRules::SetIncomingDamageScale(health, boss.state == BossState::Stunned ? boss.stunDamageScale
+                                                    : inRecovery                     ? boss.recoveryDamageScale
+                                                                                     : 1.0f);
+    if (inRecovery) {
+        DamageableRules::BoostHitFeedback(health, boss.recoveryHitPushScale, boss.recoveryHitStopFrames);
+        boss.recoveryBoosted = true;
+    } else if (boss.recoveryBoosted) {
+        DamageableRules::BoostHitFeedback(health, 1.0f, 0);
+        boss.recoveryBoosted = false;
+    }
     // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。弾をかわす霞歩の
     // 跳び始め（kasumiStepGuardFrames）も当たらない。
     const bool shielded = boss.hidden || BossKasumiStep::Guarding(boss);
@@ -324,9 +347,44 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     return hits;
 }
 
+// 連段が終わった時（待機へ戻る時・新しく技を始める時）に、たまった体勢を決める（c-808641）：満ちていればひざまずき、
+// 半分ほど（poiseFlinchShare）なら怯んで後ろへ跳ぶ技を始める。どちらかを始めたら true。
+bool ResolvePoise(BossFrame& frame) {
+    BossComponent& boss = frame.boss;
+    if (boss.state == BossState::Stunned || boss.state == BossState::Dead)
+        return false;
+    const float threshold = BossRules::GetStunThreshold(boss);
+    if (boss.stunPending || boss.stun >= threshold) {
+        boss.stunPending = false;
+        EnterStun(boss);
+        return true;
+    }
+    if (!(boss.stun >= threshold * boss.poiseFlinchShare) || boss.clockSeconds < boss.flinchReadySeconds)
+        return false;
+    const int row = BossRules::FindMove(boss, boss.poiseFlinchMove);
+    const BossMove* move = BossRules::GetMove(boss, row);
+    if (move == nullptr || !move->executable)
+        return false;
+    boss.flinchReadySeconds = boss.clockSeconds + boss.poiseFlinchCooldownSeconds;
+    ++boss.flinchCount;
+    char message[160]{};
+    std::snprintf(message, sizeof(message), "Flinch tick=%llu stun=%.3f max=%.3f move=%s",
+                  static_cast<unsigned long long>(boss.tick), static_cast<double>(boss.stun),
+                  static_cast<double>(threshold), move->name.c_str());
+    BossLog::Write(message);
+    BossRules::CancelRequest(boss);
+    BossMoveExecutor::Start(frame, row, 0);
+    return true;
+}
+
 void StartRequested(BossFrame& frame, int chain) {
     BossComponent& boss = frame.boss;
     LoadTable(frame.world, boss);
+    // 連段の続きでない新しい技の前に、たまった体勢を決める（怯み・ひざまずきが先）。
+    if (chain == 0 && ResolvePoise(frame)) {
+        BossRules::CancelRequest(boss);
+        return;
+    }
     const int index = boss.requestedMove;
     BossRules::CancelRequest(boss);
     const BossMove* move = BossRules::GetMove(boss, index);
@@ -392,7 +450,7 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
                 brain.OnRecovery(context);
             if (boss.requestedMove >= 0)
                 StartRequested(frame, boss.requestedAsCombo ? boss.chain + 1 : 0);
-            else if (context.recoveryDone)
+            else if (context.recoveryDone && !ResolvePoise(frame))
                 BossMoveExecutor::EnterIdle(boss);
         } else if (BossMoveExecutor::IsWalking(boss)) {
             // 歩きの技の間も木を進める。「移動中も反応する」反応の枝（射撃をかわす霞歩）だけが、歩きを切り上げて技を出す。
@@ -443,6 +501,12 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
     BossKasumiStep::AddLean(boss, lean, sway);
     if (boss.state == BossState::Stunned)
         lean += boss.stunLeanRadians + std::sin(boss.floatClock * kStunWobbleRate) * kStunWobble;
+    // 怯み（c-808641）：怯んで跳ぶ技の前隙の間、上体を後ろへのけぞらせる（真ん中で最も大きい）。
+    if (const BossMove* move = BossRules::GetMove(boss, boss.move);
+        boss.state == BossState::Act && boss.phase == BossActPhase::Pre && move != nullptr &&
+        move->name == boss.poiseFlinchMove)
+        lean -= boss.poiseFlinchLeanDegrees * kRadiansPerDegree *
+                std::sin(kPi * Share(boss.stateFrame, std::max(1, move->pre)));
     if (boss.state == BossState::Dead)
         lean += boss.stunLeanRadians * 2.0f;
     const float squash = 1.0f - std::clamp(boss.crouch, 0.0f, 1.0f) * boss.crouchSquash;

@@ -564,6 +564,21 @@ public:
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
     float breakBlastScale = 1.8f;
     float stunDamageScale = 1.5f;
+    // 体勢（c-808641）：気絶値は技・連段の途中もたまるが打ち切らず、連段が終わった時（待機へ戻る時・新しく技を始める時）に
+    // 決める。満ちていればひざまずく（いまの気絶）、poiseFlinchShare 以上なら小さく怯んで後ろへ跳ぶ（技の表の行
+    // poiseFlinchMove。コンボ先で着地の後の剣気）。怯みの後 poiseFlinchCooldownSeconds 秒は次の怯みを出さない。
+    // breakDuringWindup が入なら、前の作り（前隙に「崩せる被弾数」を当てると打ち切る）も使う。
+    float poiseFlinchShare = 0.5f;
+    float poiseFlinchCooldownSeconds = 8.0f;
+    // 怯みの見た目：前隙の間、上体を後ろへのけぞらせる角度（度。前隙の真ん中で最も大きい）。胴の煙は始めに吹き出す。
+    float poiseFlinchLeanDegrees = 14.0f;
+    std::string poiseFlinchMove = "怯み跳び";
+    bool breakDuringWindup = false;
+    // 戻り（後隙）の間に当てた弾の倍率：威力・気絶値、当たりの手応え（押しの倍率・止めの F）。
+    float recoveryDamageScale = 1.3f;
+    float recoveryStunScale = 1.5f;
+    float recoveryHitPushScale = 1.6f;
+    int recoveryHitStopFrames = 4;
     // 手を止めると気絶値が早く散る（c-ff3e98。元は 6 秒後から 10/秒）。
     float stunDecayDelaySeconds = 4.0f;
     float stunDecayPerSecond = 20.0f;
@@ -1119,6 +1134,12 @@ public:
     // 気絶
     float stun = 0.0f;
     int stunCount = 0;
+    // 連段の途中で気絶値が満ちた（連段が終わったらひざまずく）。次に怯みを出せる時刻（秒）。戻りの手応えを強めている。
+    bool stunPending = false;
+    // 怯んだ回数（見た目が怯みの始まりを知るため）。
+    uint32_t flinchCount = 0;
+    float flinchReadySeconds = 0.0f;
+    bool recoveryBoosted = false;
     // 崩れ・気絶に入った tick に立て、描画フレームの手応え（BossFeedback）が使ったら消す。
     bool breakFeedbackPending = false;
     Feedback::CameraShake breakShake{};

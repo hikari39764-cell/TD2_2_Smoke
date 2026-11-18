@@ -455,6 +455,11 @@ void BossBodyAccents::StepSmoke(BossComponent& boss, float seconds) {
     // 振り終わった瞬間（命中の窓が閉じた）に吹き出し、決めた時間で収まる。
     if (a.wasWindow && !boss.swordSmoke)
         a.puff = 1.0f;
+    // 怯んだ瞬間も、胴の煙が散るように吹き出す（c-808641）。
+    if (boss.flinchCount != a.flinchSeen) {
+        a.flinchSeen = boss.flinchCount;
+        a.puff = 1.0f;
+    }
     a.wasWindow = boss.swordSmoke;
     a.puff = std::max(0.0f, a.puff - seconds / std::max(kTiny, s.smokeSwingPuffSeconds));
     // 続けてかわせる回数を使い切った間（かわさない間）は、煙が薄く静かになる（息が切れている。地面や画面の印の代わり）。

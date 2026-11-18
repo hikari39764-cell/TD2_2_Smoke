@@ -35,6 +35,18 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                    "振り終わりの後、見せる刀を規則の刀に付けておく (F。霞隠れは行き過ぎから振り終わりへ戻る F)",
                    swingSettleFrames, 1, 60);
         fields.Float("swingCoilTremorDegrees", "引き絞る間の刀の震え（度）", swingCoilTremorDegrees, 0.0f, 10.0f);
+        fields.Float("poiseFlinchShare", "体勢：連段の後に怯んで跳ぶ気絶値の割合 (0〜1。満ちたらひざまずく)",
+                     poiseFlinchShare, 0.0f, 1.0f);
+        fields.Float("poiseFlinchCooldownSeconds", "体勢：怯みの後、次の怯みを出さない秒数", poiseFlinchCooldownSeconds,
+                     0.0f, 60.0f);
+        fields.Text("poiseFlinchMove", "体勢：怯んで跳ぶ技（技の表の名前）", poiseFlinchMove);
+        fields.Float("poiseFlinchLeanDegrees", "体勢：怯みの前隙に上体をのけぞらせる角度 (度)", poiseFlinchLeanDegrees,
+                     0.0f, 45.0f);
+        fields.Bool("breakDuringWindup", "前の作り：前隙に「崩せる被弾数」を当てると打ち切る", breakDuringWindup);
+        fields.Float("recoveryDamageScale", "戻り（後隙）に当てた弾の威力の倍率", recoveryDamageScale, 0.0f, 5.0f);
+        fields.Float("recoveryStunScale", "戻りに当てた弾の気絶値の倍率", recoveryStunScale, 0.0f, 5.0f);
+        fields.Float("recoveryHitPushScale", "戻りに当てた時の、当たりの押しの倍率", recoveryHitPushScale, 0.0f, 5.0f);
+        fields.Int("recoveryHitStopFrames", "戻りに当てた時の、当たりの止め (F)", recoveryHitStopFrames, 0, 30);
         fields.Int("poseRecoverFrames",
                    "技の終わりの構えから、待機の下ろした構え・気絶の崩れた構えへ移る (F。0 は一気に切り替える)",
                    poseRecoverFrames, 0, 60);
