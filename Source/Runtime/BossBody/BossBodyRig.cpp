@@ -20,7 +20,8 @@ Quat AroundX(float radians) { return {std::sin(radians * 0.5f), 0.0f, 0.0f, std:
 Quat AroundZ(float radians) { return {0.0f, 0.0f, std::sin(radians * 0.5f), std::cos(radians * 0.5f)}; }
 
 // 揺れの計算で、瞬間移動（突進の出現・霞隠れ）を動きと見なさない速さの上限と、裾を開く角度の範囲。
-constexpr float kSwayTeleportSpeed = 25.0f;
+// 突進の滑り・後ろ跳びの最も速い所（約 35 m/秒）でも揺らす（c-95444e。前の 25 では滑りの真ん中で袖と草摺の遅れが消えた）。
+constexpr float kSwayTeleportSpeed = 60.0f;
 constexpr float kFlareMinDegrees = -12.0f;
 constexpr float kFlareMaxDegrees = 80.0f;
 // 揺らぎの位相を、部品ごとにずらす量（同じ動きに揃わないように）。

@@ -63,8 +63,9 @@ constexpr float kPoseLeanNeutral = 30.0f;
 // 型は刀が後ろや真上を向く（剣の左右の角度で傾けると、上段で体が大きく横へ倒れる）ので、握りの横の位置で傾ける。
 // 握りの位置は体と一緒に大きくなるので、1 倍の体（Boss.bodyScale で割った値）の 1 m あたりで見る（c-a30eaf）。
 constexpr float kSwayDegreesPerGripMeter = 90.0f;
-// これより速い位置の変化（瞬間移動）では、動きの傾きを付けない (m/秒)。
-constexpr float kLeanSpeedLimit = 30.0f;
+// これより速い位置の変化（瞬間移動）では、動きの傾きを付けない (m/秒)。突進の滑り（最も速い所で約 35 m/秒）・後ろ跳び
+// （約 30 m/秒）の間は傾ける（c-95444e。前の 30 では滑りの真ん中で傾きが切れた）。瞬間移動は 1 tick に数 m 動く。
+constexpr float kLeanSpeedLimit = 60.0f;
 // 撃破の後に体を縮める下限の倍率（0 にすると変換が潰れるので、見えない大きさで止める）。
 constexpr float kVanishMinScale = 0.001f;
 // 体のゆれの周期（rad/秒）。

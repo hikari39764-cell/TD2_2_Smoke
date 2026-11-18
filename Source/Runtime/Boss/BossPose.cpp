@@ -409,16 +409,50 @@ BossSwordPose RetreatSweepPose(const BossComponent& boss, const BossMove& move) 
     return EarlyWindup(boss, strike, boss.stateFrame, move.pre, boss.retreatSweepStepFrames);
 }
 
-// 退く間は剣を下げたまま。降りたら振り上げて、溜めの間ずっと振りかぶったまま構える（長い溜めを剣で見せる）。
+// 退き溜めの構え（c-95444e）：右肩の後ろへ引き絞った刀（刃は上）。charge（0〜1）で刀をさらに後ろへ倒し、深く沈む。
+BossSwordPose RetreatChargePose(const BossComponent& boss, float charge) {
+    const BossSwingSettings& s = boss.swing;
+    const Vec3 up{0.0f, 1.0f, 0.0f};
+    const Vec3 drawn = Normalize(s.retreatChargeDirection, {0.0f, 0.0f, -1.0f});
+    // 水平で刀に直交する軸のまわりに、剣先を下げる側へ倒す。
+    const Vec3 axis = Normalize(Cross(up, drawn), {1.0f, 0.0f, 0.0f});
+    BossSwordPose pose;
+    pose.grip = s.retreatChargeGrip;
+    pose.direction =
+        Normalize(RotateAbout(drawn, axis, s.retreatChargeCoilDegrees * kRadiansPerDegree * Smooth(charge)), drawn);
+    pose.edge = Normalize(ProjectOut(up, pose.direction), {0.0f, 0.0f, 1.0f});
+    pose.crouch = Lerp(s.retreatChargeCrouch, s.retreatChargeCrouchTo, Smooth(charge));
+    pose.lean = s.retreatChargeLean;
+    pose.twist = s.retreatChargeTwist;
+    pose.twoHand = 1.0f;
+    return pose;
+}
+
+// 退き溜め（c-95444e）：後ろへ跳ぶ間に刀を右後ろへ引き（退きの構え）、着地してから長く溜める間、引き絞ったまま深く沈み、
+// 刀をさらに後ろへ倒して震える。溜めの終わりの retreatHeaveFrames F で頭上の構え（縦の型の引き絞り）へ担ぎ上げ、
+// 攻撃中に縦に斬り下ろす。前は退く間に剣を下げ、降りてから縦振りと同じ頭上の構えで止まっていた（構えで見分けられない）。
 BossSwordPose RetreatPose(const BossComponent& boss, const BossMove& move) {
     const Strike strike = ShapeStrike(boss.swing.vertical, false);
     if (boss.phase != BossActPhase::Pre)
         return SingleStrikePose(boss, move, strike);
-    if (!boss.retreat.charging)
-        return Sweep(boss.moveStartPose, BossPose::Rest(boss),
-                     Share(boss.stateFrame, std::clamp(boss.retreatStepFrames, 1, std::max(1, move.pre - 1))));
-    return Raise(BossPose::Rest(boss), strike,
-                 static_cast<float>(boss.retreat.chargeElapsed) / static_cast<float>(std::max(1, boss.raiseFrames)));
+    if (!boss.retreat.charging) {
+        // 退く間：右の外（retreatDrawVia）を回して、前の構えから退きの構えへ引く。
+        const float k = Share(boss.stateFrame, std::clamp(boss.retreatStepFrames, 1, std::max(1, move.pre - 1)));
+        const BossSwordPose drawn = RetreatChargePose(boss, 0.0f);
+        BossSwordPose pose = Sweep(boss.moveStartPose, drawn, k);
+        const Vec3 middle = LerpAroundY(boss.moveStartPose.grip, drawn.grip, 0.5f);
+        pose.grip = Add(pose.grip, Mul(Sub(boss.swing.retreatDrawVia, middle), std::sin(kPi * Smooth(k))));
+        return pose;
+    }
+    const int frames = std::max(1, boss.retreat.chargeFrames);
+    const int heave = std::clamp(boss.swing.retreatHeaveFrames, 1, frames);
+    const int hold = frames - heave;
+    const int t = boss.retreat.chargeElapsed;
+    if (t < hold) {
+        const float charge = Share(t, std::max(1, hold));
+        return Tremble(RetreatChargePose(boss, charge), t, boss.swingCoilTremorDegrees * charge);
+    }
+    return Sweep(RetreatChargePose(boss, 1.0f), StrikeAt(strike, -boss.swingCoil), Share(t - hold, heave));
 }
 
 // 1 撃目は左上→右下、2 撃目は右上→左下（X 字）。間の当たりの無い区間で、1 撃目の振り終わりから 2 撃目の構えへ
@@ -655,6 +689,14 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
         return boss.phase == BossActPhase::Post ? BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post)
                                                 : Rest(boss);
     case BossMoveType::RetreatSweep: return RetreatSweepPose(boss, move);
+    case BossMoveType::Backstep:
+        // 後ろへ下がる（c-95444e）：前隙が無いので、跳ぶ間（攻撃中）に前の技の構えから下ろした構えへ戻す（前は攻撃中の
+        // 1 tick 目に下ろした構えへ跳び、霞の輪から続いた時に見せる刀の剣先が地面へ 0.7 m 入った）。
+        if (boss.phase == BossActPhase::Act)
+            return Sweep(boss.moveStartPose, Rest(boss), Share(boss.stateFrame, std::max(1, boss.actFrames)));
+        return boss.phase == BossActPhase::Post
+                   ? BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post)
+                   : Sweep(boss.moveStartPose, Rest(boss), Share(boss.stateFrame, move.pre));
     case BossMoveType::Overhead: {
         // 大上段（c-b1824c）：早く振りかぶって長く溜め、跳び込んで斬り下ろす。
         const Strike strike = ShapeStrike(boss.swing.overhead, false);

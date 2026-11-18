@@ -155,6 +155,11 @@ MotionTargets Targets(const BossComponent& boss) {
     // 刀は規則の振り（行き過ぎ→戻り）をそのままたどる（ばねに任せると規則の振りより遅れ、30 度ほどずれた。c-4a8ea1）。
     if (swing && boss.phase == BossActPhase::Act && g.hit && g.tIn <= g.swingLength + boss.swingSettleFrames)
         t.window = true;
+    // 回転斬り（霞の輪の型）の払いも規則の刀に付ける（c-95444e）：体ごと 1 回転する速い払いをばねで追うと、握りが弧の内側を
+    // 近道して拳が胴へ 0.47 m 入り、刃も斬る向きから 60 度ほど遅れた。
+    if (move != nullptr && move->type == BossMoveType::Kick && boss.phase == BossActPhase::Act && g.hit &&
+        g.tIn <= g.swingLength + boss.swingSettleFrames)
+        t.window = true;
     // 両手の型の間は、待機の構えへ混ぜない（体の屈み・前傾は規則の構えが戻すので、刀だけ先に戻すと手が胴に入る）。
     t.calm = CalmWeight(boss, move, swing, restWeight) * (1.0f - t.twoHand);
     if (swing) {

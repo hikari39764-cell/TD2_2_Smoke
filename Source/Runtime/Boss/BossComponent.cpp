@@ -188,6 +188,15 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("walkInSpeedScale", "間合いを詰める：歩く速さの倍率", walkInSpeedScale, 0.0f, 10.0f);
         fields.Float("backstepDistance", "後ろへ下がる：距離 (m)", backstepDistance, 0.0f, 30.0f);
         fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", backstepHeight, 0.0f, 10.0f);
+        fields.Float("backstepTakeoffShare", "後ろ跳び：始めに動かずに沈んで蹴る割合（跳ぶ長さに対して）",
+                     backstepTakeoffShare, 0.0f, 0.5f);
+        fields.Float("backstepLandShare", "後ろ跳び：終わりに着地して沈んで戻る割合（跳ぶ長さに対して）",
+                     backstepLandShare, 0.0f, 0.5f);
+        fields.Float("backstepPeakShare", "後ろ跳び：空中で最も速い所（空中の長さに対する割合）", backstepPeakShare,
+                     0.1f, 0.9f);
+        fields.Float("backstepTakeoffCrouch", "後ろ跳び：蹴る前の沈み（0〜1。Boss.crouchSquash で縮む割合）",
+                     backstepTakeoffCrouch, 0.0f, 1.0f);
+        fields.Float("backstepLandCrouch", "後ろ跳び：着地の沈み（0〜1）", backstepLandCrouch, 0.0f, 1.0f);
         fields.Float("jumpHeight", "跳躍：跳ぶ高さ (m)", jumpHeight, 0.0f, 20.0f);
         fields.Float("detonateRaiseShare", "引爆の前隙：剣を頭上へ掲げ終える所（前隙の割合。体が浮き上がる）",
                      detonateRaiseShare, 0.05f, 0.9f);

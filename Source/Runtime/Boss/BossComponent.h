@@ -687,6 +687,15 @@ public:
     float walkInSpeedScale = 1.25f;
     float backstepDistance = 4.725f;
     float backstepHeight = 0.84375f;
+    // 後ろ跳びの重さ（c-95444e。後ろへ下がる・退き溜め・退き払いの跳び）：跳ぶ長さの始めの backstepTakeoffShare は動かずに
+    // 沈んで蹴り（沈み backstepTakeoffCrouch）、終わりの backstepLandShare は着地して沈んで戻る（backstepLandCrouch）。
+    // 間の空中は、速さが始めと終わりで 0 の曲線で、backstepPeakShare（空中の長さに対する割合）で最も速い（前は 1 tick 目に
+    // 最も速い 28 m/秒 へ跳んでいた）。沈みは Boss.crouchSquash で縦に縮む割合（0〜1）。
+    float backstepTakeoffShare = 0.17f;
+    float backstepLandShare = 0.2f;
+    float backstepPeakShare = 0.35f;
+    float backstepTakeoffCrouch = 0.55f;
+    float backstepLandCrouch = 0.7f;
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
     float jumpHeight = 3.6f;
     float detonateRaiseShare = 0.42f;
@@ -725,7 +734,8 @@ public:
     float skyfallBurstBlastScale = 1.8f;
     // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
     // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
-    int retreatStepFrames = 20;
+    // c-95444e で 20 → 24（後ろ跳びに蹴る前の沈みと着地の沈みを入れた分）。
+    int retreatStepFrames = 24;
     // 退き払い（c-2dd9a2）：前隙の始めに後ろへ跳ぶ F（距離・高さは backstepDistance／backstepHeight。前隙の残りは着地の構え）。
     int retreatSweepStepFrames = 18;
     // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）

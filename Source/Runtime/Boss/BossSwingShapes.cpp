@@ -49,6 +49,24 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("swingStrollGuardLean", "散歩の構え：前傾 (度)", strollGuardLean, -30.0f, 30.0f);
     fields.Float("swingStrollGuardTwist", "散歩の構え：胴の捻り (度)", strollGuardTwist, -90.0f, 90.0f);
     fields.Int("swingStrollGuardFrames", "散歩の構え：横歩きの始めに構えへ移る長さ (F)", strollGuardFrames, 1, 60);
+    fields.Float3("swingRetreatChargeGrip", "退き溜めの構え：握り（体の足元から、局所 m。右肩の後ろ）",
+                  retreatChargeGrip);
+    fields.Float3("swingRetreatDrawVia", "退き溜め：退く間に刀を引く道の真ん中の握り（局所 m。右の外を回す）",
+                  retreatDrawVia);
+    fields.Float3("swingRetreatChargeDirection", "退き溜めの構え：刀の向き（局所。右後ろの高い所へ引き絞る）",
+                  retreatChargeDirection);
+    fields.Float("swingRetreatChargeCrouch", "退き溜めの構え：溜め始めの腰の落とし (m。見た目だけ)",
+                 retreatChargeCrouch, 0.0f, 3.0f);
+    fields.Float("swingRetreatChargeCrouchTo", "退き溜めの構え：溜め切った時の腰の落とし (m。見た目だけ)",
+                 retreatChargeCrouchTo, 0.0f, 3.0f);
+    fields.Float("swingRetreatChargeLean", "退き溜めの構え：前傾 (度。負で反る。見た目だけ)", retreatChargeLean, -30.0f,
+                 30.0f);
+    fields.Float("swingRetreatChargeTwist", "退き溜めの構え：胴の捻り (度。負で右へ)", retreatChargeTwist, -90.0f,
+                 90.0f);
+    fields.Float("swingRetreatChargeCoilDegrees", "退き溜めの構え：溜めるにつれて刀をさらに後ろへ倒す角度 (度)",
+                 retreatChargeCoilDegrees, 0.0f, 60.0f);
+    fields.Int("swingRetreatHeaveFrames", "退き溜めの構え：溜めの終わりに頭上の構えへ担ぎ上げる長さ (F)",
+               retreatHeaveFrames, 1, 60);
     fields.Float3("swingReturnGrip", "戻りの中段：握り（体の足元から、局所 m）", returnGrip);
     fields.Float3("swingReturnDirection", "戻りの中段：刀の向き（局所。剣先をプレイヤーの胸へ）", returnDirection);
     fields.Float("swingReturnCrouch", "戻りの中段：腰を落とす量 (m。見た目だけ)", returnCrouch, 0.0f, 3.0f);

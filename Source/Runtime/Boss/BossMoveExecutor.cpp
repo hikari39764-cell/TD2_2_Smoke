@@ -502,8 +502,26 @@ void BossMoveExecutor::StepBack(BossFrame& frame, float progress) {
     BossComponent& boss = frame.boss;
     const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
     const float u = std::clamp(progress, 0.0f, 1.0f);
-    boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * EaseOut(u)));
-    boss.height = boss.backstepHeight * std::sin(u * kPi);
+    // 重さ（c-95444e）：始めは動かずに沈んで蹴り、空中は速さが始めと終わりで 0 の曲線（1 tick の進みが途切れない）、
+    // 終わりは着地して沈んで戻る。沈みは体の縦の縮み（Boss.crouchSquash）。
+    const float takeoff = std::clamp(boss.backstepTakeoffShare, 0.0f, 0.5f);
+    const float land = std::clamp(boss.backstepLandShare, 0.0f, 0.5f);
+    const float air = std::max(0.05f, 1.0f - takeoff - land);
+    const float v = std::clamp((u - takeoff) / air, 0.0f, 1.0f);
+    // 速さが peak で最も大きい 0〜1 の進み（BossPose の振りの曲線と同じ作り：曲げてから両端で速さ 0 の 5 次の曲線へ）。
+    const float bend = std::log(0.5f) / std::log(std::clamp(boss.backstepPeakShare, 0.1f, 0.9f));
+    const float x = std::pow(v, bend);
+    const float along = x * x * x * (x * (x * 6.0f - 15.0f) + 10.0f);
+    boss.ground = Add(boss.stepFrom, Mul(toPlayer, -boss.backstepDistance * along));
+    boss.height = boss.backstepHeight * std::sin(v * kPi);
+    if (u < takeoff)
+        boss.crouch = boss.backstepTakeoffCrouch * Smooth(u / std::max(1e-3f, takeoff));
+    else if (v < 1.0f)
+        // 蹴った後は空中の始めの 1/4 で伸び上がる。
+        boss.crouch = boss.backstepTakeoffCrouch * (1.0f - Smooth(std::min(1.0f, v * 4.0f)));
+    else
+        boss.crouch = boss.backstepLandCrouch *
+                      std::sin(kPi * std::clamp((u - takeoff - air) / std::max(1e-3f, land), 0.0f, 1.0f));
 }
 
 void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
@@ -739,6 +757,9 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     } else {
         if (move.type == BossMoveType::Backstep)
             boss.height = 0.0f;
+        // 歩きの後隙も、歩いていた速さのまま進む（c-95444e。前は歩きの終わりで 1 tick 止まってから次の歩き・待機へ移った）。
+        if (move.type == BossMoveType::WalkSide || move.type == BossMoveType::WalkIn)
+            boss.ground = Add(boss.ground, Mul(boss.velocity, frame.dt));
         BossSpecialMoves::Post(boss, move,
                                static_cast<float>(boss.stateFrame) / static_cast<float>(std::max(1, move.post)));
         if (boss.stateFrame >= move.post) {

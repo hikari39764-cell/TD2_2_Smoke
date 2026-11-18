@@ -153,6 +153,22 @@ struct BossSwingSettings {
     float strollGuardLean = 4.0f;
     float strollGuardTwist = 12.0f;
     int strollGuardFrames = 14;
+    // 退き溜めの構え（c-95444e）：後ろへ跳ぶ間に刀を後ろへ引き、着地してから長く溜める間、両手の握りを右肩の後ろへ引いて
+    // 刀を右後ろの高い所へ大きく引き絞り（刃は上）、胴を右へ捻り込んで深く沈む（左手はプレイヤーを狙う）。溜めるにつれて
+    // さらに retreatChargeCoilDegrees 度だけ後ろへ倒し、沈みを retreatChargeCrouchTo まで深める。溜めの終わりの
+    // retreatHeaveFrames F で、引き絞った刀を頭上の構え（縦の型）へ担ぎ上げ、止まらずに縦に斬り下ろす。上段の構え
+    // （頭上に振りかぶる）と違い、手が肩の高さで後ろにあり、体が横を向くので、構えだけで見分けられる。刀は右の外へ斜めに
+    // 立てる（真後ろへ向けると、正面のゲームのカメラから体に隠れて見えなかった）。
+    HIKARI::GameProjectFloat3 retreatChargeGrip{-1.9f, 5.1f, -0.8f};
+    // 退く間に刀を引く道の真ん中の握り（下ろした構えから右の外を回して引く。直に混ぜると右の大袖を刀が通った）。
+    HIKARI::GameProjectFloat3 retreatDrawVia{-2.8f, 4.7f, 0.0f};
+    HIKARI::GameProjectFloat3 retreatChargeDirection{-0.82f, 0.45f, -0.35f};
+    float retreatChargeCrouch = 0.6f;
+    float retreatChargeCrouchTo = 1.0f;
+    float retreatChargeLean = -4.0f;
+    float retreatChargeTwist = -40.0f;
+    float retreatChargeCoilDegrees = 12.0f;
+    int retreatHeaveFrames = 12;
     // 戻りの中段（c-999264）：振り終わりから構えへ戻る道が寄る所。両手で握り（体の足元から、局所 m）、剣先をプレイヤーの
     // 胸へ向け（局所の向き）、腰を少し落として前へ傾く。「戻り始めた＝この連段は終わり」と読める形。
     HIKARI::GameProjectFloat3 returnGrip{-0.3f, 3.5f, 2.0f};
