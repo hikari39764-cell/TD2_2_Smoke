@@ -261,28 +261,29 @@
           "burnRate": 14.0,
           "castShadows": false,
           "cellColor": true,
+          "channel": "Default",
           "combustion": false,
-          "densityDissipation": 0.08,
+          "densityDissipation": 0.07999999821186066,
           "detailScale": 0.30000001192092896,
           "detailStrength": 0.6000000238418579,
           "domainSize": [
-            48.0,
+            88.0,
             8.0,
-            48.0
+            88.0
           ],
           "emissionColor": [
             0.0,
-            0.86,
+            0.8600000143051147,
             1.0
           ],
           "emissionHotColor": [
-            0.32,
-            0.95,
+            0.3199999928474426,
+            0.949999988079071,
             1.0
           ],
           "emissionHotTemperature": 2.0,
           "emissionIntensity": 0.0,
-          "emissionTemperature": 0.15,
+          "emissionTemperature": 0.15000000596046448,
           "expansionPerBurn": 0.3499999940395355,
           "extinction": 1.2000000476837158,
           "fuelPerBurn": 1.0,
@@ -295,7 +296,7 @@
           "prewarmSeconds": 6.0,
           "priority": 100,
           "relativeWind": 0.0,
-          "resolution": 192,
+          "resolution": 256,
           "scatteringColor": [
             0.949999988079071,
             0.949999988079071,
@@ -1135,6 +1136,7 @@
         },
         "fluidSource": {
           "absorption": 0.0,
+          "channel": "Default",
           "emissionNoise": 0.5,
           "emissionNoiseScale": 5.0,
           "forceMode": "Acceleration",
@@ -1144,6 +1146,11 @@
           "id": "module.fluidSource.3cfe982fecd6e9a9310601d359275246",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.10000000149011612,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.0,
           "velocity": [
             0.0,
@@ -1686,8 +1693,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.f4f7126fae69728959a517fba34599b1",
           "radius": {
-            "maximum": 23.0,
-            "minimum": 23.0,
+            "maximum": 41.0,
+            "minimum": 41.0,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -1703,7 +1710,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 0.08
+          "ratePerSecond": 0.07999999821186066
         }
       },
       "name": "Fog Carpet",
@@ -1979,6 +1986,7 @@
         },
         "fluidSource": {
           "absorption": 0.0,
+          "channel": "Default",
           "emissionNoise": 0.5,
           "emissionNoiseScale": 5.0,
           "forceMode": "Acceleration",
@@ -1988,6 +1996,11 @@
           "id": "module.fluidSource.ae4d0ba2488ba4beacd6d0c22ad5a834",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.10000000149011612,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.0,
           "velocity": [
             0.0,
@@ -2530,8 +2543,8 @@
           "edgeLength": 1.0,
           "id": "module.shape.592ad1cdd6c5d4a17f22a05eb254bf7f",
           "radius": {
-            "maximum": 23.0,
-            "minimum": 23.0,
+            "maximum": 41.0,
+            "minimum": 41.0,
             "mode": "Constant",
             "randomGroup": 0
           },
@@ -2547,7 +2560,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 0.167
+          "ratePerSecond": 0.16699999570846558
         }
       },
       "name": "Initial Fill",
@@ -2794,7 +2807,7 @@
           "transform": {
             "position": [
               0.0,
-              1.0999999999999996,
+              1.100000023841858,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -2811,6 +2824,7 @@
         },
         "fluidSource": {
           "absorption": 3.0,
+          "channel": "Default",
           "emissionNoise": 0.0,
           "emissionNoiseScale": 5.0,
           "forceMode": "Acceleration",
@@ -2820,6 +2834,11 @@
           "id": "module.fluidSource.c17ad3c3353193b070e2b81ca2aa1e42",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.10000000149011612,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.0,
           "velocity": [
             0.0,
@@ -3350,9 +3369,9 @@
         },
         "shape": {
           "boxHalfExtents": [
-            24.0,
-            2.9,
-            24.0
+            44.0,
+            2.9000000953674316,
+            44.0
           ],
           "circleArcDegrees": 360.0,
           "circleEmitOnEdge": false,
@@ -3626,7 +3645,7 @@
           "transform": {
             "position": [
               0.0,
-              -2.3499999999999996,
+              -2.3499999046325684,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -3642,7 +3661,8 @@
           }
         },
         "fluidSource": {
-          "absorption": 1.2,
+          "absorption": 1.2000000476837158,
+          "channel": "Default",
           "emissionNoise": 0.0,
           "emissionNoiseScale": 5.0,
           "forceMode": "Acceleration",
@@ -3652,6 +3672,11 @@
           "id": "module.fluidSource.ab8c159e39a41992bd0c6457c57fc8fc",
           "outflow": 0.0,
           "radialSpeed": 0.0,
+          "shapeFill": 1.0,
+          "shapeFillAxis": "PositiveY",
+          "shapeFillSoftness": 0.10000000149011612,
+          "shapeModel": "",
+          "shapeOffset": 0.0,
           "temperature": 0.0,
           "velocity": [
             0.0,
@@ -4182,9 +4207,9 @@
         },
         "shape": {
           "boxHalfExtents": [
-            24.0,
-            0.55,
-            24.0
+            44.0,
+            0.550000011920929,
+            44.0
           ],
           "circleArcDegrees": 360.0,
           "circleEmitOnEdge": false,
@@ -4224,7 +4249,7 @@
   ],
   "inputs": [
     {
-      "defaultValue": 1.0,
+      "defaultValue": 0.05000000074505806,
       "id": "input.amount",
       "name": "amount",
       "type": "Float"

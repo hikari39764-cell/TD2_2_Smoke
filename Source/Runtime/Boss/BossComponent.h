@@ -618,7 +618,8 @@ public:
     float bodyHalfHeight = 3.375f;
     float bodyRadius = 1.35f;
     HIKARI::GameProjectFloat3 arenaCenter{0.0f, 3400.0f, 0.0f};
-    float arenaRadius = 21.0f;
+    // （闘技場を広げた：地形の平らな所が中心から約 40 m。21 → 40 m。c-69fc1e）
+    float arenaRadius = 40.0f;
     float walkSpeed = 2.2f;
     float floatMin = 0.2f;
     float floatMax = 1.4f;

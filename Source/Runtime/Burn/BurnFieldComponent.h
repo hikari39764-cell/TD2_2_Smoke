@@ -81,9 +81,10 @@ public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
 
     bool enabled = true;
-    float fieldSize = 48.0f;
+    // （c-69fc1e：闘技場を広げたので 48 → 88 m・闘技場の半径 22 → 40 m。火の場のエフェクト ArenaFireField も 88 m 角。）
+    float fieldSize = 88.0f;
     float cellSize = 0.5f;
-    float arenaRadius = 22.0f;
+    float arenaRadius = 40.0f;
     // 足元からこの半径の円に燃えているセルが掛かれば、火に触れている。
     float contactRadius = 0.3f;
     // 体の中心が床からこれより高いと、地面の火に触れず、引爆・爆発も当たらない (m)。跳んでも届き、筋斗雲で飛べば届かない。
