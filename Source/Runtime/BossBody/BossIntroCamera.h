@@ -16,6 +16,9 @@ namespace BossIntroCamera {
 void Load(HIKARI::WorldView& world, BossComponent& boss);
 // 登場の間、このフレームの演出の姿勢をプレイヤーへ渡す（描画のフレームごと）。
 void Update(const BossComponent& boss, PlayerComponent& player);
+// フェーズの変わり目の演出のカメラ（カード c-8dd296。同じ形の表 Boss.shiftCameraPath。段の欄は 崩・燃・爆・構）。
+void LoadShift(HIKARI::WorldView& world, BossComponent& boss);
+void UpdateShift(const BossComponent& boss, PlayerComponent& player);
 
 } // namespace BossIntroCamera
 } // namespace Project_TD2_2

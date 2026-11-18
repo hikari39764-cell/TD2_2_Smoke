@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "BossMoveExecutor.h"
+#include "BossPhaseShift.h"
 #include "BossRules.h"
 #include "../Combat/DamageableRules.h"
 
@@ -39,7 +40,7 @@ void BossHealthBars::Prepare(BossComponent& boss, DamageableComponent& health) {
     char message[160]{};
     std::snprintf(message, sizeof(message), "HealthBars tick=%llu first=%.3f second=%.3f shiftFrames=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(BarHealth(boss, 1)),
-                  static_cast<double>(BarHealth(boss, 2)), boss.phaseShiftFrames);
+                  static_cast<double>(BarHealth(boss, 2)), BossPhaseShift::TotalFrames(boss));
     BossLog::Write(message);
 }
 
@@ -72,7 +73,8 @@ bool BossHealthBars::CheckEmptied(BossComponent& boss, DamageableComponent& heal
     boss.stunPending = false;
     const float before = boss.shownHealth;
     boss.lastPhaseNumber = 2;
-    boss.phaseShiftLeft = std::max(1, boss.phaseShiftFrames);
+    // 変わり目の長さは、変わり目の演出（c-8dd296）の拍の合計（演出を切った時は phaseShiftFrames）。
+    boss.phaseShiftLeft = std::max(1, BossPhaseShift::TotalFrames(boss));
     boss.phaseStartSeconds = boss.clockSeconds;
     // 2 本目を満たす。余ったダメージは持ち越さない（Damageable は 0 で止めているので、そのまま満たせばよい）。
     health.maxHealth = BarHealth(boss, 2);

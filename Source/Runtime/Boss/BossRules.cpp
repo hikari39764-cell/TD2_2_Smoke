@@ -63,8 +63,8 @@ size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
 
 bool BossRules::IsBladeLit(const BossComponent& boss) {
     const bool acting = boss.state == BossState::Act;
-    return (boss.bladeLit && acting) ||
-           (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.hidden);
+    return (boss.bladeLit && acting) || (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) &&
+                                         !boss.hidden && !boss.shiftState.lookPending);
 }
 
 float BossRules::GetStun(const BossComponent& boss) { return boss.stun; }

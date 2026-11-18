@@ -19,6 +19,7 @@
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossObserver.h"
+#include "BossPhaseShift.h"
 #include "BossPose.h"
 #include "BossRules.h"
 #include "BossSelection.h"
@@ -217,6 +218,7 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession());
     BossIntro::Begin(boss, memory != nullptr && memory->GetMemory().bossIntroSeen);
     BossIntroCamera::Load(world, boss);
+    BossIntroCamera::LoadShift(world, boss);
     LoadTable(world, boss);
 }
 
@@ -310,8 +312,12 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
-    // 1 本目が空になった tick は、崩れも気絶値も数えずに変わり目へ入る（気絶値は 0 に戻る）。
-    if (!BossHealthBars::CheckEmptied(boss, health, delta)) {
+    // 1 本目が空になった tick は、崩れも気絶値も数えずに変わり目へ入る（気絶値は 0 に戻る）。変わり目の演出（c-8dd296）を
+    // 始める（打ち切る前の体の高さから、落ちて膝をつく）。
+    const float rootBefore = BossPose::RootHeight(boss);
+    if (BossHealthBars::CheckEmptied(boss, health, delta)) {
+        BossPhaseShift::Begin(boss, frame.playerCenter, frame.player != nullptr, rootBefore);
+    } else {
         CheckBreak(boss, hits);
         // 戻り（後隙）の間に当てた弾は、気絶値が多く入る（c-808641）。
         const bool recovering = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
@@ -451,7 +457,8 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
             return;
         }
         BossMoveExecutor::StepIdle(frame);
-        if (boss.requestedMove < 0)
+        // 変わり目の演出の後、少しの間は技を選ばない（構えたまま横へ歩く。次の技は行動ツリーが決める）。
+        if (boss.requestedMove < 0 && !BossPhaseShift::Calm(boss))
             brain.OnIdle(context);
         if (boss.requestedMove >= 0)
             StartRequested(frame, 0);
@@ -663,9 +670,13 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                     BossIntro::Face(boss, playerCenter);
                 BossIntro::Step(boss);
                 BossHealthBars::Step(boss);
-                // 演出の間は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。PlayerSystem が tick ごとに減らす）。
-                if (player != nullptr && BossIntro::Cinematic(boss))
+                BossPhaseShift::Step(boss);
+                // 演出の間（登場・フェーズの変わり目）は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。
+                // PlayerSystem が tick ごとに減らす）。変わり目の閃光の後の tick に、プレイヤーを押し出す。
+                if (player != nullptr && (BossIntro::Cinematic(boss) || BossPhaseShift::Cinematic(boss)))
                     player->cinematicHold = std::max(player->cinematicHold, kCinematicHoldTicks);
+                if (player != nullptr)
+                    BossPhaseShift::Push(boss, *player, playerCenter);
                 boss.shownBar = BossIntro::BarShown(boss) ? 1.0f : 0.0f;
                 if (BossIntro::Started(boss)) {
                     if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
@@ -798,10 +809,17 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                   GameSession::ReadAction(world.GetInput(), boss.intro.skipAction)
                                                       .pressed)
                                                   boss.introState.skipRequested = true;
+                                              // フェーズの変わり目の演出：飛ばす入力（項目で切れる）。
+                                              if (BossPhaseShift::Cinematic(boss) && boss.shift.skippable &&
+                                                  !boss.shift.skipAction.empty() &&
+                                                  GameSession::ReadAction(world.GetInput(), boss.shift.skipAction)
+                                                      .pressed)
+                                                  boss.shiftState.skipRequested = true;
                                               world.ForEachComponent<PlayerComponent>(
                                                   HIKARI::MakeComponentTypeId(kPlayerType),
                                                   [&](HIKARI::ObjectView, PlayerComponent& player) {
                                                       BossIntroCamera::Update(boss, player);
+                                                      BossIntroCamera::UpdateShift(boss, player);
                                                   });
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });

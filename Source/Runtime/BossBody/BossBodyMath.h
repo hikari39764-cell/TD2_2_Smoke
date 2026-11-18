@@ -76,11 +76,13 @@ inline const BossMove* CurrentMove(const BossComponent& boss) {
     return &moves[static_cast<size_t>(boss.move)];
 }
 
-// フェーズ 2 の見た目（燃える胴・灼けた鎧・場の色・待機の構え）を出すか。見た目の切り替えの入口はここ 1 か所
-// （c-857ae3）。いまは規則がフェーズ 2 に入った tick（1 本目の条が空になった瞬間）から。次のカード c-8dd296 で
-// 変わり目の閃光の中で切り替える時は、この中身を「閃光が出た」という状態に替えれば、胴の火・鎧・場・構えが同じ
-// フレームでそろって変わる（刀の火と目の色は規則の IsBladeLit が決めるので別）。
-inline bool PhaseTwoLook(const BossComponent& boss) { return boss.lastPhaseNumber >= 2; }
+// フェーズ 2 の見た目（燃える胴・灼けた鎧・場の色・待機の構え・火の目）を出すか。見た目の切り替えの入口はここ 1 か所
+// （c-857ae3）。変わり目の演出（c-8dd296）をする時は、その閃光（爆の、刀が地面を離れた tick。飛ばした時はその tick）で
+// 切り替わる。演出を切った時は、規則がフェーズ 2 に入った tick から。刀の火は規則の IsBladeLit が決めるので別（演出の
+// 間の刀身は BossPhaseShiftVisuals が決める）。
+inline bool PhaseTwoLook(const BossComponent& boss) {
+    return boss.lastPhaseNumber >= 2 && !boss.shiftState.lookPending;
+}
 
 // 待機の構えの形：握り（局所。1 倍の体の値）・剣先の向き・刃の向き。フェーズ 2 は phaseTwoKamae で案を選ぶ。
 struct KamaeShape {

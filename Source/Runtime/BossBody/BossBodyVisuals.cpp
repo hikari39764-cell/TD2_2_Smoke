@@ -10,6 +10,7 @@
 #include "BossBodyRig.h"
 #include "BossBodySword.h"
 #include "BossIntroVisuals.h"
+#include "BossPhaseShiftVisuals.h"
 #include "../Boss/BossCloneComponent.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
@@ -74,6 +75,8 @@ void StepFire(BossComponent& boss, float seconds) {
     float target = 0.0f;
     if (BossBodyMath::PhaseTwoLook(boss) && boss.state != BossState::Dead)
         target = boss.state == BossState::Stunned ? std::clamp(s.fireStunnedShare, 0.0f, 1.0f) : 1.0f;
+    // 変わり目の演出（c-8dd296）：閃光より前から、内から火が回る。
+    target = std::max(target, BossPhaseShiftVisuals::FireFloor(boss));
     float& fire = boss.bodyState.fire;
     const float step = s.fireRiseSeconds > 0.0f ? std::max(0.0f, seconds) / s.fireRiseSeconds : 1.0f;
     fire = fire < target ? std::min(target, fire + step) : std::max(target, fire - step);
@@ -303,6 +306,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
             BossMath::Mul(BossMath::Sub(state.tickFrom, state.tickTo), 1.0f - std::clamp(alpha, 0.0f, 1.0f));
     body.position = BossMath::Add(body.position, boss.bodyState.presentShift);
     BossIntroVisuals::Advance(boss, seconds);
+    BossPhaseShiftVisuals::Advance(boss, seconds);
     BossBodyAccents::StepSmoke(boss, seconds);
     StepFire(boss, seconds);
     UpdateSmoke(world, boss, body);
@@ -314,7 +318,10 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossBodySword::Trace(boss, body, pose);
     // 登場の間は、置いてある所・飛んでいる途中の鎧と、地面に刺さった刀に直す。
     BossIntroVisuals::ApplyPose(boss, body, pose, seconds);
+    // フェーズの変わり目の演出の間は、膝をついて刀を突き立て、刀身を拭い、斬り上げて抜く姿に直す。
+    BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
     SubmitPose(world, object, boss, pose);
+    BossPhaseShiftVisuals::Render(world, object, boss, pose, seconds);
     UpdateFireTongues(world, object, boss, pose);
     UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
     BossBodyAccents::Update(world, boss, body, pose, seconds);
@@ -349,6 +356,7 @@ void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView o
 void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     BossVfx::StopHandle(world, boss.bodyState.smokeVfx);
     BossBodyAccents::Stop(world, boss);
+    BossPhaseShiftVisuals::Stop(world, boss);
 }
 
 } // namespace Project_TD2_2

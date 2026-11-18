@@ -62,7 +62,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      phaseTwoHealth, 0.0f, 100000.0f);
         fields.Float("phaseOneShare", "条の値が 0 の時、ボス全体の HP のうち 1 本目にする割合", phaseOneShare, 0.05f,
                      0.95f);
-        fields.Int("phaseShiftFrames", "変わり目の長さ (F。1 本目が空になってから。無敵で技を出さない)",
+        fields.Int("phaseShiftFrames", "変わり目の長さ (F。変わり目の演出を切った時だけ。演出をする時は拍の長さの合計)",
                    phaseShiftFrames, 1, 3600);
         fields.Note(
             "HP はフェーズごとの条です。1 本目を空にすると、いまの技を打ち切って変わり目に入り（気絶値は 0 に"
@@ -512,6 +512,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     body.Describe(fields);
     intro.Describe(fields);
+    shift.Describe(fields);
     swing.Describe(fields);
     kasumiStep.Describe(fields);
     stance.Describe(fields);

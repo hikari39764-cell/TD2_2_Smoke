@@ -9,6 +9,7 @@
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossIntroSettings.h"
 #include "BossKasumiStepSettings.h"
+#include "BossPhaseShiftSettings.h"
 #include "BossMoveTable.h"
 #include "BossStance.h"
 #include "BossSwingShapes.h"
@@ -559,7 +560,8 @@ public:
     float phaseOneHealth = 0.0f;
     float phaseTwoHealth = 0.0f;
     float phaseOneShare = 0.4f;
-    // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。演出（c-8dd296）が入るまでの仮の短い長さ。
+    // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。変わり目の演出（shift。c-8dd296）をする時は、
+    // その拍の長さの合計を使い、この値は演出を切った時だけ使う。
     int phaseShiftFrames = 90;
     // 類魂の崩れにくさ（c-ff3e98）。気絶値 110 → 220：精力満タンの連射（4 発）だけでは気絶しない。
     // 気絶するたびに、次に要る気絶値を stunMax × stunMaxGrowth ずつ増やす（2 回目 275、3 回目 330）。
@@ -942,6 +944,8 @@ public:
     BossBodySettings body;
     // 登場（散らばった鎧と黒い煙から組み上がり、刀を抜く。c-429242）。
     BossIntroSettings intro;
+    // フェーズの変わり目の演出（c-8dd296）。
+    BossPhaseShiftSettings shift;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
     // 両手の斬りは斬りの型（swing）の握りを使うので、ここは片手の技（回し蹴り・霞分身・引爆・天降り斬り・投げナイフ・
     // 炎走りの前隙）の剣の付け根。体の倍率どおり（5 m の体の 1.35 倍）。
@@ -1279,6 +1283,7 @@ public:
     BossGreatswordVisualState greatswordVisual;
     BossBodyState bodyState;
     BossIntroState introState;
+    BossPhaseShiftState shiftState;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
 };
