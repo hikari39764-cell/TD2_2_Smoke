@@ -456,6 +456,8 @@ struct BossReactionMemory {
     float readySeconds = 0.0f;
     // 確率を振った後、次に振れる時刻（外れた時にすぐ振り直さない）。
     float rerollSeconds = 0.0f;
+    // この反応で出した技（とコンボ）がプレイヤーに当たった時刻（c-44fdc5。当てた直後は出にくくする）。
+    float hitSeconds = -1.0e9f;
 };
 
 // 技の選び方が覚えていること（行動ツリーの節が BossSelection を通して読み書きする）。
@@ -1134,6 +1136,9 @@ public:
     // 気絶
     float stun = 0.0f;
     int stunCount = 0;
+    // 反応の枝が頼んだ技の名前の鍵（頼んだ時に覚え、技を始めた時に reactionMoveKey へ。反応でない技を始めると 0）。
+    size_t pendingReactionKey = 0;
+    size_t reactionMoveKey = 0;
     // 連段の途中で気絶値が満ちた（連段が終わったらひざまずく）。次に怯みを出せる時刻（秒）。戻りの手応えを強めている。
     bool stunPending = false;
     // 怯んだ回数（見た目が怯みの始まりを知るため）。

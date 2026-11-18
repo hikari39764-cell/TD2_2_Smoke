@@ -42,6 +42,12 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     kesa.Describe(fields, "swingKesa", "袈裟（逆袈裟は左右に映す）");
     vertical.Describe(fields, "swingVertical", "縦");
     dash.Describe(fields, "swingDash", "突進の払い（突進横なぎ。退き払いは左右に映す）");
+    fields.Float3("swingStrollGuardGrip", "散歩の構え：握り（体の足元から、局所 m）", strollGuardGrip);
+    fields.Float3("swingStrollGuardDirection", "散歩の構え：刀の向き（局所。体の前に横たえる）", strollGuardDirection);
+    fields.Float("swingStrollGuardCrouch", "散歩の構え：腰を落とす量 (m)", strollGuardCrouch, 0.0f, 3.0f);
+    fields.Float("swingStrollGuardLean", "散歩の構え：前傾 (度)", strollGuardLean, -30.0f, 30.0f);
+    fields.Float("swingStrollGuardTwist", "散歩の構え：胴の捻り (度)", strollGuardTwist, -90.0f, 90.0f);
+    fields.Int("swingStrollGuardFrames", "散歩の構え：横歩きの始めに構えへ移る長さ (F)", strollGuardFrames, 1, 60);
     fields.Float3("swingReturnGrip", "戻りの中段：握り（体の足元から、局所 m）", returnGrip);
     fields.Float3("swingReturnDirection", "戻りの中段：刀の向き（局所。剣先をプレイヤーの胸へ）", returnDirection);
     fields.Float("swingReturnCrouch", "戻りの中段：腰を落とす量 (m。見た目だけ)", returnCrouch, 0.0f, 3.0f);

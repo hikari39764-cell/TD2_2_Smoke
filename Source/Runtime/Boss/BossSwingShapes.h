@@ -122,6 +122,14 @@ struct BossSwingSettings {
                             1.0f,
                             0.3f,
                             0.0f};
+    // 散歩の構え（c-44fdc5）：散歩の姿勢で横へ歩く間、両手で刀を体の前に横たえる（剣先はボスの右へ、刃は前）。
+    // 横歩きの始めの strollGuardFrames F で、いまの構えから移る。
+    HIKARI::GameProjectFloat3 strollGuardGrip{0.25f, 3.1f, 1.7f};
+    HIKARI::GameProjectFloat3 strollGuardDirection{-0.93f, 0.08f, 0.36f};
+    float strollGuardCrouch = 0.3f;
+    float strollGuardLean = 4.0f;
+    float strollGuardTwist = 12.0f;
+    int strollGuardFrames = 14;
     // 戻りの中段（c-999264）：振り終わりから構えへ戻る道が寄る所。両手で握り（体の足元から、局所 m）、剣先をプレイヤーの
     // 胸へ向け（局所の向き）、腰を少し落として前へ傾く。「戻り始めた＝この連段は終わり」と読める形。
     HIKARI::GameProjectFloat3 returnGrip{-0.3f, 3.5f, 2.0f};

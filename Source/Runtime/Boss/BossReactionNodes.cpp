@@ -169,7 +169,9 @@ enum : uint32_t {
     kReactionCutRecovery,
     kReactionDelayMin,
     kReactionDelayMax,
-    kReactionDuringWalk
+    kReactionDuringWalk,
+    kReactionHitSeconds,
+    kReactionHitScale
 };
 constexpr ParamDesc kReactionParams[] = {
     {"label", ValueType::Text, "名前", 0.0, "反応", false, nullptr,
@@ -194,6 +196,12 @@ constexpr ParamDesc kReactionParams[] = {
     {"duringWalk", ValueType::Bool, "移動中も反応する", 0.0, nullptr, false, nullptr,
      "オンにすると、歩きの技（横歩き・間合いを詰める）の間も反応して歩きを切り上げる。オフ（既定）は待機中だけ。"
      "技の前隙・攻撃中・後隙（「後隙を切り上げる」がオフなら）の間は、どちらでも反応しない。"},
+    {"hitSeconds", ValueType::Float, "当てた後に下げる時間", 0.0, nullptr, false, nullptr,
+     "この反応で出した技（とコンボ）がプレイヤーに当たった後、この時間は確率に「当てた後の倍率」を掛ける"
+     "（続けて当て続けない）。0 で下げない。",
+     0.0, 60.0, "s"},
+    {"hitScale", ValueType::Float, "当てた後の倍率", 0.3, nullptr, false, nullptr,
+     "当てた後に下げる時間の間、確率に掛ける倍率。", 0.0, 1.0, ""},
 };
 
 // 反応の遅れを待っている間の、節ごとの状態（確率に当たってから後ろの技を始めるまで）。走り始めるたびに 0 から。
@@ -286,7 +294,9 @@ Status TickReaction(INodeContext& context, void* state, void* user) noexcept {
     const float now = boss.clockSeconds;
     if (memory == nullptr || now < memory->readySeconds || now < memory->rerollSeconds)
         return Status::Failure;
-    const float chance = context.ParamFloat(kReactionChance);
+    float chance = context.ParamFloat(kReactionChance);
+    if (now - memory->hitSeconds < context.ParamFloat(kReactionHitSeconds))
+        chance *= std::clamp(context.ParamFloat(kReactionHitScale), 0.0f, 1.0f);
     const float roll = context.Random() * 100.0f;
     memory->rerollSeconds = now + std::max(0.0f, context.ParamFloat(kReactionReroll));
     const bool pass = roll < chance;
@@ -615,8 +625,16 @@ void BossReactionNodes::NoteStarted(BossThought& thought) {
     if (!thought.reactionArmed)
         return;
     thought.reactionArmed = false;
+    thought.boss.pendingReactionKey = thought.reactionKey;
     if (BossReactionMemory* memory = MemoryOf(thought.boss, thought.reactionKey))
         memory->readySeconds = thought.boss.clockSeconds + thought.reactionCooldown;
+}
+
+void BossReactionNodes::NoteHit(BossComponent& boss) {
+    if (boss.reactionMoveKey == 0)
+        return;
+    if (BossReactionMemory* memory = MemoryOf(boss, boss.reactionMoveKey))
+        memory->hitSeconds = boss.clockSeconds;
 }
 
 void BossReactionNodes::NoteFailed(BossThought& thought) { thought.reactionArmed = false; }

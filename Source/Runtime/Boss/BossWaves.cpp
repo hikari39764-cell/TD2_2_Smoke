@@ -1,5 +1,7 @@
 #include "BossWaves.h"
 
+#include "BossReactionNodes.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -241,8 +243,10 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     // 火の当たり（火の刃・燃える地面の爆発）は体に燃え移る。霞の噴き上がりのような火の無い爆発は燃え移らない
     // （ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
     const bool ignite = accepted && fire;
-    if (accepted)
+    if (accepted) {
         ++boss.playerHitCount;
+        BossReactionNodes::NoteHit(boss);
+    }
     if (accepted) {
         // 当たった所の手応えを出す（ナイフは小さく）。火の当たりは炎が体を突き抜け、霞の当たりは霞が弾ける。
         AddBlast(boss, {.pushPending = true,

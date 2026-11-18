@@ -83,9 +83,12 @@
       "name": "プレイヤーへの反応",
       "note": "条件 → 反応の間隔 → 技を実行 の枝を並べる。左から順に試し、成り立った枝の技を待ちを切り上げて出す。反応の間隔の「後隙を切り上げる」がオフの枝は、ボスの後隙の間は反応しない（大技の後隙は咎められるまま）。",
       "children": [
+        70,
+        76,
         30,
         38,
-        42
+        42,
+        80
       ]
     },
     {
@@ -94,6 +97,7 @@
       "name": "回復を咎める",
       "children": [
         31,
+        81,
         32,
         33
       ]
@@ -111,15 +115,16 @@
         "cooldown": 8.0,
         "cutRecovery": false,
         "label": "回復を咎める",
-        "rerollSeconds": 0.5
+        "rerollSeconds": 0.5,
+        "duringWalk": true
       }
     },
     {
       "id": 33,
       "type": "Project_TD2_2.BossMove",
-      "name": "突進横なぎ",
+      "name": "咎めの縦",
       "params": {
-        "move": "突進横なぎ",
+        "move": "咎めの縦",
         "pick": "always"
       }
     },
@@ -189,7 +194,8 @@
         "cooldown": 4.0,
         "cutRecovery": false,
         "label": "密着を払う",
-        "rerollSeconds": 0.5
+        "rerollSeconds": 0.5,
+        "duringWalk": true
       }
     },
     {
@@ -344,6 +350,175 @@
       "type": "Project_TD2_2.BossStance",
       "name": "姿勢で技を選ぶ",
       "note": "重みは Data/Boss/kasumi_bushi_stance.csv、姿勢の長さ・帯の境はボスの「姿勢と間合い」。"
+    },
+    {
+      "type": "Project_TD2_2.BossStanceIs",
+      "params": {
+        "stance": "stroll"
+      },
+      "id": 65
+    },
+    {
+      "type": "Project_TD2_2.BossPlayerShooting",
+      "params": {
+        "withinFrames": 8,
+        "aimedOnly": true,
+        "minStreak": 1
+      },
+      "id": 66
+    },
+    {
+      "type": "Project_TD2_2.BossStepReady",
+      "id": 67
+    },
+    {
+      "type": "Project_TD2_2.BossReaction",
+      "name": "散歩：撃てばかわして返す",
+      "params": {
+        "label": "散歩：撃てばかわして返す",
+        "chance": 85.0,
+        "cooldown": 2.0,
+        "rerollSeconds": 0.5,
+        "cutRecovery": false,
+        "delayMinFrames": 2,
+        "delayMaxFrames": 6,
+        "duringWalk": true,
+        "hitSeconds": 6.0,
+        "hitScale": 0.3
+      },
+      "id": 68
+    },
+    {
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞歩でかわす",
+      "params": {
+        "move": "霞歩でかわす",
+        "pick": "always"
+      },
+      "id": 69
+    },
+    {
+      "type": "Sequence",
+      "name": "散歩：撃てばかわして返す",
+      "children": [
+        65,
+        66,
+        67,
+        68,
+        69
+      ],
+      "note": "撃とうとしたら弾の線から横へ跳び、着地で受けの払い（横の剣気）を返す（c-44fdc5）。",
+      "id": 70
+    },
+    {
+      "type": "Project_TD2_2.BossStanceIs",
+      "params": {
+        "stance": "aggro"
+      },
+      "id": 71
+    },
+    {
+      "type": "Project_TD2_2.BossPlayerShooting",
+      "params": {
+        "withinFrames": 8,
+        "aimedOnly": true,
+        "minStreak": 1
+      },
+      "id": 72
+    },
+    {
+      "type": "Project_TD2_2.BossStepReady",
+      "id": 73
+    },
+    {
+      "type": "Project_TD2_2.BossReaction",
+      "name": "攻勢：撃てばかわして返す",
+      "params": {
+        "label": "攻勢：撃てばかわして返す",
+        "chance": 15.0,
+        "cooldown": 4.0,
+        "rerollSeconds": 0.5,
+        "cutRecovery": false,
+        "delayMinFrames": 2,
+        "delayMaxFrames": 6,
+        "duringWalk": true,
+        "hitSeconds": 6.0,
+        "hitScale": 0.3
+      },
+      "id": 74
+    },
+    {
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞歩でかわす",
+      "params": {
+        "move": "霞歩でかわす",
+        "pick": "always"
+      },
+      "id": 75
+    },
+    {
+      "type": "Sequence",
+      "name": "攻勢：撃てばかわして返す",
+      "children": [
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      "note": "撃とうとしたら弾の線から横へ跳び、着地で受けの払い（横の剣気）を返す（c-44fdc5）。",
+      "id": 76
+    },
+    {
+      "type": "Project_TD2_2.BossPlayerBehind",
+      "params": {
+        "atLeastDegrees": 120.0,
+        "minSeconds": 0.8
+      },
+      "id": 77
+    },
+    {
+      "type": "Project_TD2_2.BossReaction",
+      "name": "背後を払う",
+      "params": {
+        "label": "背後を払う",
+        "chance": 70.0,
+        "cooldown": 4.0,
+        "rerollSeconds": 0.5,
+        "cutRecovery": false,
+        "delayMinFrames": 2,
+        "delayMaxFrames": 6,
+        "duringWalk": true
+      },
+      "id": 78
+    },
+    {
+      "type": "Project_TD2_2.BossMove",
+      "name": "回し蹴り",
+      "params": {
+        "move": "回し蹴り",
+        "pick": "always"
+      },
+      "id": 79
+    },
+    {
+      "type": "Sequence",
+      "name": "背後を払う",
+      "children": [
+        77,
+        78,
+        79
+      ],
+      "note": "背後・横に回られたら、回し蹴りの霞の輪で払って後ろへ跳ぶ（回し蹴りのコンボ先）。",
+      "id": 80
+    },
+    {
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "min": 0.0,
+        "max": 15.0
+      },
+      "id": 81
     }
   ]
 }

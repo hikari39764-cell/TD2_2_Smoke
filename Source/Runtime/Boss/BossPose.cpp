@@ -625,6 +625,24 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     case BossMoveType::SlashL: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, true));
     case BossMoveType::SlashH: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, false));
     case BossMoveType::SlashHR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.horizontal, true));
+    case BossMoveType::WalkSide:
+        if (boss.stanceMemory.stance == BossStanceKind::Stroll) {
+            // 散歩の構え（c-44fdc5）：両手で刀を体の前に横たえ、刃を前へ向けて横へ歩く（待機の下段と見分ける）。
+            const BossSwingSettings& s = boss.swing;
+            BossSwordPose guard;
+            guard.grip = s.strollGuardGrip;
+            guard.direction = Normalize(s.strollGuardDirection, {-1.0f, 0.0f, 0.0f});
+            guard.edge = Normalize(ProjectOut({0.0f, 0.0f, 1.0f}, guard.direction), {0.0f, -1.0f, 0.0f});
+            guard.crouch = s.strollGuardCrouch;
+            guard.lean = s.strollGuardLean;
+            guard.twist = s.strollGuardTwist;
+            guard.twoHand = 1.0f;
+            return Sweep(boss.moveStartPose, guard, Share(boss.stateFrame, std::max(1, s.strollGuardFrames)));
+        }
+        if (boss.phase == BossActPhase::Pre)
+            return Sweep(boss.moveStartPose, Rest(boss), Share(boss.stateFrame, move.pre));
+        return boss.phase == BossActPhase::Post ? BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post)
+                                                : Rest(boss);
     case BossMoveType::RetreatSweep: return RetreatSweepPose(boss, move);
     case BossMoveType::Overhead:
     case BossMoveType::SlashV: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.vertical, false));

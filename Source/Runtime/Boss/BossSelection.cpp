@@ -160,6 +160,11 @@ void BossSelection::NoteStarted(BossComponent& boss, int row, int chain) {
         return;
     if (chain == 0 && move->use == BossMoveUse::Start)
         boss.brain.lastStarted = row;
+    // 反応の枝が頼んだ技か（コンボの続きは前の技のまま）。
+    if (chain == 0) {
+        boss.reactionMoveKey = boss.pendingReactionKey;
+        boss.pendingReactionKey = 0;
+    }
     if (IsRushType(move->type))
         boss.brain.moveHits = 0;
     // 分身を撃たれた後の本体の突進（瞬間突進の型）が始まった。
