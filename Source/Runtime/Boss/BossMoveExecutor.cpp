@@ -218,6 +218,11 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
     case BossMoveType::SlashH:
     case BossMoveType::SlashHR:
     case BossMoveType::SlashV:
+        // 空中で終わった技（跳躍）から続いた時は、始めの comboLandFrames F で落ちて着地する（だんだん速く）。
+        if (boss.landFrom > 0.0f) {
+            const float k = Share(t, std::max(1, boss.comboLandFrames));
+            boss.height = boss.landFrom * (1.0f - k * k);
+        }
         if (move.preShift != 0.0f) {
             // 表の「前隙の移動 m」：構えに入るまで（振り上げの間）に、滑らかに前へ・後ろへ動く。
             const int span = std::max(1, move.pre - std::min(boss.kamaeFrames, move.pre - 1));
@@ -229,11 +234,35 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
         } else if (!inKamae)
             boss.ground = Add(boss.ground, Mul(forward, boss.slashApproachSpeed * frame.dt));
         break;
-    case BossMoveType::Overhead:
-        if (progress > kOverheadLungeStart)
+    case BossMoveType::Overhead: {
+        // 跳び込み（c-b1824c）：前隙の終わりの overheadLeapFrames F で、プレイヤーから overheadLeapStop m の所へ（最長
+        // overheadLeapMax m。近すぎれば後ろへ最長 overheadLeapBack m）滑らかに弧を描いて跳び、前隙の終わりに着地する（そこから
+        // 斬り下ろす）。行き先は跳ぶ時に決める（突進と同じく dashFrom・dashTo に覚える）。跳ばない時（0 F）は前の作り
+        // （終わりの 15 % で踏み込む）。
+        const int leap = std::clamp(boss.overheadLeapFrames, 0, std::max(0, move.pre - 1));
+        if (leap > 0) {
+            const int start = move.pre - leap;
+            if (t == start + 1) {
+                boss.dashFrom = boss.ground;
+                const float length =
+                    std::clamp(distance - boss.overheadLeapStop, -boss.overheadLeapBack, boss.overheadLeapMax);
+                boss.dashTo = Add(boss.ground, Mul(forward, length));
+                BossMoveExecutor::ClampToArena(boss, boss.dashTo);
+                char extra[64]{};
+                std::snprintf(extra, sizeof(extra), "distance=%.3f", static_cast<double>(length));
+                Log(boss, "OverheadLeap", extra);
+            }
+            if (t > start) {
+                const float k = Share(t - start, leap);
+                boss.ground = Lerp(boss.dashFrom, boss.dashTo, Smooth(k));
+                boss.height = boss.overheadLeapHeight * std::sin(kPi * k);
+            }
+        } else if (progress > kOverheadLungeStart) {
             boss.ground = Add(boss.ground, Mul(forward, boss.overheadLungeDistance /
                                                             std::max(1.0f, move.pre * (1.0f - kOverheadLungeStart))));
+        }
         break;
+    }
     case BossMoveType::String:
         if (distance > boss.stringApproachStop && !inKamae)
             boss.ground = Add(boss.ground, Mul(forward, boss.stringApproachSpeed * frame.dt));
@@ -521,6 +550,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.glintFrames = 0;
     boss.spin = 0.0f;
     boss.hidden = false;
+    boss.landFrom = boss.height;
     boss.sideSign = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;
     boss.actFrames = move.act;
     if (BossMoveTable::IsMoveType(move.type) && !move.segments.empty()) {
@@ -545,6 +575,10 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.windupHoldAt = move.pre - std::min(boss.kamaeFrames, move.pre - 1);
     if (move.type == BossMoveType::Dash)
         boss.windupHoldAt = std::max(1, move.pre - std::clamp(boss.dashSlideFrames, 1, std::max(1, move.pre - 1)) - 1);
+    // 上段溜めは跳び込む前に溜めを揺らがせる（跳ぶ途中で止まらない）。
+    if (move.type == BossMoveType::Overhead && boss.overheadLeapFrames > 0)
+        boss.windupHoldAt =
+            std::max(1, move.pre - std::clamp(boss.overheadLeapFrames, 1, std::max(1, move.pre - 1)) - 1);
     if (!move.windupExtras.empty() && move.pre >= 2) {
         // 見た目の乱数で選ぶ。技選びの乱数や、プレイヤーに見える合図とは結び付かない。
         // 始めた tick を混ぜる：見た目の乱数は種が決まっているので、混ぜないと Play のたびに最初の溜めが同じ長さになる。
@@ -644,6 +678,9 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
                 if (g.tIn <= g.swingLength && strike.homing > 0.0f)
                     FaceRate(frame, strike.homing);
                 StepIn(frame, strike, g);
+                // 体の回転（表の「体の回転 °」）：振りの速さで体ごと回す。当たりを見る前に回す（刀の当たりも回る）。
+                if (move.actSpin != 0.0f && g.hitIndex == 0)
+                    boss.spin = move.actSpin * BossPose::SwingShare(boss, g.tIn, g.swingLength);
                 SwingStep(frame, move, g);
             }
         }
@@ -651,6 +688,11 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
         ActMotion(frame, move, progress);
         BossSpecialMoves::Act(frame, move, g, entered, progress);
         if (boss.stateFrame >= boss.actFrames) {
+            // 回りきった体の回転は向きへ移す（後隙・次の技で回転を 0 に戻しても向きが跳ばない）。
+            if (move.actSpin != 0.0f) {
+                boss.yaw = WrapPi(boss.yaw + boss.spin);
+                boss.spin = 0.0f;
+            }
             Log(boss, "ActEnd");
             result = StepResult::ActFinished;
         }
@@ -734,6 +776,8 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     BossFlameRun::Cut(boss);
     boss.height = 0.0f;
     boss.sink = 0.0f;
+    // 回っている途中で打ち切られたら、その向きのまま止める（見える体が回転の分だけ跳ばない）。
+    boss.yaw = WrapPi(boss.yaw + boss.spin);
     boss.spin = 0.0f;
     boss.hidden = false;
     boss.swordSmoke = false;

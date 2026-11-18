@@ -57,8 +57,11 @@ enum class Column {
     StepHeight,
     PreShift,
     Delivery,
+    ActSpin,
     Count
 };
+// 連撃の一撃の前に書いた間 (F) の最小（振り終わりから次の振りへ、これより速くは返せない）。
+constexpr int kMinimumWrittenGap = 6;
 // 「変化の前隙 F」が空欄の時の、切り替えた技の前隙 (F)。
 constexpr double kDefaultSwitchPre = 14.0;
 
@@ -68,6 +71,7 @@ struct HeaderKey {
 };
 // 「追尾を止める」は「追尾」より、「崩せる被弾数」は「被弾」より先に見る（後ろの短い見出しに取られないように）。
 constexpr HeaderKey kHeaders[] = {
+    {"体の回転", Column::ActSpin},
     {"跳ぶ向き", Column::StepDirections},
     {"跳ぶ距離", Column::StepDistance},
     {"跳ぶ高さ", Column::StepHeight},
@@ -272,6 +276,8 @@ struct Parsed {
         BossStrikeDirection direction = BossStrikeDirection::Horizontal;
         int ref = -1;
         bool named = false;
+        // 前の一撃からの間 (F。c-b1824c)：攻撃中の列で一撃の前に数を書いた時（「中袈裟/14/小逆袈裟」）。-1 は型の間。
+        int gap = -1;
     };
     std::vector<Strike> strikes;
     std::vector<int> strikeDamage;
@@ -463,19 +469,26 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         for (const auto& token : rawTokens)
             allDirections = allDirections && DirectionOf(ReadStrikeToken(token).body).has_value();
         if (move.type == BossMoveType::String || allDirections) {
+            int writtenGap = -1;
             for (const auto& text : rawTokens) {
                 const StrikeToken token = ReadStrikeToken(text);
                 Parsed::Strike strike;
+                strike.gap = writtenGap;
                 strike.size = token.size;
                 strike.sized = token.sized;
                 strike.feint = token.feint;
                 if (const auto direction = DirectionOf(token.body)) {
                     strike.direction = *direction;
                     parsed.strikes.push_back(strike);
+                    writtenGap = -1;
                     continue;
                 }
-                if (!token.body.empty() && token.body[0] >= '0' && token.body[0] <= '9')
+                // 数は次の一撃の前の間 (F)：構えを待たずに続けて振る（返しの二連など）。
+                if (!token.body.empty() && token.body[0] >= '0' && token.body[0] <= '9') {
+                    writtenGap = std::atoi(token.body.c_str());
                     continue;
+                }
+                writtenGap = -1;
                 strike.named = true;
                 parsed.hasReference = true;
                 if (references != nullptr) {
@@ -512,6 +525,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                 parsed.strikes.push_back({});
             }
             auto gapOf = [&](const Parsed::Strike& strike) {
+                if (strike.gap >= 0)
+                    return std::max(strike.gap, kMinimumWrittenGap) + (strike.feint ? timing.feintFrames : 0);
                 const int base = strike.ref >= 0 && !strike.sized
                                      ? (*references)[static_cast<size_t>(strike.ref)].move.pre
                                      : gapFrames(strike.size);
@@ -696,6 +711,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         move.preShift = static_cast<float>(NumberOf(raw[Column::PreShift]).value_or(0.0));
+        move.actSpin =
+            static_cast<float>(NumberOf(raw[Column::ActSpin]).value_or(0.0) * 3.14159265358979323846 / 180.0);
         {
             const std::string& text = raw[Column::Delivery];
             const bool blade = Contains(text, "実"), haze = Contains(text, "霞");

@@ -148,6 +148,19 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     if (fields.Section("動きの型ごとの体の動き")) {
         fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", dashStopDistance, 0.0f, 30.0f);
+        fields.Int("overheadRaiseFrames", "上段溜め：前隙の始めに大上段へ振りかぶる長さ (F)", overheadRaiseFrames, 1,
+                   120);
+        fields.Int("overheadLeapFrames", "上段溜め：前隙の終わりに前へ跳び込む長さ (F。0 で跳ばない)",
+                   overheadLeapFrames, 0, 120);
+        fields.Float("overheadLeapHeight", "上段溜め：跳び込みの弧の高さ (m)", overheadLeapHeight, 0.0f, 10.0f);
+        fields.Int("comboLandFrames", "空中で終わった技から続いた斬りの技が、前隙の始めに着地するまで (F)",
+                   comboLandFrames, 1, 60);
+        fields.Float("overheadLeapStop", "上段溜め：跳び込んで着地する、プレイヤーからの距離 (m)", overheadLeapStop,
+                     0.0f, 30.0f);
+        fields.Float("overheadLeapMax", "上段溜め：跳び込みの最長 (m)", overheadLeapMax, 0.0f, 30.0f);
+        fields.Float("overheadLeapBack", "上段溜め：近すぎる時に後ろへ跳び退く最長 (m)", overheadLeapBack, 0.0f, 30.0f);
+        fields.Float("overheadCoilCrouch", "上段溜め：溜めの間に沈む深さ (m。跳ぶと戻る)", overheadCoilCrouch, 0.0f,
+                     3.0f);
         fields.Int("dashRaiseFrames", "突進横なぎ：前隙の始めに、刀を引きずる構えへ移る長さ (F)", dashRaiseFrames, 1,
                    120);
         fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)",

@@ -130,13 +130,14 @@ struct MotionFrame {
         const Vec3 shift = boss.bodyState.presentShift;
         const Vec3 root{boss.ground.x + shift.x, boss.ground.y + BossPose::RootHeight(boss) + shift.y,
                         boss.ground.z + shift.z};
-        const Vec3 rule = Add(root, RotateY(local, boss.yaw));
+        // 規則の枠は体ごとの回転（回し蹴り・体の回転の技）も含める（刀の当たりと同じ所。c-b1824c）。
+        const Vec3 rule = Add(root, RotateY(local, boss.yaw + boss.spin));
         const Vec3 centered{local.x * body.scale.x, (local.y - boss.bodyHalfHeight) * body.scale.y,
                             local.z * body.scale.z};
         return Lerp(Add(body.position, Rotate(body.rotation, centered)), rule, lock);
     }
     Vec3 Direction(Vec3 local) const {
-        return Normalize(Lerp(Rotate(body.rotation, local), RotateY(local, boss.yaw), lock), local);
+        return Normalize(Lerp(Rotate(body.rotation, local), RotateY(local, boss.yaw + boss.spin), lock), local);
     }
 };
 

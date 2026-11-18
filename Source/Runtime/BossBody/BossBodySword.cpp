@@ -525,7 +525,7 @@ void BossBodySword::Solve(const BossComponent& boss, const Transform& body, Boss
     const Vec3 worldDirection = s.tipGroundClearance < 0.0f || sunk
                                     ? freeDirection
                                     : KeepTipAbove(gripWorld, freeDirection, VisibleBladeReach(boss), floorHeight,
-                                                   RotateY({0.0f, 0.0f, 1.0f}, boss.yaw));
+                                                   RotateY({0.0f, 0.0f, 1.0f}, boss.yaw + boss.spin));
     pose.swordTipClearance =
         sunk ? 1000.0f : gripWorld.y + freeDirection.y * VisibleBladeReach(boss) - (floorHeight - s.tipGroundClearance);
     const Vec3 worldEdge = Perpendicular(frame.Direction(Perpendicular(m.edge, direction)), worldDirection);

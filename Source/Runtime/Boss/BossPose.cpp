@@ -644,7 +644,25 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
         return boss.phase == BossActPhase::Post ? BackToRest(boss, boss.lastEndPose, boss.stateFrame, move.post)
                                                 : Rest(boss);
     case BossMoveType::RetreatSweep: return RetreatSweepPose(boss, move);
-    case BossMoveType::Overhead:
+    case BossMoveType::Overhead: {
+        // 大上段（c-b1824c）：早く振りかぶって長く溜め、跳び込んで斬り下ろす。
+        const Strike strike = ShapeStrike(boss.swing.overhead, false);
+        if (boss.phase != BossActPhase::Pre)
+            return SingleStrikePose(boss, move, strike);
+        BossSwordPose pose = EarlyWindup(boss, strike, boss.stateFrame, move.pre, boss.overheadRaiseFrames);
+        // 振りかぶった後は溜めるほど深く沈み（跳ぶ力を溜める）、跳ぶと伸び上がって空中で体を開く。
+        const int leap = std::clamp(boss.overheadLeapFrames, 0, std::max(0, move.pre - 1));
+        const int raise = std::clamp(boss.overheadRaiseFrames, 1, std::max(1, move.pre - 1));
+        const int leapStart = move.pre - leap;
+        const int t = boss.stateFrame;
+        float coil = 0.0f;
+        if (t >= raise && t < leapStart)
+            coil = Smooth(Share(t - raise, std::max(1, leapStart - raise)));
+        else if (t >= leapStart)
+            coil = 1.0f - Smooth(Share(t - leapStart, std::max(1, leap / 3)));
+        pose.crouch += boss.overheadCoilCrouch * coil;
+        return pose;
+    }
     case BossMoveType::SlashV: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.vertical, false));
     case BossMoveType::Retreat: return RetreatPose(boss, move);
     case BossMoveType::Jump: return JumpPose(boss, move);
@@ -672,12 +690,21 @@ BossSwordLine BossPose::SwordLine(const BossComponent& boss, const BossSwordPose
 }
 
 BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSwordPose& pose) {
-    const BossSwordLine line = SwordLine(boss, pose);
+    BossSwordLine line = SwordLine(boss, pose);
+    if (boss.spin != 0.0f) {
+        const Vec3 center{boss.ground.x, line.root.y, boss.ground.z};
+        line.root = Add(center, RotateY(Sub(line.root, center), boss.spin));
+        line.direction = RotateY(line.direction, boss.spin);
+    }
     BossSwordPoints points;
     points.base = Add(line.root, Mul(line.direction, boss.swordLength * kSwordBaseShare));
     points.inner = Add(line.root, Mul(line.direction, boss.swordLength * kSwordInnerShare));
     points.outer = Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength));
     return points;
+}
+
+float BossPose::SwingShare(const BossComponent& boss, int tIn, int length) {
+    return std::clamp(SwingProgress(boss, std::clamp(tIn, 0, std::max(1, length)), length), 0.0f, 1.0f);
 }
 
 } // namespace Project_TD2_2

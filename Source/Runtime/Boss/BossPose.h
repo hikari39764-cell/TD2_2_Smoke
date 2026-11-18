@@ -36,7 +36,10 @@ public:
     // 下ろした構え（待機・後隙の戻り先）。
     static BossSwordPose Rest(const BossComponent& boss);
     static BossSwordLine SwordLine(const BossComponent& boss, const BossSwordPose& pose);
+    // 刀の点（世界）。体ごとの回転（spin。回し蹴り・体の回転の技）も含める（見える刀と同じ所。SwordLine は体の向きだけ）。
     static BossSwordPoints SwordPoints(const BossComponent& boss, const BossSwordPose& pose);
+    // 振りの進み（0〜1。振りの速さの曲線。tIn は振りに入ってからの F）。
+    static float SwingShare(const BossComponent& boss, int tIn, int length);
     // 地面から足元までの高さ（跳躍・浮遊から、霧へ沈んだ深さを引く。見た目の上下のゆれは含めない）。
     static float RootHeight(const BossComponent& boss);
 };

@@ -648,6 +648,20 @@ public:
     float stringApproachSpeed = 1.6f;
     float stringApproachStop = 3.942f;
     float overheadLungeDistance = 2.43f;
+    // 上段溜め（c-b1824c）：前隙の始めの overheadRaiseFrames F で大上段へ振りかぶり、残りは溜める（溜めの揺らぎは跳ぶ前に
+    // 入る）。前隙の終わりの overheadLeapFrames F で、プレイヤーから overheadLeapStop m の所へ跳び込み（最長 overheadLeapMax m。
+    // 近すぎれば後ろへ最長 overheadLeapBack m 跳び退いてから斬る。弧の高さ overheadLeapHeight m）、着地と同時に斬り下ろす（大きい体の刀は、近すぎると
+    // 頭の上を通る。刀の当たる距離で着地する）。
+    int overheadRaiseFrames = 22;
+    int overheadLeapFrames = 18;
+    // 空中で終わった技（跳躍）から続いた斬りの技は、前隙の始めの comboLandFrames F で落ちて着地する（c-b1824c）。
+    int comboLandFrames = 6;
+    float overheadLeapHeight = 1.2f;
+    float overheadLeapStop = 4.8f;
+    float overheadLeapMax = 6.0f;
+    float overheadLeapBack = 2.0f;
+    // 振りかぶった後の溜めで沈む深さ（構えの沈みに足す。跳ぶと戻る）。
+    float overheadCoilCrouch = 0.45f;
     float stepInClearance = 1.62f;
     float walkInStopDistance = 6.507f;
     float walkInSpeedScale = 1.25f;
@@ -1053,6 +1067,8 @@ public:
     HIKARI::GameProjectFloat3 ground{};
     float yaw = 0.0f;
     float height = 0.0f;
+    // 技を始めた時の高さ（空中から続いた斬りの技が、前隙の始めに着地する元の高さ）。
+    float landFrom = 0.0f;
     float floatHeight = 0.5f;
     float floatTarget = 0.5f;
     int floatTimer = 0;
