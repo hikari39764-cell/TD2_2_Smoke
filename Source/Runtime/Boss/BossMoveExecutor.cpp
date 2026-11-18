@@ -606,6 +606,19 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     if (move.type == BossMoveType::Overhead && boss.overheadLeapFrames > 0)
         boss.windupHoldAt =
             std::max(1, move.pre - std::clamp(boss.overheadLeapFrames, 1, std::max(1, move.pre - 1)) - 1);
+    // 霞の大剣（c-9143b5）：大剣は前隙の全部を使って構え直すので、構えきった前隙の終わりで揺らがせる（途中で止めると、
+    // 動いている剣が急に止まり、急に動き出した）。跳び割りは、空中の頂きで溜める間の真ん中で揺らがせる。
+    if (move.type == BossMoveType::Greatsword || move.type == BossMoveType::GreatswordCleave) {
+        boss.windupHoldAt = std::max(1, move.pre - 1);
+        if (move.type == BossMoveType::GreatswordCleave && move.preShift > 0.0f) {
+            const int leap = std::clamp(boss.greatswordLeapFrames, 1, std::max(1, move.pre - 1));
+            const float rise = std::clamp(boss.greatswordLeapRiseShare, 0.05f, 0.9f);
+            const float hang = std::clamp(boss.greatswordLeapHangShare, 0.0f, 0.9f - rise);
+            boss.windupHoldAt = std::clamp(
+                move.pre - leap + static_cast<int>(std::lround(static_cast<float>(leap) * (rise + hang * 0.5f))), 1,
+                std::max(1, move.pre - 1));
+        }
+    }
     if (!move.windupExtras.empty() && move.pre >= 2) {
         // 見た目の乱数で選ぶ。技選びの乱数や、プレイヤーに見える合図とは結び付かない。
         // 始めた tick を混ぜる：見た目の乱数は種が決まっているので、混ぜないと Play のたびに最初の溜めが同じ長さになる。

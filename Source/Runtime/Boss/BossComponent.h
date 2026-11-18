@@ -766,7 +766,7 @@ public:
     // 跳び割りの頂きで溜め始めた瞬間の、剣先の閃き（爆発の倍率。0 で出さない）。
     float greatswordApexBurstScale = 0.8f;
     // 薙ぎの速さの山（0〜1。大きいほど、ゆっくり振り出して溜めてから一気に薙ぐ。c-9143b5）。
-    float greatswordSweepPeak = 0.62f;
+    float greatswordSweepPeak = 0.58f;
     bool greatswordApexBurst = false;
     float greatswordEruptionHalfWidth = 1.2f;
     int greatswordEruptionDamage = 25;

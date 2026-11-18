@@ -346,8 +346,10 @@ void BossGreatsword::Pre(BossFrame& frame, const BossMove& move) {
     Leap(frame, move);
     Vec3 hilt{}, direction{};
     if (sword.chained) {
-        // 連撃：前隙の全部で、前の一振りの終わりの形から、頭上へ振りかぶる（縦割り）・薙ぎ始めの構えへ回す（横薙ぎ）。
-        const float share = Share(t, move.pre);
+        // 連撃：前の一振りの終わりの形から、頭上へ振りかぶる（縦割り）・薙ぎ始めの構えへ回す（横薙ぎ）。溜めの揺らぎで
+        // 止まる所（windupHoldAt）までに構えきる（跳び割りは頂きで溜める所。止まる時に剣が動いていない。c-9143b5）。
+        const int ready = boss.windupHoldAt > 0 && boss.windupHoldAt < move.pre ? boss.windupHoldAt : move.pre;
+        const float share = Share(t, std::max(1, ready));
         if (cleave) {
             SetPhase(boss, BossGreatswordPhase::Raise);
             sword.raise = share;

@@ -512,8 +512,10 @@ BossSwordPose GreatswordPose(const BossComponent& boss) {
     const BossSwingSettings& s = boss.swing;
     const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
     BossSwordPose pose;
-    pose.grip = RotateY(Sub(sword.hilt, root), -boss.yaw);
-    pose.direction = Normalize(RotateY(sword.direction, -boss.yaw), {0.0f, 1.0f, 0.0f});
+    // 体の枠は体ごとの回転（回転薙ぎ）も含む（c-9143b5）。
+    const float facing = boss.yaw + boss.spin;
+    pose.grip = RotateY(Sub(sword.hilt, root), -facing);
+    pose.direction = Normalize(RotateY(sword.direction, -facing), {0.0f, 1.0f, 0.0f});
     pose.twoHand = 1.0f;
     float low = 0.0f, turn = 1.0f;
     switch (sword.phase) {
@@ -529,11 +531,20 @@ BossSwordPose GreatswordPose(const BossComponent& boss) {
     }
     pose.crouch = s.greatswordCrouch * low;
     pose.lean = s.greatswordLean * low;
-    // 大剣の向きの横の角度（縦に立てている時は決まらないので捻らない）。
+    // 大剣の向きの横の角度で捻る。途切れないように（c-9143b5。前は真後ろで角度が ±180 度を跨ぐと捻りが逆の上限へ跳び、
+    // 剣を立てる所で 0 へ跳んで、胴が急に回った）：
+    // ・上限に届く角度より後ろへ回った剣は、真後ろで 0 になるよう、なめらかに捻りを戻す
+    // ・剣が立つ（水平の長さが短い）ほど捻りを弱める
     const float flat = std::hypot(pose.direction.x, pose.direction.z);
-    const float yaw = flat > 0.2f ? std::atan2(pose.direction.x, pose.direction.z) / kRadiansPerDegree : 0.0f;
-    pose.twist =
-        std::clamp(yaw * s.greatswordTwistShare, -s.greatswordTwistMaxDegrees, s.greatswordTwistMaxDegrees) * turn;
+    const float yaw = std::atan2(pose.direction.x, pose.direction.z) / kRadiansPerDegree;
+    const float maxTwist = s.greatswordTwistMaxDegrees;
+    const float edge = std::clamp(maxTwist / std::max(0.01f, s.greatswordTwistShare), 1.0f, 179.0f);
+    float twist =
+        std::abs(yaw) <= edge
+            ? std::clamp(yaw * s.greatswordTwistShare, -maxTwist, maxTwist)
+            : std::copysign(maxTwist * std::clamp((180.0f - std::abs(yaw)) / (180.0f - edge), 0.0f, 1.0f), yaw);
+    twist *= Smooth(std::clamp((flat - 0.1f) / 0.3f, 0.0f, 1.0f));
+    pose.twist = twist * turn;
     return pose;
 }
 
