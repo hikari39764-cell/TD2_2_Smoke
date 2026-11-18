@@ -1,0 +1,181 @@
+{
+  "formatVersion": 1,
+  "name": "BossImpactMono",
+  "passes": [
+    {
+      "name": "Boss Impact Mono",
+      "shaderAssetGuid": "3d0b595558db142ed46af16634d6bce6",
+      "entryId": "Main"
+    }
+  ],
+  "params": [
+    {
+      "key": "strength",
+      "label": "強さ（Boss が毎フレーム送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 0,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "invert",
+      "label": "反転（Boss が送る。1 で白と黒が入れ替わる）",
+      "type": "Float",
+      "ref": {
+        "slot": 0,
+        "channel": 1
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "pivot",
+      "label": "白と黒の境の明るさ（露出済みの線形。暗い物が黒、明るい空が白になる所）",
+      "type": "Float",
+      "ref": {
+        "slot": 1,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.25,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.001,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        10.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "hardness",
+      "label": "硬さ（大きいほど白と黒の 2 値に近い）",
+      "type": "Float",
+      "ref": {
+        "slot": 1,
+        "channel": 1
+      },
+      "defaultValues": [
+        1.6,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        10.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.05
+    },
+    {
+      "key": "white",
+      "label": "白の明るさ（露出済みの線形）",
+      "type": "Float",
+      "ref": {
+        "slot": 1,
+        "channel": 2
+      },
+      "defaultValues": [
+        2.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        20.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.05
+    },
+    {
+      "key": "black",
+      "label": "黒の明るさ（露出済みの線形）",
+      "type": "Float",
+      "ref": {
+        "slot": 1,
+        "channel": 3
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        2.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    }
+  ]
+}

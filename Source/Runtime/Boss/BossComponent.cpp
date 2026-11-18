@@ -498,6 +498,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "途中で吸い込みをやめても、ローリングしても、引き込みは最後まで進みます。");
     }
     body.Describe(fields);
+    intro.Describe(fields);
     swing.Describe(fields);
     kasumiStep.Describe(fields);
     stance.Describe(fields);

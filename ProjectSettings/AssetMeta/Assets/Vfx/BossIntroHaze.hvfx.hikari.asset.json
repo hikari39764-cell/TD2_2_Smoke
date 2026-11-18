@@ -1,0 +1,14 @@
+{
+  "displayName": "Boss Intro Haze",
+  "guid": "9d2b6f40c7a14e83b5f0a6c1d8e37f12",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroHaze.hvfx",
+  "type": "VfxEffect"
+}

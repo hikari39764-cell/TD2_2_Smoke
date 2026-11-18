@@ -1,0 +1,30 @@
+{
+  "schema": "HIKARI.ShaderSource",
+  "version": 2,
+  "programId": "TD2_2.BossImpactMono",
+  "source": "BossImpactMono.hlsl",
+  "engineInterfaceId": "HIKARI.PostEffect.Common",
+  "engineInterfaceVersion": 3,
+  "engineInterfaceHash": "7082edc805606b1a36f367855cb1465cb11c8729fe94937cb376807ab19ca138",
+  "rootLayoutId": "HIKARI.PostQuad.Root",
+  "rootLayoutVersion": 3,
+  "rootLayoutHash": "293c005f5adefecd38ef51a4ac9ecb2463c573970cd8f4b09632f7593de0d1ad",
+  "requiredCaps": {
+    "minimumShaderModel": 60,
+    "minimumRootSignatureVersion": 10,
+    "requiredFeatureMask": 0
+  },
+  "includeRoots": [
+    "Project",
+    "EngineSdk"
+  ],
+  "defines": [],
+  "entries": [
+    {
+      "id": "Main",
+      "stage": "Pixel",
+      "entry": "main",
+      "profile": "ps_6_0"
+    }
+  ]
+}

@@ -254,7 +254,7 @@
           }
         },
         "fluidDomain": {
-          "ambientStrength": 3.0,
+          "ambientStrength": 1.2000000476837158,
           "anisotropy": 0.30000001192092896,
           "boundary": "Open",
           "buoyancy": 0.8999999761581421,
@@ -263,44 +263,44 @@
           "cellColor": false,
           "channel": "None",
           "combustion": false,
-          "densityDissipation": 2.8,
+          "densityDissipation": 2.799999952316284,
           "detailScale": 0.11999999731779099,
           "detailStrength": 0.550000011920929,
           "domainSize": [
-            5.0625,
-            8.774999618530273,
-            5.0625
+            6.760000228881836,
+            9.390000343322754,
+            5.820000171661377
           ],
           "emissionColor": [
             1.0,
-            0.30000001192092896,
-            0.05000000074505806
+            0.019999999552965164,
+            0.029999999329447746
           ],
           "emissionHotColor": [
             1.0,
-            0.6200000047683716,
-            0.2199999988079071
+            0.550000011920929,
+            0.18000000715255737
           ],
           "emissionHotTemperature": 4.0,
-          "emissionIntensity": 90000.0,
-          "emissionTemperature": 1.600000023841858,
+          "emissionIntensity": 35000.0,
+          "emissionTemperature": 1.0,
           "expansionPerBurn": 0.30000001192092896,
-          "extinction": 10.0,
+          "extinction": 16.0,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 2.5,
           "id": "module.fluidDomain.f6116fb4b06e1c0d844ab3afc1c72fd2",
           "ignitionTemperature": 0.30000001192092896,
           "inertia": 0.5,
           "maxSubsteps": 2,
-          "multipleScattering": 0.800000011920929,
+          "multipleScattering": 0.699999988079071,
           "prewarmSeconds": 1.5,
           "priority": 90,
           "relativeWind": 0.3499999940395355,
           "resolution": 72,
           "scatteringColor": [
-            0.7799999713897705,
-            0.800000011920929,
-            0.8399999737739563
+            0.04500000178813934,
+            0.04500000178813934,
+            0.05999999865889549
           ],
           "smokePerBurn": 0.6000000238418579,
           "substepRate": 60.0,
@@ -1162,7 +1162,7 @@
           "shapeFillSoftness": 0.25,
           "shapeModel": "",
           "shapeOffset": 0.0,
-          "temperature": 0.25,
+          "temperature": 1.100000023841858,
           "velocity": [
             0.0,
             0.0,
@@ -3745,7 +3745,7 @@
           "shapeFillSoftness": 0.25,
           "shapeModel": "",
           "shapeOffset": 0.0,
-          "temperature": 1.0,
+          "temperature": 1.2999999523162842,
           "velocity": [
             0.0,
             0.3499999940395355,

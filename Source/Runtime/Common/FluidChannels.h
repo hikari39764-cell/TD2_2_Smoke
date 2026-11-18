@@ -15,5 +15,11 @@ inline constexpr uint32_t kFire = 1u << 1u;
 // 出す注入や力は届かない（残り煙で刃の形が崩れない・口の吸入が斬撃の霧を「吸った霧」に数えない）。届くのは、捕まえた
 // 斬撃を飲み込む口の力（GourdAbsorbField::SubmitSwallow）だけ。
 inline constexpr uint32_t kSlash = 1u << 3u;
+// 登場の前の、とぐろの黒い煙の域（BossIntroCoil の Coil Domain）は Channel4 で受ける。届くのは、帯の頭の注入
+// （BossIntroVisuals）だけ（場の霧への注入・体の障害物・技の力に崩されない）。
+inline constexpr uint32_t kCoil = 1u << 4u;
+// 登場の前に広く立ち込める黒い煙の域（BossIntroHaze の Haze Domain）は Channel5 で受ける。届くのは、登場の間に中央へ
+// 流す力（BossIntroVisuals）だけ。
+inline constexpr uint32_t kHaze = 1u << 5u;
 
 } // namespace Project_TD2_2::FluidChannels

@@ -7,6 +7,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "BossIntroSettings.h"
 #include "BossKasumiStepSettings.h"
 #include "BossMoveTable.h"
 #include "BossStance.h"
@@ -925,6 +926,8 @@ public:
     float absorbPullSqueezeRadius = 3.5f;
     // 外形（刀・手・鎧の模型）。置き場所の規則は BossBodyRig、出す所は BossBodyVisuals。
     BossBodySettings body;
+    // 登場（散らばった鎧と黒い煙から組み上がり、刀を抜く。c-429242）。
+    BossIntroSettings intro;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
     // 両手の斬りは斬りの型（swing）の握りを使うので、ここは片手の技（回し蹴り・霞分身・引爆・天降り斬り・投げナイフ・
     // 炎走りの前隙）の剣の付け根。体の倍率どおり（5 m の体の 1.35 倍）。
@@ -1249,6 +1252,7 @@ public:
     BossSkyfallVisualState skyfallVisual;
     BossGreatswordVisualState greatswordVisual;
     BossBodyState bodyState;
+    BossIntroState introState;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
 };

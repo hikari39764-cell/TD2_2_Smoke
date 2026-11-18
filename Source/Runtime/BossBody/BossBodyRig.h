@@ -23,6 +23,8 @@ struct BossBodyPose {
     BossBodyPlacement leftHand;
     BossBodyPlacement leftCuff;
     BossBodyHandShape leftShape = BossBodyHandShape::Open;
+    // 両手を描くか（登場で、手が煙から現れる前は描かない）。
+    bool showHands = true;
     // 刀身を、灼けた刀身（火の技・フェーズ 2）で出す。
     bool bladeHot = false;
     // 地面に止める前の剣先の、地面からの高さ (m。負＝地面に止められて、刀の向きが起こされている)。

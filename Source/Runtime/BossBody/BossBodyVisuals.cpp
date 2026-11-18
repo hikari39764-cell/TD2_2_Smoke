@@ -8,6 +8,7 @@
 #include "BossBodyMath.h"
 #include "BossBodyRig.h"
 #include "BossBodySword.h"
+#include "BossIntroVisuals.h"
 #include "../Boss/BossCloneComponent.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
@@ -68,8 +69,13 @@ void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Ga
     const bool stunned = boss.state == BossState::Stunned || boss.state == BossState::Dead;
     // 技に合わせた量と熱さ（溜め・刀の火・振り終わりの吹き出し）は、演出の層（BossBodyAccents::StepSmoke）が決める。
     const BossBodyAccentState& accents = boss.bodyState.accents;
+    // 登場：組み上がる前は出さず（域も持たない）、組み上がりの始めは柱として濃く立つ。
+    const float intro = BossIntroVisuals::SmokeScale(boss);
+    if (intro <= 0.0f && !boss.bodyState.smokeVfx.IsValid())
+        return;
     VfxParameters::SetFloat(parameters, kAmountInput,
-                            boss.body.smokeAmount * (stunned ? boss.body.smokeAmountStunned : accents.smokeAmount));
+                            boss.body.smokeAmount * intro *
+                                (stunned ? boss.body.smokeAmountStunned : accents.smokeAmount));
     VfxParameters::SetFloat(parameters, kSmokeHeatInput,
                             stunned                      ? 1.0f
                             : boss.lastPhaseNumber >= 2 ? boss.body.smokeHeatPhaseTwo
@@ -170,9 +176,11 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
         Submit(world, object, boss, kHilt, pose.sword);
         Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
     }
-    Submit(world, object, boss, kRightHand, pose.rightHand);
+    if (pose.showHands) {
+        Submit(world, object, boss, kRightHand, pose.rightHand);
+        Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);
+    }
     Submit(world, object, boss, kRightCuff, pose.rightCuff);
-    Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);
     Submit(world, object, boss, kLeftCuff, pose.leftCuff);
     Submit(world, object, boss, kTorso, pose.torso);
     Submit(world, object, boss, kHead, pose.head);
@@ -214,14 +222,17 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
         boss.bodyState.presentShift =
             BossMath::Mul(BossMath::Sub(state.tickFrom, state.tickTo), 1.0f - std::clamp(alpha, 0.0f, 1.0f));
     body.position = BossMath::Add(body.position, boss.bodyState.presentShift);
+    BossIntroVisuals::Advance(boss, seconds);
     BossBodyAccents::StepSmoke(boss, seconds);
     UpdateSmoke(world, boss, body);
     if (boss.body.model.empty())
         return;
     BossBodyRig::StepSway(boss, body, seconds);
     BossBodySword::Step(boss, seconds);
-    const BossBodyPose pose = BossBodyRig::Solve(boss, body);
+    BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, body, pose);
+    // 登場の間は、置いてある所・飛んでいる途中の鎧と、地面に刺さった刀に直す。
+    BossIntroVisuals::ApplyPose(boss, body, pose, seconds);
     SubmitPose(world, object, boss, pose);
     UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
     BossBodyAccents::Update(world, boss, body, pose, seconds);

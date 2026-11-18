@@ -18,6 +18,7 @@
 #include "Boss/BossBehaviorNodes.h"
 #include "Boss/BossCloneComponent.h"
 #include "Boss/BossComponent.h"
+#include "Common/SessionMemory.h"
 #include "Boss/BossSystem.h"
 #include "Burn/BurnFieldComponent.h"
 #include "Burn/BurnFieldSystem.h"
@@ -29,13 +30,15 @@
 namespace Project_TD2_2 {
 
 // Play 中にシーンをまたいで保持するプロジェクト状態。
-class GameSession final : public HIKARI::IGameProjectSession {
+class GameSession final : public HIKARI::IGameProjectSession, public ISessionMemory {
 public:
     void OnGameStarted(HIKARI::WorldView&) override {
         gameplaySeconds = 0.0f;
         enteredScenes = 0;
         sceneActive = false;
+        memory = {};
     }
+    SessionMemory& GetMemory() noexcept override { return memory; }
 
     void OnSceneEntered(HIKARI::WorldView&) override {
         ++enteredScenes;
@@ -46,6 +49,7 @@ public:
     float gameplaySeconds = 0.0f;
     uint32_t enteredScenes = 0;
     bool sceneActive = false;
+    SessionMemory memory;
 };
 
 // システムは通常どおり World に Attach され、ゲーム状態は Play session から取得する。

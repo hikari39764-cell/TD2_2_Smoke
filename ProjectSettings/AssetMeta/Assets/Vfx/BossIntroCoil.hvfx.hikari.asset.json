@@ -1,0 +1,14 @@
+{
+  "displayName": "Boss Intro Coil",
+  "guid": "5e0c7a91b34d4c28a6f1d9e2037b84c5",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroCoil.hvfx",
+  "type": "VfxEffect"
+}

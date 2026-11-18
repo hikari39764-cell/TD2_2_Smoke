@@ -1,0 +1,10 @@
+{
+  "displayName": "BossImpactMono",
+  "guid": "3d0b595558db142ed46af16634d6bce6",
+  "importSettings": {},
+  "importerId": "ShaderImporter",
+  "importerVersion": 1,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Shaders/BossImpactMono.hshader",
+  "type": "Shader"
+}

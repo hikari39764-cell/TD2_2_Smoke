@@ -123,6 +123,8 @@ void SetEdge(HIKARI::GameProjectVfxParameterOverrides& parameters, BossComponent
     BossBodyAccentState& a = boss.bodyState.accents;
     bool pulsing = false;
     float target = great ? 0.0f : EdgeTarget(boss, CurrentMove(boss), pulsing);
+    // 登場の一振りの溜めの間は、登場の演出が頼んだ強さ。
+    target = std::max(target, boss.introState.bladeEdge);
     a.edgeClock = pulsing ? a.edgeClock + seconds : 0.0f;
     if (pulsing)
         target *= 1.0f + s.edgePulseDepth * std::sin(2.0f * kPi * s.edgePulseFrequency * a.edgeClock);
@@ -155,8 +157,10 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
     const float tipSpeed = Length(boss.bodyState.motion.velocity) * VisibleBladeReach(boss);
     // 剣先が地面に届く少し手前で切る（地面に止められた剣先は地面に沿って滑り、折れ線の帯を引く）。
     const bool grounded = pose.swordTipClearance < s.trailGroundCut;
-    const bool swinging = s.trail && !great && !grounded &&
-                          (boss.swordSmoke || (a.trailHold > 0.0f && tipSpeed >= s.trailMinTipSpeed));
+    // 登場の一振りの間も出す（登場の演出が頼む）。
+    const bool swinging = (s.trail && !great && !grounded &&
+                           (boss.swordSmoke || (a.trailHold > 0.0f && tipSpeed >= s.trailMinTipSpeed))) ||
+                          boss.introState.bladeSwing;
     a.trailGain = grounded ? 0.0f : Lerp(a.trailGain, swinging ? 1.0f : 0.0f, Follow(seconds, kTrailRiseSeconds));
     // 振りのゆがみ：刀光の間と、刀を振る技の打ち込みで剣先が速い間（命中の窓の少し前の振り出しから）。振りかぶりでは
     // 出さない。地面に沿う剣先では切る。
@@ -226,9 +230,13 @@ void UpdateCommit(HIKARI::WorldView& world, BossComponent& boss, const BossBodyP
     constexpr uint64_t kReleaseStopSource = 0x5444325245ull;
     if (released && s.releaseHoldTicks > 0)
         Feedback::RequestHitStop(world, kReleaseStopSource, 306, s.releaseHoldTicks, s.releaseHoldScale);
-    const float bright = released && s.releaseGlint > 0.0f ? s.releaseGlint : 1.0f;
+    // 登場の演出が頼んだ光（刀が地面を離れる・振り下ろす瞬間）。
+    const float intro = boss.introState.glint;
+    boss.introState.glint = 0.0f;
+    const float bright = intro > 0.0f ? intro : released && s.releaseGlint > 0.0f ? s.releaseGlint : 1.0f;
     const auto color = Color(kColorInput, Mul(pose.bladeHot ? s.glintFireColor : s.glintMistColor, bright));
-    if (((started && UsesSword(move->type)) || (released && s.releaseGlint > 0.0f)) && !s.glintEffect.IsEmpty()) {
+    if (((started && UsesSword(move->type)) || (released && s.releaseGlint > 0.0f) || intro > 0.0f) &&
+        !s.glintEffect.IsEmpty()) {
         StopHandle(world, a.glintVfx);
         HIKARI::GameProjectVfxPlayRequest play{};
         play.asset = s.glintEffect;
@@ -264,7 +272,8 @@ float ChargeAmount(const BossComponent& boss) {
         charge = 1.0f;
     if (boss.greatsword.phase == BossGreatswordPhase::Conjure || boss.greatsword.phase == BossGreatswordPhase::Raise)
         charge = std::max(charge, boss.body.accents.auraConjure * std::clamp(boss.greatsword.fill, 0.0f, 1.0f));
-    return charge;
+    // 登場の間は、登場の演出が頼んだ強さ（立ち上がる瞬間は 1 を超える）。
+    return std::max(charge, boss.introState.aura);
 }
 
 // 溜めの気配：溜めている間、体を包んで立ちのぼる。体の足元に付けて出し続け、強さを入力で変える。
@@ -301,6 +310,13 @@ void UpdateShock(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Ga
     const BossBodyAccentSettings& s = boss.body.accents;
     BossBodyAccentState& a = boss.bodyState.accents;
     const Vec3 feet = Feet(boss, body);
+    // 登場の演出が頼んだ衝撃の輪（立ち上がる・刀が抜ける・振り下ろす瞬間）。
+    for (BossIntroState::Shock& shock : boss.introState.shocks) {
+        if (shock.size > 0.0f && shock.delay <= 0.0f) {
+            PlayShock(world, boss, pose, shock.at, shock.size);
+            shock.size = 0.0f;
+        }
+    }
     const BossMove* move = CurrentMove(boss);
     const int skyfall = static_cast<int>(boss.skyfall.phase);
     const int great = static_cast<int>(boss.greatsword.phase);

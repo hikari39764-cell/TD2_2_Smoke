@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <string>
 
+#include "HIKARI/Project/GameProjectSession.h"
 #include "HIKARI/Project/ProjectDataView.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BossCloneComponent.h"
@@ -12,6 +13,7 @@
 #include "BossDetonate.h"
 #include "BossFeedback.h"
 #include "BossFlameRun.h"
+#include "BossIntro.h"
 #include "BossKasumiStep.h"
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
@@ -25,8 +27,10 @@
 #include "BossWaves.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
+#include "../Common/SessionMemory.h"
 #include "../Common/TraceInterval.h"
 #include "../BossBody/BossBodyVisuals.h"
+#include "../BossBody/BossIntroVisuals.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
 #include "../Gourd/GourdShotComponent.h"
@@ -203,6 +207,9 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     boss.previousGround = boss.lastBodyPosition = boss.ground;
     boss.state = BossState::Idle;
     boss.initialized = true;
+    // 登場は Play の間に 1 度だけ：やり直し（シーンの読み直し）の後は、Play session が覚えている。
+    auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession());
+    BossIntro::Begin(boss, memory != nullptr && memory->GetMemory().bossIntroSeen);
     LoadTable(world, boss);
 }
 
@@ -339,7 +346,8 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     }
     // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。弾をかわす霞歩の
     // 跳び始め（kasumiStepGuardFrames）も当たらない。
-    const bool shielded = boss.hidden || BossKasumiStep::Guarding(boss);
+    // 登場の間（構えに収まるまで）も当たらない。
+    const bool shielded = boss.hidden || BossKasumiStep::Guarding(boss) || BossIntro::Shielded(boss);
     if (shielded != boss.hiddenApplied) {
         health.invulnerable = shielded;
         boss.hiddenApplied = shielded;
@@ -423,7 +431,8 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
         return;
     case BossState::Idle:
         // 戦いが始まるまで（Flow が止めている間）は、歩かず技も出さない。
-        if (boss.held) {
+        // 登場が済むまでも同じ。
+        if (boss.held || BossIntro::Holding(boss)) {
             boss.velocity = {};
             return;
         }
@@ -633,6 +642,13 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 // 兜が向く先（見た目だけが読む。規則は使わない）。
                 boss.bodyState.lookTarget = playerCenter;
                 boss.bodyState.lookTargetSeen = player != nullptr;
+                if (player != nullptr)
+                    BossIntro::Face(boss, playerCenter);
+                BossIntro::Step(boss);
+                if (BossIntro::Started(boss)) {
+                    if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
+                        memory->GetMemory().bossIntroSeen = true;
+                }
                 BossMoveExecutor::StepFloat(boss);
                 BossBrainContext context{boss, object.GetHandle()};
                 if (player != nullptr)
@@ -752,6 +768,7 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                                    frame.gameDt);
                                                   });
                                               BossFeedback::Update(world, object, boss, frame);
+                                              BossIntroVisuals::Feedback(world, object, boss, frame.unscaledDt);
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });
     // 斬撃のエフェクトが使う流体域の分だけ、砲撃の炎の枠を譲ってもらう（毎フレーム入れ直す）。
@@ -776,8 +793,10 @@ void BossSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext&
                                            });
     world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType),
                                           [&](HIKARI::ObjectView object, BossComponent& boss) {
-                                              if (boss.initialized)
-                                                  BossSmoke::Render(world, object, boss, smokePerVolume);
+                                              if (!boss.initialized)
+                                                  return;
+                                              BossSmoke::Render(world, object, boss, smokePerVolume);
+                                              BossIntroVisuals::Render(world, object, boss, frame.gameDt);
                                           });
 }
 
@@ -786,6 +805,7 @@ void BossSystem::OnWorldDetached(HIKARI::WorldView& world) {
                                           [&](HIKARI::ObjectView, BossComponent& boss) {
                                               BossVisuals::Stop(world, boss);
                                               BossBodyVisuals::Stop(world, boss);
+                                              BossIntroVisuals::Stop(world, boss);
                                               BossWaves::Clear(boss);
                                           });
 }
