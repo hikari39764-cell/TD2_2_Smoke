@@ -24,7 +24,7 @@ constexpr GestureRow kGestureTable[] = {
     {BossMoveType::Clone, Gesture::Seal},         {BossMoveType::Ambush, Gesture::Seal},
     {BossMoveType::FlameRun, Gesture::FlameWipe}, {BossMoveType::Retreat, Gesture::Aim},
     {BossMoveType::Greatsword, Gesture::TwoHand}, {BossMoveType::GreatswordCleave, Gesture::TwoHand},
-    {BossMoveType::Skyfall, Gesture::TwoHand},    {BossMoveType::Kick, Gesture::Kick},
+    {BossMoveType::Skyfall, Gesture::TwoHand},    {BossMoveType::Kick, Gesture::TwoHand},
 };
 
 // 体の中心の高さ（局所 m）。刀身をなぞる手を、刀身のどちらの面に付けるか（体の側の面）を決めるのに使う。

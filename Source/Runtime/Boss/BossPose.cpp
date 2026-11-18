@@ -666,7 +666,14 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     case BossMoveType::SlashV: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.vertical, false));
     case BossMoveType::Retreat: return RetreatPose(boss, move);
     case BossMoveType::Jump: return JumpPose(boss, move);
-    case BossMoveType::Kick: return HeldPose(boss, move, kHeld);
+    case BossMoveType::Kick: {
+        // 回転斬り（c-427df4）：横なぎの型を両手で構え、前隙の始めの spinRaiseFrames F で刀を右後ろへ引き、溜める（体の
+        // 逆への捻り込みは実行器の spin）。攻撃中に体ごと回りながら払う。
+        const Strike strike = ShapeStrike(boss.swing.horizontal, false);
+        if (boss.phase != BossActPhase::Pre)
+            return SingleStrikePose(boss, move, strike);
+        return EarlyWindup(boss, strike, boss.stateFrame, move.pre, boss.spinRaiseFrames);
+    }
     case BossMoveType::Detonate: return DetonatePose(boss, move);
     case BossMoveType::Clone: return HeldPose(boss, move, kForward);
     case BossMoveType::FlameRun: return FlameRunPose(boss, move);

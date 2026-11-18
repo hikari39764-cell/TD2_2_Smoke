@@ -1024,6 +1024,14 @@ public:
     float ringFadeSeconds = 0.35f;
     float ringHeight = 0.6f;
     float ringBurstScale = 0.6f;
+    // 回転斬り（回転→霞の輪の型。c-427df4）：前隙の始めの spinRaiseFrames F で刀を引き、spinCoilFrames F で体を
+    // spinCoilDegrees 度だけ逆へ捻り込んで溜め（溜めの揺らぎで間に長短）、攻撃中に振りの速さの曲線で捻りから
+    // spinTurns 回転ぶん一気に回る。回りの進みが spinRingShare を過ぎた所で霞の輪を出す。刀そのものも当たる。
+    int spinRaiseFrames = 10;
+    int spinCoilFrames = 14;
+    float spinCoilDegrees = 120.0f;
+    float spinTurns = 1.0f;
+    float spinRingShare = 0.45f;
     float ringPush = 6.0f;
     float ringPushRadius = 1.2f;
     // 見た目：霞隠れ・分身が消える／現れる所の煙の塊（流体域は使わない。場の霧へ煙は足さない。霧は押さない）
@@ -1206,6 +1214,8 @@ public:
     std::array<uint64_t, kBossWaveCapacity> waveVfxId{};
     HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
     uint64_t ringVfxId = 0;
+    // この技で霞の輪をもう出したか（回転斬り）。
+    bool spinRingOut = false;
     // 輪が消えた後、炎が消えるのを待っている残り時間（秒。負は輪が広がっている間）。
     float ringFade = -1.0f;
     float ringScale = 0.0f;

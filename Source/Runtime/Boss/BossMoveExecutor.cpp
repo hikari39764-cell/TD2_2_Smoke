@@ -575,6 +575,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     boss.dashLanded = false;
     boss.glintFrames = 0;
     boss.spin = 0.0f;
+    boss.spinRingOut = false;
     boss.hidden = false;
     boss.landFrom = boss.height;
     boss.sideSign = BossRandom(boss) < 0.5f ? 1.0f : -1.0f;

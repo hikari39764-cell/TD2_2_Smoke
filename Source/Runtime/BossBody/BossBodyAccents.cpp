@@ -55,7 +55,6 @@ Vec3 Feet(const BossComponent& boss, const HIKARI::GameProjectTransform& body) {
 // 刀を振って当てる技か（刀身を走る光を出す技）。蹴り・投げ・分身・歩きなどは違う。
 bool UsesSword(BossMoveType type) {
     switch (type) {
-    case BossMoveType::Kick:
     case BossMoveType::Knife:
     case BossMoveType::Ambush:
     case BossMoveType::Clone:

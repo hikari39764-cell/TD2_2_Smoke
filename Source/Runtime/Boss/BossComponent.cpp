@@ -410,6 +410,11 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Note("霞の大剣の薙ぐ長さは技の表の攻撃中（全部が当たり）。当たるのは、その 1 tick に剣が通った角度の中で、"
                     "ボスの中心から「懐」〜「柄の位置＋剣の長さ＋プレイヤーの体の半径」の距離にいる時です（高さは見ない）。"
                     "薙ぐ向きは表の「追尾を止める F」の時のボスの向きで決まります。");
+        fields.Int("spinRaiseFrames", "回転斬り：前隙の始めに刀を引く長さ (F)", spinRaiseFrames, 1, 60);
+        fields.Int("spinCoilFrames", "回転斬り：体を逆へ捻り込む長さ (F)", spinCoilFrames, 1, 60);
+        fields.Float("spinCoilDegrees", "回転斬り：逆へ捻り込む角度 (度)", spinCoilDegrees, 0.0f, 270.0f);
+        fields.Float("spinTurns", "回転斬り：攻撃中に回る回数（捻りを戻した後。1 で 1 回転）", spinTurns, 0.0f, 3.0f);
+        fields.Float("spinRingShare", "回転斬り：霞の輪を出す、回りの進み (0〜1)", spinRingShare, 0.0f, 1.0f);
         fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
                      kickRingStartRadius, 0.0f, 20.0f);
         fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",
