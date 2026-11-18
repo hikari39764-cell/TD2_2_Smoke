@@ -128,6 +128,24 @@
       }
     },
     {
+      "id": "Boss.Phase",
+      "name": "Boss Phase",
+      "description": "ボスのいまのフェーズ（いまの HP の条が何本目か。1 か 2。1 本目が空になった時から 2）。",
+      "default": {
+        "type": "Int",
+        "value": 1
+      }
+    },
+    {
+      "id": "Boss.PhaseSeconds",
+      "name": "Boss Phase Seconds",
+      "description": "ボスがいまのフェーズ（HP の条）に入ってからの秒数。HUD が 2 本目を左から満たす見せ方に使う。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
       "id": "Fight.State",
       "name": "Fight State",
       "description": "戦いの段階。0=開始待ち、1=戦い中、2=負け、3=勝ち。",

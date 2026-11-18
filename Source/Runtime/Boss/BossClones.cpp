@@ -194,6 +194,8 @@ void BossClones::Step(HIKARI::WorldView& world, HIKARI::ObjectView bossObject, B
         player != nullptr ? PlayerRules::GetLockTarget(*player) : HIKARI::GameProjectObjectHandle{};
     const bool spawning = boss.cloneSpawnPending;
     const bool bossDown = boss.state == BossState::Dead;
+    // フェーズの変わり目（c-3e0ffa）の間は、出ている分身を霞にして消す（無敵の本体の代わりに撃たれる的を残さない）。
+    const bool phaseShift = boss.phaseShiftLeft > 0;
     bool lostClone = false;
     int index = 0;
     int active = 0;
@@ -222,8 +224,8 @@ void BossClones::Step(HIKARI::WorldView& world, HIKARI::ObjectView bossObject, B
                 // 撃たれた分身は霞になって消え、本体が突進系で来る（行動ツリーの「分身を撃たれた」）。
                 Remove(boss, clone, true, "shot");
                 boss.brain.cloneStruck = true;
-            } else if (clone.active && (bossDown || boss.clockSeconds > clone.untilSeconds)) {
-                Remove(boss, clone, true, bossDown ? "bossDefeated" : "expired");
+            } else if (clone.active && (bossDown || phaseShift || boss.clockSeconds > clone.untilSeconds)) {
+                Remove(boss, clone, true, bossDown ? "bossDefeated" : phaseShift ? "phaseShift" : "expired");
             }
             clone.seenHits = hits;
             if (!clone.active && locked.value == object.GetHandle().value)

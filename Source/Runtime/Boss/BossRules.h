@@ -31,8 +31,10 @@ public:
     static int GetCurrentMove(const BossComponent& boss);
     static BossActPhase GetActPhase(const BossComponent& boss);
     static int GetChain(const BossComponent& boss);
-    // フェーズ（1 か 2）。HP の持ち主は Damageable なので、その割合から決める。
-    static int GetPhaseNumber(const BossComponent& boss, const DamageableComponent& health);
+    // フェーズ（1 か 2）。HP の条の何本目か（c-3e0ffa。1 本目が空になった tick から 2）。
+    static int GetPhaseNumber(const BossComponent& boss);
+    // フェーズ 2 への変わり目の間（1 本目が空になった tick から phaseShiftFrames F。無敵で技を出さない）。
+    static bool IsPhaseShifting(const BossComponent& boss);
     static float GetStun(const BossComponent& boss);
     // いま気絶するのに要る気絶値。気絶するたびに stunMax の stunMaxGrowth 倍ずつ増える（崩れた気絶も数える）。
     static float GetStunThreshold(const BossComponent& boss);

@@ -165,6 +165,10 @@ FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors
     values.fireShotDuration = actors.fireShotDuration;
     ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);
     ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, values.bossMaxHealth);
+    int64_t bossPhase = 1;
+    if (ObjectVariables::ReadInt(world, actors.boss, kBossPhaseVariable, bossPhase))
+        values.bossPhase = static_cast<int>(bossPhase);
+    ObjectVariables::ReadFloat(world, actors.boss, kBossPhaseSecondsVariable, values.bossPhaseSeconds);
     return values;
 }
 

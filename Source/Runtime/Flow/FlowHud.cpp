@@ -100,8 +100,14 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
 
 bool FlowHud::DrawBoss(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values) {
     const float x = (kReferenceWidth - flow.bossBarWidth) * 0.5f;
-    return Bar(ui, flow, kIdBossBack, kIdBoss, x, flow.bossBarTop, flow.bossBarWidth, flow.bossBarHeight,
-               Ratio(values.bossHealth, values.bossMaxHealth), flow.bossColor);
+    // 2 本目は、1 本目が空になった時から bossRefillSeconds 秒かけて左から満ちる（その間の HP は満ちた値なので、満ちた
+    // 長さで切る。満ちきった後は HP の割合のまま）。
+    const bool second = values.bossPhase >= 2;
+    float ratio = Ratio(values.bossHealth, values.bossMaxHealth);
+    if (second && flow.bossRefillSeconds > 0.0f)
+        ratio = std::min(ratio, std::clamp(values.bossPhaseSeconds / flow.bossRefillSeconds, 0.0f, 1.0f));
+    return Bar(ui, flow, kIdBossBack, kIdBoss, x, flow.bossBarTop, flow.bossBarWidth, flow.bossBarHeight, ratio,
+               second ? flow.bossPhaseTwoColor : flow.bossPhaseOneColor);
 }
 
 bool FlowHud::DrawFade(const HIKARI::UiView& ui, const FlowComponent& flow, float fade) {

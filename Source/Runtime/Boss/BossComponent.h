@@ -27,6 +27,10 @@ inline constexpr std::string_view kBossHealthVariable = "Boss.Health";
 inline constexpr std::string_view kBossMaxHealthVariable = "Boss.MaxHealth";
 // HP の条を出すか（1＝出す、0＝出さない。登場の演出の間は見得まで 0）。
 inline constexpr std::string_view kBossBarShownVariable = "Boss.BarShown";
+// いまのフェーズ（1 か 2。Int）と、そのフェーズ（HP の条）に入ってからの秒（Float）。HUD が条の色と、2 本目が満ちて
+// 戻る見せ方に使う（c-3e0ffa）。Boss.Health・Boss.MaxHealth はいまの条の値。
+inline constexpr std::string_view kBossPhaseVariable = "Boss.Phase";
+inline constexpr std::string_view kBossPhaseSecondsVariable = "Boss.PhaseSeconds";
 // 同時に飛ぶ斬撃・ナイフの枠。連撃 5 撃とナイフ 3 本が重なっても足りる数。
 inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
@@ -548,7 +552,15 @@ public:
     float damagePerFrame = 0.15f;
     float thickness = 0.5f;
     // フェーズと気絶
-    float phaseTwoHealthPercent = 60.0f;
+    // HP の条はフェーズごとに 1 本（c-3e0ffa）。1 本目が空になるとフェーズ 2 の変わり目に入り、2 本目が満ちる。
+    // 余ったダメージは 2 本目へ持ち越さない。2 本目が空で撃破。同じ物体の Damageable の最大 HP はこの値で上書きする。
+    // 0 の時は、シーンで決めた Damageable の最大 HP（ボス全体の HP）を phaseOneShare : 1 - phaseOneShare に分ける
+    // （シーンで HP を調整していれば、その合計のまま 2 本になる）。
+    float phaseOneHealth = 0.0f;
+    float phaseTwoHealth = 0.0f;
+    float phaseOneShare = 0.4f;
+    // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。演出（c-8dd296）が入るまでの仮の短い長さ。
+    int phaseShiftFrames = 90;
     // 類魂の崩れにくさ（c-ff3e98）。気絶値 110 → 220：精力満タンの連射（4 発）だけでは気絶しない。
     // 気絶するたびに、次に要る気絶値を stunMax × stunMaxGrowth ずつ増やす（2 回目 275、3 回目 330）。
     float stunMax = 220.0f;
@@ -1089,6 +1101,16 @@ public:
     float shownMaxHealth = 0.0f;
     // HP の条を出すか（Boss.BarShown へ書く）。
     float shownBar = 1.0f;
+    // Boss.Phase・Boss.PhaseSeconds へ書く値（固定 tick ごとに写す）。
+    int shownPhase = 1;
+    float shownPhaseSeconds = 0.0f;
+    // HP の条（c-3e0ffa）：Damageable の最大 HP を 1 本目の値にしたか。いまの条に入った時刻（秒）。変わり目の残り F
+    // （0 は変わり目でない）。
+    bool healthBarsReady = false;
+    // シーンで決めた Damageable の最大 HP（条の値が 0 の時に分ける元）。
+    float authoredHealth = 0.0f;
+    float phaseStartSeconds = 0.0f;
+    int phaseShiftLeft = 0;
     bool variableWriteWarned = false;
     bool tableLoaded = false;
     BossMoveTable table;

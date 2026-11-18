@@ -10,7 +10,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Text("stancePath", "姿勢と帯の重みの表（Data/ からの場所。行動ツリーの「姿勢で技を選ぶ」）", stancePath);
         fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", typesPath);
         fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
-                    "HP は同じ物体の「被弾と HP」の最大 HP（試作 1500）です。");
+                    "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。");
     }
     if (fields.Section("斬撃の共通の値", true)) {
         fields.Float("range", "斬撃の飛距離 (m)", range, 1.0f, 200.0f);
@@ -55,7 +55,20 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("thickness", "斬撃の厚み (m)", thickness, 0.01f, 5.0f, 0.01f);
     }
     if (fields.Section("フェーズと気絶", true)) {
-        fields.Float("phaseTwoHealthPercent", "フェーズ 2 になる HP (%)", phaseTwoHealthPercent, 0.0f, 100.0f);
+        fields.Float("phaseOneHealth", "HP の条 1 本目（フェーズ 1。0 で、Damageable の最大 HP を下の割合で分ける）",
+                     phaseOneHealth, 0.0f, 100000.0f);
+        fields.Float("phaseTwoHealth",
+                     "HP の条 2 本目（フェーズ 2。1 本目が空になると満ちる。0 で、Damageable の最大 HP の残り）",
+                     phaseTwoHealth, 0.0f, 100000.0f);
+        fields.Float("phaseOneShare", "条の値が 0 の時、ボス全体の HP のうち 1 本目にする割合", phaseOneShare, 0.05f,
+                     0.95f);
+        fields.Int("phaseShiftFrames", "変わり目の長さ (F。1 本目が空になってから。無敵で技を出さない)",
+                   phaseShiftFrames, 1, 3600);
+        fields.Note(
+            "HP はフェーズごとの条です。1 本目を空にすると、いまの技を打ち切って変わり目に入り（気絶値は 0 に"
+            "戻る）、同じ条が 2 本目として満ちて戻ります（余ったダメージは持ち越さない）。2 本目を空にすると撃破。"
+            "同じ物体の「被弾と HP」の最大 HP は、この 2 つの値で上書きします。火を残す技・火を使う技は"
+            "フェーズ 2 から（技の表の「残す火」の @フェーズ2 と「発生条件」）。");
         fields.Float("stunMax", "気絶値（これだけたまると気絶）", stunMax, 1.0f, 100000.0f);
         fields.Float("stunMaxGrowth", "気絶するたびに気絶値を増やす割合（0.25 で 1 回ごとに +25%、0 で増えない）",
                      stunMaxGrowth, 0.0f, 10.0f, 0.01f);
@@ -683,6 +696,8 @@ void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
     ObjectVariables::PublishFloat(context, category, kBossHealthVariable, shownHealth, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossMaxHealthVariable, shownMaxHealth, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossBarShownVariable, shownBar, variableWriteWarned);
+    ObjectVariables::PublishInt(context, category, kBossPhaseVariable, shownPhase, variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kBossPhaseSecondsVariable, shownPhaseSeconds, variableWriteWarned);
 }
 
 } // namespace Project_TD2_2

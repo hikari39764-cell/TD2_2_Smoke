@@ -45,13 +45,20 @@ void FlowComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Color3("smokeBlockedColor", "満杯で吸おうとした時に煙の量の条が光る色", smokeBlockedColor);
         fields.Float("smokeBlockedFlashSeconds", "…光ってから元の色へ戻るまで (秒、0 は光らない)",
                      smokeBlockedFlashSeconds, 0.0f, 5.0f, 0.01f);
-        fields.Color3("bossColor", "ボスの HP の色", bossColor);
-        fields.Note("値は物体変数（Player.*・Gourd.*・Boss.*）から読みます。文字・数字・絵は出しません。"
-                    "回復の印は、残っている回数だけ並びます。"
-                    "火弾の間（Gourd.FireShot が 0 より大きい間）は、煙の条の色が変わり、すぐ下に残り時間の条が"
-                    "出て減っていきます（残り ÷ ヒョウタンの火弾の長さ）。"
-                    "満杯で吸おうとした時（Gourd.Blocked が 0 より大きくなった時）は、煙の条が光る色から"
-                    "元の色へ戻ります（吸い込みを始め直すたびに 1 回）。");
+        fields.Color3("bossPhaseOneColor", "ボスの HP の色（フェーズ 1 の条）", bossPhaseOneColor);
+        fields.Color3("bossPhaseTwoColor", "ボスの HP の色（フェーズ 2 の条。満ちて戻る時も同じ色）",
+                      bossPhaseTwoColor);
+        fields.Float("bossRefillSeconds", "ボスの条：1 本目が空になった後、2 本目が左から満ちきるまで (秒。0 で一度に)",
+                     bossRefillSeconds, 0.0f, 10.0f, 0.05f);
+        fields.Note(
+            "値は物体変数（Player.*・Gourd.*・Boss.*）から読みます。文字・数字・絵は出しません。"
+            "回復の印は、残っている回数だけ並びます。"
+            "火弾の間（Gourd.FireShot が 0 より大きい間）は、煙の条の色が変わり、すぐ下に残り時間の条が"
+            "出て減っていきます（残り ÷ ヒョウタンの火弾の長さ）。"
+            "満杯で吸おうとした時（Gourd.Blocked が 0 より大きくなった時）は、煙の条が光る色から"
+            "元の色へ戻ります（吸い込みを始め直すたびに 1 回）。"
+            "ボスの HP の条はフェーズごとに 1 本で、同じ場所に出ます（Boss.Phase と Boss.PhaseSeconds を読む）。"
+            "ボスの変わり目の長さはボスの phaseShiftFrames です（条が満ちきる長さはそれより短くしておく）。");
     }
 }
 

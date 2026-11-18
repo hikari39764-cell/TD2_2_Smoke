@@ -62,7 +62,11 @@ public:
     // 満杯で吸おうとした時（Gourd.Blocked が 0 より大きくなった時）に煙の条が光る色と、元の色へ戻るまでの秒。
     HIKARI::GameProjectFloat3 smokeBlockedColor{1.0f, 1.0f, 1.0f};
     float smokeBlockedFlashSeconds = 0.3f;
-    HIKARI::GameProjectFloat3 bossColor{0.5f, 0.05f, 0.07f};
+    // ボスの HP の条はフェーズごとに 1 本（c-3e0ffa）。フェーズ 1 は灰白。1 本目が空になると、同じ条が火の橙で
+    // 左から bossRefillSeconds 秒かけて満ちて戻る（Boss.PhaseSeconds で測る）。
+    HIKARI::GameProjectFloat3 bossPhaseOneColor{0.78f, 0.77f, 0.74f};
+    HIKARI::GameProjectFloat3 bossPhaseTwoColor{1.0f, 0.42f, 0.08f};
+    float bossRefillSeconds = 1.2f;
 
     // 実行時の状態は保存しない。
     FlowPhase phase = FlowPhase::Waiting;

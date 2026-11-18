@@ -13,6 +13,7 @@
 #include "BossDetonate.h"
 #include "BossFeedback.h"
 #include "BossFlameRun.h"
+#include "BossHealthBars.h"
 #include "BossIntro.h"
 #include "BossKasumiStep.h"
 #include "BossMath.h"
@@ -283,11 +284,11 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
 }
 
 // HP の持ち主は Damageable。受けた量から気絶値をため、フェーズと死亡を決める。この tick に新しく当てられた数を返す。
+// HP はフェーズごとの条（BossHealthBars。1 本目が空になった tick に変わり目へ入る）。
 uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health) {
     BossComponent& boss = frame.boss;
+    BossHealthBars::Prepare(boss, health);
     DamageableRules::Initialize(health);
-    boss.shownHealth = DamageableRules::GetHealth(health);
-    boss.shownMaxHealth = DamageableRules::GetMaxHealth(health);
     if (boss.testDamageAtFrame >= 0 && boss.testDamageDone < boss.testDamageRepeatCount &&
         static_cast<int64_t>(boss.tick) >=
             static_cast<int64_t>(boss.testDamageAtFrame) +
@@ -304,28 +305,23 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     }
     // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。前隙の間なら大技が崩れる。
     const uint64_t hits = BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health));
-    CheckBreak(boss, hits);
+    // 累計は条を満たしても戻さない（差分だけを読むので、2 本目を満たした tick も気絶値の基準はずれない）。
     const double base = DamageableRules::GetBaseDamageTotal(health);
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
-    // 戻り（後隙）の間に当てた弾は、気絶値が多く入る（c-808641）。
-    const bool recovering = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
-    if (delta > 0.0)
-        AddStun(boss, static_cast<float>(delta) / std::max(0.01f, boss.stunReferenceDamage) * boss.stunPerShot *
-                          (recovering ? boss.recoveryStunScale : 1.0f));
+    // 1 本目が空になった tick は、崩れも気絶値も数えずに変わり目へ入る（気絶値は 0 に戻る）。
+    if (!BossHealthBars::CheckEmptied(boss, health, delta)) {
+        CheckBreak(boss, hits);
+        // 戻り（後隙）の間に当てた弾は、気絶値が多く入る（c-808641）。
+        const bool recovering = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
+        if (delta > 0.0)
+            AddStun(boss, static_cast<float>(delta) / std::max(0.01f, boss.stunReferenceDamage) * boss.stunPerShot *
+                              (recovering ? boss.recoveryStunScale : 1.0f));
+    }
     // しばらく当てないと気絶値が減る。
     if (boss.state != BossState::Stunned && boss.stun > 0.0f &&
         boss.clockSeconds - boss.stunHitSeconds > boss.stunDecayDelaySeconds)
         boss.stun = std::max(0.0f, boss.stun - boss.stunDecayPerSecond * frame.dt);
-    const int phase = BossRules::GetPhaseNumber(boss, health);
-    if (phase != boss.lastPhaseNumber) {
-        char message[160]{};
-        std::snprintf(message, sizeof(message), "PhaseChange tick=%llu phase=%d health=%.3f",
-                      static_cast<unsigned long long>(boss.tick), phase,
-                      static_cast<double>(DamageableRules::GetHealth(health)));
-        BossLog::Write(message);
-        boss.lastPhaseNumber = phase;
-    }
     if (!DamageableRules::IsAlive(health) && boss.state != BossState::Dead) {
         BossMoveExecutor::Interrupt(boss);
         BossRules::CancelRequest(boss);
@@ -351,12 +347,16 @@ uint64_t SyncHealth(BossFrame& frame, HIKARI::ObjectView object, DamageableCompo
     }
     // 霞に隠れている間は当たらない（体は地面の下へ沈めるが、沈みきるまでの数 F も無敵にする）。弾をかわす霞歩の
     // 跳び始め（kasumiStepGuardFrames）も当たらない。
-    // 登場の間（構えに収まるまで）も当たらない。
-    const bool shielded = boss.hidden || BossKasumiStep::Guarding(boss) || BossIntro::Shielded(boss);
+    // 登場の間（構えに収まるまで）と、フェーズの変わり目の間も当たらない。
+    const bool shielded =
+        boss.hidden || BossKasumiStep::Guarding(boss) || BossIntro::Shielded(boss) || BossRules::IsPhaseShifting(boss);
     if (shielded != boss.hiddenApplied) {
         health.invulnerable = shielded;
         boss.hiddenApplied = shielded;
     }
+    // HUD へ出す値は、この tick の被弾と条の入れ替えを済ませた後に写す（1 本目が空の 0 を出さない。出すと Flow が
+    // 撃破と読む）。
+    BossHealthBars::Publish(boss, health);
     return hits;
 }
 
@@ -438,6 +438,14 @@ void StepState(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
         // 戦いが始まるまで（Flow が止めている間）は、歩かず技も出さない。
         // 登場が済むまでも同じ。
         if (boss.held || BossIntro::Holding(boss)) {
+            boss.velocity = {};
+            return;
+        }
+        // フェーズの変わり目（c-3e0ffa）の間も、歩かず技も出さない。気絶の屈みから起き上がり、構えは待機の下ろした
+        // 構えへ戻していく（崩れる・燃える見た目は演出のカード c-8dd296 が作る）。
+        if (BossRules::IsPhaseShifting(boss)) {
+            ++boss.idleFrames;
+            boss.crouch = Lerp(boss.crouch, 0.0f, kStunCrouchBlend);
             boss.velocity = {};
             return;
         }
@@ -567,11 +575,12 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
         return;
     // 規則の剣の構え（握り・向き）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
     const BossSwordPose& sword = boss.swordPose;
-    char message[512]{};
+    char message[640]{};
     std::snprintf(message, sizeof(message),
                   "Trace tick=%llu state=%d phase=%d move=%d stateFrame=%d ground=(%.3f,%.3f,%.3f) yaw=%.3f "
                   "height=%.3f float=%.3f crouch=%.3f stun=%.3f stunCount=%d health=%.3f fluid=%d sink=%.3f hidden=%d "
-                  "clones=%d chargeVisual=%.3f grip=(%.3f,%.3f,%.3f) sword=(%.4f,%.4f,%.4f) twoHand=%.2f",
+                  "clones=%d chargeVisual=%.3f grip=(%.3f,%.3f,%.3f) sword=(%.4f,%.4f,%.4f) twoHand=%.2f "
+                  "bossPhase=%d shiftLeft=%d maxHealth=%.3f invulnerable=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<int>(boss.state),
                   static_cast<int>(boss.phase), boss.move, boss.stateFrame, static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.y), static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw),
@@ -582,7 +591,9 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
                   boss.activeClones, static_cast<double>(boss.chargeVisual), static_cast<double>(sword.grip.x),
                   static_cast<double>(sword.grip.y), static_cast<double>(sword.grip.z),
                   static_cast<double>(sword.direction.x), static_cast<double>(sword.direction.y),
-                  static_cast<double>(sword.direction.z), static_cast<double>(sword.twoHand));
+                  static_cast<double>(sword.direction.z), static_cast<double>(sword.twoHand), boss.lastPhaseNumber,
+                  boss.phaseShiftLeft, health ? static_cast<double>(DamageableRules::GetMaxHealth(*health)) : -1.0,
+                  health ? static_cast<int>(health->invulnerable) : -1);
     BossLog::Write(message);
 }
 
@@ -650,6 +661,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 if (player != nullptr)
                     BossIntro::Face(boss, playerCenter);
                 BossIntro::Step(boss);
+                BossHealthBars::Step(boss);
                 // 演出の間は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。PlayerSystem が tick ごとに減らす）。
                 if (player != nullptr && BossIntro::Cinematic(boss))
                     player->cinematicHold = std::max(player->cinematicHold, kCinematicHoldTicks);
@@ -663,9 +675,9 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 if (player != nullptr)
                     context.playerDistance = FlatLength(Sub(playerCenter, boss.ground));
                 context.phaseNumber = boss.lastPhaseNumber;
-                if (health != nullptr && DamageableRules::GetMaxHealth(*health) > 0.0f)
-                    context.healthPercent = static_cast<double>(DamageableRules::GetHealth(*health)) /
-                                            static_cast<double>(DamageableRules::GetMaxHealth(*health)) * 100.0;
+                // 「HP60%以下」などは 2 本の条の合計に対する残り（1 本目 600・2 本目 900 なら 60% ちょうどでフェーズ 2）。
+                if (health != nullptr && boss.healthBarsReady)
+                    context.healthPercent = BossHealthBars::TotalPercent(boss, *health);
                 // この tick に読む命中は、前の tick の終わり（＝この tick の始め）の状態の間に当たったもの。後隙だったなら
                 // その技が咎められた（体を動かすと後隙が終わって待機へ戻ることがあるので、先に覚える）。
                 const int recoveryRow =

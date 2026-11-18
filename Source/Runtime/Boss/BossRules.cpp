@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include "../Combat/DamageableRules.h"
-
 namespace Project_TD2_2 {
 
 bool BossRules::RequestMove(BossComponent& boss, int index, bool asCombo) {
@@ -45,12 +43,9 @@ BossActPhase BossRules::GetActPhase(const BossComponent& boss) { return boss.pha
 
 int BossRules::GetChain(const BossComponent& boss) { return boss.chain; }
 
-int BossRules::GetPhaseNumber(const BossComponent& boss, const DamageableComponent& health) {
-    // 倍精度で比べる（単精度だと 900 / 1500 × 100 が 60 をわずかに超え、ちょうど 60% でフェーズ 2 にならない）。
-    const double maximum = DamageableRules::GetMaxHealth(health);
-    const double percent = maximum > 0.0 ? DamageableRules::GetHealth(health) / maximum * 100.0 : 0.0;
-    return percent <= static_cast<double>(boss.phaseTwoHealthPercent) ? 2 : 1;
-}
+int BossRules::GetPhaseNumber(const BossComponent& boss) { return boss.lastPhaseNumber; }
+
+bool BossRules::IsPhaseShifting(const BossComponent& boss) { return boss.phaseShiftLeft > 0; }
 
 size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
     size_t live = boss.ringVfx.IsValid() ? 1 : 0;
