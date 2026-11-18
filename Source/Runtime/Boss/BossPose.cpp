@@ -95,9 +95,9 @@ BossSwordPose ShapePose(const BossSwingShape& shape, bool mirror, float degrees,
     pose.edge = Normalize(ProjectOut(sweep, pose.direction), {0.0f, -1.0f, 0.0f});
     // 刃の面：斬る向きを刀身の軸のまわりに回す（左右に映した型では逆へ）。
     if (shape.edgeRollDegrees != 0.0f)
-        pose.edge = Normalize(RotateAbout(pose.edge, pose.direction,
-                                          (mirror ? -1.0f : 1.0f) * shape.edgeRollDegrees * kRadiansPerDegree),
-                              pose.edge);
+        pose.edge = Normalize(
+            RotateAbout(pose.edge, pose.direction, (mirror ? -1.0f : 1.0f) * shape.edgeRollDegrees * kRadiansPerDegree),
+            pose.edge);
     // 振り込むほど沈み、前へ傾く（構えの値から振り終わりの値へ、振りの進みで寄せる）。
     const float weight = Smooth(share);
     pose.crouch = Lerp(shape.crouch, shape.crouchTo, weight);
@@ -387,8 +387,7 @@ BossSwordPose EarlyWindup(const BossComponent& boss, const Strike& strike, int t
     if (t < r)
         return Raise(boss.moveStartPose, strike, static_cast<float>(t) / static_cast<float>(r), -boss.swingOverwind);
     const int k = std::max(1, length - r);
-    return Tremble(StrikeAt(strike, CockedShare(boss, t - r, k)), t,
-                   boss.swingCoilTremorDegrees * Share(t - r, k));
+    return Tremble(StrikeAt(strike, CockedShare(boss, t - r, k)), t, boss.swingCoilTremorDegrees * Share(t - r, k));
 }
 
 // 突進横なぎ（c-2dd9a2）：前隙の始めの dashRaiseFrames F で、刀を後ろ下へ引きずって体を沈める構え（突進の型）へ移り、

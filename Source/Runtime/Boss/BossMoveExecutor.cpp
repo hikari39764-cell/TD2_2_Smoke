@@ -357,6 +357,8 @@ void Release(BossFrame& frame, BossSwing& swing) {
         BossLog::Write(message);
     }
     swing.waveId = BossWaves::SpawnSlash(frame, launch);
+    boss.releaseTick = boss.tick;
+    ++boss.releaseCount;
     BossBurnMarks::Released(frame, CurrentMove(boss), swing.strike);
 }
 

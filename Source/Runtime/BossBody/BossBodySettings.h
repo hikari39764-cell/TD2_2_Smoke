@@ -219,6 +219,38 @@ struct BossBodyAccentSettings {
     // 白い霧）の前で、明るい線だけだと刀の形が消えるので、外側に煙の黒の柔らかい帯を重ねる。
     float edgeDark = 1.0f;
 
+    // 霞の技と実体の刀の技の見分け（c-ecd963）：剣気を飛ばす技（表の当て方が実でなく、斬撃速度が 0 より大きい）の前隙〜
+    // 振りの間は、刀身の輪郭の光（材質）と刃口の光をいつも通り灯し、刃文の流れ・霞の帯を hazeBoost 倍に強める（刀身が
+    // 青白く明るい）。実体の刀だけで当てる技の間は、輪郭の光を realRimShare、刃口の光を realEdgeShare、流れ・霞を
+    // realFlowShare 倍に落とす（暗い縁と刃文だけ）。後隙・待機・歩きはどちらでもない。
+    float hazeBoost = 1.8f;
+    float realRimShare = 0.0f;
+    float realEdgeShare = 0.3f;
+    float realFlowShare = 0.35f;
+    // 刀の常時の層（BossBlade.hvfx の Hamon Flow・Blade Mist・Tip Wake）：刃文に沿って鍔元から剣先へ流れる光（input.flow）、
+    // 刀身をうっすら包む霞の帯（input.mist）、剣先の 3 分の 1 が通った所に残る残光（input.wake）。色は霞（フェーズ 1）と
+    // 火（燃える刀身・フェーズ 2）の 2 つ、明るさは待機の倍率（霞の技の間は hazeBoost を掛ける）。残光は剣先の速さが
+    // wakeMinTipSpeed から wakeFullTipSpeed (m/秒) の間で 0→1（速いほど明るく、帯の長さは資産の履歴の秒数）。
+    HIKARI::GameProjectFloat3 flowMistColor{0.55f, 0.90f, 1.50f};
+    HIKARI::GameProjectFloat3 flowFireColor{1.70f, 0.70f, 0.20f};
+    float flowIdle = 1.2f;
+    HIKARI::GameProjectFloat3 mistMistColor{0.70f, 0.85f, 1.10f};
+    HIKARI::GameProjectFloat3 mistFireColor{1.30f, 0.55f, 0.20f};
+    float mistIdle = 1.0f;
+    HIKARI::GameProjectFloat3 wakeMistColor{0.60f, 0.90f, 1.60f};
+    HIKARI::GameProjectFloat3 wakeFireColor{1.80f, 0.75f, 0.22f};
+    float wakeGain = 1.2f;
+    float wakeMinTipSpeed = 3.0f;
+    float wakeFullTipSpeed = 30.0f;
+    // 剣先が地面（刀光を切る高さ trailGroundCut）からこの高さ (m) の間は、残光を弱める（地面に白い筋を引かない）。
+    float wakeGroundFade = 1.0f;
+    // 剣気を放つ瞬間（c-ecd963）：刀身を走る光（glintEffect）をもう一度、色を releaseGlint 倍にして出す。
+    // releaseHoldTicks F の間、時間を releaseHoldScale 倍にする（全体の止め。0 F で止めない＝既定。ボスが振るたびに
+    // プレイヤーの操作まで遅くなるので、実機で試して決める）。刀だけを止めると、止めの後に刀が跳んで追い付いた。
+    float releaseGlint = 1.6f;
+    int releaseHoldTicks = 0;
+    float releaseHoldScale = 0.35f;
+
     // 目の光：兜に付くエフェクト（頭が動くと尾を引く光・暈・技を出すと決めた瞬間に横へ伸びる閃き）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference eyesEffect{"a4f1c8e27b5d4390b61e2c9d3f7a0851", "Assets/Vfx/BossEyes.hvfx"};
     // 目の光の色と明るさ：ふだん（霞）と、フェーズ 2（火）。
@@ -307,6 +339,9 @@ struct BossBodyAccentState {
     float edgeGain = 0.0f;
     float edgeClock = 0.0f;
     float edgeDarkGain = 0.0f;
+    // 刃文の流れ・霞の帯の段階の倍率と、剣先の残光の明るさ（c-ecd963。0〜1）。
+    float flowGain = 0.0f;
+    float wakeGain = 0.0f;
     // 目の光・刀身を走る光・溜めの気配の再生。
     HIKARI::GameProjectVfxPlaybackHandle eyesVfx{};
     HIKARI::GameProjectVfxPlaybackHandle glintVfx{};
@@ -315,6 +350,8 @@ struct BossBodyAccentState {
     float flare = 0.0f;
     float aura = 0.0f;
     bool wasGlint = false;
+    // 見た剣気を放った数（c-ecd963。BossComponent::releaseCount と比べて、放つ瞬間を見つける）。
+    uint32_t releaseSeen = 0;
     // 胴の煙へ掛ける量と熱さ（倍率）、振り終わりの吹き出しの残り（1→0）、前のフレームが命中の窓だったか。
     float smokeAmount = 1.0f;
     float smokeHeat = 1.0f;

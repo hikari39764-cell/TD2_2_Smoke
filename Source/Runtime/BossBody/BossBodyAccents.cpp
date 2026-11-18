@@ -6,6 +6,7 @@
 #include "../Boss/BossKasumiStep.h"
 #include "../Boss/BossRules.h"
 #include "../Boss/BossVfx.h"
+#include "../Combat/Feedback.h"
 #include "../Common/VfxParameters.h"
 
 namespace Project_TD2_2 {
@@ -28,6 +29,9 @@ constexpr const char* kDashInput = "input.dash";   // 突進の尾の色と明�
 constexpr const char* kHandInput = "input.hand";   // 左手の光の色と明るさ
 constexpr const char* kEdgeInput = "input.edge";   // 刃口の常時の光の色と明るさ
 constexpr const char* kEdgeDarkInput = "input.edgeDark"; // 刃のまわりの暗い縁（A が濃さ）
+constexpr const char* kFlowInput = "input.flow";         // 刃文に沿って流れる光の色と明るさ
+constexpr const char* kMistInput = "input.mist";         // 刀身を包む霞の帯の色と明るさ
+constexpr const char* kWakeInput = "input.wake";         // 剣先の残光の色と明るさ
 // 溜めた一撃を放った、と見る溜めの進み（前のフレームがこれ以上で、いまが 0）。
 constexpr float kReleaseCharge = 0.85f;
 // 突進の尾の明るさを追う時間 (秒)。
@@ -125,6 +129,9 @@ void SetEdge(HIKARI::GameProjectVfxParameterOverrides& parameters, BossComponent
         target *= 1.0f + s.edgePulseDepth * std::sin(2.0f * kPi * s.edgePulseFrequency * a.edgeClock);
     if (pose.bladeHot)
         target *= s.edgeHotShare;
+    // 実体の刀の技の間は、刃口の光を落とす（暗い縁と刃文だけ。霞の技と見分ける）。
+    if (BossBodyAccents::Kind(boss) == BossBodyAccents::BladeKind::Real)
+        target *= s.realEdgeShare;
     const float time = target > a.edgeGain ? s.edgeRiseSeconds : s.edgeFallSeconds;
     a.edgeGain = Lerp(a.edgeGain, target, Follow(seconds, time));
     const float dark = great || boss.state == BossState::Dead ? 0.0f : s.edgeDark;
@@ -171,6 +178,30 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
     VfxParameters::SetColor(parameters, kHeatInput, {heat, heat, heat});
     VfxParameters::SetColor(parameters, kHazeInput, {s.swingHaze * a.hazeGain, 1.0f, 1.0f});
     SetEdge(parameters, boss, pose, great, seconds);
+    // 常時の層：刃文の流れと霞の帯は、待機でも見える。霞の技の間は強め、実体の刀の技の間は弱める。大剣の間は出さない。
+    const BossBodyAccents::BladeKind kind = BossBodyAccents::Kind(boss);
+    const float stage = kind == BossBodyAccents::BladeKind::Haze   ? s.hazeBoost
+                        : kind == BossBodyAccents::BladeKind::Real ? s.realFlowShare
+                                                                   : 1.0f;
+    const float alive = great || boss.state == BossState::Dead ? 0.0f : 1.0f;
+    const float time = stage * alive > a.flowGain ? s.edgeRiseSeconds : s.edgeFallSeconds;
+    a.flowGain = Lerp(a.flowGain, stage * alive, Follow(seconds, time));
+    VfxParameters::SetColor(parameters, kFlowInput,
+                            Mul(pose.bladeHot ? s.flowFireColor : s.flowMistColor, s.flowIdle * a.flowGain));
+    VfxParameters::SetColor(parameters, kMistInput,
+                            Mul(pose.bladeHot ? s.mistFireColor : s.mistMistColor, s.mistIdle * a.flowGain));
+    // 剣先の残光：剣先が動いている間はいつも（速いほど明るい）。地面に沿う剣先・大剣の間は切る。
+    const float nearGround =
+        std::clamp((pose.swordTipClearance - s.trailGroundCut) / std::max(kTiny, s.wakeGroundFade), 0.0f, 1.0f);
+    const float wake =
+        great || grounded
+            ? 0.0f
+            : std::clamp((tipSpeed - s.wakeMinTipSpeed) / std::max(kTiny, s.wakeFullTipSpeed - s.wakeMinTipSpeed), 0.0f,
+                         1.0f) *
+                  nearGround;
+    a.wakeGain = wake > a.wakeGain ? wake : Lerp(a.wakeGain, wake, Follow(seconds, s.edgeFallSeconds));
+    VfxParameters::SetColor(parameters, kWakeInput,
+                            Mul(pose.bladeHot ? s.wakeFireColor : s.wakeMistColor, s.wakeGain * a.wakeGain));
     StartOrSend(world, boss, a.bladeVfx, s.bladeEffect, BladeTransform(boss, pose), parameters);
 }
 
@@ -189,8 +220,16 @@ void UpdateCommit(HIKARI::WorldView& world, BossComponent& boss, const BossBodyP
     // 刀身を走る光（1 回きり）。出ている間は、刃に付けて動かす。
     if (a.glintVfx.IsValid() && !world.GetVfx().IsActive(a.glintVfx))
         a.glintVfx = {};
-    const auto color = Color(kColorInput, pose.bladeHot ? s.glintFireColor : s.glintMistColor);
-    if (started && UsesSword(move->type) && !s.glintEffect.IsEmpty()) {
+    // 剣気を放った瞬間も、刀身を走る光をもう一度（明るく）出す。
+    const bool released = boss.releaseCount != a.releaseSeen;
+    a.releaseSeen = boss.releaseCount;
+    // 放つ瞬間の全体の止め（項目で入れた時だけ。発射 310 より弱い優先度）。
+    constexpr uint64_t kReleaseStopSource = 0x5444325245ull;
+    if (released && s.releaseHoldTicks > 0)
+        Feedback::RequestHitStop(world, kReleaseStopSource, 306, s.releaseHoldTicks, s.releaseHoldScale);
+    const float bright = released && s.releaseGlint > 0.0f ? s.releaseGlint : 1.0f;
+    const auto color = Color(kColorInput, Mul(pose.bladeHot ? s.glintFireColor : s.glintMistColor, bright));
+    if (((started && UsesSword(move->type)) || (released && s.releaseGlint > 0.0f)) && !s.glintEffect.IsEmpty()) {
         StopHandle(world, a.glintVfx);
         HIKARI::GameProjectVfxPlayRequest play{};
         play.asset = s.glintEffect;
@@ -395,6 +434,20 @@ void UpdateHand(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPos
 }
 
 } // namespace
+
+BossBodyAccents::BladeKind BossBodyAccents::Kind(const BossComponent& boss) {
+    const BossMove* move = CurrentMove(boss);
+    if (boss.state != BossState::Act || move == nullptr || boss.phase == BossActPhase::Post || !UsesSword(move->type) ||
+        !BossMoveTable::IsSwingType(move->type))
+        return BladeKind::None;
+    if (move->delivery == BossDelivery::Blade)
+        return BladeKind::Real;
+    for (const BossStrikeData& strike : move->strikes) {
+        if (strike.speed > 0.0f)
+            return BladeKind::Haze;
+    }
+    return BladeKind::Real;
+}
 
 void BossBodyAccents::StepSmoke(BossComponent& boss, float seconds) {
     const BossBodyAccentSettings& s = boss.body.accents;

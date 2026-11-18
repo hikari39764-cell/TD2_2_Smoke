@@ -16,9 +16,9 @@ namespace {
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
 constexpr const char* kTypeKeys[kTypeCount] = {
-    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",      "knife",    "string",
-    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn",    "backstep", "detonate",
-    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep", "slashHR", "retreatSweep"};
+    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",       "knife",    "string",
+    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn",     "backstep", "detonate",
+    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep", "slashHR",  "retreatSweep"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -699,7 +699,9 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         {
             const std::string& text = raw[Column::Delivery];
             const bool blade = Contains(text, "実"), haze = Contains(text, "霞");
-            move.delivery = blade && !haze ? BossDelivery::Blade : haze && !blade ? BossDelivery::Haze : BossDelivery::Both;
+            move.delivery = blade && !haze   ? BossDelivery::Blade
+                            : haze && !blade ? BossDelivery::Haze
+                                             : BossDelivery::Both;
             if (!text.empty() && !blade && !haze)
                 move.warnings.push_back("当て方「" + text + "」が読めないので実＋霞にしました（実・霞・実＋霞）");
         }

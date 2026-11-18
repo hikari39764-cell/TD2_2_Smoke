@@ -108,6 +108,9 @@ float BladeRimTarget(const BossComponent& boss, bool hot) {
         rim = a.bladeRimSwing;
     else if (boss.phase != BossActPhase::Post)
         rim = a.bladeRimKamae + a.bladeRimCharge * std::max(0.0f, boss.chargeVisual);
+    // 実体の刀だけで当てる技の間は、刀身を光らせない（霞の技と見分ける。c-ecd963）。
+    if (BossBodyAccents::Kind(boss) == BossBodyAccents::BladeKind::Real)
+        rim *= a.realRimShare;
     return rim * (hot ? a.bladeRimHotShare : 1.0f);
 }
 

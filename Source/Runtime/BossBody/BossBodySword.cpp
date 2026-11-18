@@ -563,9 +563,8 @@ void TraceEdge(const BossComponent& boss, const Transform& body, const BossBodyP
     const Vec3 direction = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
     const Vec3 edge = Rotate(pose.sword.rotation, {0.0f, -1.0f, 0.0f});
     const Vec3 ruleEdge = boss.swordPose.edge;
-    const float rule = Length(ruleEdge) > kEdgeGoalMinLength
-                           ? Dot(edge, Perpendicular(frame.Direction(ruleEdge), direction))
-                           : 9.0f;
+    const float rule =
+        Length(ruleEdge) > kEdgeGoalMinLength ? Dot(edge, Perpendicular(frame.Direction(ruleEdge), direction)) : 9.0f;
     const float speed = Length(m.velocity);
     const float motion = speed > boss.body.motion.edgeMinDegreesPerSecond * kRadiansPerDegree
                              ? Dot(edge, Perpendicular(frame.Direction(m.velocity), direction))

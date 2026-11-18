@@ -16,6 +16,10 @@ public:
     static void Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body,
                        const BossBodyPose& pose, float seconds);
     static void Stop(HIKARI::WorldView& world, BossComponent& boss);
+    // いまの技の刀の見え方（c-ecd963）：霞＝剣気を飛ばす技の前隙〜振り、実＝実体の刀だけで当てる技の前隙〜振り、
+    // どちらでもない＝待機・後隙・歩き・刀を振らない技。
+    enum class BladeKind { None, Haze, Real };
+    static BladeKind Kind(const BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

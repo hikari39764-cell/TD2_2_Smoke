@@ -1117,6 +1117,9 @@ public:
     double seenBaseDamage = 0.0;
     float clockSeconds = 0.0f;
     uint64_t tick = 0;
+    // 剣気（飛ぶ斬撃）を最後に放った tick と、それまでに放った数（見た目が放つ瞬間を知るため。c-ecd963）。
+    uint64_t releaseTick = 0;
+    uint32_t releaseCount = 0;
     int lastPhaseNumber = 1;
     // 技の要求（行動ツリーや確かめ用が入れる）
     int requestedMove = -1;

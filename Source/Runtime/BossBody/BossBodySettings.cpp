@@ -70,6 +70,28 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyEdgeRiseSeconds", "刃口の光：明るくなる時間 (秒)", edgeRiseSeconds, 0.005f, 2.0f);
     fields.Float("bodyEdgeFallSeconds", "刃口の光：暗くなる時間 (秒)", edgeFallSeconds, 0.005f, 2.0f);
     fields.Float("bodyEdgeDark", "刃のまわりの暗い縁：濃さ（倍率。0 で出さない）", edgeDark, 0.0f, 2.0f);
+    fields.Float("bodyHazeBoost", "霞の技（剣気を飛ばす）の間、刃文の流れ・霞の帯を強める倍率", hazeBoost, 0.0f, 8.0f);
+    fields.Float("bodyRealRimShare", "実体の刀の技の間、刀身の輪郭の光に掛ける割合 (0 で灯さない)", realRimShare, 0.0f,
+                 1.0f);
+    fields.Float("bodyRealEdgeShare", "実体の刀の技の間、刃口の光に掛ける割合", realEdgeShare, 0.0f, 1.0f);
+    fields.Float("bodyRealFlowShare", "実体の刀の技の間、刃文の流れ・霞の帯に掛ける割合", realFlowShare, 0.0f, 1.0f);
+    fields.Float3("bodyFlowMistColor", "刃文の流れ：霞の色と明るさ", flowMistColor);
+    fields.Float3("bodyFlowFireColor", "刃文の流れ：刀が燃えている時の色と明るさ", flowFireColor);
+    fields.Float("bodyFlowIdle", "刃文の流れ：明るさ（倍率。0 で出さない）", flowIdle, 0.0f, 8.0f);
+    fields.Float3("bodyMistMistColor", "霞の帯：霞の色と明るさ", mistMistColor);
+    fields.Float3("bodyMistFireColor", "霞の帯：刀が燃えている時の色と明るさ", mistFireColor);
+    fields.Float("bodyMistIdle", "霞の帯：明るさ（倍率。0 で出さない）", mistIdle, 0.0f, 8.0f);
+    fields.Float3("bodyWakeMistColor", "剣先の残光：霞の色と明るさ", wakeMistColor);
+    fields.Float3("bodyWakeFireColor", "剣先の残光：刀が燃えている時の色と明るさ", wakeFireColor);
+    fields.Float("bodyWakeGain", "剣先の残光：明るさ（倍率。0 で出さない）", wakeGain, 0.0f, 8.0f);
+    fields.Float("bodyWakeMinTipSpeed", "剣先の残光：出始める剣先の速さ (m/秒)", wakeMinTipSpeed, 0.0f, 100.0f);
+    fields.Float("bodyWakeFullTipSpeed", "剣先の残光：いちばん明るくなる剣先の速さ (m/秒)", wakeFullTipSpeed, 0.1f,
+                 200.0f);
+    fields.Float("bodyWakeGroundFade", "剣先の残光：地面の近くで弱める高さ (m)", wakeGroundFade, 0.0f, 10.0f);
+    fields.Float("bodyReleaseGlint", "剣気を放つ瞬間：刀身を走る光の明るさ（倍率。0 で出さない）", releaseGlint, 0.0f,
+                 8.0f);
+    fields.Int("bodyReleaseHoldTicks", "剣気を放つ瞬間：時間を止める長さ (F。0 で止めない)", releaseHoldTicks, 0, 10);
+    fields.Float("bodyReleaseHoldScale", "剣気を放つ瞬間：止める間の時間の倍率 (0〜1)", releaseHoldScale, 0.0f, 1.0f);
     fields.Vfx("bodyGlintEffect", "刀身を走る光のエフェクト（刀を振る技を出すと決めた瞬間。空なら出さない）",
                glintEffect);
     fields.Float3("bodyGlintMistColor", "刀身を走る光：霞の技の色と明るさ", glintMistColor);
