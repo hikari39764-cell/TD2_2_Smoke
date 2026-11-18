@@ -257,8 +257,9 @@ void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
     BossBodyState& state = boss.bodyState;
     const bool teleported = boss.teleportCount != state.fireTeleports;
     state.fireTeleports = boss.teleportCount;
-    if (state.fire <= 0.0f || teleported || boss.hidden || BossPose::RootHeight(boss) < -BossBodyMath::kTiny ||
-        s.smokeEffect.IsEmpty())
+    // 変わり目の演出を飛ばしたフレームも瞬間移動と同じに扱う（膝をついた姿から構えへ一度に移るので）。
+    if (state.fire <= 0.0f || teleported || BossPhaseShiftVisuals::HoldTongues(boss) || boss.hidden ||
+        BossPose::RootHeight(boss) < -BossBodyMath::kTiny || s.smokeEffect.IsEmpty())
         return;
     // 襟：左右に 2 本ずつ（前後へ fireCollarSpread ずらす）。左は右を左右に反転した所。
     const float spread = 0.5f * s.fireCollarSpread;

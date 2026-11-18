@@ -321,7 +321,13 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
 // 見えないので、剣の炎は、ボスのそばの空中に斜めに浮いた火に見え、振った後も淡い煙の弧が空に残る
 // （剣が燃えていることは、剣先の橙の光で見せる。斬撃の炎は、斬撃のエフェクトが出す）。
 void UpdateIgniteFlash(HIKARI::WorldView& world, BossComponent& boss, bool lit) {
-    if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f) {
+    // フェーズの変わり目の演出で刀が初めて灯る時（閃光・飛ばした時）は火球を出さない：刀身は拭う手が灯し、飛ばした時は
+    // 規則の剣先（構え直す前の所）に火球が残って燃えて見える。
+    BossPhaseShiftState& shift = boss.shiftState;
+    const bool byShift = lit && shift.beat != BossShiftBeat::None && !shift.lookPending && !shift.bladeLitSeen;
+    if (byShift)
+        shift.bladeLitSeen = true;
+    if (lit && !boss.bladeWasLit && boss.igniteFlashRadius > 0.0f && !byShift) {
         const BossSwordPoints sword = boss.swordSmoke
                                           ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
                                           : BossPose::SwordPoints(boss, boss.swordPose);

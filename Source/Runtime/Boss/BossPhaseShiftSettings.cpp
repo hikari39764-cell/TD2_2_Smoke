@@ -59,6 +59,13 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("shiftRingRadius", "火の輪：広がり切る半径 (m。0 で出さない)", ringRadius, 0.0f, 40.0f);
     fields.Float("shiftRingSeconds", "火の輪：広がる長さ (秒)", ringSeconds, 0.05f, 3.0f);
     fields.Float("shiftRingFadeSeconds", "火の輪：光を下げて消す長さ (秒)", ringFadeSeconds, 0.05f, 3.0f);
+    fields.Float("shiftRingThinGlow", "火の輪：資産の細い輪（シェーダーの層）の明るさ（0 で出さない。太い炎の帯だけ）",
+                 ringThinGlow, 0.0f, 1.0f);
+    fields.Float("shiftSkipQuenchSeconds", "飛ばした時：演出で入れた火を吸い消す長さ (秒。0 で消さない)",
+                 skipQuenchSeconds, 0.0f, 2.0f);
+    fields.Float("shiftSkipQuenchRadius", "飛ばした時：吸い消す球の半径（1 倍の体での m）", skipQuenchRadius, 0.05f,
+                 2.0f);
+    fields.Float("shiftSkipQuenchRate", "飛ばした時：消す速さ (1/秒)", skipQuenchRate, 0.0f, 1000.0f);
     fields.Float("shiftFlashShock", "閃光：衝撃の輪の大きさ（1 つ目。0 で出さない）", flashShock, 0.0f, 10.0f);
     fields.Float("shiftFlashShockSecond", "閃光：遅れて出る衝撃の輪の大きさ", flashShockSecond, 0.0f, 10.0f);
     fields.Float("shiftFlashGlint", "閃光：刀身を走る光の明るさ", flashGlint, 0.0f, 10.0f);

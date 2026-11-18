@@ -28,6 +28,8 @@ constexpr uint64_t kLeakBase = 1700;
 constexpr uint64_t kChestId = 1720;
 constexpr uint64_t kBladeFireBase = 1730;
 constexpr uint64_t kFogPushBase = 1740;
+// 飛ばした時に、演出で入れた火を吸い消す所（1750〜1759）。
+constexpr uint64_t kQuenchBase = 1750;
 constexpr int kBladeFirePoints = 5;
 constexpr int kFogPushCount = 8;
 // 最後の当たりで時間を止める出し元（ほかの手応えと重ねない）。
@@ -318,7 +320,9 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
         return;
     }
     const float grow = Unit(state.ringAge / std::max(0.001f, s.ringSeconds));
-    const float glow = fade <= 0.0f ? 1.0f : 1.0f - fade / std::max(0.001f, s.ringFadeSeconds);
+    // 資産の細い輪（シェーダーの層）は ringThinGlow を掛ける（既定 0：出さない。流体の炎の帯は入力 fly で出る）。
+    const float glow = (fade <= 0.0f ? 1.0f : 1.0f - fade / std::max(0.001f, s.ringFadeSeconds)) *
+                       std::clamp(s.ringThinGlow, 0.0f, 1.0f);
     // 広がりは出だしが速い（場を払う）。
     const float spread = 1.0f - (1.0f - grow) * (1.0f - grow);
     const float scale = Lerp(kRingStart, 1.0f, spread) * s.ringRadius / std::max(0.01f, boss.ringEffectRadius);
@@ -348,7 +352,8 @@ void Flash(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& b
         play.asset = boss.ringEffect;
         const Vec3 center{state.origin.x, state.origin.y + boss.ringHeight, state.origin.z};
         play.transform = BossVfx::Placed(center, kRingStart * s.ringRadius / std::max(0.01f, boss.ringEffectRadius));
-        play.parameters = BossVfx::RingParameters(true, 1.0f);
+        // 出始めのフレームから細い輪を出さない（ringThinGlow。地面の予告に見えないように）。
+        play.parameters = BossVfx::RingParameters(true, std::clamp(s.ringThinGlow, 0.0f, 1.0f));
         state.ringVfx = BossVfx::Start(world, boss, play);
         state.ringAge = 0.0f;
     }
@@ -363,6 +368,69 @@ void Flash(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& b
         push.channels = FluidChannels::kFog;
         boss.fluidAccepted =
             world.GetFluid().Submit(object.GetHandle(), kFogPushBase + static_cast<uint64_t>(k), push).Accepted() &&
+            boss.fluidAccepted;
+    }
+}
+
+// 飛ばした時に吸い消す所を覚える：刀を突き立てている間（崩・燃・閃光の前の爆）の、刀身（根元から地面の上まで）・柄と
+// その上・両の籠手・胸。構え（立ち上がった後）では覚えない（構え直した体の火と重なる）。
+void RememberQuench(BossComponent& boss, const BossBodyPose& pose) {
+    const BossPhaseShiftSettings& s = boss.shift;
+    BossPhaseShiftState& state = boss.shiftState;
+    const bool planted = state.beat == BossShiftBeat::Collapse || state.beat == BossShiftBeat::Ignite ||
+                         (state.beat == BossShiftBeat::Burst && !state.flashed);
+    if (!planted) {
+        state.quenchCount = 0;
+        return;
+    }
+    const Vec3 grip = pose.sword.position;
+    const Vec3 tip = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
+    const float end = std::max(kRootAlong, VisibleBladeReach(boss) - s.plantBuried - kWipeStopAbove);
+    // 刀身の火は昇るので、柄の上にも球の半径ずつ 2 つ重ねる（左手は拭う間は刀身の上なので、刀身の球で足りる）。
+    const float rise = std::max(0.05f, s.skipQuenchRadius * boss.body.bodyScale);
+    int k = 0;
+    for (float up : {0.0f, 1.0f, 2.0f})
+        state.quenchAt[static_cast<size_t>(k++)] = Add(grip, Vec3{0.0f, rise * up, 0.0f});
+    for (float share : {0.0f, 0.5f, 1.0f})
+        state.quenchAt[static_cast<size_t>(k++)] = Add(grip, Mul(tip, Lerp(kRootAlong, end, share)));
+    state.quenchAt[static_cast<size_t>(k++)] = pose.rightCuff.position;
+    state.quenchAt[static_cast<size_t>(k++)] = pose.leftCuff.position;
+    // 膝をついた胸の火の粉（燃の間に入れる）と、その上。立ち上がった胴の前に残って見えないように。
+    const Vec3 chest = Add(pose.torso.position, Rotate(pose.torso.rotation, Mul(kChest, pose.torso.scale)));
+    state.quenchAt[static_cast<size_t>(k++)] = chest;
+    state.quenchAt[static_cast<size_t>(k++)] = Add(chest, Vec3{0.0f, rise, 0.0f});
+    state.quenchCount = k;
+}
+
+// 飛ばした時：覚えた所の胴の煙の域を、quench の秒数だけ吸い消す（煙・熱・燃料が消える。押しはしない）。飛ばしたのを
+// 見たフレームは skipFrame（火の舌を入れない）。
+void Quench(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
+    const BossPhaseShiftSettings& s = boss.shift;
+    BossPhaseShiftState& state = boss.shiftState;
+    state.skipFrame = false;
+    if (state.skipped && !state.skipSeen) {
+        state.skipSeen = true;
+        state.skipFrame = true;
+        state.quenchLeft = std::max(0.0f, s.skipQuenchSeconds);
+        char message[128]{};
+        std::snprintf(message, sizeof(message), "ShiftQuench tick=%llu points=%d seconds=%.2f",
+                      static_cast<unsigned long long>(boss.tick), state.quenchCount,
+                      static_cast<double>(state.quenchLeft));
+        BossLog::Write(message);
+    }
+    if (!(state.quenchLeft > 0.0f) || state.quenchCount <= 0 || !(s.skipQuenchRate > 0.0f))
+        return;
+    state.quenchLeft -= std::max(0.0f, seconds);
+    for (int k = 0; k < state.quenchCount; ++k) {
+        HIKARI::GameProjectFluidInteraction sink{};
+        sink.kind = HIKARI::GameProjectFluidInteractionKind::Force;
+        sink.position = state.quenchAt[static_cast<size_t>(k)];
+        sink.extents = {std::max(0.05f, s.skipQuenchRadius * boss.body.bodyScale), 0.0f, 0.0f};
+        sink.strength = 0.0f;
+        sink.absorption = std::min(1000.0f, s.skipQuenchRate);
+        sink.channels = FluidChannels::kBodyFire;
+        boss.fluidAccepted =
+            world.GetFluid().Submit(object.GetHandle(), kQuenchBase + static_cast<uint64_t>(k), sink).Accepted() &&
             boss.fluidAccepted;
     }
 }
@@ -494,8 +562,10 @@ void BossPhaseShiftVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView 
     const BossPhaseShiftSettings& s = boss.shift;
     const float dt = std::max(0.0f, seconds);
     UpdateRing(world, boss, dt);
+    Quench(world, object, boss, dt);
     if (!BossPhaseShift::Cinematic(boss))
         return;
+    RememberQuench(boss, pose);
     // 遅れて出る衝撃の輪の時計（登場の後は、登場の見た目が進めない）。
     for (BossIntroState::Shock& shock : boss.introState.shocks)
         shock.delay -= dt;
@@ -570,6 +640,8 @@ void BossPhaseShiftVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView 
         }
     }
 }
+
+bool BossPhaseShiftVisuals::HoldTongues(const BossComponent& boss) { return boss.shiftState.skipFrame; }
 
 void BossPhaseShiftVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     BossVfx::StopHandle(world, boss.shiftState.ringVfx);

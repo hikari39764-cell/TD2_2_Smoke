@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -81,6 +82,14 @@ struct BossPhaseShiftSettings {
     float ringRadius = 13.0f;
     float ringSeconds = 0.24f;
     float ringFadeSeconds = 0.15f;
+    // 火の輪：資産の細い輪（シェーダーの層 Ring Haze・Ring Glow・Ring Edge）の明るさ（0〜1）。細い輪は地面の予告に
+    // 見えるので、既定は 0（出さない。太い炎の帯＝流体の炎だけ）。
+    float ringThinGlow = 0.0f;
+    // 飛ばした時：演出の間に流体へ入れた火（突き立てた刀の刀身・柄とその上・膝をついた籠手と胸の所）を、この秒数だけ吸い消す
+    // （構え直した後に元の場所で燃え残らない）。吸い消す球の半径（1 倍の体での m）と、消す速さ（1/秒）。
+    float skipQuenchSeconds = 0.3f;
+    float skipQuenchRadius = 0.4f;
+    float skipQuenchRate = 40.0f;
     // 閃光：衝撃の輪の大きさ（1 つ目・遅れて出る 2 つ目。細い輪が残ると予告に見えるので、既定は出さない。火の輪が払う）、刀身を走る光、スローの長さ（実時間の F。時間の倍率は登場の
     // introDrawSlowScale）、場の色をこの割合まで一気に進める（閃光に隠す。残りは fieldWarmSeconds で）。
     float flashShock = 0.0f;
@@ -129,6 +138,16 @@ struct BossPhaseShiftState {
     // 火の輪のエフェクトと、出してからの秒。
     HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
     float ringAge = 0.0f;
+    // 飛ばした時に吸い消す所（演出の間、刀を突き立てている間の最後のフレームの刀身・柄とその上・籠手・胸。世界）と、吸い消す
+    // 残りの秒。飛ばしたのを見たか・そのフレームか（そのフレームは火の舌を入れない。籠手の火が元の所から引かれない）。
+    std::array<HIKARI::GameProjectFloat3, 10> quenchAt{};
+    int quenchCount = 0;
+    float quenchLeft = 0.0f;
+    bool skipSeen = false;
+    bool skipFrame = false;
+    // 変わり目に入ってから、規則の刀の火（BossRules::IsBladeLit）が点いたのを見たか。最初に点く時（閃光・飛ばした時）は
+    // 剣先の火球（igniteFlashRadius）を出さない（刀身は拭う手が灯す。飛ばした時に火球が元の剣先の所で燃え残らない）。
+    bool bladeLitSeen = false;
     // 演出のカメラのカット（表を読んだもの。at は変わり目の始めからの F）。
     std::vector<BossIntroCut> cuts;
 };

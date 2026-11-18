@@ -19,6 +19,9 @@ public:
     // 煙と火の注入（胴の煙の域）、火の輪、閃光の手応えの頼み（演出の後も、火の輪が消えるまで進める）。
     static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
                        const BossBodyPose& pose, float seconds);
+    // 演出を飛ばしたのを見たフレームか（このフレームは火の舌を入れない。膝をついた籠手の所から、構え直した籠手の所まで
+    // 燃料が線に引かれないように。BossBodyVisuals の火の舌が見る）。
+    static bool HoldTongues(const BossComponent& boss);
     static void Stop(HIKARI::WorldView& world, BossComponent& boss);
 };
 
