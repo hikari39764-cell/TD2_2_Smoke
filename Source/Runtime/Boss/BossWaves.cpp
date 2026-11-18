@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "BossBurnMarks.h"
+#include "BossGourdRead.h"
 #include "BossMath.h"
 #include "BossRules.h"
 #include "../Burn/BurnFieldRules.h"
@@ -131,6 +132,9 @@ void Capture(BossFrame& frame, BossWave& wave) {
     wave.crossPending = false;
     wave.smokeOwed = 0.0f;
     LogWave(boss, wave, "WaveCaptured");
+    // ヒョウタンの読み（c-14392d）：剣気を続けて吸われたかを数える（ナイフは数えない）。
+    if (!wave.knife)
+        BossGourdRead::NoteCatch(boss);
 }
 
 // 捕まえた斬撃・ナイフを、口へ 1 tick ぶん引き込む。入りきったら真。
@@ -306,6 +310,8 @@ uint64_t BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) 
     wave.blow = strike.blow;
     wave.done = launch.noHit;
     wave.absorbSmoke = boss.waveAbsorbSmoke;
+    // ヒョウタンの読み（c-14392d）：同じ側へ転がる癖があれば、横の剣気をその側へ寄せる。
+    BossGourdRead::LeanSlash(frame, wave);
     // 火は放った行そのものの値（連撃が参照した「縦振り」の行の火は持ってこない）。
     BossBurnMarks::ArmWave(boss, *move, wave);
     LogWave(boss, wave, "WaveRelease");

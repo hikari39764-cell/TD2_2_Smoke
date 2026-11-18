@@ -74,6 +74,8 @@ struct BossPlayerWatch {
     // 残りの回復の数。
     float gourdPercent = -1.0f;
     bool gourdFull = false;
+    // 煙弾 1 発に要る煙 (容量に対する %。c-14392d。砲撃が無ければ 0)。
+    float shotCostPercent = 0.0f;
     float staminaPercent = 100.0f;
     float healthPercent = 100.0f;
     int healCharges = 0;

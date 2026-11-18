@@ -45,6 +45,7 @@ enum class Column {
     BurnSeconds,
     TrackStop,
     WindupJitter,
+    WindupJitterPhase2,
     BreakHits,
     BlastDamage,
     BlastSize,
@@ -64,6 +65,8 @@ enum class Column {
 constexpr int kMinimumWrittenGap = 6;
 // 「変化の前隙 F」が空欄の時の、切り替えた技の前隙 (F)。
 constexpr double kDefaultSwitchPre = 14.0;
+// プレイヤーのローリングの無敵 (F)。フェーズ2の溜めの揺らぎがこれ以下なら、遅らせても同じ無敵で抜けられる（警告だけ）。
+constexpr int kRollInvulnerableFrames = 15;
 
 struct HeaderKey {
     const char* text;
@@ -84,6 +87,7 @@ constexpr HeaderKey kHeaders[] = {
     {"爆発の判定", Column::BlastSize},
     {"吹っ飛びの距離", Column::KnockDistance},
     {"追尾を止める", Column::TrackStop},
+    {"フェーズ2の溜めの揺らぎ", Column::WindupJitterPhase2},
     {"溜めの揺らぎ", Column::WindupJitter},
     {"崩せる", Column::BreakHits},
     {"左右移動", Column::Side},
@@ -235,6 +239,25 @@ void ReadWindup(const RawMove& raw, BossMove& move) {
         }
         move.windupExtras.push_back(RoundHalfUp(*extra));
     }
+    // フェーズ 2 の揺らぎ（c-14392d）。ローリングの無敵（kRollInvulnerableFrames）と重なる 1〜15 F は書けるが警告する。
+    const std::string& jitter2 = raw[Column::WindupJitterPhase2];
+    bool overlaps = false;
+    for (const auto& part : Split(jitter2, true)) {
+        const auto extra = NumberOf(part);
+        if (!extra || *extra < 0.0) {
+            move.warnings.push_back(
+                "フェーズ2の溜めの揺らぎ F「" + jitter2 +
+                "」が読めないので、フェーズ 2 もフェーズ 1 の揺らぎを使います（0/0/0/20 のように書く）");
+            move.windupExtrasPhase2.clear();
+            break;
+        }
+        const int frames = RoundHalfUp(*extra);
+        overlaps = overlaps || (frames > 0 && frames <= kRollInvulnerableFrames);
+        move.windupExtrasPhase2.push_back(frames);
+    }
+    if (overlaps)
+        move.warnings.push_back("フェーズ2の溜めの揺らぎ F「" + jitter2 +
+                                "」に、ローリングの無敵（15 F）と重なる長さがあります（遅らせるなら 16 F 以上）");
     const std::string& hits = raw[Column::BreakHits];
     const auto breakHits = NumberOf(hits);
     if (!hits.empty() && (!breakHits || *breakHits < 1.0))

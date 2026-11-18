@@ -7,6 +7,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "BossGourdRead.h"
 #include "BossIntroSettings.h"
 #include "BossKasumiStepSettings.h"
 #include "BossPhaseShiftSettings.h"
@@ -517,6 +518,8 @@ public:
     // 姿勢と帯の重みの表（c-19e3b0。行動ツリーの節「姿勢で技を選ぶ」が使う）。
     std::string stancePath = "Boss/kasumi_bushi_stance.csv";
     BossStanceSettings stance;
+    // ヒョウタンの読み（c-14392d。攻勢の技選びの重み・一拍止め・横の剣気の寄せ）。
+    BossGourdReadSettings gourdRead;
     // 斬撃の共通の値（試作の共通パラメータ）
     float range = 26.0f;
     int swingFrames = 10;
@@ -1131,6 +1134,7 @@ public:
     BossStanceTable stanceTable;
     std::string loadedStanceText;
     BossStanceMemory stanceMemory;
+    BossGourdReadMemory gourdReadMemory;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
     unsigned playerHitCount = 0;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。

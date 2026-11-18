@@ -183,6 +183,7 @@ void ObserveRemaining(BossComponent& boss, const PlayerComponent& player, const 
     BossPlayerWatch& watch = boss.watch;
     watch.gourdPercent = gear.hasGourd ? gear.smokePercent : -1.0f;
     watch.gourdFull = gear.hasGourd && gear.gourdFull;
+    watch.shotCostPercent = gear.hasGourd && gear.capacity > 0.0f ? gear.shotCost / gear.capacity * 100.0f : 0.0f;
     const float maxStamina = PlayerRules::GetMaxStamina(player);
     const float maxHealth = PlayerRules::GetMaxHealth(player);
     watch.staminaPercent = maxStamina > 0.0f ? PlayerRules::GetStamina(player) / maxStamina * 100.0f : 0.0f;

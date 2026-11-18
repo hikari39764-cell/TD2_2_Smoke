@@ -35,6 +35,8 @@ struct BossStanceRow {
     BossMoveClass kind = BossMoveClass::Near;
     float weight = 1.0f;
     float cooldown = 0.0f;
+    // 遅くて吸いやすい剣気（表の「吸いやすい」の列に印。c-14392d）。ヒョウタンが空に近い時に重みを上げる。
+    bool easy = false;
 };
 
 // 姿勢と帯の重みの表。

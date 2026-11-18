@@ -6,6 +6,7 @@
 #include "BossComponent.h"
 #include "BossCsv.h"
 #include "BossFrame.h"
+#include "BossGourdRead.h"
 #include "BossMoveTable.h"
 #include "BossSelection.h"
 
@@ -73,7 +74,7 @@ int FirstOfType(const BossComponent& boss, BossMoveType type) {
 }
 
 void Log(const BossComponent& boss, const char* what, const char* extra) {
-    char message[320]{};
+    char message[480]{};
     std::snprintf(message, sizeof(message), "Stance %s tick=%llu stance=%s %s", what,
                   static_cast<unsigned long long>(boss.tick), kStanceNames[static_cast<int>(boss.stanceMemory.stance)],
                   extra);
@@ -129,6 +130,8 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     // フェーズの行：いまのフェーズの行が表にあればその行だけ（この帯に無ければ歩く。フェーズ 1 の行へは落ちない）、
     // 表に無いフェーズはフェーズ 1 の行を使う（c-dc91cc）。
     const int usePhase = boss.stanceTable.RowsPhase(phase);
+    // ヒョウタンの読み（c-14392d）：満杯・空に近い・続けて吸われた で、遠距離・接近・吸いやすい剣気の重みを動かす。
+    const BossGourdReading reading = BossGourdRead::Read(boss);
     struct Candidate {
         const BossStanceRow* row;
         float weight;
@@ -162,9 +165,23 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
                     break;
                 }
             }
+            if (!walking)
+                weight *= BossGourdRead::Scale(boss, reading, row);
             candidates.push_back({&row, weight});
             total += weight;
         }
+    }
+    // 空に近いまま長く吸いやすい剣気を出していなければ、出せる吸いやすい剣気だけから選ぶ（補給できずに詰ませない）。
+    bool guaranteed = false;
+    if (reading.guarantee &&
+        std::any_of(candidates.begin(), candidates.end(), [](const Candidate& c) { return c.row->easy; })) {
+        candidates.erase(
+            std::remove_if(candidates.begin(), candidates.end(), [](const Candidate& c) { return !c.row->easy; }),
+            candidates.end());
+        total = 0.0f;
+        for (const auto& c : candidates)
+            total += c.weight;
+        guaranteed = true;
     }
     if (candidates.empty() || !(total > 0.0f))
         return band == BossBand::Out ? Walk(boss, BossMoveType::WalkIn) : Walk(boss, BossMoveType::WalkSide);
@@ -180,12 +197,16 @@ BossStanceChoice PickAttack(BossComponent& boss, int phase, float distance, Boss
     const BossMove& move = boss.table.GetMoves()[static_cast<size_t>(chosen->row->row)];
     BossStanceChoice choice{chosen->row->row, !BossMoveTable::IsMoveType(move.type), chosen->row->kind,
                             chosen->weight / total};
-    char extra[256]{};
+    BossGourdRead::NotePicked(boss, *chosen->row, choice.attack);
+    char extra[320]{};
     std::snprintf(extra, sizeof(extra),
-                  "band=%s dist=%.2f move=%s kind=%s share=%.2f candidates=%zu combo=%d/%d rows=%d",
+                  "band=%s dist=%.2f move=%s kind=%s share=%.2f candidates=%zu combo=%d/%d rows=%d read=%s "
+                  "chain=%d easy=%d guarantee=%d gourd=%.1f",
                   kBandNames[static_cast<int>(band)], static_cast<double>(distance), move.name.c_str(),
                   kClassNames[static_cast<int>(chosen->row->kind)], static_cast<double>(choice.weight),
-                  candidates.size(), m.combos + 1, m.combosTarget, usePhase);
+                  candidates.size(), m.combos + 1, m.combosTarget, usePhase, BossGourdRead::StateName(reading.state),
+                  static_cast<int>(reading.chain), static_cast<int>(chosen->row->easy), static_cast<int>(guaranteed),
+                  static_cast<double>(boss.watch.gourdPercent));
     Log(boss, "Pick", extra);
     return choice;
 }
@@ -206,6 +227,14 @@ float CooldownOf(const BossComponent& boss, int row) {
 bool BossStanceTable::Load(std::string_view csv, std::vector<std::string>& warnings) {
     rows_.clear();
     const auto table = ParseCsv(csv);
+    // 「吸いやすい」の列（c-14392d）は見出しで探す（無い表は印なし）。
+    size_t easyColumn = static_cast<size_t>(-1);
+    if (!table.empty()) {
+        for (size_t c = 0; c < table[0].size(); ++c) {
+            if (Trim(table[0][c]) == "吸いやすい")
+                easyColumn = c;
+        }
+    }
     for (size_t r = 1; r < table.size(); ++r) {
         const Row& cells = table[r];
         auto cell = [&](size_t index) { return index < cells.size() ? Trim(cells[index]) : std::string(); };
@@ -228,6 +257,9 @@ bool BossStanceTable::Load(std::string_view csv, std::vector<std::string>& warni
                                "」が読めないので接近にしました（遠距離・接近・受け返し）");
         row.weight = static_cast<float>(NumberOf(cell(5)).value_or(1.0));
         row.cooldown = static_cast<float>(NumberOf(cell(6)).value_or(0.0));
+        // 空欄・0・「-」以外を印とみなす（○ や 1）。
+        const std::string easy = easyColumn < cells.size() ? cell(easyColumn) : std::string();
+        row.easy = !easy.empty() && easy != "0" && easy != "-";
         rows_.push_back(row);
     }
     return !rows_.empty();

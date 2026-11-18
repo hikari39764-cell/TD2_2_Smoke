@@ -13,6 +13,7 @@
 #include "BossDetonate.h"
 #include "BossFeedback.h"
 #include "BossFlameRun.h"
+#include "BossGourdRead.h"
 #include "BossHealthBars.h"
 #include "BossIntro.h"
 #include "BossKasumiStep.h"
@@ -574,6 +575,7 @@ void SeeShot(HIKARI::WorldView& world, BossGearSight& gear) {
                                                    gear.shotWindup = GourdShotRules::IsWindingUp(shot);
                                                    gear.shotChaining = GourdShotRules::IsChaining(shot);
                                                    gear.shotsFired = GourdShotRules::GetShotsFired(shot);
+                                                   gear.shotCost = shot.smokeCost;
                                                    gear.aimOrigin = GourdShotRules::GetAimOrigin(shot);
                                                    gear.aimDirection = GourdShotRules::GetAimDirection(shot);
                                                });
@@ -633,6 +635,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
             const float capacity = GourdRules::GetCapacity(gourd);
             gear.hasGourd = true;
             gear.smokePercent = capacity > 0.0f ? GourdRules::GetSmoke(gourd) / capacity * 100.0f : 0.0f;
+            gear.capacity = capacity;
             gear.gourdFull = !GourdRules::HasRoomToAbsorb(gourd);
         }
         if (!GourdRules::IsAbsorbing(gourd))
@@ -664,6 +667,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 BossFrame bossFrame{world,    boss,       player, playerCenter, frame.fixedDt,
                                     inhaling, &catchRoom, mouth,  hasMouth};
                 BossObserver::Observe(world, boss, player, playerCenter, gear, frame.fixedDt);
+                // ヒョウタンの読み（c-14392d）：空に近い間の時間を数える。
+                BossGourdRead::Observe(boss);
                 // 兜が向く先（見た目だけが読む。規則は使わない）。
                 boss.bodyState.lookTarget = playerCenter;
                 boss.bodyState.lookTargetSeen = player != nullptr;

@@ -5,6 +5,7 @@
 
 #include "BossBurnMarks.h"
 #include "BossFlameRun.h"
+#include "BossGourdRead.h"
 #include "BossGreatsword.h"
 #include "BossKasumiStep.h"
 #include "BossMath.h"
@@ -637,16 +638,28 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
                 std::max(1, move.pre - 1));
         }
     }
-    if (!move.windupExtras.empty() && move.pre >= 2) {
+    // フェーズ 2 は表の「フェーズ2の溜めの揺らぎ F」があればそちら（c-14392d。フェーズ 1 は前のまま）。
+    const std::vector<int>& extras =
+        boss.lastPhaseNumber >= 2 && !move.windupExtrasPhase2.empty() ? move.windupExtrasPhase2 : move.windupExtras;
+    if (!extras.empty() && move.pre >= 2) {
         // 見た目の乱数で選ぶ。技選びの乱数や、プレイヤーに見える合図とは結び付かない。
         // 始めた tick を混ぜる：見た目の乱数は種が決まっているので、混ぜないと Play のたびに最初の溜めが同じ長さになる。
         boss.random ^= static_cast<uint32_t>(boss.tick) * 2654435761u;
-        const size_t count = move.windupExtras.size();
+        const size_t count = extras.size();
         const size_t pick = std::min(count - 1, static_cast<size_t>(BossRandom(boss) * static_cast<float>(count)));
-        boss.windupHold = std::max(0, move.windupExtras[pick]);
+        boss.windupHold = std::max(0, extras[pick]);
         char message[192]{};
         std::snprintf(message, sizeof(message), "Windup tick=%llu move=%s extra=%d pick=%zu/%zu",
                       static_cast<unsigned long long>(boss.tick), move.name.c_str(), boss.windupHold, pick + 1, count);
+        BossLog::Write(message);
+    }
+    // ヒョウタンの読み（c-14392d）：吸い込みを構え続けているのを見て選んだ剣気の技は、構えをもう一拍止めてから出す。
+    const int readHold = BossGourdRead::TakeHold(boss, moveIndex);
+    if (readHold > 0 && move.pre >= 2) {
+        boss.windupHold += readHold;
+        char message[192]{};
+        std::snprintf(message, sizeof(message), "GourdHoldStart tick=%llu move=%s hold=%d total=%d",
+                      static_cast<unsigned long long>(boss.tick), move.name.c_str(), readHold, boss.windupHold);
         BossLog::Write(message);
     }
     char extra[192]{};

@@ -17,6 +17,9 @@ struct BossGearSight {
     // 煙の量 ÷ 容量 (%)。満杯＝吸い込める空きが無い。
     float smokePercent = 0.0f;
     bool gourdFull = false;
+    // ヒョウタンの容量と、煙弾 1 発に要る煙（c-14392d。「1 発ぶんに足りない」を見る）。
+    float capacity = 0.0f;
+    float shotCost = 0.0f;
     // 砲撃：構えの間か、押し続けて次の弾を待っているか。撃った弾の累計。構えの間と押し続けている間の狙い。
     bool shotWindup = false;
     bool shotChaining = false;
