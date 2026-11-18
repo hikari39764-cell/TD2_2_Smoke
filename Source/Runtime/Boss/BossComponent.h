@@ -25,6 +25,8 @@ inline constexpr std::string_view kBossSystem = "Project_TD2_2.BossSystem";
 // 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
 inline constexpr std::string_view kBossHealthVariable = "Boss.Health";
 inline constexpr std::string_view kBossMaxHealthVariable = "Boss.MaxHealth";
+// HP の条を出すか（1＝出す、0＝出さない。登場の演出の間は見得まで 0）。
+inline constexpr std::string_view kBossBarShownVariable = "Boss.BarShown";
 // 同時に飛ぶ斬撃・ナイフの枠。連撃 5 撃とナイフ 3 本が重なっても足りる数。
 inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
@@ -1085,6 +1087,8 @@ public:
     // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
     float shownHealth = 0.0f;
     float shownMaxHealth = 0.0f;
+    // HP の条を出すか（Boss.BarShown へ書く）。
+    float shownBar = 1.0f;
     bool variableWriteWarned = false;
     bool tableLoaded = false;
     BossMoveTable table;

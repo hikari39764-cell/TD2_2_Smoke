@@ -291,7 +291,9 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
         BlockedReason(shot, gourd, player) == 0)
         PlayerRules::TryEndRollForAction(player);
     // 自分の動作ロック中は CanStartAction が false になるので、継続は通常状態と生存を確認する。
-    if (!shot.enabled || !gourd.enabled || !PlayerRules::IsAlive(player) || player.state != PlayerState::Normal) {
+    // 演出の間（ボスの登場）は撃てない。
+    if (!shot.enabled || !gourd.enabled || !PlayerRules::IsAlive(player) || player.state != PlayerState::Normal ||
+        player.cinematicHold > 0) {
         if (shot.phase != GourdShotPhase::Idle)
             LogPhase(shot, "Interrupted");
         shot.phase = GourdShotPhase::Idle;

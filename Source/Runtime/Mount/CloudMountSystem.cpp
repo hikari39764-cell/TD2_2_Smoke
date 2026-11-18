@@ -510,7 +510,8 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
         return;
     const auto input = world.GetInput();
     ForEachRider(world, [&](HIKARI::ObjectView, CloudMountComponent& mount, PlayerComponent& player) {
-        if (ReadAction(input, "Gameplay.Mount").pressed)
+        // 演出の間（ボスの登場）は乗れない。
+        if (ReadAction(input, "Gameplay.Mount").pressed && player.cinematicHold <= 0)
             mount.mountPressed = true;
         const auto move = ReadAction(input, "Gameplay.Move");
         mount.input.strafe = std::isfinite(move.x) ? move.x : 0.0f;

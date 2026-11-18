@@ -210,6 +210,31 @@ void FreeLook(HIKARI::WorldView& world, PlayerComponent& player, const CameraLim
                                        player.cameraReleaseSeconds, kNoSpeedLimit, dt);
 }
 
+// 演出のカメラの姿勢と、ゲームのカメラの姿勢を混ぜる（位置は直線、見る向きは向きで、画角は直線。重み 1 でゲーム）。
+void BlendCinematic(HIKARI::GameProjectCameraPose& pose, const PlayerCinematicRequest& cinematic) {
+    const float w = std::clamp(cinematic.gameWeight, 0.0f, 1.0f);
+    if (w >= 1.0f)
+        return;
+    const auto mix = [](Vec3 a, Vec3 b, float t) {
+        return Vec3{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
+    };
+    const auto unit = [](Vec3 v, Vec3 fallback) {
+        const float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+        return length > 1.0e-5f ? Vec3{v.x / length, v.y / length, v.z / length} : fallback;
+    };
+    const Vec3 game =
+        unit({pose.target.x - pose.eye.x, pose.target.y - pose.eye.y, pose.target.z - pose.eye.z}, {0.0f, 0.0f, 1.0f});
+    const Vec3 film = unit({cinematic.target.x - cinematic.eye.x, cinematic.target.y - cinematic.eye.y,
+                            cinematic.target.z - cinematic.eye.z},
+                           game);
+    const Vec3 eye = mix(cinematic.eye, pose.eye, w);
+    const Vec3 view = unit(mix(film, game, w), game);
+    pose.eye = eye;
+    pose.target = {eye.x + view.x * kLookDistance, eye.y + view.y * kLookDistance, eye.z + view.z * kLookDistance};
+    pose.up = unit(mix({0.0f, 1.0f, 0.0f}, pose.up, w), {0.0f, 1.0f, 0.0f});
+    pose.verticalFovRadians = cinematic.fovRadians + (pose.verticalFovRadians - cinematic.fovRadians) * w;
+}
+
 bool Settled(float now, float target) { return std::abs(now - target) <= kShapeSettleEpsilon; }
 
 // 見せ方（距離・画角・視点の下限・傾き・見下ろし）を目標へならす。要求が一度も無い間と、戻り切った後は Player の値
@@ -291,6 +316,9 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
     const bool locked = LockPoint(world, player, targetPoint);
     if (locked)
         TrackTarget(player, limits, targetPoint, dt);
+    else if (player.cinematicPending)
+        // 演出の間は、ゲームのカメラを演出の向く点へ向けておく（戻った時にそちらを見ている）。
+        TrackTarget(player, limits, player.cinematic.focus, dt);
     else
         FreeLook(world, player, limits, dt);
     StepShape(player, limits, dt);
@@ -339,6 +367,11 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
                            viewUp.z * rollCos + right.z * rollSin};
     }
     request.pose.verticalFovRadians = shape.fovRadians + limits.fovKickRadians;
+    // 演出のカメラ（ボスの登場）：ゲームのカメラの姿勢と重みで混ぜる。最後は重み 1 で、切れ目なくゲームのカメラへ戻る。
+    if (player.cinematicPending) {
+        BlendCinematic(request.pose, player.cinematic);
+        player.cinematicPending = false;
+    }
     player.cameraAccepted = world.GetCamera().SubmitPose(request);
     if (player.cameraTrace)
         Trace(world, player, body.position, locked, eye, distance, request.pose.verticalFovRadians,

@@ -30,6 +30,7 @@
 #include "../Common/SessionMemory.h"
 #include "../Common/TraceInterval.h"
 #include "../BossBody/BossBodyVisuals.h"
+#include "../BossBody/BossIntroCamera.h"
 #include "../BossBody/BossIntroVisuals.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
@@ -39,6 +40,9 @@
 
 namespace Project_TD2_2 {
 namespace {
+
+// 登場の演出の間、プレイヤーの入力を止めておく長さ（毎 tick 入れ直す。tick の順がずれても途切れない）。
+constexpr int kCinematicHoldTicks = 2;
 
 using ComponentLookup::ForEachOnObject;
 
@@ -210,6 +214,7 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     // 登場は Play の間に 1 度だけ：やり直し（シーンの読み直し）の後は、Play session が覚えている。
     auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession());
     BossIntro::Begin(boss, memory != nullptr && memory->GetMemory().bossIntroSeen);
+    BossIntroCamera::Load(world, boss);
     LoadTable(world, boss);
 }
 
@@ -645,6 +650,10 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 if (player != nullptr)
                     BossIntro::Face(boss, playerCenter);
                 BossIntro::Step(boss);
+                // 演出の間は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。PlayerSystem が tick ごとに減らす）。
+                if (player != nullptr && BossIntro::Cinematic(boss))
+                    player->cinematicHold = std::max(player->cinematicHold, kCinematicHoldTicks);
+                boss.shownBar = BossIntro::BarShown(boss) ? 1.0f : 0.0f;
                 if (BossIntro::Started(boss)) {
                     if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
                         memory->GetMemory().bossIntroSeen = true;
@@ -769,6 +778,16 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                   });
                                               BossFeedback::Update(world, object, boss, frame);
                                               BossIntroVisuals::Feedback(world, object, boss, frame.unscaledDt);
+                                              // 登場の演出：飛ばす入力と、演出のカメラ（プレイヤーのカメラへ渡す）。
+                                              if (BossIntro::Cinematic(boss) && !boss.intro.skipAction.empty() &&
+                                                  GameSession::ReadAction(world.GetInput(), boss.intro.skipAction)
+                                                      .pressed)
+                                                  boss.introState.skipRequested = true;
+                                              world.ForEachComponent<PlayerComponent>(
+                                                  HIKARI::MakeComponentTypeId(kPlayerType),
+                                                  [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                                      BossIntroCamera::Update(boss, player);
+                                                  });
                                               demand += BossRules::GetFluidDomainDemand(boss);
                                           });
     // 斬撃のエフェクトが使う流体域の分だけ、砲撃の炎の枠を譲ってもらう（毎フレーム入れ直す）。

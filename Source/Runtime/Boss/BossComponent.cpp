@@ -682,6 +682,7 @@ void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
     constexpr std::string_view category = "Boss";
     ObjectVariables::PublishFloat(context, category, kBossHealthVariable, shownHealth, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossMaxHealthVariable, shownMaxHealth, variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kBossBarShownVariable, shownBar, variableWriteWarned);
 }
 
 } // namespace Project_TD2_2

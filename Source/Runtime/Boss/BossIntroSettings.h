@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <vector>
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
@@ -40,6 +41,18 @@ struct BossIntroSettings {
     int settleFrames = 24;
     // 確かめ用（正式シーンでは使わない）：0 以上なら、戦いの流れに関わらず、この tick に登場が始まる。
     int testStartFrames = -1;
+    // 演出のカメラ（カード c-cf4ed6）：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの
+    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。
+    bool cameraEnabled = true;
+    std::string cameraPath = "Boss/kasumi_bushi_intro_camera.csv";
+    float cameraFocusHeight = 4.0f;
+    // 飛ばす：登場の間にこの入力（行動 id）を押すと、組み上がった待機の構えへ進む（空なら飛ばせない）。
+    std::string skipAction = "Gameplay.Menu";
+    // 刀が地面を離れる瞬間のスロー：長さ（実時間の F。0 で、代わりに短い時間の停止）と時間の倍率。
+    int drawSlowFrames = 24;
+    float drawSlowScale = 0.35f;
+    // ボスの HP の条を出す所（一振りの段の中の割合。見得）。それまでは出さない。
+    float barShare = 0.5f;
 
     // 立ち込める黒い煙：広い・低い流体域のエフェクト（場の雰囲気。全部は使わない）。登場が始まると湧き止み、中央へ
     // 流れて薄れる（周りの煙が敵になっていく）。空なら出さない。
@@ -306,6 +319,24 @@ struct BossIntroSettings {
     int accentRumbleFrames = 12;
 };
 
+// 演出のカメラのカット 1 つ（表の 1 行）。位置は「ボスの始めの足元が原点、ボスの前（プレイヤーの側）が +Z、ボスの
+// 左が +X」の m、画角は度。始めから終わり（次のカットの始め）へ、なめらかに動く。
+struct BossIntroCut {
+    BossIntroPhase phase = BossIntroPhase::Gather;
+    float share = 0.0f;
+    // 登場の始め（集める段の始め）からの F。
+    float at = 0.0f;
+    HIKARI::GameProjectFloat3 eyeFrom{};
+    HIKARI::GameProjectFloat3 eyeTo{};
+    HIKARI::GameProjectFloat3 lookFrom{};
+    HIKARI::GameProjectFloat3 lookTo{};
+    float fovFrom = 50.0f;
+    float fovTo = 50.0f;
+    // ゲームのカメラへ戻す重み（0 で演出のカメラ、1 でゲームのカメラ）。
+    float gameFrom = 0.0f;
+    float gameTo = 0.0f;
+};
+
 // 登場の実行時の状態（保存しない）。
 struct BossIntroState {
     BossIntroPhase phase = BossIntroPhase::Done;
@@ -405,6 +436,12 @@ struct BossIntroState {
     // 確かめ用（Boss.bodyTraceMotion）：前のフレームの剣先の位置。
     HIKARI::GameProjectFloat3 traceTip{};
     bool traceReady = false;
+    // 演出のカメラのカット（表を読んだもの。読めなければ空で、演出のカメラを出さない）。
+    std::vector<BossIntroCut> cuts;
+    // 飛ばす：押された（次の tick に進める）・飛ばした。刀が地面を離れる瞬間のスローを次の描画のフレームで頼む F。
+    bool skipRequested = false;
+    bool skipped = false;
+    int slowPending = 0;
     // 手応え：頼まれた強さ（0〜1。描画のフレームで使ったら 0 に戻す）、時間を止める F、カメラの揺れ。
     float accentPending = 0.0f;
     int hitStopPending = 0;

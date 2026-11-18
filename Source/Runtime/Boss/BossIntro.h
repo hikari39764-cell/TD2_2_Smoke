@@ -20,6 +20,13 @@ public:
     static bool Holding(const BossComponent& boss) { return boss.introState.phase != BossIntroPhase::Done; }
     // 構えに収まるまで、当たらない。
     static bool Shielded(const BossComponent& boss) { return boss.introState.phase < BossIntroPhase::Settle; }
+    // 演出の間（煙が集まり始めてから、構えに収まるまで。飛ばした後は済み）：プレイヤーの入力を止めて無敵にする。
+    static bool Cinematic(const BossComponent& boss) {
+        const BossIntroPhase phase = boss.introState.phase;
+        return phase != BossIntroPhase::Scattered && phase != BossIntroPhase::Done;
+    }
+    // ボスの HP の条を出すか（演出の間は見得まで出さない）。
+    static bool BarShown(const BossComponent& boss);
     // いまの段の長さ (F)。長さの無い段（待つ・済み）は 0。
     static int PhaseFrames(const BossComponent& boss, BossIntroPhase phase);
 };

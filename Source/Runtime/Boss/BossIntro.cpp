@@ -38,7 +38,30 @@ void Enter(BossComponent& boss, BossIntroPhase phase) {
     BossLog::Write(message);
 }
 
+// 飛ばす：組み上がった待機の構えへ一度に進む（途中の状態で止まらない）。登場の煙はすぐ消し始める。
+void Skip(BossComponent& boss) {
+    BossIntroState& state = boss.introState;
+    char message[128]{};
+    std::snprintf(message, sizeof(message), "Intro skip tick=%llu from=%s", static_cast<unsigned long long>(boss.tick),
+                  PhaseName(state.phase));
+    BossLog::Write(message);
+    state.skipped = true;
+    state.fogBlown = true;
+    Enter(boss, BossIntroPhase::Done);
+}
+
 } // namespace
+
+bool BossIntro::BarShown(const BossComponent& boss) {
+    const BossIntroState& state = boss.introState;
+    if (!Cinematic(boss))
+        return true;
+    if (state.phase == BossIntroPhase::Settle)
+        return true;
+    if (state.phase != BossIntroPhase::Flourish)
+        return false;
+    return static_cast<float>(state.frame) >= boss.intro.barShare * static_cast<float>(PhaseFrames(boss, state.phase));
+}
 
 int BossIntro::PhaseFrames(const BossComponent& boss, BossIntroPhase phase) {
     const BossIntroSettings& s = boss.intro;
@@ -80,6 +103,16 @@ void BossIntro::Step(BossComponent& boss) {
     BossIntroState& state = boss.introState;
     switch (state.phase) {
     case BossIntroPhase::Done: return;
+    default:
+        // 飛ばす（演出の間だけ。押されたのは描画のフレームなので、次の tick に進める）。
+        if (state.skipRequested && Cinematic(boss)) {
+            state.skipRequested = false;
+            Skip(boss);
+            return;
+        }
+        break;
+    }
+    switch (state.phase) {
     case BossIntroPhase::Scattered:
         if (boss.intro.testStartFrames >= 0) {
             if (boss.tick >= static_cast<uint64_t>(boss.intro.testStartFrames))

@@ -17,6 +17,17 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Int("introDrawFrames", "刀を抜く長さ (F)", drawFrames, 1, 1200);
     fields.Int("introFlourishFrames", "一振りして構える長さ (F)", flourishFrames, 1, 1200);
     fields.Int("introSettleFrames", "構えてから動き出すまで (F)", settleFrames, 0, 1200);
+    fields.Bool("introCameraEnabled", "演出のカメラ：出す（切るとゲームのカメラのまま）", cameraEnabled);
+    fields.Text("introCameraPath", "演出のカメラ：カットの表（Data/ からの場所）", cameraPath);
+    fields.Float("introCameraFocusHeight", "演出のカメラ：演出の間、ゲームのカメラが向くボスの高さ (m)",
+                 cameraFocusHeight, 0.0f, 20.0f);
+    fields.Text("introSkipAction", "飛ばす：登場の間にこの入力（行動 id）を押すと、構えへ進む（空なら飛ばせない）",
+                skipAction);
+    fields.Int("introDrawSlowFrames", "刀が地面を離れる瞬間のスロー：長さ（実時間の F。0 で短い停止）", drawSlowFrames,
+               0, 240);
+    fields.Float("introDrawSlowScale", "刀が地面を離れる瞬間のスロー：時間の倍率", drawSlowScale, 0.05f, 1.0f);
+    fields.Float("introBarShare", "ボスの HP の条を出す所（一振りの段の中の割合。それまでは出さない）", barShare, 0.0f,
+                 1.0f);
     fields.Int("introTestStartFrames", "確かめ用：この tick に登場を始める（-1 で使わない。戦いの流れに従う）",
                testStartFrames, -1, 100000);
 

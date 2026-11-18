@@ -37,6 +37,12 @@ using GameSession::IsPlaying;
 using GameSession::ReadAction;
 
 void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
+    // 演出の間（ボスの登場）は、入力を受け付けない（動かず、技も出さない）。
+    if (player.cinematicHold > 0) {
+        player.moveInput = {};
+        player.sprintHeld = false;
+        return;
+    }
     const auto input = world.GetInput();
     // 移動の基準は、カメラの水平の向き（PlayerCamera が毎フレーム入れる）。前を押すと画面の奥へ進む。
     // 揺れ・肩越しのずらしを含んだ「見えている向き」からは取らない（入力の向きが揺れたり、斜めにずれたりする）。
@@ -572,6 +578,9 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
     world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
                                             [&](HIKARI::ObjectView object, PlayerComponent& player) {
                                                 PlayerRules::Initialize(player);
+                                                // 演出の間の止め（演出の側が毎 tick 入れ直す）を 1 tick 進める。
+                                                if (player.cinematicHold > 0)
+                                                    --player.cinematicHold;
                                                 // この tick の始めの体の位置（描画のフレームの補間の起点）。
                                                 HIKARI::GameProjectTransform start{};
                                                 if (object.GetWorldTransform(start)) {

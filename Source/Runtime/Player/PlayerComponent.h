@@ -69,6 +69,16 @@ struct PlayerCameraShape {
     float rollRadians = 0.0f;
     float lookDownRadians = 0.0f;
 };
+// 演出のカメラ（ボスの登場）が入れる、1 描画フレームぶんの姿勢。PlayerCamera は、ゲームのカメラの姿勢と gameWeight
+// で混ぜて出す（1 でゲームのカメラそのもの）。使ったら消す（入れた側が消えても残さない）。
+struct PlayerCinematicRequest {
+    HIKARI::GameProjectFloat3 eye{};
+    HIKARI::GameProjectFloat3 target{0.0f, 0.0f, 1.0f};
+    float fovRadians = 1.0f;
+    float gameWeight = 0.0f;
+    // 演出の間、ゲームのカメラが向いておく点（ロックオンしていない時。戻った時にそちらを見ている）。
+    HIKARI::GameProjectFloat3 focus{};
+};
 // 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
 inline constexpr size_t kPlayerLockCandidateCapacity = 8;
 
@@ -306,6 +316,12 @@ public:
     // 外部のカメラの要求。PlayerCamera が使ったら消す（要求した側が消えても残さない）。
     bool cameraRequestPending = false;
     PlayerCameraRequest cameraRequest{};
+    // 演出のカメラ（PlayerCinematicRequest）。PlayerCamera が使ったら消す。
+    bool cinematicPending = false;
+    PlayerCinematicRequest cinematic{};
+    // 演出の間（0 より大きい間）：入力を受け付けず、ダメージを受けない。演出の側が毎 tick 入れ直し、PlayerSystem が
+    // tick ごとに 1 減らす。
+    int cinematicHold = 0;
     // 要求で変えた見せ方と、そのならしの速さ。cameraShaped は要求の値から Player の値へ戻り切るまで true
     // （要求が一度も無ければ見せ方は Player の値そのまま）。戻すならしは最後の要求の releaseSeconds。
     PlayerCameraShape cameraShape{};

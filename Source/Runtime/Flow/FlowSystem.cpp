@@ -192,7 +192,10 @@ void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowC
     const FlowHudValues values = ReadHudValues(world, actors);
     const HIKARI::UiView ui = world.GetUi();
     bool accepted = FlowHud::DrawPlayer(ui, flow, values);
-    if (flow.phase != FlowPhase::Waiting)
+    // ボスの HP の条：戦いの間。ボスが「出さない」と書いている間（登場の演出の見得まで）は出さない。
+    float bossBar = 1.0f;
+    ObjectVariables::ReadFloat(world, actors.boss, kBossBarShownVariable, bossBar);
+    if (flow.phase != FlowPhase::Waiting && bossBar >= 0.5f)
         accepted = FlowHud::DrawBoss(ui, flow, values) && accepted;
     accepted = FlowHud::DrawFade(ui, flow, FlowRules::GetFade(flow, frame.fixedDt)) && accepted;
     if (accepted || flow.hudRejectedLogged)

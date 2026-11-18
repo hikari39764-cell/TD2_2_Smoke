@@ -119,6 +119,15 @@
       }
     },
     {
+      "id": "Boss.BarShown",
+      "name": "Boss Bar Shown",
+      "description": "ボスの HP の条を出すか（1 で出す、0 で出さない。登場の演出の間は見得まで 0）。",
+      "default": {
+        "type": "Float",
+        "value": 1.0
+      }
+    },
+    {
       "id": "Fight.State",
       "name": "Fight State",
       "description": "戦いの段階。0=開始待ち、1=戦い中、2=負け、3=勝ち。",

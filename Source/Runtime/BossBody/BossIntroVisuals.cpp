@@ -47,6 +47,7 @@ constexpr int kFogPushCount = 8;
 // 手応えの出し元の番号（ほかの手応えと重ねない）と、優先度（崩しの手応えより下）。
 constexpr uint64_t kAccentCameraSource = 0x5444324A11ull;
 constexpr uint64_t kAccentHitStopSource = 0x5444324A12ull;
+constexpr uint64_t kAccentSlowSource = 0x5444324A14ull;
 // 白黒の閃き（Action Post）の送り手。口は 1 つなので、ほかの全画面の効果（速度感）より高い優先度で出す。
 constexpr uint64_t kMonoSource = 0x5444324A13ull;
 constexpr int32_t kMonoPriority = 10;
@@ -997,7 +998,11 @@ void BossIntroVisuals::ApplyPose(BossComponent& boss, const HIKARI::GameProjectT
                       s.bladeTrailHeat);
             // 抜く拍は、最後の一振りより弱く。
             state.accentPending = 0.6f;
-            state.hitStopPending = s.drawHitStopFrames;
+            // 刀が地面を離れる瞬間：短いスロー（無ければ短い停止）。
+            if (s.drawSlowFrames > 0)
+                state.slowPending = s.drawSlowFrames;
+            else
+                state.hitStopPending = s.drawHitStopFrames;
             state.shocks[0] = {ground.Point(s.swordGround), s.drawShock, 0.0f};
             state.glint = s.drawGlint;
         }
@@ -1368,6 +1373,11 @@ void BossIntroVisuals::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obj
         Project_TD2_2::Feedback::RequestHitStop(world, kAccentHitStopSource ^ owner, kAccentPriority,
                                                 state.hitStopPending, s.hitStopScale);
         state.hitStopPending = 0;
+    }
+    if (state.slowPending > 0) {
+        Project_TD2_2::Feedback::RequestHitStop(world, kAccentSlowSource ^ owner, kAccentPriority, state.slowPending,
+                                                s.drawSlowScale);
+        state.slowPending = 0;
     }
     if (state.flashPending) {
         state.flashPending = false;

@@ -52,7 +52,8 @@ bool PlayerRules::CanStartAction(const PlayerComponent& player) {
 }
 
 bool PlayerRules::IsInvulnerable(const PlayerComponent& player) {
-    return (player.state == PlayerState::Roll && player.stateFrame < player.rollInvincibleFrames) ||
+    return player.cinematicHold > 0 ||
+           (player.state == PlayerState::Roll && player.stateFrame < player.rollInvincibleFrames) ||
            player.state == PlayerState::Knockback || player.state == PlayerState::Down;
 }
 

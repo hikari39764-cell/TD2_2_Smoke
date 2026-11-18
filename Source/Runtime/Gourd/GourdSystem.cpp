@@ -79,7 +79,9 @@ void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
         // ローリングの移動が終わった後なら、吸い込み（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
         if (gourd.enabled && gourd.absorbPhase == GourdAbsorbPhase::Idle && GourdRules::WantsAbsorb(gourd))
             PlayerRules::TryEndRollForAction(player);
-        const bool usable = gourd.enabled && PlayerRules::IsAlive(player) && player.state == PlayerState::Normal;
+        // 演出の間（ボスの登場）は使えない。
+        const bool usable = gourd.enabled && PlayerRules::IsAlive(player) && player.state == PlayerState::Normal &&
+                            player.cinematicHold <= 0;
         if (!usable)
             EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);
         switch (gourd.absorbPhase) {
