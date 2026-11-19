@@ -1,0 +1,21 @@
+{
+  "displayName": "KnightPauldron_Ember",
+  "guid": "8ec2740e4e5f49ce9b4db6afb5e5fa97",
+  "importSettings": {
+    "allowResize": false,
+    "colorSpace": "Srgb",
+    "compression": "BC7",
+    "debugOutputFormat": "DDS",
+    "dimension": "Texture2D",
+    "forcePowerOfTwo": false,
+    "maxSize": 2048,
+    "mipPolicy": "Generate",
+    "outputFormat": "HTEX",
+    "usage": "Emissive"
+  },
+  "importerId": "TextureImporter",
+  "importerVersion": 8,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi/KnightPauldron_Ember.png",
+  "type": "Texture"
+}

@@ -24,6 +24,10 @@ TEX_DIR = HERE.parents[1] / "Assets" / "Models" / "KasumiBushi"
 
 # 元の模型の兜の中心（元の座標：前 +X・上 +Z）。
 SOURCE_CENTER = Vector((0.0, 0.0, 1.699))
+# 兜を置く所と大きさ（1 倍の体の局所 m。コードの Boss.bodyHeadCenter・bodyHeadScale と合わせる）。胸当て・肩当ての置き場所
+# （bb_knight_armor.py）と、組み上げた姿の画像（make_kasumi.py）がこれを基準にする。
+HEAD_CENTER = (0.0, 3.50, 0.03)
+HEAD_SCALE = 1.16
 # 元の模型に掛ける大きさ。0.58 で兜の本体の幅 0.59 m・高さ 0.82 m、角の先から先まで 1.12 m（総監の見立て）。
 # 体の上での大きさは、これにコードの Boss.bodyHeadScale と体の大きさが掛かる。
 FIT_SCALE = 0.58
@@ -40,7 +44,7 @@ VISOR_BAND_TOP = -0.15
 VISOR_BAND_BOTTOM = -0.33
 VISOR_INSIDE_Z = 0.538
 VISOR_FRONT_Z = 0.63
-# フェーズ 2 の熾火（深い隙間）の明るさ（物理の量。灼けた鎧の EmberVoid と同じ）。色は貼図 KnightHelm_Ember に焼いてある。
+# フェーズ 2 の熾火（深い隙間）の明るさ（物理の量。前の灼けた胴の隙間の闇と同じ）。色は貼図 KnightHelm_Ember に焼いてある。
 EMBER_STRENGTH = 2500.0
 
 
@@ -51,8 +55,11 @@ def _image(name, color_space):
     return image
 
 
-def _textured_material(name, ember=False):
-    """貼図の材質。glTF の書き出しが読める形（色・metallicRoughness・法線・occlusion・発光）で繋ぐ。"""
+def textured_material(name, prefix="KnightHelm", ember=False):
+    """貼図の材質（貼図は Assets/Models/KasumiBushi/<prefix>_*.png）。glTF の書き出しが読める形（色・metallicRoughness・
+    法線・occlusion・発光）で繋ぐ。同じ名前の材質が既にあればそれを使う（左右の肩当てで 1 つ）。"""
+    if name in bpy.data.materials:
+        return bpy.data.materials[name]
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
@@ -63,13 +70,13 @@ def _textured_material(name, ember=False):
         node.image = _image(image_name, color_space)
         return node
 
-    links.new(tex("KnightHelm_BaseColor", "sRGB").outputs["Color"], bsdf.inputs["Base Color"])
+    links.new(tex(prefix + "_BaseColor", "sRGB").outputs["Color"], bsdf.inputs["Base Color"])
     orm = nodes.new("ShaderNodeSeparateColor")
-    links.new(tex("KnightHelm_ORM", "Non-Color").outputs["Color"], orm.inputs[0])
+    links.new(tex(prefix + "_ORM", "Non-Color").outputs["Color"], orm.inputs[0])
     links.new(orm.outputs["Green"], bsdf.inputs["Roughness"])
     links.new(orm.outputs["Blue"], bsdf.inputs["Metallic"])
     normal = nodes.new("ShaderNodeNormalMap")
-    links.new(tex("KnightHelm_Normal", "Non-Color").outputs["Color"], normal.inputs["Color"])
+    links.new(tex(prefix + "_Normal", "Non-Color").outputs["Color"], normal.inputs["Color"])
     links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
     # occlusion は書き出しの決まりの節「glTF Material Output」の Occlusion へ。
     group = bpy.data.node_groups.get("glTF Material Output")
@@ -80,7 +87,7 @@ def _textured_material(name, ember=False):
     settings.node_tree = group
     links.new(orm.outputs["Red"], settings.inputs["Occlusion"])
     if ember:
-        links.new(tex("KnightHelm_Ember", "sRGB").outputs["Color"], bsdf.inputs["Emission Color"])
+        links.new(tex(prefix + "_Ember", "sRGB").outputs["Color"], bsdf.inputs["Emission Color"])
         bsdf.inputs["Emission Strength"].default_value = EMBER_STRENGTH
     return mat
 
@@ -111,18 +118,19 @@ def build():
     helm.data.transform(_fit_matrix() @ helm.matrix_world)
     helm.matrix_world = Matrix.Identity(4)
     helm.data.materials.clear()
-    helm.data.materials.append(_textured_material("KnightHelm"))
+    helm.data.materials.append(textured_material("KnightHelm"))
     return helm
 
 
-def hot_copy(helm):
-    """灼けた兜（KnightHelmHot。フェーズ 2）：同じ形で、深い隙間（KnightHelm_Ember）が熾火に光る。"""
-    hot = helm.copy()
-    hot.data = helm.data.copy()
-    hot.name = hot.data.name = "KnightHelmHot"
-    helm.users_collection[0].objects.link(hot)
+def hot_copy(node, prefix="KnightHelm"):
+    """灼けた部品（名前は元の名前 + Hot。フェーズ 2）：同じ形で、深い隙間（<prefix>_Ember）が熾火に光る。兜・胸当て・
+    肩当てで使う。"""
+    hot = node.copy()
+    hot.data = node.data.copy()
+    hot.name = hot.data.name = node.name + "Hot"
+    node.users_collection[0].objects.link(hot)
     hot.data.materials.clear()
-    hot.data.materials.append(_textured_material("KnightHelmHot", ember=True))
+    hot.data.materials.append(textured_material(prefix + "Hot", prefix, ember=True))
     return hot
 
 

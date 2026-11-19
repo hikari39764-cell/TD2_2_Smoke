@@ -1,7 +1,8 @@
-"""c-08863a：いまの模型 Assets/Models/KasumiBushi.gltf/.bin の兜（Kabuto・KabutoHot・EyesMist・EyesFire）を、騎士の兜
-（KnightHelm・KnightHelmHot）に差し替える（目の光はエフェクト BossEyes.hvfx が受け持つ）。ほかのノードの中身（頂点・法線・添字の
-バイト）は 1 つも変えない（make_kasumi.py を流し直すと手の法線などが最後の桁で揺れるので、足すノードだけを写す。
-phase2/merge_hot_nodes.py と同じ考え）。.bin は使うバイトだけを詰め直す（外す兜の分は残さない）。
+"""いまの模型 Assets/Models/KasumiBushi.gltf/.bin の鎧の一部を、make_kasumi.py の出力の騎士の部品に差し替える。
+- c-08863a：兜（Kabuto・KabutoHot・EyesMist・EyesFire）→ 騎士の兜（目の光はエフェクト BossEyes.hvfx が受け持つ）。
+- c-584825：胴（Do・DoHot）と大袖（Sode・SodeHot）→ 騎士の胸当て（KnightBody）と左右の肩当て（KnightPauldronR・L）。
+ほかのノードの中身（頂点・法線・添字のバイト）は 1 つも変えない（make_kasumi.py を流し直すと手の法線などが最後の桁で揺れる
+ので、足すノードだけを写す。phase2/merge_hot_nodes.py と同じ考え）。.bin は使うバイトだけを詰め直す（外す部品の分は残さない）。
 
 使い方：
   blender --background --factory-startup --python Tools/BossBody/make_kasumi.py -- <出力フォルダ>
@@ -15,8 +16,10 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 MODEL = ROOT / "Assets" / "Models" / "KasumiBushi.gltf"
 # 兜の中の光は模型に入れずエフェクト（BossEyes.hvfx）にしたので、前に足した KnightEyes* も外す。
-REMOVE = ("Kabuto", "KabutoHot", "EyesMist", "EyesFire", "KnightEyesMist", "KnightEyesFire")
-ADD = ("KnightHelm", "KnightHelmHot")
+REMOVE = ("Kabuto", "KabutoHot", "EyesMist", "EyesFire", "KnightEyesMist", "KnightEyesFire", "Do", "DoHot", "Sode",
+          "SodeHot")
+# 足す（入っていれば差し替える）ノード。兜（KnightHelm・KnightHelmHot）はもう入っているので、ここに入れずにそのまま残す。
+ADD = ("KnightBody", "KnightBodyHot", "KnightPauldronR", "KnightPauldronL", "KnightPauldronRHot", "KnightPauldronLHot")
 
 
 class Packer:
@@ -53,7 +56,7 @@ def main():
     src = json.loads((src_dir / "KasumiBushi.gltf").read_text(encoding="utf-8"))
     src_bin = (src_dir / "KasumiBushi.bin").read_bytes()
     assert len(base_bin) > 1000, "Assets/Models/KasumiBushi.bin の中身が無い（Git LFS を取り出す）"
-    assert all(any(n["name"] == name for n in src["nodes"]) for name in ADD), "make_kasumi.py の出力に騎士の兜が無い"
+    assert all(any(n["name"] == name for n in src["nodes"]) for name in ADD), "make_kasumi.py の出力に騎士の部品が無い"
 
     packer = Packer()
     out = {k: base[k] for k in ("asset",)}

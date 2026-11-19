@@ -426,7 +426,7 @@ struct BossBodySettings {
     float swordGripAlong = 0.0945f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
     float handScale = 1.25f;
-    // 体の大きさ（倍率）：鎧（胴・兜・大袖・草摺）の置き場所と大きさ、肩、左手の手振りと待機の置き場所、待機の構えの握りに
+    // 体の大きさ（倍率）：鎧（胸当て・兜・肩当て・草摺）の置き場所と大きさ、肩、左手の手振りと待機の置き場所、待機の構えの握りに
     // 掛ける（下の位置の値は 1 倍の体での値）。体を大きくする時は、Boss.bodyHalfHeight・bodyRadius・シーンのカプセル・
     // 胴の煙のエフェクト（make_body_smoke.py の scale）も一緒に変える（調整ガイド g-fe0396 の一覧）。
     // 1.6875＝身長 6.75 m（c-a30eaf で 1.875、c-e97b18 でその 0.9 倍）。
@@ -437,8 +437,8 @@ struct BossBodySettings {
     HIKARI::GameProjectFloat3 gripElbow{0.3367f, 0.8333f, -0.4384f};
     HIKARI::GameProjectFloat3 gripBack{-0.9272f, 0.3746f, 0.0f};
     // 肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転）。籠手の筒は、手首からこの肩の方へ伸びる
-    // （腕は無いが、筒が肩を向くと腕があるように読める）。
-    HIKARI::GameProjectFloat3 shoulder{-0.80f, 3.05f, 0.0f};
+    // （腕は無いが、筒が肩を向くと腕があるように読める）。肩当ての中（下の口から腕が出る所）に置く（c-584825）。
+    HIKARI::GameProjectFloat3 shoulder{-0.70f, 2.72f, 0.0f};
     // 筒の向きに、握りの手の模型の肘の向きを混ぜる割合（0 で肩をまっすぐ向く、1 で手の模型どおり）。
     float cuffGripBlend = 0.25f;
     // 籠手の筒の模型の長さ（手首から先まで、模型の実寸 m。模型を作るスクリプトの build_cuff の length）。
@@ -455,8 +455,11 @@ struct BossBodySettings {
     HIKARI::GameProjectFloat3 leftRestBack{0.85f, 0.25f, 0.45f};
 
     // 鎧の部品の置き場所（体の足元から、局所 m。+X が左、+Z が前）。鎧は体の傾き・屈みに付いて動く。
-    // 胴（ノード Do）の中心。模型を作るスクリプトの DO_CENTER_Y と合わせる。
-    HIKARI::GameProjectFloat3 torsoCenter{0.0f, 2.50f, 0.0f};
+    // 兜・胸当て・肩当ての大きさと間隔は、総監が組んだ模型のまま兜を基準に決めてある（c-584825）。兜の置き場所・大きさを
+    // 変える時は、模型を作るスクリプト（Tools/BossBody/bb_knight_helm.py の HEAD_CENTER・HEAD_SCALE、
+    // bb_knight_armor.py の TORSO_CENTER・PAULDRON_HANG）も合わせて作り直す（ここだけ変えると組みがずれる）。
+    // 胸当て（ノード KnightBody）の原点。模型を作るスクリプトの TORSO_CENTER と合わせる。
+    HIKARI::GameProjectFloat3 torsoCenter{0.0f, 2.34f, 0.04f};
     // 兜（ノード KnightHelm・目の光）の中心と大きさ。模型そのものの大きさは
     // Tools/BossBody/bb_knight_helm.py の FIT_SCALE。
     HIKARI::GameProjectFloat3 headCenter{0.0f, 3.50f, 0.03f};
@@ -464,16 +467,20 @@ struct BossBodySettings {
     // 兜のうつむき (度)：+ で顎を引いて、下のプレイヤーを見下ろす（騎士の兜は水平だと、下から見上げた時に面頬が前へ
     // 突き出て上を向いて見える。c-08863a）。目のエフェクトも兜と一緒に傾く。
     float headPitchDegrees = 12.0f;
-    // 大袖（ノード Sode）：吊る所（右の袖。左は左右を反転）、外へ向ける角度（真横が 90 度。小さいほど前へ向く）、
-    // 裾を外へ開く角度。
-    HIKARI::GameProjectFloat3 sodeHang{-0.88f, 3.14f, 0.02f};
-    float sodeYawDegrees = 76.0f;
-    float sodeFlareDegrees = 24.0f;
-    // 草摺（ノード KusazuriPanel）：枚数、吊る高さ、腰の輪郭の半径（横・前後）、裾を外へ開く角度。
+    // 肩当て（ノード KnightPauldronR・L。c-584825）：吊る所（右。左は左右を反転。肩当ての上の縁の真ん中で、揺れの
+    // 支点。模型を作るスクリプトの PAULDRON_HANG と合わせる）、外へ向ける角度（真横が 90 度。小さいほど前へ向く）、裾を
+    // 外へ開く角度（模型は総監の組みの傾きのままなので 0）、揺れ（体の動きの振れ・揺らぎ）を掛ける割合（硬い板なので
+    // 小さく。1 で草摺と同じ、0 で揺れない）。
+    HIKARI::GameProjectFloat3 sodeHang{-0.67f, 2.97f, -0.02f};
+    float sodeYawDegrees = 90.0f;
+    float sodeFlareDegrees = 0.0f;
+    float sodeSwayShare = 0.25f;
+    // 草摺（ノード KusazuriPanel）：枚数、吊る高さ、腰の輪郭の半径（横・前後）、裾を外へ開く角度。上の縁は胸当ての
+    // 下の縁の内に隠す（c-584825）。
     int tassetCount = 7;
-    float tassetHangHeight = 2.02f;
-    float tassetRadiusSide = 0.57f;
-    float tassetRadiusFront = 0.50f;
+    float tassetHangHeight = 2.14f;
+    float tassetRadiusSide = 0.56f;
+    float tassetRadiusFront = 0.44f;
     float tassetFlareDegrees = 15.0f;
 
     // 胴の煙：ボスの足元に付いて動く流体のエフェクト（鎧の中を満たし、裾から流れ落ちる）。空なら出さない。
@@ -503,7 +510,7 @@ struct BossBodySettings {
     // 速さは上へ m/秒。
     // 袖口の火は、襟の火に fireCuffShare を掛けた強さ。襟の火は片側に 2 本、前後に fireCollarSpread（1 倍の体の m）だけ
     // 離して並べる（太い 1 本より、細い本数で見せる方が大きさが揺れない）。
-    HIKARI::GameProjectFloat3 fireCollar{-0.24f, 0.6f, -0.08f};
+    HIKARI::GameProjectFloat3 fireCollar{-0.36f, 0.60f, -0.06f};
     float fireCollarSpread = 0.1f;
     float fireCuffAlong = 0.85f;
     float fireTongueDensity = 16.0f;

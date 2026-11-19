@@ -29,7 +29,8 @@ struct BossBodyPose {
     bool bladeHot = false;
     // 地面に止める前の剣先の、地面からの高さ (m。負＝地面に止められて、刀の向きが起こされている)。
     float swordTipClearance = 1000.0f;
-    // 鎧：胴、兜（目の光も同じ置き場所）、大袖（右・左）、草摺（腰の周りに tassetCount 枚）。
+    // 鎧：胴（胸当て）、兜（目の光も同じ置き場所）、肩当て（右・左。名前は前の大袖のまま sode）、草摺（腰の周りに
+    // tassetCount 枚）。
     BossBodyPlacement torso;
     BossBodyPlacement head;
     std::array<BossBodyPlacement, 2> sode;
@@ -68,7 +69,7 @@ struct BossBodyRigInput {
 // - 刀・握りの右手：原点＝握りの中央、+Z＝剣先、-Y＝刃、+Y＝棟。
 // - 左手：原点＝手首、+Z＝指先、+Y＝手の甲。
 // - 籠手の筒：原点＝手首、-Z＝肘の向き、+Y＝腕の甲の側。
-// - 胴・兜：向きは体と同じ。大袖・草摺：原点＝吊る所、+Z＝外向き、-Y へ垂れる。
+// - 胸当て・兜：向きは体と同じ。肩当て・草摺：原点＝吊る所、+Z＝外向き、-Y へ垂れる（肩当ては左右で別のノード）。
 class BossBodyRig final {
 public:
     // 垂れた部品の振れを 1 フレーム進める（体の動きに遅れて振れ、行き過ぎて戻る。撃たれたら弾かれる）。

@@ -1,16 +1,21 @@
-"""騎士の兜（総監の模型 TD2_No2_boss.fbx）の写実の貼図を、Blender（背景モード・Cycles）の手続きの材質から焼く。c-08863a。
+"""騎士の兜・胸当て・肩当て（総監の模型）の写実の貼図を、Blender（背景モード・Cycles）の手続きの材質から焼く。
+c-08863a（兜）・c-584825（胸当て・肩当て）。
 類魂（ダークファンタジー）の見た目：黒ずんだ鋼の地に、縁の擦れ（地の鋼が光る）・薄い磨き・引っかき傷・隙間の錆と下へ流れる
 錆の筋・錆の穴・縁の欠け・煤（下ほど濃い）・上の面の埃・槌の凹みと打ち傷・鍛えた地の粒。粗さは高め。角は自然の角（根元は黒く、先へ行くほど骨の色。節の輪・縦の繊維・細い割れ）。
 
-使い方：blender --background --factory-startup --python bake_knight_helm.py -- [res=2048] [samples=64]
-出る物：
-- Assets/Models/KasumiBushi/KnightHelm_BaseColor.png（色。sRGB）
-- Assets/Models/KasumiBushi/KnightHelm_Normal.png（接空間の法線。glTF と同じ OpenGL の向き＝緑が上）
-- Assets/Models/KasumiBushi/KnightHelm_ORM.png（R＝AO、G＝粗さ、B＝金属。glTF の metallicRoughness と occlusion）
-- Assets/Models/KasumiBushi/KnightHelm_Ember.png（フェーズ 2 の熾火の色。深い隙間だけ光る。sRGB）
-- Tools/BossBody/knight_helm/KnightHelm.obj（焼いた UV の付いた模型。make_kasumi.py が読む。元の模型の座標のまま）
-元の模型の UV は左右の半分と 2 本の角が重なっていて、場所ごとの汚れを焼けないので、ここで作り直す（角度で分ける展開）。
-元の模型の座標：前が +X、上が +Z、兜の中心が (0, 0, 1.699)。"""
+使い方：blender --background --factory-startup --python bake_knight_helm.py -- [part=helm|body|pauldron] [res=2048] [samples=64]
+part ごとに出る物（<名前> は KnightHelm・KnightBody・KnightPauldron）：
+- Assets/Models/KasumiBushi/<名前>_BaseColor.png（色。sRGB）
+- Assets/Models/KasumiBushi/<名前>_Normal.png（接空間の法線。glTF と同じ OpenGL の向き＝緑が上）
+- Assets/Models/KasumiBushi/<名前>_ORM.png（R＝AO、G＝粗さ、B＝金属。glTF の metallicRoughness と occlusion）
+- Assets/Models/KasumiBushi/<名前>_Ember.png（フェーズ 2 の熾火の色。深い隙間だけ光る。sRGB）
+- Tools/BossBody/knight_helm/<名前>.obj（焼いた UV の付いた模型。make_kasumi.py が読む。兜の元の模型の座標）
+元の模型の UV は左右の半分（兜は 2 本の角も）が重なっていて、場所ごとの汚れを焼けないので、ここで作り直す（角度で分ける展開）。
+座標はどの部品も兜の元の模型（TD2_No2_boss.fbx）の座標：前が +X、上が +Z、+Y がボスの左、兜の中心が (0, 0, 1.699)。
+- helm：TD2_No2_boss.fbx の兜そのまま。
+- body・pauldron：総監が組んだ TD2_No2_boss_Body.fbx（兜・胸当て・左右の肩当てを並べた物）から取り、その中の兜が元の兜に
+  重なるように動かす（組みの兜の大きさで割り、位置を引く）。こうすると 3 つの部品の大きさと間隔が総監の組みのまま、兜と同じ
+  座標に乗る（ゲームでの置き場所は bb_knight_armor.py）。肩当ては左右 2 つの塊を 1 つの貼図に焼き、ゲームの模型では分ける。"""
 import math
 import os
 import pathlib
@@ -19,16 +24,25 @@ import sys
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-SOURCE = HERE / "TD2_No2_boss.fbx"
-MESH_OUT = HERE / "KnightHelm.obj"
 TEX_DIR = ROOT / "Assets" / "Models" / "KasumiBushi"
+# 部品ごとの元の模型・その中の物体の名前（総監の組みの FBX の中の名前）・出す名前。
+PARTS = {
+    "helm": (HERE / "TD2_No2_boss.fbx", None, "KnightHelm"),
+    "body": (HERE / "TD2_No2_boss_Body.fbx", "平面", "KnightBody"),
+    "pauldron": (HERE / "TD2_No2_boss_Body.fbx", "立方体.001", "KnightPauldron"),
+}
+# 総監の組みの FBX の中の兜の物体の名前（これを元の兜に重ねる）。
+SET_HELM = "円"
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 options = dict(a.split("=", 1) for a in argv if "=" in a)
+PART = options.get("part", "helm")
+SOURCE, SOURCE_OBJECT, NAME = PARTS[PART]
+MESH_OUT = HERE / (NAME + ".obj")
 RES = int(options.get("res", "2048"))
 SAMPLES = int(options.get("samples", "64"))
 
@@ -59,7 +73,11 @@ ROUGH_HORN = 0.62        # 角
 DUST_AMOUNT = 0.75       # 埃の濃さ（0 で無し）
 HORN_RINGS = 11.0        # 角の節の数
 SHARP_ANGLE = 35.0       # これより折れた辺は角を立てて塗る（度。元の模型の手で付けた法線の代わり）
-EMBER_COLOR = (1.0, 0.24, 0.03)  # 熾火の色（灼けた鎧の EmberVoid と同じ）。明るさは bb_knight_helm.EMBER_STRENGTH
+EMBER_COLOR = (1.0, 0.24, 0.03)  # 熾火の色（前の灼けた胴の隙間の闇と同じ）。明るさは bb_knight_helm.EMBER_STRENGTH
+# 煤が下ほど濃くなる高さの幅（元の座標の Z。下の値で最も濃く、上の値で無くなる）。兜は決めた値、胸当て・肩当ては部品の
+# 高さから同じ割合（下の端から高さの 4 %〜54 %）で決める（main で入れる）。
+GRIME_LOW = (1.05, 1.75)
+AO_DISTANCE = 0.5        # 胸当て・肩当ての AO を探す距離（元の座標の m）
 
 
 def import_source():
@@ -70,11 +88,22 @@ def import_source():
         type(light.cycles).cast_shadow = bpy.props.BoolProperty(default=True)
     bpy.data.lights.remove(light)
     bpy.ops.import_scene.fbx(filepath=str(SOURCE))
+    if SOURCE_OBJECT is not None:
+        # 組みの兜を元の兜（位置 0・拡大 1・向きは同じ）に重ねる変換を、取り出す部品に掛ける。
+        set_helm = bpy.data.objects[SET_HELM].matrix_world
+        to_helm = (Matrix.Scale(1.0 / set_helm.to_scale()[0], 4) @ Matrix.Translation(-set_helm.translation))
+        part = bpy.data.objects[SOURCE_OBJECT]
+        part.data.transform(to_helm @ part.matrix_world)
+        part.matrix_world = Matrix.Identity(4)
+        print("[bake] set helm scale %.4f at %s" % (set_helm.to_scale()[0], tuple(round(v, 4) for v in set_helm.translation)))
+        for o in list(bpy.data.objects):
+            if o is not part:
+                bpy.data.objects.remove(o)
     for o in list(bpy.data.objects):
         if o.type != "MESH":
             bpy.data.objects.remove(o)
     helm = [o for o in bpy.data.objects if o.type == "MESH"][0]
-    helm.name = helm.data.name = "KnightHelm"
+    helm.name = helm.data.name = NAME
     fix_winding(helm)
     return helm
 
@@ -129,7 +158,8 @@ def write_part_mask(helm):
     bm.faces.ensure_lookup_table()
     uv = me.uv_layers[0].data
     along, around, horn_faces = {}, {}, set()
-    for part in loose_parts(bm)[1:]:
+    # 角は兜のいちばん大きい塊の外の塊。胸当て・肩当てには角が無い（塊はみな鋼）。
+    for part in loose_parts(bm)[1:] if PART == "helm" else []:
         pole = max({v for f in part for v in f.verts}, key=lambda v: len(v.link_faces))
         loops = [li for f in part for li in me.polygons[f.index].loop_indices]
         tip_loops = [li for li in loops if me.loops[li].vertex_index == pole.index]
@@ -273,7 +303,7 @@ def masks(g):
     g.link(world, z.inputs[0])
     low = g.node("ShaderNodeMapRange", clamp=True)
     g.link(z.outputs["Z"], low.inputs[0])
-    for i, v in ((1, 1.05), (2, 1.75), (3, 0.45), (4, 0.0)):
+    for i, v in ((1, GRIME_LOW[0]), (2, GRIME_LOW[1]), (3, 0.45), (4, 0.0)):
         low.inputs[i].default_value = v
     grime = g.math("ADD", g.math("ADD", g.math("MULTIPLY", m["cavity"], 0.6),
                                   g.math("MULTIPLY", g.noise(p, 2.2, 6.0, 0.55, 0.5), 0.55)), low.outputs[0])
@@ -443,7 +473,14 @@ def bake_all(g, ch):
         return image
 
     images = {key: bake("EMIT_" + key, ch[key]) for key in ("color", "metal", "rough", "ember")}
-    images["ao"] = bake("AO")
+    if PART == "helm":
+        images["ao"] = bake("AO")
+    else:
+        # 胸当て・肩当ては AO の節を光として焼く（距離は AO_DISTANCE）。肩当てで AO の焼き（type AO）が 15 分を越えて
+        # 終わらなかったため（c-584825。原因は確かめていない。初めての焼きは GPU の準備に数分かかることがある）。
+        ao = g.node("ShaderNodeAmbientOcclusion", samples=64)
+        ao.inputs["Distance"].default_value = AO_DISTANCE
+        images["ao"] = bake("EMIT_ao", ao.outputs["AO"])
     scene.render.bake.normal_space = "TANGENT"
     images["normal"] = bake("NORMAL")
     return images
@@ -469,10 +506,15 @@ def save(image_or_array, name, color_space="Non-Color"):
 
 
 def main():
+    global GRIME_LOW
     helm = import_source()
+    if PART != "helm":
+        zs = [v.co.z for v in helm.data.vertices]
+        low, high = min(zs), max(zs)
+        GRIME_LOW = (low + 0.04 * (high - low), low + 0.54 * (high - low))
     write_part_mask(helm)
     unwrap(helm)
-    mat = bpy.data.materials.new("KnightHelmBake")
+    mat = bpy.data.materials.new(NAME + "Bake")
     mat.use_nodes = True
     helm.data.materials.clear()
     helm.data.materials.append(mat)
@@ -482,11 +524,11 @@ def main():
     g = Graph(mat)
     images = bake_all(g, channels(g, masks(g)))
     TEX_DIR.mkdir(parents=True, exist_ok=True)
-    save(images["color"], "KnightHelm_BaseColor")
-    save(images["normal"], "KnightHelm_Normal")
+    save(images["color"], NAME + "_BaseColor")
+    save(images["normal"], NAME + "_Normal")
     ao, rough, metal = pixels(images["ao"]), pixels(images["rough"]), pixels(images["metal"])
-    save(np.stack([ao[:, 0], rough[:, 0], metal[:, 0], np.ones(len(ao), np.float32)], axis=1), "KnightHelm_ORM")
-    save(images["ember"], "KnightHelm_Ember")
+    save(np.stack([ao[:, 0], rough[:, 0], metal[:, 0], np.ones(len(ao), np.float32)], axis=1), NAME + "_ORM")
+    save(images["ember"], NAME + "_Ember")
     # 焼いた UV の模型（元の座標のまま。軸の変換をしない）。色の属性は焼くためだけの物なので外す。
     helm.data.color_attributes.remove(helm.data.color_attributes["PartMask"])
     helm.data.materials.clear()

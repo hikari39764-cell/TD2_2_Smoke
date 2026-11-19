@@ -12,6 +12,7 @@ import bb_armor  # noqa: E402
 import bb_common as bb  # noqa: E402
 import bb_hand  # noqa: E402
 import bb_katana  # noqa: E402
+import bb_knight_armor  # noqa: E402
 import bb_knight_helm  # noqa: E402
 import bb_materials  # noqa: E402
 
@@ -19,6 +20,11 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else ["."]
 out = argv[0]
 options = dict(a.split("=", 1) for a in argv[1:] if "=" in a)
 previews = [p for p in options.get("preview", "").split(",") if p]
+# 組み上げた姿の画像の置き場所（コードの既定値と合わせる。1 倍の体の局所 m）：右肩（Boss.bodyShoulder）、左手の待機の
+# 手首（Boss.bodyLeftRestWrist）、草摺（枚数・腰の半径の横・前後・吊る高さ・裾の開きの度）。
+SHOULDER = (-0.70, 2.72, 0.0)
+LEFT_REST_WRIST = (1.0, 1.80, 0.35)
+TASSETS = (7, 0.56, 0.44, 2.14, 15.0)
 
 bb.reset_scene()
 mats = bb_materials.make()
@@ -36,7 +42,6 @@ cuff = bb_hand.build_cuff(mats)
 nodes = [hilt, blade, blade_hot, hand_r, cuff] + hands_l
 for node in nodes:
     bb.finalize(node, recalc=node not in (blade, blade_hot))
-do = bb_armor.build_do(mats)
 # 兜は騎士の兜（総監の模型と焼いた貼図。c-08863a）。兜の中の光と尾はエフェクト（Assets/Vfx/BossEyes.hvfx）で、
 # その置き場所をここで出す（エフェクト資産の emitterTransform.position と合わせる）。
 helm = bb_knight_helm.build()
@@ -44,12 +49,15 @@ visor = bb_knight_helm.visor_points()
 print("VISOR_Y %.4f INSIDE_Z %.4f FRONT_Z %.4f SLITS_X %s BAND %.4f x %.4f" % (
     visor["y"], visor["inside_z"], visor["front_z"], " ".join("%.4f" % x for x in visor["slits_x"]),
     visor["band_width"], visor["band_height"]))
-sode = bb_armor.build_sode(mats)
+# 胸当てと左右の肩当ては騎士の物（総監の組みの模型と焼いた貼図。c-584825）。大きさと間隔は兜を基準に総監の組みのまま。
+body = bb_knight_armor.build_body()
+pauldrons = bb_knight_armor.build_pauldrons()
+bb_knight_armor.report(body, pauldrons)
 kusazuri = bb_armor.build_kusazuri(mats)
-nodes += [do, helm, sode, kusazuri]
-# 灼けた鎧（フェーズ 2。継ぎ目の糸と隙間の闇が熾火に光る。c-857ae3）
-nodes += [bb_armor.hot_copy(node, mats) for node in (do, sode, kusazuri)]
-nodes.append(bb_knight_helm.hot_copy(helm))
+nodes += [body, helm] + pauldrons + [kusazuri]
+# 灼けた鎧（フェーズ 2）：草摺は継ぎ目の糸が熾火に光る（c-857ae3）。兜・胸当て・肩当ては深い隙間が光る。
+nodes.append(bb_armor.hot_copy(kusazuri, mats))
+nodes += [bb_knight_helm.hot_copy(helm)] + bb_knight_armor.hot_copies(body, pauldrons)
 for node in nodes:
     print("NODE %-16s %6d tris" % (node.name, bb.triangle_count([node])))
 print("TRIANGLES", bb.triangle_count(nodes))
@@ -114,18 +122,23 @@ if "figure" in previews:
     T = Matrix.Translation
     RY = lambda deg: Matrix.Rotation(math.radians(deg), 4, "Y")
     RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, "X")
-    place(do, T((0, bb_armor.DO_CENTER_Y, 0)))
+    # 置き場所はコードの既定値（BossBodySettings.h）と同じ。
+    place(body, T(bb_knight_armor.TORSO_CENTER))
     # 兜のうつむき（度。コードの Boss.bodyHeadPitchDegrees と同じ向き：+ で顎を引く）。
     pitch = float(options.get("head_pitch", "12"))
-    head = T((0, bb_armor.HEAD_CENTER_Y + 0.04, 0.03)) @ RX(pitch) @ Matrix.Scale(1.16, 4)
+    head = T(bb_knight_helm.HEAD_CENTER) @ RX(pitch) @ Matrix.Scale(bb_knight_helm.HEAD_SCALE, 4)
     place(helm, head)
-    for side in (-1, 1):
-        place(sode, T((side * 0.88, 3.14, 0.02)) @ RY(side * 76.0) @ RX(-24.0), copy=True)
-    count = 7
+    hang = bb_knight_armor.PAULDRON_HANG
+    for pauldron, side in zip(pauldrons, (-1, 1)):
+        # 外へ向ける角度は Boss.bodySodeYawDegrees（90）、裾の開きは Boss.bodySodeFlareDegrees（0）。
+        place(pauldron, T((side * -hang[0], hang[1], hang[2])) @ RY(side * 90.0))
+    # 草摺：Boss.bodyTassetCount・bodyTassetRadiusSide・bodyTassetRadiusFront・bodyTassetHangHeight・
+    # bodyTassetFlareDegrees と同じ（腰の輪郭はコードの WaistPoint と同じ角の丸い四角）。
+    count, radius_side, radius_front, hang_y, flare = TASSETS
     for k in range(count):
         a = 2.0 * math.pi * k / count
-        x, y, z = bb_armor.torso_point(a, 2.02, out=0.03)
-        place(kusazuri, T((x, y + bb_armor.DO_CENTER_Y, z)) @ RY(math.degrees(a)) @ RX(-15.0), copy=True)
+        x, z = bb_armor.superpoint(a, radius_side, radius_front)
+        place(kusazuri, T((x, hang_y, z)) @ RY(math.degrees(a)) @ RX(-flare), copy=True)
     # 刀と右手（待機の構え）、左手
     grip = Vector((-0.855, 2.372, 0.186))
     direction = Vector((-0.06, -0.94, 0.337)).normalized()
@@ -133,10 +146,12 @@ if "figure" in previews:
     for o in (hilt, blade, hand_r):
         place(o, sword_m)
     wrist_r = sword_m @ wrist
-    place(cuff, T(wrist_r) @ aim_z(-(Vector((-0.80, 3.05, 0.0)) - wrist_r).normalized(), sword_m.to_3x3() @ back))
-    wrist_l = Vector((1.0, 1.80, 0.35))
+    shoulder = Vector(SHOULDER)
+    place(cuff, T(wrist_r) @ aim_z(-(shoulder - wrist_r).normalized(), sword_m.to_3x3() @ back))
+    wrist_l = Vector(LEFT_REST_WRIST)
     place(hands_l[1], T(wrist_l) @ aim_z((0.10, -0.85, 0.50), (0.85, 0.25, 0.45)))
-    place(cuff, T(wrist_l) @ aim_z(-(Vector((0.80, 3.05, 0.0)) - wrist_l).normalized(), (0.85, 0.25, 0.45)), copy=True)
+    place(cuff, T(wrist_l) @ aim_z(-(Vector((-shoulder.x, shoulder.y, shoulder.z)) - wrist_l).normalized(),
+                                   (0.85, 0.25, 0.45)), copy=True)
     views = (("front", 0, 4, 10.5, (0, 0, 2.6)), ("quarter", 35, 8, 10.5, (0, 0, 2.6)),
              ("side", 90, 4, 10.5, (0, 0, 2.6)), ("back", 180, 6, 10.5, (0, 0, 2.6)),
              ("low", 20, -14, 9.0, (0, 0, 2.5)), ("head", 18, -8, 3.4, (0, 0.0, 3.55)))

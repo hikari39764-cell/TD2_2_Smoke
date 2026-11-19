@@ -1,6 +1,7 @@
 #include "BossBodyVisuals.h"
 
 #include <algorithm>
+#include <array>
 #include <string_view>
 
 #include "HIKARI/Project/FluidView.h"
@@ -34,17 +35,19 @@ constexpr BossBodyPart kRightHand{"HandR", 3u};
 constexpr BossBodyPart kRightCuff{"Cuff", 4u};
 constexpr BossBodyPart kLeftCuff{"Cuff", 5u};
 constexpr uint64_t kLeftHandInstance = 6u;
-constexpr BossBodyPart kTorso{"Do", 7u};
+// 胸当ては騎士の胸当て（首当て付き・写実の貼図。c-584825。模型を作るスクリプト Tools/BossBody/bb_knight_armor.py）。
+constexpr BossBodyPart kTorso{"KnightBody", 7u};
 // 兜は騎士の兜（角付き・写実の貼図。c-08863a。模型を作るスクリプト Tools/BossBody/bb_knight_helm.py）。
 constexpr BossBodyPart kHead{"KnightHelm", 8u};
 // 灼けた鎧（フェーズ 2）は、ふだんの鎧と同じ番号でノードだけ差し替える（同じフレームに両方は出ない。c-857ae3）。
-constexpr BossBodyPart kTorsoHot{"DoHot", 7u};
+constexpr BossBodyPart kTorsoHot{"KnightBodyHot", 7u};
 constexpr BossBodyPart kHeadHot{"KnightHelmHot", 8u};
-constexpr std::string_view kSodeHotNode = "SodeHot";
 constexpr std::string_view kTassetHotNode = "KusazuriPanelHot";
 // 兜の中の光（面頬の 5 本の隙間から透ける一筋の光と尾）は模型に入れず、目のエフェクト（BossBodyAccents の
 // eyesEffect）が受け持つ。
-constexpr std::string_view kSodeNode = "Sode";
+// 肩当て（右・左。c-584825）：左右は鏡の形で、模型の置き方は鏡にできない（拡大は一様）ので、ノードを分けてある。
+constexpr std::array<std::string_view, 2> kSodeNodes{"KnightPauldronR", "KnightPauldronL"};
+constexpr std::array<std::string_view, 2> kSodeHotNodes{"KnightPauldronRHot", "KnightPauldronLHot"};
 constexpr uint64_t kSodeInstance = 10u;
 // 草摺は、同じノードを枚数ぶん、この番号から続けて出す。
 constexpr std::string_view kTassetNode = "KusazuriPanel";
@@ -215,7 +218,8 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     Submit(world, object, boss, pose.armorHot ? kTorsoHot : kTorso, pose.torso);
     Submit(world, object, boss, pose.armorHot ? kHeadHot : kHead, pose.head);
     for (size_t side = 0; side < pose.sode.size(); ++side)
-        Submit(world, object, boss, {pose.armorHot ? kSodeHotNode : kSodeNode, kSodeInstance + side}, pose.sode[side]);
+        Submit(world, object, boss, {(pose.armorHot ? kSodeHotNodes : kSodeNodes)[side], kSodeInstance + side},
+               pose.sode[side]);
     for (int k = 0; k < pose.tassetCount; ++k)
         Submit(world, object, boss,
                {pose.armorHot ? kTassetHotNode : kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},

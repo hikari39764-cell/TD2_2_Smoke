@@ -296,7 +296,7 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                   leftRestWrist);
     fields.Float3("bodyLeftRestFingers", "左手の待機：指先の向き（局所）", leftRestFingers);
     fields.Float3("bodyLeftRestBack", "左手の待機：手の甲の向き（局所）", leftRestBack);
-    fields.Float3("bodyShoulder", "肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転）：籠手の筒が向く先",
+    fields.Float3("bodyShoulder", "肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転。肩当ての中）：籠手の筒が向く先",
                   shoulder);
     fields.Float("bodyCuffGripBlend", "右の籠手の筒の向きに、握りの手の模型の肘の向きを混ぜる割合", cuffGripBlend, 0.0f,
                  1.0f);
@@ -305,14 +305,20 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  "籠手の筒の先を、肩からこれだけ手前で止める (m。体の大きさを掛ける。0 で詰めない)",
                  cuffShoulderClearance, 0.0f, 5.0f);
     fields.Float("bodyCuffMinLength", "籠手の筒を詰める下限（模型の長さに対する割合）", cuffMinLength, 0.0f, 1.0f);
-    fields.Float3("bodyTorsoCenter", "鎧：胴の中心（体の足元から、局所 m）", torsoCenter);
+    fields.Float3("bodyTorsoCenter", "鎧：胸当ての原点（体の足元から、局所 m。模型のスクリプトの TORSO_CENTER と合わせる）",
+                  torsoCenter);
     fields.Float3("bodyHeadCenter", "鎧：兜の中心（体の足元から、局所 m）", headCenter);
     fields.Float("bodyHeadScale", "鎧：兜の大きさ（倍率）", headScale, 0.2f, 4.0f);
     fields.Float("bodyHeadPitchDegrees", "鎧：兜のうつむき (度。+ で顎を引く)", headPitchDegrees, -45.0f, 45.0f);
-    fields.Float3("bodySodeHang", "鎧：大袖を吊る所（右の袖。体の足元から、局所 m。左は左右を反転）", sodeHang);
-    fields.Float("bodySodeYawDegrees", "鎧：大袖を外へ向ける角度 (度。90 で真横、小さいほど前へ向く)", sodeYawDegrees,
-                 0.0f, 180.0f);
-    fields.Float("bodySodeFlareDegrees", "鎧：大袖の裾を外へ開く角度 (度)", sodeFlareDegrees, -30.0f, 80.0f);
+    fields.Float3("bodySodeHang",
+                  "鎧：肩当てを吊る所（右。体の足元から、局所 m。左は左右を反転。模型のスクリプトの PAULDRON_HANG と合わせる）",
+                  sodeHang);
+    fields.Float("bodySodeYawDegrees", "鎧：肩当てを外へ向ける角度 (度。90 で真横＝総監の組みのまま、小さいほど前へ向く)",
+                 sodeYawDegrees, 0.0f, 180.0f);
+    fields.Float("bodySodeFlareDegrees", "鎧：肩当ての裾を外へ開く角度 (度。0 で総監の組みのまま)", sodeFlareDegrees,
+                 -30.0f, 80.0f);
+    fields.Float("bodySodeSwayShare", "鎧：肩当てに体の動きの揺れを掛ける割合 (1 で草摺と同じ、0 で揺れない)",
+                 sodeSwayShare, 0.0f, 1.0f);
     fields.Int("bodyTassetCount", "鎧：草摺の枚数", tassetCount, 0, kBossBodyTassetCapacity);
     fields.Float("bodyTassetHangHeight", "鎧：草摺を吊る高さ (m、体の足元から)", tassetHangHeight, 0.0f, 10.0f);
     fields.Float("bodyTassetRadiusSide", "鎧：草摺を吊る腰の半径・横 (m)", tassetRadiusSide, 0.05f, 5.0f);
