@@ -42,8 +42,8 @@ struct BossIntroSettings {
     // 確かめ用（正式シーンでは使わない）：0 以上なら、戦いの流れに関わらず、この tick に登場が始まる。
     int testStartFrames = -1;
     // 演出のカメラ（カード c-cf4ed6）：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの
-    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。
-    bool cameraEnabled = true;
+    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。既定は切る（オーナーの判断でいったん外す。仕組みと表は残す）。
+    bool cameraEnabled = false;
     std::string cameraPath = "Boss/kasumi_bushi_intro_camera.csv";
     float cameraFocusHeight = 4.0f;
     // 飛ばす：登場の間にこの入力（行動 id）を押すと、組み上がった待機の構えへ進む（空なら飛ばせない）。

@@ -35,8 +35,9 @@ struct BossPhaseShiftSettings {
     // 飛ばす：演出の間にこの入力（行動 id）を押すと、フェーズ 2 の構えへ進む。飛ばせるか。
     bool skippable = true;
     std::string skipAction = "Gameplay.Menu";
-    // 演出のカメラ：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの高さ (m)。
-    bool cameraEnabled = true;
+    // 演出のカメラ：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの高さ (m)。既定は切る
+    // （オーナーの判断でいったん外す。仕組みと表は残す）。
+    bool cameraEnabled = false;
     std::string cameraPath = "Boss/kasumi_bushi_phase_shift_camera.csv";
     float cameraFocusHeight = 4.0f;
 
