@@ -169,8 +169,8 @@
             "moveSpeed": 5.2,
             "sprintSpeed": 5.2,
             "sprintStaminaPerSecond": 0.0,
-            "rollFrames": 30,
-            "rollActionCancelFrame": 30,
+            "rollFrames": 26,
+            "rollActionCancelFrame": 26,
             "knockbackDistance": 2.0
           },
           "type": "Project_TD2_2.Player"
