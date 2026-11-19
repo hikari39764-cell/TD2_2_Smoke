@@ -1,0 +1,21 @@
+{
+  "displayName": "KnightHelm_Ember",
+  "guid": "555c9071ed7843488c6790db741bcb8c",
+  "importSettings": {
+    "allowResize": false,
+    "colorSpace": "Srgb",
+    "compression": "BC7",
+    "debugOutputFormat": "DDS",
+    "dimension": "Texture2D",
+    "forcePowerOfTwo": false,
+    "maxSize": 2048,
+    "mipPolicy": "Generate",
+    "outputFormat": "HTEX",
+    "usage": "Emissive"
+  },
+  "importerId": "TextureImporter",
+  "importerVersion": 8,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi/KnightHelm_Ember.png",
+  "type": "Texture"
+}

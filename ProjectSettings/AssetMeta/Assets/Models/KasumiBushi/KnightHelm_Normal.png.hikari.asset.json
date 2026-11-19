@@ -1,0 +1,21 @@
+{
+  "displayName": "KnightHelm_Normal",
+  "guid": "9d2398739d024d0499120eade6d3c400",
+  "importSettings": {
+    "allowResize": false,
+    "colorSpace": "Linear",
+    "compression": "BC7",
+    "debugOutputFormat": "DDS",
+    "dimension": "Texture2D",
+    "forcePowerOfTwo": false,
+    "maxSize": 2048,
+    "mipPolicy": "Generate",
+    "outputFormat": "HTEX",
+    "usage": "Normal"
+  },
+  "importerId": "TextureImporter",
+  "importerVersion": 8,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi/KnightHelm_Normal.png",
+  "type": "Texture"
+}

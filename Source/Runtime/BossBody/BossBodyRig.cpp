@@ -76,8 +76,9 @@ void SolveArmor(const BossBodyRigInput& in, BossBodyPose& pose) {
     const float twist = in.twist;
     const float size = body.bodyScale;
     pose.torso = frame.Hanging(RotateY(BodyPoint(body, body.torsoCenter), twist), twist, 0.0f, size);
-    pose.head =
-        frame.Hanging(RotateY(BodyPoint(body, body.headCenter), twist), in.headYaw, 0.0f, body.headScale * size);
+    // 兜のうつむきは Hanging の開きの角（+ で下の縁が前へ出る）を逆向きに使う（+ で顎を引く）。
+    pose.head = frame.Hanging(RotateY(BodyPoint(body, body.headCenter), twist), in.headYaw, -body.headPitchDegrees,
+                              body.headScale * size);
     const float sodeYaw = body.sodeYawDegrees * kRadiansPerDegree;
     // 右の袖は -X の側（外向きは -X 寄り）、左は +X の側。
     const Vec3 sodeHang = BodyPoint(body, body.sodeHang);

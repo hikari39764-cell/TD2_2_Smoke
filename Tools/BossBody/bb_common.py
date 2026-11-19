@@ -131,13 +131,14 @@ def finalize(obj, angle_degrees=38.0, recalc=True):
 
 
 def export_gltf(path, objects=None):
-    """.gltf と .bin に分けて書き出す（エンジンの模型の取り込みは .gltf・.obj・.fbx だけで、.glb は読まない）。"""
+    """.gltf と .bin に分けて書き出す（エンジンの模型の取り込みは .gltf・.obj・.fbx だけで、.glb は読まない）。
+    貼図（騎士の兜）は .gltf の隣の KasumiBushi フォルダへ出る（Assets/Models/KasumiBushi と同じ並び）。"""
     bpy.ops.object.select_all(action="DESELECT")
     for o in objects or bpy.context.scene.objects:
         o.select_set(True)
     bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLTF_SEPARATE", use_selection=True, export_yup=True,
                               export_apply=True, export_materials="EXPORT", export_tangents=True,
-                              export_animations=False, export_skins=False)
+                              export_texture_dir="KasumiBushi", export_animations=False, export_skins=False)
 
 
 def triangle_count(objects=None):

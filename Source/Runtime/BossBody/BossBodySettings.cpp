@@ -308,6 +308,7 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
     fields.Float3("bodyTorsoCenter", "鎧：胴の中心（体の足元から、局所 m）", torsoCenter);
     fields.Float3("bodyHeadCenter", "鎧：兜の中心（体の足元から、局所 m）", headCenter);
     fields.Float("bodyHeadScale", "鎧：兜の大きさ（倍率）", headScale, 0.2f, 4.0f);
+    fields.Float("bodyHeadPitchDegrees", "鎧：兜のうつむき (度。+ で顎を引く)", headPitchDegrees, -45.0f, 45.0f);
     fields.Float3("bodySodeHang", "鎧：大袖を吊る所（右の袖。体の足元から、局所 m。左は左右を反転）", sodeHang);
     fields.Float("bodySodeYawDegrees", "鎧：大袖を外へ向ける角度 (度。90 で真横、小さいほど前へ向く)", sodeYawDegrees,
                  0.0f, 180.0f);

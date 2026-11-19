@@ -1,0 +1,21 @@
+{
+  "displayName": "KnightHelm_ORM",
+  "guid": "3aee36e6e5aa43159a39942d19225a3e",
+  "importSettings": {
+    "allowResize": false,
+    "colorSpace": "Linear",
+    "compression": "BC7",
+    "debugOutputFormat": "DDS",
+    "dimension": "Texture2D",
+    "forcePowerOfTwo": false,
+    "maxSize": 2048,
+    "mipPolicy": "Generate",
+    "outputFormat": "HTEX",
+    "usage": "MetallicRoughness"
+  },
+  "importerId": "TextureImporter",
+  "importerVersion": 8,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi/KnightHelm_ORM.png",
+  "type": "Texture"
+}

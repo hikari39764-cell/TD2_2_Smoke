@@ -1,10 +1,9 @@
-"""具足（兜・面頬・胴・大袖・草摺）を作る。体は高さ 4.0 m・半径 0.8 m のカプセルで、胴の中は煙。脚は作らない。
+"""具足（胴・大袖・草摺）を作る。兜は騎士の兜（bb_knight_helm.py。c-08863a）。
+体は高さ 4.0 m・半径 0.8 m のカプセルで、胴の中は煙。脚は作らない。
 板（小札の段）は 1 段ずつ下へ重なり、段と段を紅の糸（素懸縅）でつなぐ。板は片面の格子で作り、最後に厚みを付ける。
 
 部品の座標（エンジン：+Y 上、+Z 前、+X ボスの左）：
 - Do            ：原点＝胴の中心（ボスの足元から DO_CENTER_Y）。向きはボスと同じ。
-- Kabuto        ：原点＝頭の中心。向きはボスと同じ。
-- EyesMist・EyesFire：Kabuto と同じ座標（目の光。霞の色と火の色。コードが差し替える）。
 - Sode          ：原点＝上の縁の中央（肩に吊る所）。+Z＝外向き、-Y へ垂れる。左右で同じ形。
 - KusazuriPanel ：原点＝上の縁の中央（腰に吊る所）。+Z＝外向き、-Y へ垂れる。腰の周りに同じ形を並べる。
 """
@@ -18,6 +17,7 @@ import bb_common as bb
 DO_CENTER_Y = 2.50
 DO_WAIST_Y = 1.95
 DO_SIDE_TOP_Y = 2.86
+# 頭の中心の高さ（make_kasumi.py の組み上げた姿の画像で兜を置く所。コードの Boss.bodyHeadCenter と合わせる）。
 HEAD_CENTER_Y = 3.46
 PLATE_THICK = 0.016
 
@@ -36,7 +36,7 @@ def superpoint(angle, rx, rz, power=2.6):
 class Parts:
     """材質ごとの bmesh をためて、最後に 1 つのノードにする。"""
 
-    def __init__(self, mats, plate_keys=("lacquer", "lacquer_red", "gold")):
+    def __init__(self, mats, plate_keys=("lacquer", "gold")):
         self.mats = mats
         self.sheets = {}      # 厚みを付ける板（片面の格子）
         self.solids = {}      # そのままの立体
@@ -302,167 +302,3 @@ def build_do(mats):
         rings.append([E(*torso_point(2.0 * math.pi * i / 40, y, out=shrink)) for i in range(40)])
     bb.loft(void, rings)
     return parts.finish("Do")
-
-
-# ---------------------------------------------------------------- 兜・面頬
-def build_kabuto(mats):
-    parts = Parts(mats)
-    ribs = 28
-    rx, rz, top = 0.345, 0.385, 0.40
-    rim_y = 0.055
-
-    def bowl(u, v):
-        a = u * 2.0 * math.pi
-        t = v * math.pi * 0.5
-        ridge = max(0.0, math.cos(a * ribs)) ** 10 * 0.014 * math.cos(t) ** 0.5
-        r = math.cos(t) ** 0.85
-        return math.sin(a) * (rx * r + ridge), rim_y + math.sin(t) ** 1.1 * top, math.cos(a) * (rz * r + ridge)
-    parts.grid("lacquer", bowl, ribs * 6, 12, closed_u=True)
-    # 腰巻（鉢の下の帯）と天辺の金具
-    def koshimaki(u, v):
-        a = u * 2.0 * math.pi
-        return math.sin(a) * (rx + 0.012), rim_y + 0.035 - 0.06 * v, math.cos(a) * (rz + 0.012)
-    parts.grid("gold", koshimaki, 64, 1, closed_u=True)
-    parts.ball("gold", 0.07, (0.0, rim_y + top - 0.006, 0.0), squash=(1.0, 0.45, 1.0), subdivisions=2)
-    parts.ball("gold", 0.03, (0.0, rim_y + top + 0.03, 0.0), subdivisions=2)
-    # 眉庇（前のひさし）
-    def visor(u, v):
-        a = (u - 0.5) * math.radians(150.0)
-        out = 0.15 * v * math.cos(a * 0.6) ** 1.5
-        drop = 0.07 * v ** 1.4
-        return math.sin(a) * (rx + 0.01 + out), rim_y + 0.02 - drop, math.cos(a) * (rz + 0.01 + out)
-    parts.grid("lacquer", visor, 24, 4)
-    parts.grid("gold", lambda u, v: tuple(Vector(visor(u, 0.86 + 0.16 * v)) + Vector((0, 0.008, 0.0))), 24, 1)
-    # 錣（首の周りへ広がる板の段）
-    lames = 4
-    span = math.radians(118.0)          # 後ろの中央から左右へ
-    for j in range(lames):
-        def fn(u, v, j=j):
-            a = math.pi + (u - 0.5) * 2.0 * span
-            r0 = 0.40 + 0.090 * j
-            r1 = r0 + 0.115
-            y0 = rim_y - 0.005 - 0.085 * j
-            r = r0 + (r1 - r0) * v
-            y = y0 - 0.115 * v + 0.012 * math.sin(v * math.pi)
-            return math.sin(a) * r * 0.94, y, math.cos(a) * r * 1.02 - 0.02
-        parts.grid("lacquer", fn, 40, 3)
-        if j == lames - 1:
-            parts.grid("gold", lambda u, v, fn=fn: tuple(Vector(fn(u, 0.84 + 0.18 * v)) + Vector((0, 0.008, 0))), 40, 1)
-        if j < lames - 1:
-            for k in range(11):
-                u = (k + 0.5) / 11
-                for du in (-0.008, 0.008):
-                    p0 = Vector(fn(u + du, 0.55))
-                    def nxt(u2, v2, j=j):
-                        a = math.pi + (u2 - 0.5) * 2.0 * span
-                        r0 = 0.40 + 0.090 * (j + 1)
-                        r = r0 + 0.115 * v2
-                        y = rim_y - 0.005 - 0.085 * (j + 1) - 0.115 * v2 + 0.012 * math.sin(v2 * math.pi)
-                        return math.sin(a) * r * 0.94, y, math.cos(a) * r * 1.02 - 0.02
-                    p1 = Vector(nxt(u + du, 0.40))
-                    a = math.pi + (u - 0.5) * 2.0 * span
-                    normal = Vector((math.sin(a), 0.75, math.cos(a)))
-                    cord_between(parts, p0 + normal * 0.01, p1 + normal * 0.01, normal, width=0.014)
-    # 吹返（錣の前の端を外へ折り返した板）と金の紋
-    for side in (-1.0, 1.0):
-        a = math.pi + side * span
-        base = Vector((math.sin(a) * 0.44, rim_y - 0.03, math.cos(a) * 0.46 - 0.02))
-        out = Vector((side, 0.0, 0.35)).normalized()
-
-        def wing(u, v, base=base, out=out, side=side):
-            p = base + out * (0.02 + 0.20 * u) + Vector((0, 0.10 - 0.24 * v, 0.0))
-            p += Vector((0.0, 0.0, 0.05 * math.sin(u * math.pi * 0.5)))
-            round_off = 1.0 - 0.25 * (u ** 2) * (abs(v - 0.5) * 2.0) ** 2
-            return tuple(base + (p - base) * round_off)
-        parts.grid("lacquer", wing, 6, 6)
-        center = Vector(wing(0.55, 0.5)) + Vector((0.0, 0.0, 0.022))
-        parts.ball("gold", 0.055, tuple(center), squash=(1.0, 1.0, 0.25), subdivisions=2)
-    # 前立（三日月）。兜より大きい金の月で、遠くからの輪郭を決める。両の先が上を向く。
-    moon = parts.solid("gold")
-    outer_r, inner_r, shift = 0.50, 0.465, 0.115
-    segments = 64
-    tilt = math.radians(-10.0)
-    center_y, center_z = rim_y + 0.60, rz + 0.07
-    rows = []
-    for i in range(segments + 1):
-        a = math.radians(168.0 + 204.0 * i / segments)       # 左上の先 → 下 → 右上の先
-        ox, oy = math.cos(a) * outer_r, math.sin(a) * outer_r
-        ix, iy = math.cos(a) * inner_r, math.sin(a) * inner_r + shift
-        # 先を尖らせる：両端で内の弧を外の弧へ寄せる
-        k = 1.0 - abs(2.0 * i / segments - 1.0) ** 5
-        ix, iy = ox + (ix - ox) * k, oy + (iy - oy) * k
-        row = []
-        for z_off in (0.010, -0.010):
-            for x, y in ((ox, oy), (ix, iy)):
-                yy = center_y + y * math.cos(tilt) - z_off * math.sin(tilt)
-                zz = center_z + y * math.sin(tilt) + z_off * math.cos(tilt)
-                row.append(moon.verts.new(E(x, yy, zz)))
-        rows.append(row)      # 表の外・表の内・裏の外・裏の内
-    for r0, r1 in zip(rows, rows[1:]):
-        for quad in ((r0[0], r1[0], r1[1], r0[1]), (r0[2], r0[3], r1[3], r1[2]), (r0[0], r0[2], r1[2], r1[0]),
-                     (r0[1], r1[1], r1[3], r0[3])):
-            try:
-                moon.faces.new(quad)
-            except ValueError:
-                pass
-    # 前立の台（眉庇の上の金の板）
-    parts.box("gold", (0.16, 0.12, 0.03), (0.0, rim_y + 0.20, rz - 0.02), y_axis=(0, 1, -0.25))
-    # 面頬（朱漆の頬当て）：目の下から顎まで
-    def mask(u, v):
-        a = (u - 0.5) * math.radians(170.0)
-        y = -0.015 - 0.30 * v
-        r = 0.275 - 0.10 * v ** 1.6
-        chin = 0.07 * math.exp(-((v - 0.85) / 0.22) ** 2) * math.cos(a) ** 2
-        cheek = 0.03 * math.exp(-((v - 0.25) / 0.2) ** 2) * math.sin(abs(a) * 1.4) ** 2
-        return math.sin(a) * (r + cheek) * 0.98, y, math.cos(a) * (r + chin + cheek) + 0.05
-    parts.grid("lacquer_red", mask, 28, 10)
-    # 鼻・口・しわ・歯
-    parts.cone("lacquer_red", 0.062, 0.020, 0.17, (0.0, -0.075, 0.365), axis=(0, -0.55, 1), segments=5)
-    parts.box("lacquer_red", (0.060, 0.13, 0.05), (0.0, 0.035, 0.300), y_axis=(0, 1, -0.15))      # 鼻筋
-    for side in (-1.0, 1.0):
-        # 怒った眉（内の端が下がる）と、白いひげ、下の牙
-        parts.box("lacquer_red", (0.17, 0.040, 0.06), (side * 0.118, 0.108, 0.268), x_axis=(1, 0.30 * side, -0.25 * side))
-        parts.cone("same", 0.026, 0.004, 0.24, (side * 0.115, -0.185, 0.335), axis=(side * 1.0, -0.55, -0.12))
-        parts.cone("same", 0.014, 0.002, 0.07, (side * 0.062, -0.212, 0.345), axis=(0, 1, 0.1), segments=5)
-    parts.box("void", (0.19, 0.036, 0.05), (0.0, -0.215, 0.315))
-    for k in range(-3, 4):
-        parts.box("gold", (0.020, 0.030, 0.02), (k * 0.026, -0.205, 0.326))
-    for side in (-1.0, 1.0):
-        for row, (y, length) in enumerate(((-0.10, 0.13), (-0.15, 0.11))):
-            a = side * math.radians(38.0 + row * 4.0)
-            p = Vector((math.sin(a) * 0.268, y, math.cos(a) * 0.268 + 0.062))
-            parts.box("lacquer_red", (length, 0.022, 0.03), tuple(p), x_axis=(math.cos(a), -0.45 * side, -math.sin(a)))
-    # 垂（喉を守る小さな板の段）
-    for j in range(3):
-        def tare(u, v, j=j):
-            a = (u - 0.5) * math.radians(120.0 + 12.0 * j)
-            r = 0.215 + 0.045 * j + 0.05 * v
-            return math.sin(a) * r, -0.315 - 0.075 * j - 0.095 * v, math.cos(a) * r + 0.05
-        parts.grid("lacquer", tare, 16, 2)
-        if j < 2:
-            for k in range(5):
-                u = (k + 0.5) / 5
-                a = (u - 0.5) * math.radians(120.0)
-                normal = Vector((math.sin(a), 0.3, math.cos(a)))
-                p0 = Vector(tare(u, 0.6)) + normal * 0.012
-                p1 = Vector((math.sin(a) * (0.26 + 0.045 * j), -0.315 - 0.075 * (j + 1) - 0.03,
-                             math.cos(a) * (0.26 + 0.045 * j) + 0.05)) + normal * 0.012
-                cord_between(parts, p0, p1, normal, width=0.013)
-    # 兜の緒（顎の下で結ぶ紅の紐）
-    for side in (-1.0, 1.0):
-        cord_between(parts, (side * 0.30, 0.02, 0.10), (side * 0.10, -0.33, 0.24), (side, 0, 0.6), width=0.022)
-    parts.box("silk", (0.12, 0.05, 0.05), (0.0, -0.335, 0.265))
-    # 頭の中の闇（目の奥）
-    parts.ball("void", 0.285, (0.0, 0.03, -0.01), squash=(1.0, 1.08, 1.05), subdivisions=3)
-    return parts.finish("Kabuto")
-
-
-def build_eyes(mats, name, key):
-    """面頬と眉庇の間の闇に浮く、つり上がった 2 つの目の光。"""
-    parts = Parts(mats)
-    for side in (-1.0, 1.0):
-        conv = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-        m = (conv @ Matrix.Translation((side * 0.118, 0.052, 0.272)) @ Matrix.Rotation(math.radians(side * 16.0), 4, "Z") @
-             Matrix.Diagonal((0.074, 0.021, 0.03, 1.0)))
-        bmesh.ops.create_icosphere(parts.solid(key), subdivisions=2, radius=1.0, matrix=m)
-    return parts.finish(name)

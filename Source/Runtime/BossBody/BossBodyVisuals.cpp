@@ -35,15 +35,15 @@ constexpr BossBodyPart kRightCuff{"Cuff", 4u};
 constexpr BossBodyPart kLeftCuff{"Cuff", 5u};
 constexpr uint64_t kLeftHandInstance = 6u;
 constexpr BossBodyPart kTorso{"Do", 7u};
-constexpr BossBodyPart kHead{"Kabuto", 8u};
+// 兜は騎士の兜（角付き・写実の貼図。c-08863a。模型を作るスクリプト Tools/BossBody/bb_knight_helm.py）。
+constexpr BossBodyPart kHead{"KnightHelm", 8u};
 // 灼けた鎧（フェーズ 2）は、ふだんの鎧と同じ番号でノードだけ差し替える（同じフレームに両方は出ない。c-857ae3）。
 constexpr BossBodyPart kTorsoHot{"DoHot", 7u};
-constexpr BossBodyPart kHeadHot{"KabutoHot", 8u};
+constexpr BossBodyPart kHeadHot{"KnightHelmHot", 8u};
 constexpr std::string_view kSodeHotNode = "SodeHot";
 constexpr std::string_view kTassetHotNode = "KusazuriPanelHot";
-// 目の光は、霞の色と火の色を同じ番号で差し替える。
-constexpr BossBodyPart kEyesMist{"EyesMist", 9u};
-constexpr BossBodyPart kEyesFire{"EyesFire", 9u};
+// 兜の中の光（面頬の 5 本の隙間から透ける一筋の光と尾）は模型に入れず、目のエフェクト（BossBodyAccents の
+// eyesEffect）が受け持つ。
 constexpr std::string_view kSodeNode = "Sode";
 constexpr uint64_t kSodeInstance = 10u;
 // 草摺は、同じノードを枚数ぶん、この番号から続けて出す。
@@ -214,8 +214,6 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     Submit(world, object, boss, kLeftCuff, pose.leftCuff);
     Submit(world, object, boss, pose.armorHot ? kTorsoHot : kTorso, pose.torso);
     Submit(world, object, boss, pose.armorHot ? kHeadHot : kHead, pose.head);
-    if (pose.eyesLit)
-        Submit(world, object, boss, pose.eyesFire ? kEyesFire : kEyesMist, pose.head);
     for (size_t side = 0; side < pose.sode.size(); ++side)
         Submit(world, object, boss, {pose.armorHot ? kSodeHotNode : kSodeNode, kSodeInstance + side}, pose.sode[side]);
     for (int k = 0; k < pose.tassetCount; ++k)

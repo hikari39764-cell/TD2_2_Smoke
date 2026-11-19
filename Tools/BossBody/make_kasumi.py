@@ -12,6 +12,7 @@ import bb_armor  # noqa: E402
 import bb_common as bb  # noqa: E402
 import bb_hand  # noqa: E402
 import bb_katana  # noqa: E402
+import bb_knight_helm  # noqa: E402
 import bb_materials  # noqa: E402
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else ["."]
@@ -36,14 +37,19 @@ nodes = [hilt, blade, blade_hot, hand_r, cuff] + hands_l
 for node in nodes:
     bb.finalize(node, recalc=node not in (blade, blade_hot))
 do = bb_armor.build_do(mats)
-kabuto = bb_armor.build_kabuto(mats)
-eyes_mist = bb_armor.build_eyes(mats, "EyesMist", "eye_mist")
-eyes_fire = bb_armor.build_eyes(mats, "EyesFire", "eye_fire")
+# 兜は騎士の兜（総監の模型と焼いた貼図。c-08863a）。兜の中の光と尾はエフェクト（Assets/Vfx/BossEyes.hvfx）で、
+# その置き場所をここで出す（エフェクト資産の emitterTransform.position と合わせる）。
+helm = bb_knight_helm.build()
+visor = bb_knight_helm.visor_points()
+print("VISOR_Y %.4f INSIDE_Z %.4f FRONT_Z %.4f SLITS_X %s BAND %.4f x %.4f" % (
+    visor["y"], visor["inside_z"], visor["front_z"], " ".join("%.4f" % x for x in visor["slits_x"]),
+    visor["band_width"], visor["band_height"]))
 sode = bb_armor.build_sode(mats)
 kusazuri = bb_armor.build_kusazuri(mats)
-nodes += [do, kabuto, eyes_mist, eyes_fire, sode, kusazuri]
+nodes += [do, helm, sode, kusazuri]
 # 灼けた鎧（フェーズ 2。継ぎ目の糸と隙間の闇が熾火に光る。c-857ae3）
-nodes += [bb_armor.hot_copy(node, mats) for node in (do, kabuto, sode, kusazuri)]
+nodes += [bb_armor.hot_copy(node, mats) for node in (do, sode, kusazuri)]
+nodes.append(bb_knight_helm.hot_copy(helm))
 for node in nodes:
     print("NODE %-16s %6d tris" % (node.name, bb.triangle_count([node])))
 print("TRIANGLES", bb.triangle_count(nodes))
@@ -109,9 +115,10 @@ if "figure" in previews:
     RY = lambda deg: Matrix.Rotation(math.radians(deg), 4, "Y")
     RX = lambda deg: Matrix.Rotation(math.radians(deg), 4, "X")
     place(do, T((0, bb_armor.DO_CENTER_Y, 0)))
-    head = T((0, bb_armor.HEAD_CENTER_Y + 0.04, 0.03)) @ Matrix.Scale(1.16, 4)
-    place(kabuto, head)
-    place(eyes_fire if "fire" in options.get("eyes", "mist") else eyes_mist, head)
+    # 兜のうつむき（度。コードの Boss.bodyHeadPitchDegrees と同じ向き：+ で顎を引く）。
+    pitch = float(options.get("head_pitch", "12"))
+    head = T((0, bb_armor.HEAD_CENTER_Y + 0.04, 0.03)) @ RX(pitch) @ Matrix.Scale(1.16, 4)
+    place(helm, head)
     for side in (-1, 1):
         place(sode, T((side * 0.88, 3.14, 0.02)) @ RY(side * 76.0) @ RX(-24.0), copy=True)
     count = 7

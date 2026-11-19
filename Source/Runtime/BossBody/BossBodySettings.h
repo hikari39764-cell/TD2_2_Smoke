@@ -265,6 +265,7 @@ struct BossBodyAccentSettings {
     float releaseHoldScale = 0.35f;
 
     // 目の光：兜に付くエフェクト（頭が動くと尾を引く光・暈・技を出すと決めた瞬間に横へ伸びる閃き）。空なら出さない。
+    // 光の位置はエフェクト資産の中（面頬の真ん中の隙間の前の 1 点。make_kasumi.py が出す EYE_POINT と合わせる）。
     HIKARI::GameProjectVfxAssetReference eyesEffect{"a4f1c8e27b5d4390b61e2c9d3f7a0851", "Assets/Vfx/BossEyes.hvfx"};
     // 目の光の色と明るさ：ふだん（霞）と、フェーズ 2（火）。
     HIKARI::GameProjectFloat3 eyesMistColor{0.70f, 1.10f, 1.90f};
@@ -456,9 +457,13 @@ struct BossBodySettings {
     // 鎧の部品の置き場所（体の足元から、局所 m。+X が左、+Z が前）。鎧は体の傾き・屈みに付いて動く。
     // 胴（ノード Do）の中心。模型を作るスクリプトの DO_CENTER_Y と合わせる。
     HIKARI::GameProjectFloat3 torsoCenter{0.0f, 2.50f, 0.0f};
-    // 兜（ノード Kabuto・目の光）の中心と大きさ。
+    // 兜（ノード KnightHelm・目の光）の中心と大きさ。模型そのものの大きさは
+    // Tools/BossBody/bb_knight_helm.py の FIT_SCALE。
     HIKARI::GameProjectFloat3 headCenter{0.0f, 3.50f, 0.03f};
     float headScale = 1.16f;
+    // 兜のうつむき (度)：+ で顎を引いて、下のプレイヤーを見下ろす（騎士の兜は水平だと、下から見上げた時に面頬が前へ
+    // 突き出て上を向いて見える。c-08863a）。目のエフェクトも兜と一緒に傾く。
+    float headPitchDegrees = 12.0f;
     // 大袖（ノード Sode）：吊る所（右の袖。左は左右を反転）、外へ向ける角度（真横が 90 度。小さいほど前へ向く）、
     // 裾を外へ開く角度。
     HIKARI::GameProjectFloat3 sodeHang{-0.88f, 3.14f, 0.02f};

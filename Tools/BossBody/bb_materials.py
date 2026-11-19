@@ -6,8 +6,6 @@ def make():
     return {
         # 黒漆の鉄板：つやのある黒。真っ黒にすると夕方の逆光で黒い塊になるので、少しだけ明るく、空を映すようにしてある。
         "lacquer": bb.material("Lacquer", (0.030, 0.032, 0.040), metallic=0.35, roughness=0.30),
-        # 朱漆（差し色）
-        "lacquer_red": bb.material("LacquerRed", (0.33, 0.025, 0.02), metallic=0.0, roughness=0.3),
         # 金具（鍍金）
         "gold": bb.material("Gold", (0.83, 0.56, 0.20), metallic=1.0, roughness=0.36),
         # 鉄地（鍔・縁頭）
@@ -33,11 +31,6 @@ def make():
                                   emission=(1.0, 0.22, 0.02), emission_strength=1200.0),
         "ember_void": bb.material("EmberVoid", (0.02, 0.005, 0.0), metallic=0.0, roughness=1.0,
                                   emission=(1.0, 0.24, 0.03), emission_strength=2500.0),
-        # 目の光（霞の色・火の色）。昼の戦場でも光って見える強さ。
-        "eye_mist": bb.material("EyeMist", (0.0, 0.0, 0.0), roughness=1.0, emission=(0.62, 0.86, 1.0),
-                                emission_strength=60000.0),
-        "eye_fire": bb.material("EyeFire", (0.0, 0.0, 0.0), roughness=1.0, emission=(1.0, 0.42, 0.06),
-                                emission_strength=60000.0),
         # 鮫皮と柄巻
         "same": bb.material("Same", (0.72, 0.69, 0.60), metallic=0.0, roughness=0.9),
         "ito": bb.material("Ito", (0.02, 0.022, 0.03), metallic=0.0, roughness=0.75),
