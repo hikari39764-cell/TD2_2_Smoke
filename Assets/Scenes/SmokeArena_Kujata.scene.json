@@ -1,0 +1,816 @@
+{
+  "camera": {
+    "defaultCameraObjectId": null
+  },
+  "cinematics": {
+    "defaultSequenceId": 1,
+    "sequences": [
+      {
+        "bindings": [],
+        "durationSeconds": 10.0,
+        "id": 1,
+        "name": "Main Sequence",
+        "screenEffects": [],
+        "tracks": [
+          {
+            "clips": [],
+            "enabled": true,
+            "id": 1,
+            "type": "cameraCut"
+          }
+        ]
+      }
+    ]
+  },
+  "environment": {
+    "location": {
+      "latitudeDegrees": 35.68,
+      "longitudeDegrees": 139.69,
+      "northYawDegrees": 0.0,
+      "utcOffsetHours": 9.0
+    },
+    "profile": "engine.environment.default",
+    "renderStyle": "engine.style.realistic",
+    "time": {
+      "day": 21,
+      "localHours": 16.4,
+      "month": 10,
+      "year": 2026
+    },
+    "timeScale": 0.0,
+    "weather": "engine.weather.overcast"
+  },
+  "lightingBake": {
+    "bounceCount": 8,
+    "sampleCount": 256
+  },
+  "objects": [
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "firstTileX": -1,
+            "firstTileZ": -1,
+            "heightMin": 3300.0,
+            "heightRange": 131.07,
+            "islands": true,
+            "tileCells": 256,
+            "tileSizeMeters": 128.0,
+            "tilesX": 2,
+            "tilesZ": 2
+          },
+          "type": "HIKARI.TerrainKit.Terrain"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 1,
+      "name": "Terrain",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 0.68,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 1.7,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 0.68
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 1.7,
+            "radius": 0.34,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "gravityScale": 1.0,
+            "mass": 70.0,
+            "motionType": "Kinematic"
+          },
+          "type": "PhysicsBodyComponent"
+        },
+        {
+          "id": 7,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 8,
+          "properties": {
+            "camera": {
+              "$hikariRef": "SceneObject",
+              "id": 4
+            },
+            "lockTarget": {
+              "$hikariRef": "SceneObject",
+              "id": 3
+            },
+            "moveSpeed": 5.2,
+            "sprintSpeed": 5.2,
+            "sprintStaminaPerSecond": 0.0,
+            "rollFrames": 30,
+            "rollActionCancelFrame": 30,
+            "knockbackDistance": 2.0
+          },
+          "type": "Project_TD2_2.Player"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 2,
+      "name": "Player",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.85,
+          -14.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": false
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 2.7,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 6.75,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 2.7
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 6.75,
+            "radius": 1.35,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "properties": {
+            "maxHealth": 1800.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 90,
+          "properties": {
+            "absorbCatchRange": 7.0
+          },
+          "type": "Project_TD2_2.Boss"
+        },
+        {
+          "id": 91,
+          "properties": {
+            "enabled": true,
+            "interval": 0.0,
+            "tree": {
+              "$hikari.assetGuid": "4aff4df1aef95d8a09e8215bca9d7eb7"
+            },
+            "update": "GameCode",
+            "values": ""
+          },
+          "type": "HIKARI.BehaviorKit.BehaviorTree"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 3,
+      "name": "Boss",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3403.375,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "enabled": true,
+            "verticalFovDegrees": 60.0
+          },
+          "type": "CameraComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "enabled": true,
+            "initialDistance": 6.0,
+            "initialPitchDegrees": 16.0,
+            "initialYawDegrees": 0.0,
+            "pivotOffset": [
+              0.0,
+              0.6,
+              0.0
+            ],
+            "targetObjectId": {
+              "$hikariRef": "SceneObject",
+              "id": 2
+            },
+            "verticalDeadZone": 0.6
+          },
+          "type": "CameraFollowComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 4,
+      "name": "Gameplay Camera",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3403.0,
+          -20.0
+        ],
+        "rotationEulerDeg": [
+          16.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "enabled": true,
+            "slots": [
+              {
+                "effectAssetGuid": "f338c3e53f8889949a416dd0f98ee306",
+                "enabled": true,
+                "fixedObjectId": 0,
+                "followTarget": true,
+                "id": 1,
+                "loopMode": "ForceLoop",
+                "name": "Arena Ground Fog",
+                "offset": {
+                  "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotationEulerDegrees": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                "playOnStart": true,
+                "randomSeed": 7,
+                "retriggerPolicy": "Restart",
+                "spawnTarget": "Owner",
+                "triggerEventId": "",
+                "variableBindings": []
+              }
+            ]
+          },
+          "type": "VfxPlayerComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 5,
+      "name": "Arena Ground Fog",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 0.36,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 0.5,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 0.36
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "type": "Project_TD2_2.Gourd",
+          "properties": {
+            "player": {
+              "$hikariRef": "SceneObject",
+              "id": 2
+            },
+            "camera": {
+              "$hikariRef": "SceneObject",
+              "id": 4
+            },
+            "absorbWindupFrames": 8,
+            "absorbRecoveryFrames": 0,
+            "absorbMoveScale": 0.06,
+            "absorbTurnSpeed": 240.0,
+            "gatherRange": 7.0
+          }
+        },
+        {
+          "id": 4,
+          "type": "Project_TD2_2.GourdShot",
+          "properties": {
+            "trailEffect": {
+              "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
+              "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
+            },
+            "windupFrames": 12,
+            "recoveryFrames": 36,
+            "rollCancelFrames": 36,
+            "moveCancelFrames": 36,
+            "shotMoveScale": 0.0,
+            "staminaCost": 12.0,
+            "smokeCost": 10.0,
+            "damage": 80.0,
+            "recoilDistance": 0.5
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 6,
+      "name": "Gourd",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.65,
+          3401.4,
+          -14.15
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": false
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 2.7,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 6.75,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 2.7
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 6.75,
+            "radius": 1.35,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "properties": {
+            "maxHealth": 1000.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 92,
+          "properties": {
+            "parkDepth": 40.0
+          },
+          "type": "Project_TD2_2.BossClone"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 30,
+      "name": "Boss Clone 1",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3363.375,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": false
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "depth": 2.7,
+            "doubleSided": false,
+            "generateTangents": true,
+            "height": 6.75,
+            "kind": "Capsule",
+            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
+            "width": 2.7
+          },
+          "type": "ProceduralMeshComponent"
+        },
+        {
+          "id": 3,
+          "properties": {
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "enabled": true,
+            "fitMode": "Manual",
+            "height": 6.75,
+            "radius": 1.35,
+            "rotation": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "shape": "Capsule",
+            "trigger": false
+          },
+          "type": "ColliderComponent"
+        },
+        {
+          "id": 4,
+          "properties": {
+            "enabled": true,
+            "shapes": [],
+            "useColliders": true
+          },
+          "type": "FluidObstacleComponent"
+        },
+        {
+          "id": 5,
+          "properties": {
+            "maxHealth": 1000.0
+          },
+          "type": "Project_TD2_2.Damageable"
+        },
+        {
+          "id": 92,
+          "properties": {
+            "parkDepth": 40.0
+          },
+          "type": "Project_TD2_2.BossClone"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 31,
+      "name": "Boss Clone 2",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3363.375,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "enabled": true
+          },
+          "type": "Project_TD2_2.BurnField"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "enabled": true,
+            "slots": [
+              {
+                "effectAssetGuid": "966995f50f61b975c5796f0caa781ce3",
+                "enabled": true,
+                "fixedObjectId": 0,
+                "followTarget": true,
+                "id": 1,
+                "loopMode": "ForceLoop",
+                "name": "Arena Fire Field",
+                "offset": {
+                  "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "rotationEulerDegrees": [
+                    0.0,
+                    0.0,
+                    0.0
+                  ],
+                  "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                  ]
+                },
+                "playOnStart": true,
+                "randomSeed": 11,
+                "retriggerPolicy": "Restart",
+                "spawnTarget": "Owner",
+                "triggerEventId": "",
+                "variableBindings": []
+              }
+            ]
+          },
+          "type": "VfxPlayerComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 40,
+      "name": "Burning Ground",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "sceneName": "SmokeArena_Kujata",
+  "systems": [
+    {
+      "enabled": true,
+      "executionOrder": 100,
+      "settings": {},
+      "systemId": "ModelRenderSystem"
+    },
+    {
+      "enabled": true,
+      "executionOrder": 100,
+      "settings": {},
+      "systemId": "Project_TD2_2.Game"
+    }
+  ],
+  "version": 10
+}

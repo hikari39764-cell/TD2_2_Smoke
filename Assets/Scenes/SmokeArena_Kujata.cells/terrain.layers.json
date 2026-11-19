@@ -1,0 +1,397 @@
+{
+  "grid": {
+    "heightMin": 3300.0,
+    "heightRange": 131.07,
+    "tileCells": 256,
+    "tileSizeMeters": 128.0
+  },
+  "layers": [
+    {
+      "blend": "add",
+      "enabled": true,
+      "id": 1,
+      "image": {
+        "heightOffsetMeters": 0.0,
+        "heightScaleMeters": 1.0,
+        "originMeters": [
+          0.0,
+          0.0
+        ],
+        "rawWidth": 0,
+        "sizeMeters": [
+          1024.0,
+          1024.0
+        ],
+        "source": ""
+      },
+      "kind": "noise",
+      "masked": false,
+      "name": "Base Noise",
+      "noise": {
+        "amplitudeMeters": 1.2,
+        "basis": "simplex",
+        "encodedNodeTree": "",
+        "featureSizeMeters": 28.0,
+        "fractal": "fbm",
+        "gain": 0.5,
+        "lacunarity": 2.0,
+        "massifCenterMeters": [
+          0.0,
+          0.0
+        ],
+        "massifRadiusMeters": 0.0,
+        "octaves": 4,
+        "offsetMeters": 1.2,
+        "seed": 2611,
+        "weightedStrength": 0.0
+      },
+      "opacity": 1.0,
+      "spline": {
+        "bridge": true,
+        "bridgeArchMeters": 4.0,
+        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeThicknessMeters": 2.5,
+        "clarityMeters": 1.2,
+        "crownMeters": 4.0,
+        "depthMeters": 2.5,
+        "edgeMeters": 3.0,
+        "edgeSurface": 1,
+        "falloffMeters": 12.0,
+        "flowSpeed": 1.2,
+        "guide": false,
+        "kind": "road",
+        "paint": true,
+        "points": [],
+        "shelfMeters": 16.0,
+        "shoreNoiseMeters": 2.0,
+        "surface": 1,
+        "thicknessMeters": 60.0,
+        "undersideNoiseMeters": 6.0,
+        "undersideTaper": 2.0,
+        "waterColor": [
+          0.035,
+          0.13,
+          0.12
+        ],
+        "wetMeters": 6.0
+      }
+    },
+    {
+      "blend": "add",
+      "enabled": true,
+      "id": 2,
+      "image": {
+        "heightOffsetMeters": 0.0,
+        "heightScaleMeters": 1.0,
+        "originMeters": [
+          0.0,
+          0.0
+        ],
+        "rawWidth": 0,
+        "sizeMeters": [
+          1024.0,
+          1024.0
+        ],
+        "source": ""
+      },
+      "kind": "sculpt",
+      "masked": false,
+      "name": "Sculpt",
+      "noise": {
+        "amplitudeMeters": 0.0,
+        "basis": "simplex",
+        "encodedNodeTree": "",
+        "featureSizeMeters": 512.0,
+        "fractal": "fbm",
+        "gain": 0.5,
+        "lacunarity": 2.0,
+        "massifCenterMeters": [
+          0.0,
+          0.0
+        ],
+        "massifRadiusMeters": 0.0,
+        "octaves": 5,
+        "offsetMeters": 0.0,
+        "seed": 1337,
+        "weightedStrength": 0.0
+      },
+      "opacity": 1.0,
+      "spline": {
+        "bridge": true,
+        "bridgeArchMeters": 4.0,
+        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeThicknessMeters": 2.5,
+        "clarityMeters": 1.2,
+        "crownMeters": 4.0,
+        "depthMeters": 2.5,
+        "edgeMeters": 3.0,
+        "edgeSurface": 1,
+        "falloffMeters": 12.0,
+        "flowSpeed": 1.2,
+        "guide": false,
+        "kind": "road",
+        "paint": true,
+        "points": [],
+        "shelfMeters": 16.0,
+        "shoreNoiseMeters": 2.0,
+        "surface": 1,
+        "thicknessMeters": 60.0,
+        "undersideNoiseMeters": 6.0,
+        "undersideTaper": 2.0,
+        "waterColor": [
+          0.035,
+          0.13,
+          0.12
+        ],
+        "wetMeters": 6.0
+      }
+    },
+    {
+      "blend": "replace",
+      "enabled": true,
+      "id": 3,
+      "image": {
+        "heightOffsetMeters": 0.0,
+        "heightScaleMeters": 1.0,
+        "originMeters": [
+          0.0,
+          0.0
+        ],
+        "rawWidth": 0,
+        "sizeMeters": [
+          1024.0,
+          1024.0
+        ],
+        "source": ""
+      },
+      "kind": "spline",
+      "masked": false,
+      "name": "Island",
+      "noise": {
+        "amplitudeMeters": 0.0,
+        "basis": "simplex",
+        "encodedNodeTree": "",
+        "featureSizeMeters": 512.0,
+        "fractal": "fbm",
+        "gain": 0.5,
+        "lacunarity": 2.0,
+        "massifCenterMeters": [
+          0.0,
+          0.0
+        ],
+        "massifRadiusMeters": 0.0,
+        "octaves": 5,
+        "offsetMeters": 0.0,
+        "seed": 1337,
+        "weightedStrength": 0.0
+      },
+      "opacity": 1.0,
+      "spline": {
+        "bridge": true,
+        "bridgeArchMeters": 4.0,
+        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeThicknessMeters": 2.5,
+        "clarityMeters": 1.2,
+        "crownMeters": 0.0,
+        "depthMeters": 2.5,
+        "edgeMeters": 3.0,
+        "edgeSurface": 1,
+        "falloffMeters": 10.0,
+        "flowSpeed": 1.2,
+        "guide": false,
+        "kind": "island",
+        "paint": false,
+        "points": [
+          {
+            "position": [
+              52.0,
+              3400.0,
+              0.0
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              40.7,
+              3400.0,
+              23.5
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              27.5,
+              3400.0,
+              47.63
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              0.0,
+              3400.0,
+              50.0
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              -22.0,
+              3400.0,
+              38.11
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              -42.44,
+              3400.0,
+              24.5
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              -56.0,
+              3400.0,
+              0.0
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              -44.17,
+              3400.0,
+              -25.5
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              -23.0,
+              3400.0,
+              -39.84
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              0.0,
+              3400.0,
+              -53.0
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              24.0,
+              3400.0,
+              -41.57
+            ],
+            "widthMeters": 1.0
+          },
+          {
+            "position": [
+              43.3,
+              3400.0,
+              -25.0
+            ],
+            "widthMeters": 1.0
+          }
+        ],
+        "shelfMeters": 16.0,
+        "shoreNoiseMeters": 4.0,
+        "surface": 1,
+        "thicknessMeters": 45.0,
+        "undersideNoiseMeters": 5.0,
+        "undersideTaper": 2.5,
+        "waterColor": [
+          0.035,
+          0.13,
+          0.12
+        ],
+        "wetMeters": 6.0
+      }
+    },
+    {
+      "blend": "replace",
+      "enabled": true,
+      "id": 4,
+      "image": {
+        "heightOffsetMeters": 0.0,
+        "heightScaleMeters": 1.0,
+        "originMeters": [
+          0.0,
+          0.0
+        ],
+        "rawWidth": 0,
+        "sizeMeters": [
+          1024.0,
+          1024.0
+        ],
+        "source": ""
+      },
+      "kind": "spline",
+      "masked": false,
+      "name": "Arena Floor",
+      "noise": {
+        "amplitudeMeters": 0.0,
+        "basis": "simplex",
+        "encodedNodeTree": "",
+        "featureSizeMeters": 512.0,
+        "fractal": "fbm",
+        "gain": 0.5,
+        "lacunarity": 2.0,
+        "massifCenterMeters": [
+          0.0,
+          0.0
+        ],
+        "massifRadiusMeters": 0.0,
+        "octaves": 5,
+        "offsetMeters": 0.0,
+        "seed": 1337,
+        "weightedStrength": 0.0
+      },
+      "opacity": 1.0,
+      "spline": {
+        "bridge": false,
+        "bridgeArchMeters": 4.0,
+        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeThicknessMeters": 2.5,
+        "clarityMeters": 1.2,
+        "crownMeters": 4.0,
+        "depthMeters": 2.5,
+        "edgeMeters": 2.0,
+        "edgeSurface": 7,
+        "falloffMeters": 10.0,
+        "flowSpeed": 1.2,
+        "guide": false,
+        "kind": "road",
+        "paint": true,
+        "points": [
+          {
+            "position": [
+              0.0,
+              3400.0,
+              0.0
+            ],
+            "widthMeters": 40.0
+          }
+        ],
+        "shelfMeters": 16.0,
+        "shoreNoiseMeters": 2.0,
+        "surface": 8,
+        "thicknessMeters": 60.0,
+        "undersideNoiseMeters": 6.0,
+        "undersideTaper": 2.0,
+        "waterColor": [
+          0.035,
+          0.13,
+          0.12
+        ],
+        "wetMeters": 6.0
+      }
+    }
+  ],
+  "nextLayerId": 5
+}
