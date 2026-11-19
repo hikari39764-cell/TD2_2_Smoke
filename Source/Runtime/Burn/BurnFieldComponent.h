@@ -58,6 +58,11 @@ struct BurnTile {
     // 長い方へ行き来している今の位置（かたまりの中心からの距離 m）と、進んでいる向き（+1／-1）。
     float sweep = 0.0f;
     float sweepSign = 1.0f;
+    // 升目が多くて順番に入れる時の、この升目の番（0〜間隔−1）。燃え始めた時に決め、燃えている間は変えない（ほかの所の
+    // 火が増えても減っても、この升目に入る間隔が乱れない）。燃えていない升目は -1。
+    int phase = -1;
+    // 検証ログ用：最後に燃料を入れた描画フレーム（燃えていない間は 0）。
+    uint32_t fedFrame = 0;
 };
 // タイルごとに、そのフレームの燃えているセルを足し合わせる作業場所（タイルの中心からの相対位置で足す）。
 struct BurnTileSum {
@@ -178,6 +183,10 @@ public:
     int activeEmitters = 0;
     int burningTiles = 0;
     int emitterStride = 1;
+    // 検証ログ用：このフレームに燃料を入れた升目のうち、前に入れてから最も長く空いたフレーム数（燃え続けている升目だけ）。
+    int maxFeedGap = 0;
+    // 番ごとの升目の数（BurnFieldVisuals の作業場所）。
+    std::vector<int> phaseCounts;
     float traceAlong = 0.0f;
     float traceAcross = 0.0f;
     uint32_t renderFrame = 0;

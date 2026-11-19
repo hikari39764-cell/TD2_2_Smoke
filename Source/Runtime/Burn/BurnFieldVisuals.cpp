@@ -121,6 +121,41 @@ TileShape ShapeOf(const BurnFieldComponent& field, const BurnTileSum& sum, const
     return shape;
 }
 
+// 何フレームに 1 回ずつ入れるか。足りなければすぐ広げ、狭めるのは、1 つ狭い間隔でも上限の 85 % に収まる時だけ
+// （境目で間隔が行き来すると、升目の番が入れ替わり、入る間隔が乱れる）。
+int HoldStride(BurnFieldComponent& field, int limit) {
+    const int needed = std::max(1, (field.burningTiles + limit - 1) / limit);
+    int stride = std::max(needed, field.emitterStride);
+    while (stride > needed &&
+           static_cast<float>(field.burningTiles) <= 0.85f * static_cast<float>((stride - 1) * limit))
+        --stride;
+    field.emitterStride = stride;
+    return stride;
+}
+
+// 燃えている升目に番を割り振る。番を持っている升目はそのまま（1 つの番が上限を超えた分だけ外す）、燃え始めた升目と
+// 番の外れた升目を、いちばん空いている番へ入れる。どの番も上限以下なので、1 フレームに入れる数は上限を超えない。
+void AssignPhases(BurnFieldComponent& field, int stride, int limit) {
+    std::vector<int>& counts = field.phaseCounts;
+    counts.assign(static_cast<size_t>(stride), 0);
+    for (size_t index = 0; index < field.tiles.size(); ++index) {
+        BurnTile& tile = field.tiles[index];
+        if (field.tileSums[index].cells == 0 || tile.phase >= stride ||
+            (tile.phase >= 0 && counts[static_cast<size_t>(tile.phase)] >= limit))
+            tile.phase = -1;
+        if (tile.phase >= 0)
+            ++counts[static_cast<size_t>(tile.phase)];
+    }
+    for (size_t index = 0; index < field.tiles.size(); ++index) {
+        BurnTile& tile = field.tiles[index];
+        if (field.tileSums[index].cells == 0 || tile.phase >= 0)
+            continue;
+        const auto least = std::min_element(counts.begin(), counts.end());
+        tile.phase = static_cast<int>(least - counts.begin());
+        ++*least;
+    }
+}
+
 // 直近 window 秒の間に出した爆発のエフェクトの数（cap まで数えれば足りる）。
 uint32_t RecentBlastEffects(const BurnFieldComponent& field, uint32_t cap, float window) {
     const uint32_t limit = std::min({field.blastEffectsPlayed, static_cast<uint32_t>(kBlastEffectCapMax), cap});
@@ -312,6 +347,7 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     field.fluidAccepted = true;
     field.vfxAccepted = true;
     field.activeEmitters = 0;
+    field.maxFeedGap = 0;
     if (seconds <= 0.0f)
         return;
     ++field.renderFrame;
@@ -321,17 +357,23 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     RenderJet(world, object, field, seconds);
     RenderBody(world, object, field, body);
     field.burningTiles = 0;
-    field.emitterStride = 1;
-    if (map.BurningCells() == 0)
+    if (map.BurningCells() == 0) {
+        field.emitterStride = 1;
+        for (BurnTile& tile : field.tiles) {
+            tile.phase = -1;
+            tile.fedFrame = 0;
+        }
         return;
+    }
     // 燃えているセルを、場所の決まった升目ごとにまとめ、升目ごとに 1 か所へ燃料を入れる。升目の炎の位置と太さは、
     // その升目のセルだけで決まる（ほかの所で火が増えても減っても動かない）。燃えている升目が 1 フレームに出せる数より
-    // 多い時は、stride フレームに 1 回ずつ順番に入れ、その分だけ燃料を増やす（どの升目も同じ間隔で入る）。
+    // 多い時は、stride フレームに 1 回ずつ、升目ごとに決まった番で入れ、その分だけ燃料を増やす（どの升目も同じ間隔で
+    // 入る。番は燃えている間は変えない）。
     LayoutTiles(field);
     field.burningTiles = SumTiles(field);
     const int limit = std::clamp(field.emitterCount, 1, static_cast<int>(kBurnEmitterCapacity));
-    const int stride = (field.burningTiles + limit - 1) / limit;
-    field.emitterStride = stride;
+    const int stride = HoldStride(field, limit);
+    AssignPhases(field, stride, limit);
     const int turn = static_cast<int>(field.renderFrame % static_cast<uint32_t>(stride));
 
     // 引爆の溜め：火そのものが熱く・細く・低くなる（白く締まって、内側へ縮んで見える）。地面や画面の予兆は出さない。
@@ -340,14 +382,18 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     const float hotspotCharge = std::clamp(field.hotspotCharge, 0.0f, 1.0f);
     const float sweepSpeed = std::clamp(field.fuelSweep, 0.0f, 55.0f);
     const HIKARI::FluidView fluid = world.GetFluid();
-    int rank = 0;
     for (size_t index = 0; index < field.tileSums.size(); ++index) {
         const BurnTileSum& sum = field.tileSums[index];
-        if (sum.cells == 0)
-            continue;
-        if (rank++ % stride != turn)
-            continue;
         BurnTile& tile = field.tiles[index];
+        if (sum.cells == 0) {
+            tile.fedFrame = 0;
+            continue;
+        }
+        if (tile.phase != turn)
+            continue;
+        if (tile.fedFrame != 0)
+            field.maxFeedGap = std::max(field.maxFeedGap, static_cast<int>(field.renderFrame - tile.fedFrame));
+        tile.fedFrame = field.renderFrame;
         const TileShape shape = ShapeOf(field, sum, tile, static_cast<int>(index) % field.tilesPerSide,
                                         static_cast<int>(index) / field.tilesPerSide);
         tile.axisX = shape.axisX;

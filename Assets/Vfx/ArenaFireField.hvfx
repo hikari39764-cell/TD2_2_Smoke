@@ -299,7 +299,7 @@
           "prewarmSeconds": 0.0,
           "priority": 96,
           "relativeWind": 0.0,
-          "resolution": 320,
+          "resolution": 256,
           "scatteringColor": [
             0.05,
             0.045,

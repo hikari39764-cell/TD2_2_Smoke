@@ -294,7 +294,7 @@
           "maxSubsteps": 2,
           "multipleScattering": 0.699999988079071,
           "prewarmSeconds": 1.5,
-          "priority": 90,
+          "priority": 98,
           "relativeWind": 0.3499999940395355,
           "resolution": 72,
           "scatteringColor": [
