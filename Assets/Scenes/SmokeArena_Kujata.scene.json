@@ -268,7 +268,10 @@
         {
           "id": 90,
           "properties": {
-            "absorbCatchRange": 7.0
+            "absorbCatchRange": 7.0,
+            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
+            "kamaeFrames": 20,
+            "raiseFrames": 12
           },
           "type": "Project_TD2_2.Boss"
         },
