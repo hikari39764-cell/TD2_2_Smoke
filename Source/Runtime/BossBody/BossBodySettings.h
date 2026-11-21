@@ -274,6 +274,25 @@ struct BossBodyAccentSettings {
     float eyeFlare = 0.6f;
     float eyeFlareBig = 1.6f;
     float eyeFlareSeconds = 0.45f;
+    // 兜の中の灯（c-e0c500）：面頬の隙間から漏れる光を、兜の中に置いた本物の灯で出す。前を向く影付きのスポットライト
+    // （隙間から漏れて、面頬の縁・襟・顔の前の手を照らす）と、兜の中を満たす弱い点光（影なし）。どちらもシーンの物体で、
+    // 置き場所と明るさはコードが毎フレーム入れる（色は上の目の光の色）。物体が無ければ、前の貼り付けの光（eyesEffect）を
+    // 出す。明るさは灯の物体の単位（場面の光に対する倍率）。置き場所は兜の大きさ 1 の時の局所の値（+Z が前）。スポットは
+    // 少し下へ向ける（度）。閃き（技を決めた瞬間・登場で目が灯る瞬間）は明るさに足す。ゆらぎは明るさに掛ける幅。
+    uint64_t helmSpotObject = 0;
+    uint64_t helmFillObject = 0;
+    // 面頬の隙間の中の光（模型に足した自発光の面 HelmGlow。Tools/BossBody/add_helm_glow.py）：登場の間の明るさ（画面
+    // 基準：色 × この値の 1 が、露出の後の白。昼でも夜でも同じ明るさに見える）。閃きとゆらぎは、灯と同じ倍率が掛かる。
+    // 戦いの間の明るさと色は、模型の材質の値（add_helm_glow.py の GLOW_*・HOT_*）。
+    float helmGlowStrength = 3.0f;
+    float helmSpotIntensity = 3.0f;
+    float helmFillIntensity = 0.25f;
+    HIKARI::GameProjectFloat3 helmSpotLocal{0.0f, 0.03f, -0.06f};
+    HIKARI::GameProjectFloat3 helmFillLocal{0.0f, 0.03f, 0.04f};
+    float helmSpotPitchDegrees = 4.0f;
+    float helmFlareGain = 1.0f;
+    float helmGlowShare = 0.35f;
+    float helmLightFlicker = 0.10f;
 
     // 刀身を走る光：刀を振る技を出すと決めた瞬間に、鍔元から剣先へ光が走る（1 回きりのエフェクト）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference glintEffect{"c7e2b9041d6f4a8e95b3f0a1d2c4e687",
@@ -366,6 +385,8 @@ struct BossBodyAccentState {
     float wakeGain = 0.0f;
     // 目の光・刀身を走る光・溜めの気配の再生。
     HIKARI::GameProjectVfxPlaybackHandle eyesVfx{};
+    // 兜の中の灯：ゆらぎの時計 (秒)。
+    float helmClock = 0.0f;
     HIKARI::GameProjectVfxPlaybackHandle glintVfx{};
     HIKARI::GameProjectVfxPlaybackHandle auraVfx{};
     // 目の閃きの明るさ（出した瞬間の強さから 0 へ）、気配の強さ（0〜1）、前のフレームに構えの合図が出ていたか。
@@ -476,8 +497,9 @@ struct BossBodySettings {
     float sodeFlareDegrees = 0.0f;
     float sodeSwayShare = 0.25f;
     // 草摺（ノード KusazuriPanel）：枚数、吊る高さ、腰の輪郭の半径（横・前後）、裾を外へ開く角度。上の縁は胸当ての
-    // 下の縁の内に隠す（c-584825）。
-    int tassetCount = 7;
+    // 下の縁の内に隠す（c-584825）。いまは外してある（0 枚。揺れ・めり込みの不具合が多いため。直すまで出さない。
+    // 0 の間は、登場の役者の草摺も隠す）。戻す時は 7。
+    int tassetCount = 0;
     float tassetHangHeight = 2.14f;
     float tassetRadiusSide = 0.56f;
     float tassetRadiusFront = 0.44f;

@@ -2,7 +2,10 @@
 
 #include <algorithm>
 
+#include "HIKARI/Project/LightTypes.h"
 #include "BossBodyMath.h"
+#include "BossIntroActor.h"
+#include "../Boss/BossIntro.h"
 #include "../Boss/BossKasumiStep.h"
 #include "../Boss/BossRules.h"
 #include "../Boss/BossVfx.h"
@@ -148,6 +151,14 @@ void SetEdge(HIKARI::GameProjectVfxParameterOverrides& parameters, BossComponent
 void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, float seconds) {
     const BossBodyAccentSettings& s = boss.body.accents;
     BossBodyAccentState& a = boss.bodyState.accents;
+    // 登場の間は、共用の刀の光（刃口の光・刀光の帯）を出さない。役者の刀の刃口を、細い線として光らせる。
+    if (boss.introState.phase == BossIntroPhase::Show || BossIntro::ActorLingers(boss)) {
+        StopHandle(world, a.bladeVfx);
+        const Vec3 tint = s.glintMistColor;
+        BossIntroActor::SetBladeEdge(world, boss, Mul(tint, 1.0f / std::max({tint.x, tint.y, tint.z, kTiny})),
+                                     boss.intro.bladeEdgeGlow * boss.introState.bladeEdge);
+        return;
+    }
     if (s.bladeEffect.IsEmpty()) {
         StopHandle(world, a.bladeVfx);
         return;
@@ -254,14 +265,73 @@ void UpdateCommit(HIKARI::WorldView& world, BossComponent& boss, const BossBodyP
 }
 
 // 目の光：兜に付けて出し続ける。頭が動くと光が尾を引き、技を出すと決めた瞬間に横へ閃く。
-void UpdateEyes(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose) {
+// 灯 1 つ：兜の置き場所から決めた所へ置き、色と明るさを入れる（明るさ 0 なら消す）。
+void PlaceHelmLight(HIKARI::ObjectView light, const BossBodyPlacement& head, Vec3 local, Quat rotation, Vec3 color,
+                    float intensity) {
+    if (!light.IsValid())
+        return;
+    HIKARI::GameProjectTransform transform{};
+    transform.position = Add(head.position, Rotate(head.rotation, Mul(local, head.scale)));
+    transform.rotation = rotation;
+    transform.scale = {1.0f, 1.0f, 1.0f};
+    (void)light.SetWorldTransform(transform);
+    HIKARI::GameProjectLightPatch patch{};
+    patch.fieldMask = static_cast<uint32_t>(HIKARI::GameProjectLightPatchField::Enabled) |
+                      static_cast<uint32_t>(HIKARI::GameProjectLightPatchField::Color) |
+                      static_cast<uint32_t>(HIKARI::GameProjectLightPatchField::Intensity);
+    patch.enabled = intensity > 0.001f ? 1u : 0u;
+    patch.color = color;
+    patch.intensity = intensity;
+    (void)light.GetLight().ApplyPatch(patch);
+}
+
+// 兜の中の灯：前を向く影付きのスポットライトと、兜の中を満たす点光を、兜に合わせて置く。面頬の隙間から本物の光が
+// 漏れ、頭が動けば光も動く。灯の物体がシーンに無ければ false（前の貼り付けの光を出す）。
+bool UpdateHelmLights(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, float seconds) {
     const BossBodyAccentSettings& s = boss.body.accents;
     BossBodyAccentState& a = boss.bodyState.accents;
+    const HIKARI::ObjectView spot =
+        s.helmSpotObject != 0u ? world.FindSceneObject(s.helmSpotObject) : HIKARI::ObjectView{};
+    const HIKARI::ObjectView fill =
+        s.helmFillObject != 0u ? world.FindSceneObject(s.helmFillObject) : HIKARI::ObjectView{};
+    if (!spot.IsValid() && !fill.IsValid())
+        return false;
+    a.helmClock += std::max(0.0f, seconds);
+    // 色は目の光の色（霞・火）の色合いだけを使い、明るさは灯の項目で決める。
+    const Vec3 tint = pose.eyesFire ? s.eyesFireColor : s.eyesMistColor;
+    const Vec3 color = Mul(tint, 1.0f / std::max({tint.x, tint.y, tint.z, kTiny}));
+    // 明るさ：灯っている時の基準に、登場の演出が頼む倍率と閃きを足し、細かく揺らがせる。
+    const float flicker = 1.0f + s.helmLightFlicker * (0.6f * std::sin(a.helmClock * 17.0f) +
+                                                       0.4f * std::sin(a.helmClock * 31.0f + 1.3f));
+    const float level = pose.eyesLit ? (1.0f + boss.introState.eyeGlow * s.helmGlowShare + a.flare * s.helmFlareGain) *
+                                           std::max(0.0f, flicker)
+                                     : 0.0f;
+    // X まわりの正の回転で下を向く。
+    const float half = s.helmSpotPitchDegrees * kRadiansPerDegree * 0.5f;
+    const Quat aim = Multiply(pose.head.rotation, Quat{std::sin(half), 0.0f, 0.0f, std::cos(half)});
+    PlaceHelmLight(spot, pose.head, s.helmSpotLocal, aim, color, s.helmSpotIntensity * level);
+    PlaceHelmLight(fill, pose.head, s.helmFillLocal, pose.head.rotation, color, s.helmFillIntensity * level);
+    // 面頬の隙間の中の光（模型の中の自発光の面）：登場の間は役者の模型の明るさを毎フレーム入れる。戦いの間は
+    // BossBodyVisuals が、灯っている時だけその部品を出す（明るさは模型の材質の値）。
+    BossIntroActor::SetHelmGlow(world, boss, color, s.helmGlowStrength * level);
+    return true;
+}
+
+void UpdateEyes(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPose& pose, float seconds) {
+    const BossBodyAccentSettings& s = boss.body.accents;
+    BossBodyAccentState& a = boss.bodyState.accents;
+    // 兜の中の灯がある時は、貼り付けの光は出さない。
+    if (UpdateHelmLights(world, boss, pose, seconds)) {
+        StopHandle(world, a.eyesVfx);
+        return;
+    }
     if (s.eyesEffect.IsEmpty()) {
         StopHandle(world, a.eyesVfx);
         return;
     }
-    const Vec3 color = pose.eyesLit ? (pose.eyesFire ? s.eyesFireColor : s.eyesMistColor) : Vec3{};
+    // 登場の演出は、目の光を普段より明るく灯す（BossIntroEffects が頼む倍率）。
+    const Vec3 color =
+        pose.eyesLit ? Mul(pose.eyesFire ? s.eyesFireColor : s.eyesMistColor, 1.0f + boss.introState.eyeGlow) : Vec3{};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetColor(parameters, kEyesInput, color);
     VfxParameters::SetColor(parameters, kFlareInput, Mul(color, a.flare));
@@ -503,7 +573,7 @@ void BossBodyAccents::Update(HIKARI::WorldView& world, BossComponent& boss, cons
                              const BossBodyPose& pose, float seconds) {
     UpdateBlade(world, boss, pose, seconds);
     UpdateCommit(world, boss, pose, seconds);
-    UpdateEyes(world, boss, pose);
+    UpdateEyes(world, boss, pose, seconds);
     UpdateAura(world, boss, body, pose, seconds);
     UpdateShock(world, boss, body, pose);
     UpdateDash(world, boss, body, pose, seconds);
@@ -518,6 +588,12 @@ void BossBodyAccents::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     StopHandle(world, a.auraVfx);
     StopHandle(world, a.dashVfx);
     StopHandle(world, a.handVfx);
+    // 兜の中の灯を消す（体を出さない間：撃破の後など）。
+    BossBodyPlacement nowhere{};
+    nowhere.rotation = {0.0f, 0.0f, 0.0f, 1.0f};
+    for (const uint64_t id : {boss.body.accents.helmSpotObject, boss.body.accents.helmFillObject})
+        if (id != 0u)
+            PlaceHelmLight(world.FindSceneObject(id), nowhere, {}, nowhere.rotation, {1.0f, 1.0f, 1.0f}, 0.0f);
     a = {};
 }
 

@@ -1,9 +1,11 @@
 #include "BossIntroCamera.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 #include "HIKARI/Project/ProjectDataView.h"
 #include "BossBodyMath.h"
@@ -36,18 +38,37 @@ public:
 // （始め・終わり）・画角（始め・終わり 度）・ゲームのカメラへ戻す重み（始め・終わり）。
 constexpr size_t kColumnCount = 19;
 
-BossIntroPhase PhaseOf(std::string_view name) {
-    if (name == "Gather" || name == "集める")
-        return BossIntroPhase::Gather;
-    if (name == "Assemble" || name == "形になる")
-        return BossIntroPhase::Assemble;
-    if (name == "Draw" || name == "抜刀")
-        return BossIntroPhase::Draw;
-    if (name == "Flourish" || name == "一振り")
-        return BossIntroPhase::Flourish;
+// 前の登場の段（集める・形になる・抜刀・一振り）の名前と既定の長さ (F)。前の表のカットは、演技の段の中の同じ割合の所へ
+// 移す（c-e0c500 で段は「演技」1 つになった）。
+struct OldPhase {
+    std::string_view name;
+    std::string_view label;
+    float frames;
+};
+constexpr std::array<OldPhase, 4> kOldPhases{{{"Gather", "集める", 270.0f},
+                                              {"Assemble", "形になる", 270.0f},
+                                              {"Draw", "抜刀", 96.0f},
+                                              {"Flourish", "一振り", 168.0f}}};
+
+// カットの段の名前と、段の中の割合を、いまの段と割合へ（知らない名前は Done＝使わない）。
+BossIntroPhase PhaseOf(std::string_view name, float& share) {
+    if (name == "Show" || name == "演技")
+        return BossIntroPhase::Show;
     if (name == "Settle" || name == "構え")
         return BossIntroPhase::Settle;
-    return BossIntroPhase::Done;
+    float before = 0.0f, total = 0.0f;
+    const OldPhase* found = nullptr;
+    for (const OldPhase& phase : kOldPhases) {
+        if (phase.name == name || phase.label == name)
+            found = &phase;
+        if (found == nullptr)
+            before += phase.frames;
+        total += phase.frames;
+    }
+    if (found == nullptr)
+        return BossIntroPhase::Done;
+    share = (before + share * found->frames) / total;
+    return BossIntroPhase::Show;
 }
 
 float At(const Row& row, size_t column, float fallback) {
@@ -61,20 +82,22 @@ Vec3 Point(const Row& row, size_t column) {
     return {At(row, column, 0.0f), At(row, column + 1, 0.0f), At(row, column + 2, 0.0f)};
 }
 
-// 登場の始め（集める段の始め）から、その段のその割合までの F。
+// 登場の始め（演技の段の始め）から、その段のその割合までの F。
 float FramesAt(const BossComponent& boss, BossIntroPhase phase, float share) {
     float frames = 0.0f;
-    for (int p = static_cast<int>(BossIntroPhase::Gather); p < static_cast<int>(phase); ++p)
+    for (int p = static_cast<int>(BossIntroPhase::Show); p < static_cast<int>(phase); ++p)
         frames += static_cast<float>(BossIntro::PhaseFrames(boss, static_cast<BossIntroPhase>(p)));
     return frames + share * static_cast<float>(BossIntro::PhaseFrames(boss, phase));
 }
 
-// いまの登場の進み（F。描画のフレームの段の秒から。なめらかに進む）。
+// いまの登場の進み（F。描画のフレームの演技の時計・一息の秒から。なめらかに進む）。
 float FramesNow(const BossComponent& boss) {
     const BossIntroState& state = boss.introState;
     const float frames = static_cast<float>(BossIntro::PhaseFrames(boss, state.phase));
-    const float inside = std::clamp(state.phaseSeconds * kFramesPerSecond, 0.0f, frames);
-    return FramesAt(boss, state.phase, 0.0f) + inside;
+    const float seconds = state.phase == BossIntroPhase::Show
+                              ? state.showSeconds / std::max(0.01f, boss.intro.playbackRate)
+                              : state.settleSeconds;
+    return FramesAt(boss, state.phase, 0.0f) + std::clamp(seconds * kFramesPerSecond, 0.0f, frames);
 }
 
 // 表の 1 行の、段の名前と始めの割合より後（目・見る点・画角・ゲームのカメラへ戻す重み）を読む。
@@ -159,10 +182,10 @@ void BossIntroCamera::Load(HIKARI::WorldView& world, BossComponent& boss) {
         if (row.size() < kColumnCount)
             continue;
         BossIntroCut cut;
-        cut.phase = PhaseOf(Trim(row[1]));
+        ReadPose(row, cut);
+        cut.phase = PhaseOf(Trim(row[1]), cut.share);
         if (cut.phase == BossIntroPhase::Done)
             continue;
-        ReadPose(row, cut);
         cut.at = FramesAt(boss, cut.phase, cut.share);
         cuts.push_back(cut);
     }
@@ -175,6 +198,20 @@ void BossIntroCamera::Load(HIKARI::WorldView& world, BossComponent& boss) {
 
 void BossIntroCamera::Update(const BossComponent& boss, PlayerComponent& player) {
     const BossIntroState& state = boss.introState;
+    // 演技の後の一息の段：演出の資産が最後に見せていたカメラの姿勢から、ゲームのカメラへ滑らかに渡す（切り替えない）。
+    if (state.phase == BossIntroPhase::Settle && state.filmValid && !state.skipped) {
+        const float u =
+            std::clamp(static_cast<float>(state.frame) / std::max(1.0f, boss.intro.settleSeconds * 60.0f), 0.0f, 1.0f);
+        PlayerCinematicRequest request;
+        request.eye = state.filmEye;
+        request.target = state.filmTarget;
+        request.fovRadians = state.filmFov;
+        request.gameWeight = u * u * u * (u * (6.0f * u - 15.0f) + 10.0f);
+        request.focus = Add(state.origin, Vec3{0.0f, boss.intro.cameraFocusHeight, 0.0f});
+        player.cinematic = request;
+        player.cinematicPending = true;
+        return;
+    }
     const std::vector<BossIntroCut>& cuts = state.cuts;
     if (cuts.empty() || state.skipped || !BossIntro::Cinematic(boss))
         return;

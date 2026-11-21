@@ -18,6 +18,8 @@ public:
     // 霞分身 1 体にも、出ている間は同じ外形を待機の構えで出す（設定は本体の Boss.body。胴の煙は出さない）。
     static void UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
                             BossCloneComponent& clone, float seconds);
+    // 編集器のプレビュー（Play の外。c-e0c500）：演出ワークスペースが登場の演出の資産を流している間、役者を演技の姿にする。
+    static void UpdatePreviews(HIKARI::WorldView& world);
     // 出し続けているエフェクト（胴の煙）を止める。
     static void Stop(HIKARI::WorldView& world, BossComponent& boss);
 };

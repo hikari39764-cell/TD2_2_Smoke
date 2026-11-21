@@ -195,7 +195,10 @@ void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowC
         return;
     const FlowHudValues values = ReadHudValues(world, actors);
     const HIKARI::UiView ui = world.GetUi();
-    bool accepted = FlowHud::DrawPlayer(ui, flow, values);
+    // 登場の演出の間（ボスが Boss.Cinematic に 1 を書いている間）は、プレイヤーの条を出さない（画面を演出だけにする）。
+    float cinematic = 0.0f;
+    ObjectVariables::ReadFloat(world, actors.boss, kBossCinematicVariable, cinematic);
+    bool accepted = cinematic >= 0.5f || FlowHud::DrawPlayer(ui, flow, values);
     // ボスの HP の条：戦いの間。ボスが「出さない」と書いている間（登場の演出の見得まで）は出さない。
     float bossBar = 1.0f;
     ObjectVariables::ReadFloat(world, actors.boss, kBossBarShownVariable, bossBar);

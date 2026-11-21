@@ -176,6 +176,426 @@
         0
       ],
       "speed": 0.01
+    },
+    {
+      "key": "shock",
+      "label": "衝撃の強さ（Boss が毎フレーム送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 2,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "shockRadius",
+      "label": "衝撃の輪の半径（Boss が送る。画面の高さを 1）",
+      "type": "Float",
+      "ref": {
+        "slot": 2,
+        "channel": 1
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        4.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "shockCenterU",
+      "label": "衝撃の輪の中心 U（Boss が送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 2,
+        "channel": 2
+      },
+      "defaultValues": [
+        0.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        -2.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        3.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "shockCenterV",
+      "label": "衝撃の輪の中心 V（Boss が送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 2,
+        "channel": 3
+      },
+      "defaultValues": [
+        0.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        -2.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        3.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "tension",
+      "label": "張りつめ（Boss が送る。握っている間に高まる）",
+      "type": "Float",
+      "ref": {
+        "slot": 3,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "dim",
+      "label": "暗さ（Boss が送る。前触れの間に高まる）",
+      "type": "Float",
+      "ref": {
+        "slot": 3,
+        "channel": 1
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "shockWidth",
+      "label": "衝撃の輪の幅（画面の高さを 1）",
+      "type": "Float",
+      "ref": {
+        "slot": 4,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.1,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.005,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        1.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.005
+    },
+    {
+      "key": "shockDistort",
+      "label": "衝撃の輪の所で画がずれる大きさ（画面の高さを 1）",
+      "type": "Float",
+      "ref": {
+        "slot": 4,
+        "channel": 1
+      },
+      "defaultValues": [
+        0.06,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        0.3,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.005
+    },
+    {
+      "key": "shockBlur",
+      "label": "衝撃の間、中心へ向かうぼかしの長さ（中心までの距離に対する割合）",
+      "type": "Float",
+      "ref": {
+        "slot": 4,
+        "channel": 2
+      },
+      "defaultValues": [
+        0.1,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        0.6,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "shockShift",
+      "label": "衝撃の間の色ずれ（画素。画面の高さ 1080 の時）",
+      "type": "Float",
+      "ref": {
+        "slot": 4,
+        "channel": 3
+      },
+      "defaultValues": [
+        5.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        40.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.5
+    },
+    {
+      "key": "star",
+      "label": "剣先の星の強さ（Boss が毎フレーム送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 5,
+        "channel": 0
+      },
+      "defaultValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        8.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "starU",
+      "label": "剣先の星の中心 U（Boss が送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 5,
+        "channel": 1
+      },
+      "defaultValues": [
+        0.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        -2.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        3.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "starV",
+      "label": "剣先の星の中心 V（Boss が送る）",
+      "type": "Float",
+      "ref": {
+        "slot": 5,
+        "channel": 2
+      },
+      "defaultValues": [
+        0.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        -2.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        3.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "starSize",
+      "label": "剣先の星の大きさ（Boss が送る。画面の高さを 1）",
+      "type": "Float",
+      "ref": {
+        "slot": 5,
+        "channel": 3
+      },
+      "defaultValues": [
+        0.5,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.01,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        4.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.01
+    },
+    {
+      "key": "starBrightness",
+      "label": "剣先の星の明るさ（露出済みの線形）",
+      "type": "Float",
+      "ref": {
+        "slot": 6,
+        "channel": 0
+      },
+      "defaultValues": [
+        6.0,
+        0,
+        0,
+        0
+      ],
+      "minValues": [
+        0.0,
+        0,
+        0,
+        0
+      ],
+      "maxValues": [
+        200.0,
+        0,
+        0,
+        0
+      ],
+      "speed": 0.5
     }
   ]
 }

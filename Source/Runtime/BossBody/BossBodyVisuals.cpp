@@ -42,6 +42,10 @@ constexpr BossBodyPart kHead{"KnightHelm", 8u};
 // 灼けた鎧（フェーズ 2）は、ふだんの鎧と同じ番号でノードだけ差し替える（同じフレームに両方は出ない。c-857ae3）。
 constexpr BossBodyPart kTorsoHot{"KnightBodyHot", 7u};
 constexpr BossBodyPart kHeadHot{"KnightHelmHot", 8u};
+// 面頬の隙間の中の光（模型に足した自発光の面。Tools/BossBody/add_helm_glow.py）。目が灯っている時だけ、兜と同じ所へ出す。
+// フェーズ 2 は火の色の方へ差し替える。
+constexpr BossBodyPart kHeadGlow{"HelmGlow", 9u};
+constexpr BossBodyPart kHeadGlowHot{"HelmGlowHot", 9u};
 constexpr std::string_view kTassetHotNode = "KusazuriPanelHot";
 // 兜の中の光（面頬の 5 本の隙間から透ける一筋の光と尾）は模型に入れず、目のエフェクト（BossBodyAccents の
 // eyesEffect）が受け持つ。
@@ -217,6 +221,8 @@ void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     Submit(world, object, boss, kLeftCuff, pose.leftCuff);
     Submit(world, object, boss, pose.armorHot ? kTorsoHot : kTorso, pose.torso);
     Submit(world, object, boss, pose.armorHot ? kHeadHot : kHead, pose.head);
+    if (pose.eyesLit)
+        Submit(world, object, boss, pose.eyesFire ? kHeadGlowHot : kHeadGlow, pose.head);
     for (size_t side = 0; side < pose.sode.size(); ++side)
         Submit(world, object, boss, {(pose.armorHot ? kSodeHotNodes : kSodeNodes)[side], kSodeInstance + side},
                pose.sode[side]);
@@ -279,6 +285,26 @@ void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
                s.fireCuffShare);
 }
 
+// 待機の構えの全身（霞分身・編集器のプレビュー）。入力は物体の変換と時計だけ：振れは持たず、大袖・草摺は揺らぎだけ。
+// 胴の捻りは本体の待機と同じく刀の横の向きから。
+BossBodyPose IdlePose(const BossComponent& boss, const HIKARI::GameProjectTransform& body, float clock) {
+    HIKARI::GameProjectFloat3 blade{}, grip{};
+    BossBodyMath::IdleKamae(boss.body.motion, BossBodyMath::PhaseTwoLook(boss), clock, blade, grip);
+    grip = BossBodyMath::Mul(grip, boss.body.bodyScale);
+    const BossBodyRigInput input{boss.body,
+                                 body,
+                                 boss.bodyHalfHeight,
+                                 clock,
+                                 {},
+                                 BossBodyMath::TwistTarget(boss.body.motion, blade),
+                                 0.0f,
+                                 boss.lastPhaseNumber >= 2,
+                                 true,
+                                 BossBodyMath::SwordScale(boss),
+                                 BossBodyMath::HandScale(boss)};
+    return BossBodyRig::SolveIdle(input);
+}
+
 } // namespace
 
 void BossBodyVisuals::NoteTick(BossComponent& boss, HIKARI::GameProjectFloat3 position) {
@@ -308,26 +334,30 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
         boss.bodyState.presentShift =
             BossMath::Mul(BossMath::Sub(state.tickFrom, state.tickTo), 1.0f - std::clamp(alpha, 0.0f, 1.0f));
     body.position = BossMath::Add(body.position, boss.bodyState.presentShift);
-    BossIntroVisuals::Advance(boss, seconds);
+    BossIntroVisuals::Advance(world, boss, seconds);
+    // 体に付く効果（胴の煙・気配・衝撃の輪）は見た目の体に付ける（登場の間は演技の体の根と向き。c-e0c500）。
+    const HIKARI::GameProjectTransform shown = BossIntroVisuals::BodyTransform(boss, body);
     BossPhaseShiftVisuals::Advance(boss, seconds);
     BossBodyAccents::StepSmoke(boss, seconds);
     StepFire(boss, seconds);
-    UpdateSmoke(world, boss, body);
+    UpdateSmoke(world, boss, shown);
     if (boss.body.model.empty())
         return;
     BossBodyRig::StepSway(boss, body, seconds);
     BossBodySword::Step(boss, seconds);
     BossBodyPose pose = BossBodyRig::Solve(boss, body);
     BossBodySword::Trace(boss, body, pose);
-    // 登場の間は、置いてある所・飛んでいる途中の鎧と、地面に刺さった刀に直す。
-    BossIntroVisuals::ApplyPose(boss, body, pose, seconds);
+    // 登場の間は、体に付く効果の置き場所（兜・刀・胴）を、演じている役者の骨のものに直す。
+    BossIntroVisuals::ApplyPose(boss, pose, seconds);
     // フェーズの変わり目の演出の間は、膝をついて刀を突き立て、刀身を拭い、斬り上げて抜く姿に直す。
     BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
-    SubmitPose(world, object, boss, pose);
+    // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。
+    if (!BossIntroVisuals::Showing(boss))
+        SubmitPose(world, object, boss, pose);
     BossPhaseShiftVisuals::Render(world, object, boss, pose, seconds);
     UpdateFireTongues(world, object, boss, pose);
     UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
-    BossBodyAccents::Update(world, boss, body, pose, seconds);
+    BossBodyAccents::Update(world, boss, shown, pose, seconds);
 }
 
 void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
@@ -337,23 +367,15 @@ void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView o
     if (!clone.active || !boss.body.visible || boss.body.model.empty() || !object.GetWorldTransform(body))
         return;
     clone.bodyClock += std::max(0.0f, seconds);
-    // 待機の構えの入力：分身の物体の変換（霧から浮かび上がる高さ・向き）と、分身の時計。振れは持たず、
-    // 大袖・草摺は揺らぎだけ。胴の捻りは本体の待機と同じく刀の横の向きから。
-    HIKARI::GameProjectFloat3 blade{}, grip{};
-    BossBodyMath::IdleKamae(boss.body.motion, BossBodyMath::PhaseTwoLook(boss), clone.bodyClock, blade, grip);
-    grip = BossBodyMath::Mul(grip, boss.body.bodyScale);
-    const BossBodyRigInput input{boss.body,
-                                 body,
-                                 boss.bodyHalfHeight,
-                                 clone.bodyClock,
-                                 {},
-                                 BossBodyMath::TwistTarget(boss.body.motion, blade),
-                                 0.0f,
-                                 boss.lastPhaseNumber >= 2,
-                                 true,
-                                 BossBodyMath::SwordScale(boss),
-                                 BossBodyMath::HandScale(boss)};
-    SubmitPose(world, object, boss, BossBodyRig::SolveIdle(input));
+    SubmitPose(world, object, boss, IdlePose(boss, body, clone.bodyClock));
+}
+
+void BossBodyVisuals::UpdatePreviews(HIKARI::WorldView& world) {
+    // 演出ワークスペースがボスの登場の資産を流している間だけ、役者をその時刻の姿にする（流していない時は、触った
+    // ものを元へ戻す＝ふだんの編集の見た目）。胴の煙・効果は出さない。
+    world.ForEachComponent<BossComponent>(
+        HIKARI::MakeComponentTypeId(kBossType),
+        [&](HIKARI::ObjectView, BossComponent& boss) { BossIntroVisuals::Preview(world, boss); });
 }
 
 void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {

@@ -45,6 +45,21 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyEyeFlareBig", "目の閃き：大技（引爆・天降り斬り・退き溜め・霞の大剣）の強さ", eyeFlareBig, 0.0f,
                  8.0f);
     fields.Float("bodyEyeFlareSeconds", "目の閃き：消えるまでの時間 (秒)", eyeFlareSeconds, 0.01f, 3.0f);
+    fields.SceneObject("bodyHelmSpotObject", "兜の中の灯：前を向くスポットライトの物体（無ければ貼り付けの光を出す）",
+                       helmSpotObject);
+    fields.SceneObject("bodyHelmFillObject", "兜の中の灯：兜の中を満たす点光の物体", helmFillObject);
+    fields.Float("bodyHelmGlowStrength", "面頬の隙間の中の光：登場の間の明るさ（画面基準。1 で白）", helmGlowStrength,
+                 0.0f, 64.0f);
+    fields.Float("bodyHelmSpotIntensity", "兜の中の灯：スポットライトの明るさ（場面の光に対する倍率）",
+                 helmSpotIntensity, 0.0f, 100.0f);
+    fields.Float("bodyHelmFillIntensity", "兜の中の灯：点光の明るさ（場面の光に対する倍率）", helmFillIntensity, 0.0f,
+                 100.0f);
+    fields.Float3("bodyHelmSpotLocal", "兜の中の灯：スポットライトの置き場所（兜の局所。+Z が前）", helmSpotLocal);
+    fields.Float3("bodyHelmFillLocal", "兜の中の灯：点光の置き場所（兜の局所）", helmFillLocal);
+    fields.Float("bodyHelmSpotPitchDegrees", "兜の中の灯：スポットライトを下へ向ける角度（度）", helmSpotPitchDegrees,
+                 -45.0f, 45.0f);
+    fields.Float("bodyHelmFlareGain", "兜の中の灯：閃きを明るさに足す倍率", helmFlareGain, 0.0f, 10.0f);
+    fields.Float("bodyHelmLightFlicker", "兜の中の灯：ゆらぎの幅（0 で揺らがない）", helmLightFlicker, 0.0f, 1.0f);
     fields.Float("bodyBladeRimKamae", "刀身の輪郭の光：両手の斬りの構え・溜めの強さ（0 で掛けない）", bladeRimKamae,
                  0.0f, 8.0f);
     fields.Float("bodyBladeRimSwing", "刀身の輪郭の光：振る間の強さ", bladeRimSwing, 0.0f, 8.0f);

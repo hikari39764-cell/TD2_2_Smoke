@@ -1,0 +1,14 @@
+{
+  "displayName": "BossEyeFire",
+  "guid": "b7e94c21d05a4f38a6c1e3f9027d5b84",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossEyeFire.hvfx",
+  "type": "VfxEffect"
+}

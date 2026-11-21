@@ -28,7 +28,11 @@
 				14,
 				15,
 				16,
-				17
+				17,
+				18,
+				19,
+				20,
+				21
 			]
 		}
 	],
@@ -104,6 +108,30 @@
 		{
 			"name":"KnightPauldronLHot",
 			"mesh":17
+		},
+		{
+			"name":"HelmGlow",
+			"mesh":18
+		},
+		{
+			"name":"HelmGlowHot",
+			"mesh":19
+		},
+		{
+			"name":"HelmVisor",
+			"translation":[
+				-0.0010000000000000286,
+				-0.24,
+				0.3505288254221003
+			]
+		},
+		{
+			"name":"HelmCore",
+			"translation":[
+				0.0,
+				0.0,
+				0.0
+			]
 		}
 	],
 	"materials":[
@@ -459,6 +487,54 @@
 				"metallicRoughnessTexture":{
 					"index":9
 				}
+			}
+		},
+		{
+			"name":"HelmGlow",
+			"doubleSided":true,
+			"emissiveFactor":[
+				0.42,
+				0.66,
+				1.0
+			],
+			"extensions":{
+				"KHR_materials_emissive_strength":{
+					"emissiveStrength":14000.0
+				}
+			},
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.0,
+					0.0,
+					0.0,
+					1.0
+				],
+				"metallicFactor":0.0,
+				"roughnessFactor":1.0
+			}
+		},
+		{
+			"name":"HelmGlowHot",
+			"doubleSided":true,
+			"emissiveFactor":[
+				1.0,
+				0.42,
+				0.12
+			],
+			"extensions":{
+				"KHR_materials_emissive_strength":{
+					"emissiveStrength":14000.0
+				}
+			},
+			"pbrMetallicRoughness":{
+				"baseColorFactor":[
+					0.0,
+					0.0,
+					0.0,
+					1.0
+				],
+				"metallicFactor":0.0,
+				"roughnessFactor":1.0
 			}
 		}
 	],
@@ -910,6 +986,32 @@
 					},
 					"indices":144,
 					"material":18
+				}
+			]
+		},
+		{
+			"name":"HelmGlow",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":145,
+						"NORMAL":146
+					},
+					"indices":147,
+					"material":19
+				}
+			]
+		},
+		{
+			"name":"HelmGlowHot",
+			"primitives":[
+				{
+					"attributes":{
+						"POSITION":145,
+						"NORMAL":146
+					},
+					"indices":147,
+					"material":20
 				}
 			]
 		}
@@ -2332,6 +2434,34 @@
 			"componentType":5123,
 			"count":3840,
 			"type":"SCALAR"
+		},
+		{
+			"bufferView":137,
+			"componentType":5126,
+			"count":494,
+			"type":"VEC3",
+			"min":[
+				-0.15400000000000003,
+				-0.368,
+				0.2837330863266536
+			],
+			"max":[
+				0.15199999999999997,
+				-0.11199999999999999,
+				0.32288090604685643
+			]
+		},
+		{
+			"bufferView":138,
+			"componentType":5126,
+			"count":494,
+			"type":"VEC3"
+		},
+		{
+			"bufferView":139,
+			"componentType":5123,
+			"count":2160,
+			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
@@ -3156,12 +3286,40 @@
 			"byteLength":14640,
 			"byteOffset":2357748,
 			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteOffset":2372388,
+			"byteLength":5928,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteOffset":2378316,
+			"byteLength":5928,
+			"target":34962
+		},
+		{
+			"buffer":0,
+			"byteOffset":2384244,
+			"byteLength":4320,
+			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":2372388,
+			"byteLength":2388564,
 			"uri":"KasumiBushi.bin"
 		}
-	]
+	],
+	"extras":{
+		"helmGlow":{
+			"nodes":18,
+			"meshes":18,
+			"materials":19,
+			"accessors":145,
+			"bufferViews":137,
+			"bytes":2372388
+		}
+	}
 }

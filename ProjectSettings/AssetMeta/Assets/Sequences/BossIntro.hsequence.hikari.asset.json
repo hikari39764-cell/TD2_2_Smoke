@@ -1,0 +1,13 @@
+{
+  "displayName": "BossIntro",
+  "guid": "d66fc20a364f475699efb34fe4632336",
+  "importSettings": {
+    "runtimeLoader": "SequenceAssetStore",
+    "sourceAuthoritative": true
+  },
+  "importerId": "SequenceAssetImporter",
+  "importerVersion": 3,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Sequences/BossIntro.hsequence",
+  "type": "Sequence"
+}

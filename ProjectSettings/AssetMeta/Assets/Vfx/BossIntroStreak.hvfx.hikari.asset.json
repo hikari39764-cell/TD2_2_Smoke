@@ -1,0 +1,14 @@
+{
+  "displayName": "BossIntroStreak",
+  "guid": "8f3b2c6d17a94e05b6d8c2a4e91f7350",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 27,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroStreak.hvfx",
+  "type": "VfxEffect"
+}

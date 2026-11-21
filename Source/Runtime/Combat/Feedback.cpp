@@ -73,5 +73,16 @@ bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, uint64_t pr
     return modifier.cameraObjectHandle != 0 && world.GetCamera().SubmitModifier(modifier);
 }
 
+bool SubmitCameraOffset(HIKARI::WorldView& world, uint64_t sourceId, int priority,
+                        HIKARI::GameProjectFloat3 localOffset) {
+    HIKARI::GameProjectCameraModifier modifier{};
+    modifier.sourceId = sourceId;
+    modifier.priority = priority;
+    modifier.localPositionOffset = localOffset;
+    modifier.localTargetOffset = localOffset;
+    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, 0);
+    return modifier.cameraObjectHandle != 0 && world.GetCamera().SubmitModifier(modifier);
+}
+
 } // namespace Feedback
 } // namespace Project_TD2_2
