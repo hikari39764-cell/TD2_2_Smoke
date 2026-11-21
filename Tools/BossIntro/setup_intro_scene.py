@@ -7,8 +7,8 @@
   Assets/Models/BossIntroActor、動画の部品は片段 Rise の最初の姿で止めておく（演技は演出の資産が流す）。
 - 兜・右の手甲・左の手甲：役者の子。位置と向きは役者に対する値（intro_layout.json。エディタで自由に動かしてよい）。
 - ボスの部品（Project_TD2_2.Boss）の項目 introActorObject などに、物体の番号を入れる。
-物体の番号は 960〜966（ほかと重ならない番号に固定。演出の資産の結びがこの番号を指す。964 は演出の灯、965・966 は
-兜の中の灯）。
+物体の番号は 960〜966・968（ほかと重ならない番号に固定。演出の資産の結びがこの番号を指す。964 は演出の灯、965・966 は
+兜の中の灯、968 は戦いの体の模型を初めから読んで小さく描いておく物体）。
 """
 import json
 import math
@@ -114,6 +114,24 @@ ensure(HELM_FILL_ID, "BossHelmFill", None,
        helm_light("Point", 0.25, 1.0, False, {}))
 boss_props["bodyHelmSpotObject"] = {"$hikariRef": "SceneObject", "id": HELM_SPOT_ID}
 boss_props["bodyHelmFillObject"] = {"$hikariRef": "SceneObject", "id": HELM_FILL_ID}
+# 戦いの体の模型（KasumiBushi）を、初めから読み込んで描いておく物体（968）。戦いの体はコードが模型の節を直に出すので、
+# シーンの読み込みの一覧に入らず、登場の終わりに役者から替わる時に初めて読み込まれていた（貼図 12 枚と形をその場で読み、
+# さらに初めて描く材質で光追の場面が作り直されて、動的な GI が履歴を捨てて全部の probe を数フレーム更新した。画が一瞬
+# つかえ、間接光が跳ねて光って見えた）。読み込みの一覧に入れるだけでは材質が登録されないので、描く（visible）が、
+# 大きさ PRELOAD_SCALE（体 5 m が 5 mm）にして、ボスの足元のずっと下に置く。影は落とさない。
+PRELOAD_ID = 968
+COMBAT_MODEL = "b1a52cf03fe7473cbbe74c310e9c5c29"  # Assets/Models/KasumiBushi.gltf
+PRELOAD_SCALE = 0.001
+PRELOAD_DEPTH = 50.0  # ボスの物体からどれだけ下に置くか (m)
+ensure(PRELOAD_ID, "BossBodyPreload", None,
+       {"position": [bp[0], bp[1] - PRELOAD_DEPTH, bp[2]], "rotationEulerDeg": [0.0, 0.0, 0.0],
+        "scale": [PRELOAD_SCALE] * 3},
+       [{"id": 1, "type": "ModelComponent",
+         "properties": {"assetId": COMBAT_MODEL, "castShadow": False, "receiveShadow": False, "renderStatic": False,
+                        "visible": True}}])
+# この物体は動かすものではないので、--keep でも置き場所と大きさを決まりの値に戻す。
+objects[PRELOAD_ID]["transform"] = {"position": [bp[0], bp[1] - PRELOAD_DEPTH, bp[2]], "rotationEulerDeg": [0.0, 0.0, 0.0],
+                                    "scale": [PRELOAD_SCALE] * 3}
 # 前の版が入れた「兜の中の目」の物体（967）と項目は取り除く（光は、兜の模型の中の面で出す：Tools/BossBody/add_helm_glow.py）。
 scene["objects"] = [o for o in scene["objects"] if o["id"] != 967]
 boss_props.pop("bodyHelmEyesObject", None)

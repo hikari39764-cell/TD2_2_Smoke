@@ -27,6 +27,9 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("introSettleSwapSeconds",
                  "演技が済んでから、役者を戦いの体に替えるまでの秒（カメラが引いてから替える。0 ですぐ替える）",
                  settleSwapSeconds, 0.0f, 10.0f);
+    fields.Float("introSettleLightFadeSeconds",
+                 "演技が済んでから、演出の灯を消し切るまでの秒（役者を替える時には必ず 0。0 で替える時にすぐ消す）",
+                 settleLightFadeSeconds, 0.0f, 10.0f);
     fields.Float("introGauntletFlyPower", "手甲が吸われる道：最後の速さ（大きいほど、初めゆっくりで最後に速い）",
                  gauntletFlyPower, 1.0f, 6.0f);
     fields.Float("introGauntletFlyLift", "手甲が吸われる道：途中で浮く高さ (m)", gauntletFlyLift, 0.0f, 5.0f);

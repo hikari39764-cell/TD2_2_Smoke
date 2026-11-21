@@ -363,8 +363,22 @@ void BossIntroActor::HoldKeyLight(HIKARI::WorldView& world, BossComponent& boss)
     const BossIntroActorState& a = boss.introState.actor;
     if (!a.keyLightSeen || boss.intro.keyLightObject == 0u)
         return;
-    if (const HIKARI::ObjectView light = world.FindSceneObject(boss.intro.keyLightObject); light.IsValid())
-        (void)light.SetWorldTransform(a.keyLightAt);
+    const HIKARI::ObjectView light = world.FindSceneObject(boss.intro.keyLightObject);
+    if (!light.IsValid())
+        return;
+    (void)light.SetWorldTransform(a.keyLightAt);
+    if (!a.keyLightLevelSeen)
+        return;
+    // 演技の最後の明るさから、なめらかに 0 へ（役者を替える時には 0 にそろえる。替える時に灯を消しても、光が跳ねない）。
+    const BossIntroSettings& s = boss.intro;
+    const float fade = std::min(s.settleLightFadeSeconds, s.settleSwapSeconds);
+    constexpr float kTicksPerSecond = 60.0f; // 一息の段の frame は、固定の tick（1 秒 60）で数える
+    const float seconds = static_cast<float>(boss.introState.frame) / kTicksPerSecond;
+    const float u = fade > 0.0f ? std::clamp(seconds / fade, 0.0f, 1.0f) : 1.0f;
+    HIKARI::GameProjectLightPatch patch{};
+    patch.fieldMask = static_cast<uint32_t>(HIKARI::GameProjectLightPatchField::Intensity);
+    patch.intensity = a.keyLightLevel * (1.0f - u * u * (3.0f - 2.0f * u));
+    (void)light.GetLight().ApplyPatch(patch);
 }
 
 void BossIntroActor::Hide(HIKARI::WorldView& world, BossComponent& boss) {

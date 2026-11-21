@@ -112,8 +112,14 @@ void BossIntroVisuals::Advance(HIKARI::WorldView& world, BossComponent& boss, fl
                               state.showSeconds + dt * std::clamp(boss.intro.playbackRate, 0.01f, 8.0f), true);
         // 演出の灯が置かれている所を控える（演技の後、役者が出ている間は、ここに保つ）。
         if (const HIKARI::ObjectView light = world.FindSceneObject(boss.intro.keyLightObject);
-            boss.intro.keyLightObject != 0u && light.IsValid())
+            boss.intro.keyLightObject != 0u && light.IsValid()) {
             state.actor.keyLightSeen = light.GetWorldTransform(state.actor.keyLightAt);
+            HIKARI::GameProjectLightState lit{};
+            if (light.GetLight().TryGetState(lit)) {
+                state.actor.keyLightLevelSeen = true;
+                state.actor.keyLightLevel = lit.enabled != 0u ? lit.intensity : 0.0f;
+            }
+        }
         break;
     default:
         // 一息の段の初め：役者を、演技の最後の姿のまま出しておく（カメラが引いてから、戦いの体に替える）。

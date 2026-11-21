@@ -32,6 +32,10 @@ struct BossIntroActorState {
     // ここに置き直す（資産は止まる時に灯を元の場所へ戻す。戻ったままだと、役者に当たる光が急に変わる）。
     bool keyLightSeen = false;
     HIKARI::GameProjectTransform keyLightAt{};
+    // 演出の灯の、演技の最後の明るさ（灯の単位のまま）。演技の後、ここから 0 へ落として行く（資産は止まる時に、明るさも
+    // 元の値へ戻す）。
+    bool keyLightLevelSeen = false;
+    float keyLightLevel = 0.0f;
     // 部品を骨へ寄せる偏移を頼んであるか（付いた時・済んだ時に外す）。
     std::array<bool, kBossIntroPartCount> offsetSet{};
     // 部品のいまの進み（0＝置いてある所、1＝骨の所）と、痙攣の段の進み（0〜1。段の外は 0）、付いたか。効果（煙・

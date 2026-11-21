@@ -281,6 +281,14 @@
             "introKeyLightObject": {
               "$hikariRef": "SceneObject",
               "id": 964
+            },
+            "bodyHelmSpotObject": {
+              "$hikariRef": "SceneObject",
+              "id": 965
+            },
+            "bodyHelmFillObject": {
+              "$hikariRef": "SceneObject",
+              "id": 966
             }
           },
           "type": "Project_TD2_2.Boss"
@@ -1059,6 +1067,144 @@
           1.0,
           1.0,
           1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "LightComponent",
+          "properties": {
+            "enabled": false,
+            "type": "Spot",
+            "color": [
+              0.37,
+              0.58,
+              1.0
+            ],
+            "intensityUnit": "SceneRelative",
+            "sceneRelativeIntensity": 3.0,
+            "intensity": 800.0,
+            "range": 3.0,
+            "castsShadows": true,
+            "sourceRadius": 0.05,
+            "priority": 80,
+            "innerConeAngleDegrees": 34.0,
+            "outerConeAngleDegrees": 62.0,
+            "angularFalloff": 1.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 965,
+      "name": "BossHelmSpot",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3405.875,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          4.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "LightComponent",
+          "properties": {
+            "enabled": false,
+            "type": "Point",
+            "color": [
+              0.37,
+              0.58,
+              1.0
+            ],
+            "intensityUnit": "SceneRelative",
+            "sceneRelativeIntensity": 0.25,
+            "intensity": 800.0,
+            "range": 1.0,
+            "castsShadows": false,
+            "sourceRadius": 0.05,
+            "priority": 80
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 966,
+      "name": "BossHelmFill",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3405.875,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "b1a52cf03fe7473cbbe74c310e9c5c29",
+            "castShadow": false,
+            "receiveShadow": false,
+            "renderStatic": false,
+            "visible": true
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 968,
+      "name": "BossBodyPreload",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3353.375,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          0.001,
+          0.001,
+          0.001
         ]
       }
     }
