@@ -14,7 +14,7 @@ namespace Project_TD2_2::BossHelmGlowData {
 inline constexpr std::string_view kNode = "HelmGlow";
 inline constexpr std::string_view kNodeHot = "HelmGlowHot";
 inline constexpr std::string_view kActorNode = "HelmGlowMesh";
-inline constexpr uint32_t kActorMaterial = 13u;
+inline constexpr uint32_t kActorMaterial = 11u;
 // 役者の刀の刃口の材質（BladeEdge）の槽。登場の間、ここを光らせる。
 inline constexpr uint32_t kActorBladeEdgeMaterial = 6u;
 // 落ちている兜（BossIntroHelm）の、隙間の中の面の材質槽（ふだんは黒。序幕の瞬きの間だけ、コードが光らせる）。

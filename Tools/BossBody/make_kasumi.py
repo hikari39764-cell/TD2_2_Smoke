@@ -11,7 +11,7 @@ import bpy  # noqa: E402
 import bb_armor  # noqa: E402
 import bb_common as bb  # noqa: E402
 import bb_hand  # noqa: E402
-import bb_katana  # noqa: E402
+import bb_greatsword  # noqa: E402
 import bb_knight_armor  # noqa: E402
 import bb_knight_helm  # noqa: E402
 import bb_materials  # noqa: E402
@@ -28,7 +28,8 @@ TASSETS = (7, 0.56, 0.44, 2.14, 15.0)
 
 bb.reset_scene()
 mats = bb_materials.make()
-hilt, blade, blade_hot, katana_length = bb_katana.build(mats)
+# 剣は西洋の大剣（騎士の両手剣）。ノードの名前と握りから剣先までの長さは刀の頃のまま（bb_greatsword.py）。
+hilt, blade, blade_hot, katana_length = bb_greatsword.build(mats)
 print("KATANA_LENGTH %.4f" % katana_length)
 
 hand_r, wrist, elbow, back = bb_hand.build_grip(mats)
