@@ -111,11 +111,32 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const H
     }
     // 上の層：技のクリップを、技の規則の時計の時刻の姿で重ねる。長さはクリップの長さ（表から決めた時）か技の長さ。
     if (moveClip != nullptr) {
+        // 下の層に流せるクリップが無いと、動画の部品は骨格の初期の姿のままで、上の層も効かない（T ポーズになった）。
+        // 待機のクリップが無い時は、技のクリップを下の層に置いて止めておく（姿は上の層が時刻で決める）。
+        if (!idle && state.playing != *moveClip) {
+            if (!animation.Play(handle, *moveClip, 0u, 1u))
+                return fail(*moveClip);
+            (void)animation.Pause(handle);
+            state.playing = *moveClip;
+        }
         const float length = static_cast<float>(move->clipFrames > 0 ? move->clipFrames : move->pre + move->act + move->post);
         const float elapsed = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);
         const float normalized = std::clamp(elapsed / std::max(1.0f, length), 0.0f, 1.0f);
-        if (!animation.SetMaskedPoseLayer(handle, *moveClip, kSkeletonRoot, normalized, 1.0f, settings.blendSeconds))
+        // 時刻を指定する層は毎フレーム置き直すので、混ぜる長さは 0（0 より大きいと置き直すたびに混ぜ始めから
+        // やり直し、重みが上がらず骨格の初期の姿＝T ポーズになる。登場の役者と同じ）。
+        if (!animation.SetMaskedPoseLayer(handle, *moveClip, kSkeletonRoot, normalized, 1.0f, 0.0f))
             return fail(*moveClip);
+        if (state.layerClip != *moveClip) {
+            HIKARI::GameProjectAnimationState animator{};
+            const bool read = animation.GetState(handle, animator);
+            char message[256]{};
+            std::snprintf(message, sizeof(message),
+                          "[AnimBody] MoveClip %s frames=%d move=%s state=%d valid=%d duration=%.2f weight=%.2f base=%s",
+                          moveClip->c_str(), move->clipFrames, move->name.c_str(), static_cast<int>(read),
+                          static_cast<int>(animator.valid), static_cast<double>(animator.durationSeconds),
+                          static_cast<double>(animator.transitionWeight), state.playing.c_str());
+            BossLog::Write(message);
+        }
         state.layerClip = *moveClip;
     }
     Show(object, state);
