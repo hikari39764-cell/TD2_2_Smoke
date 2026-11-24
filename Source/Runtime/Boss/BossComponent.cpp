@@ -525,6 +525,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     body.Describe(fields);
     intro.Describe(fields);
+    animBody.Describe(fields);
     shift.Describe(fields);
     swing.Describe(fields);
     kasumiStep.Describe(fields);

@@ -271,6 +271,10 @@
             "absorbCatchRange": 7.0,
             "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
             "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
+            "animBodyObject": {
+              "$hikariRef": "SceneObject",
+              "id": 970
+            },
             "kamaeFrames": 20,
             "raiseFrames": 12
           },
@@ -787,6 +791,60 @@
           0.0,
           3400.0,
           0.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "autoPlay": false,
+            "clip": "",
+            "clipModelAssetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "finished": false,
+            "loop": true,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          },
+          "type": "AnimatorComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 970,
+      "name": "BossAnimBody",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          6.0
         ],
         "rotationEulerDeg": [
           0.0,

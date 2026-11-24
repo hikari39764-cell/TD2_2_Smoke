@@ -16,6 +16,7 @@
 #include "BossSwingShapes.h"
 #include "BossSwordPose.h"
 #include "BossWatch.h"
+#include "../BossBody/BossAnimBody.h"
 #include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
@@ -963,6 +964,8 @@ public:
     BossBodySettings body;
     // 登場（散らばった鎧と黒い煙から組み上がり、刀を抜く。c-429242）。
     BossIntroSettings intro;
+    // 骨格の体（技をモーションで見せる体。登場の役者と同じ骨格。c-7b1a06）。
+    BossAnimBodySettings animBody;
     // フェーズの変わり目の演出（c-8dd296）。
     BossPhaseShiftSettings shift;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
@@ -1305,6 +1308,7 @@ public:
     BossGreatswordVisualState greatswordVisual;
     BossBodyState bodyState;
     BossIntroState introState;
+    BossAnimBodyState animBodyState;
     BossPhaseShiftState shiftState;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
