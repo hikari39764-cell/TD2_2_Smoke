@@ -164,11 +164,35 @@ void SideMove(BossFrame& frame, const BossMove& move) {
     const float d = move.side * (ease(static_cast<float>(tw) / length) - ease(static_cast<float>(tw - 1) / length));
     const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
     const BossStrikeDirection direction = BossMoveTable::Strike(move, strike).direction;
-    // 横の一撃は左へ、縦の一撃は右へ（プレイヤーから見た左右）。袈裟などは左右交互。
-    const float sign = direction == BossStrikeDirection::Horizontal ? -1.0f
-                       : direction == BossStrikeDirection::Vertical ? 1.0f
-                                                                    : (strike % 2 ? -1.0f : 1.0f) * boss.sideSign;
+    // 横の一撃は左へ、縦の一撃は右へ（プレイヤーから見た左右）。袈裟などは左右交互。矢印の ←→ は横、↑ は縦と同じ。
+    const bool across = direction == BossStrikeDirection::Horizontal || direction == BossStrikeDirection::Left ||
+                        direction == BossStrikeDirection::Right;
+    const bool upright = direction == BossStrikeDirection::Vertical || direction == BossStrikeDirection::Up;
+    const float sign = across ? -1.0f : upright ? 1.0f : (strike % 2 ? -1.0f : 1.0f) * boss.sideSign;
     boss.ground = Add(boss.ground, Mul(Vec3{toPlayer.z, 0.0f, -toPlayer.x}, d * sign));
+}
+
+// 滑って入る（c-7b1a07）：表の「滑って入る m」がある斬りの技は、前隙の終わりの slideInFrames F で、プレイヤーの手前
+// slideInStopDistance m の所へ（最長 slideIn m）突進と同じ滑らかな速さで滑る。行き先は滑り出す tick に決め、もう手前より
+// 近ければ動かない（プレイヤーの背後へは回らない）。滑る技は前隙に歩き寄らない。
+void SlideIn(BossFrame& frame, const BossMove& move, Vec3 toPlayer, float distance) {
+    BossComponent& boss = frame.boss;
+    const int t = boss.stateFrame;
+    const int slide = std::clamp(boss.slideInFrames, 1, std::max(1, move.pre - 1));
+    const int start = move.pre - slide;
+    if (t < start || frame.player == nullptr)
+        return;
+    if (!boss.dashStarted) {
+        boss.dashStarted = true;
+        boss.dashFrom = boss.ground;
+        const float length = std::clamp(distance - boss.slideInStopDistance, 0.0f, move.slideIn);
+        boss.dashTo = Add(boss.ground, Mul(toPlayer, length));
+        BossMoveExecutor::ClampToArena(boss, boss.dashTo);
+        char extra[96]{};
+        std::snprintf(extra, sizeof(extra), "distance=%.3f frames=%d", static_cast<double>(length), slide);
+        Log(boss, "SlideIn", extra);
+    }
+    boss.ground = Lerp(boss.dashFrom, boss.dashTo, Smooth(Share(t - start, slide)));
 }
 
 void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPlayer, float distance) {
@@ -224,7 +248,9 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
             const float k = Share(t, std::max(1, boss.comboLandFrames));
             boss.height = boss.landFrom * (1.0f - k * k);
         }
-        if (move.preShift != 0.0f) {
+        if (move.slideIn > 0.0f) {
+            SlideIn(frame, move, toPlayer, distance);
+        } else if (move.preShift != 0.0f) {
             // 表の「前隙の移動 m」：構えに入るまで（振り上げの間）に、滑らかに前へ・後ろへ動く。
             const int span = std::max(1, move.pre - std::min(boss.kamaeFrames, move.pre - 1));
             if (t <= span) {
@@ -265,7 +291,9 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
         break;
     }
     case BossMoveType::String:
-        if (distance > boss.stringApproachStop && !inKamae)
+        if (move.slideIn > 0.0f)
+            SlideIn(frame, move, toPlayer, distance);
+        else if (distance > boss.stringApproachStop && !inKamae)
             boss.ground = Add(boss.ground, Mul(forward, boss.stringApproachSpeed * frame.dt));
         break;
     default: BossSpecialMoves::Pre(frame, move, progress); break;

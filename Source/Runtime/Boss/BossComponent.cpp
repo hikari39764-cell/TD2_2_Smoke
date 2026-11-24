@@ -8,6 +8,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("技の表", true)) {
         fields.Text("movesPath", "技の表（Data/ からの場所）", movesPath);
         fields.Text("stancePath", "姿勢と帯の重みの表（Data/ からの場所。行動ツリーの「姿勢で技を選ぶ」）", stancePath);
+        fields.Text("clipsPath", "クリップの長さの表（Data/ からの場所。Tools/BossAnim/export_clip_lengths.ps1 が書き出す）",
+                    clipsPath);
+        fields.Text("segmentsPath", "区間の表（Data/ からの場所。モーションの技の当たりの窓。空なら使わない）", segmentsPath);
         fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", typesPath);
         fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
                     "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。");
@@ -181,6 +184,10 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", slashApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachSpeed", "連撃：前隙に近づく速さ (m/秒)", stringApproachSpeed, 0.0f, 20.0f);
         fields.Float("stringApproachStop", "連撃：これより近いと近づかない (m)", stringApproachStop, 0.0f, 30.0f);
+        fields.Int("slideInFrames", "滑って入る：前隙の終わりに滑る長さ (F。表の「滑って入る m」がある斬りの技)", slideInFrames,
+                   1, 120);
+        fields.Float("slideInStopDistance", "滑って入る：プレイヤーの手前で止まる距離 (m)", slideInStopDistance, 0.0f,
+                     30.0f);
         fields.Float("overheadLungeDistance", "上段：前隙の終わりの踏み込み (m)", overheadLungeDistance, 0.0f, 20.0f);
         fields.Float("stepInClearance", "踏み込み：プレイヤーとの間に残す距離 (m)", stepInClearance, 0.0f, 10.0f);
         fields.Float("walkInStopDistance", "間合いを詰める：横歩きに切り替える距離 (m)", walkInStopDistance, 0.0f,
@@ -521,6 +528,7 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     body.Describe(fields);
     intro.Describe(fields);
+    animBody.Describe(fields);
     shift.Describe(fields);
     swing.Describe(fields);
     kasumiStep.Describe(fields);

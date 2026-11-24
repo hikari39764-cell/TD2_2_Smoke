@@ -124,6 +124,11 @@ Strike RiseStrike(const BossComponent& boss) {
     return {&boss.swing.vertical, false, boss.swing.riseFromDegrees, boss.swing.riseToDegrees};
 }
 
+// 斜めの斬り上げ（c-7b1a04）：袈裟の型を逆に回す。mirror なしは右下から左上（↖）、ありは左下から右上（↗）。
+Strike RiseKesaStrike(const BossComponent& boss, bool mirror) {
+    return {&boss.swing.kesa, mirror, boss.swing.riseKesaFromDegrees, boss.swing.riseKesaToDegrees};
+}
+
 // 振りの進み e（0＝構え、1＝振り終わり）の構え。
 BossSwordPose StrikeAt(const Strike& strike, float e) {
     return ShapePose(*strike.shape, strike.mirror, Lerp(strike.from, strike.to, e),
@@ -262,6 +267,18 @@ Strike StrikeOf(const BossComponent& boss, const BossMove& move, size_t index) {
         case BossStrikeDirection::Vertical: strike = ShapeStrike(boss.swing.vertical, false); break;
         case BossStrikeDirection::Kesa: strike = ShapeStrike(boss.swing.kesa, false); break;
         case BossStrikeDirection::ReverseKesa: strike = ShapeStrike(boss.swing.kesa, true); break;
+        // 矢印の横（c-7b1a04）：往復せずその向き。続く「横」は、その逆から往復する。
+        case BossStrikeDirection::Left:
+            strike = ShapeStrike(boss.swing.horizontal, false);
+            side = true;
+            break;
+        case BossStrikeDirection::Right:
+            strike = ShapeStrike(boss.swing.horizontal, true);
+            side = false;
+            break;
+        case BossStrikeDirection::Up: strike = RiseStrike(boss); break;
+        case BossStrikeDirection::UpRight: strike = RiseKesaStrike(boss, true); break;
+        case BossStrikeDirection::UpLeft: strike = RiseKesaStrike(boss, false); break;
         }
         if (i == index)
             return strike;

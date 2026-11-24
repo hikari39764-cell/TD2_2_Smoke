@@ -80,7 +80,9 @@ struct BossStepSpec {
 enum class BossKnock { Flinch, Blow, LastBlow };
 
 // 連撃の一撃の振り方。横は左右を往復、縦は上から下、袈裟・逆袈裟は斜め。
-enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa };
+// 矢印で書いた一撃（c-7b1a04。ボスから見た斬りつける向き）：Left ←・Right → は往復せずその向き、Up ↑ は下から上、
+// UpRight ↗・UpLeft ↖ は斜めに斬り上げる。↓ は Vertical、↘ は Kesa、↙ は ReverseKesa と同じ。
+enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa, Left, Right, Up, UpRight, UpLeft };
 
 // 技の出し方（試作の use）。
 enum class BossMoveUse {
@@ -166,6 +168,13 @@ struct BossMove {
     // 前隙の移動（c-2dd9a2。表の「前隙の移動 m」）：構えの前（振り上げの間）にプレイヤーの方へ動く距離 (m。負は後ろへ)。
     // 0 でない斬りの技は、前隙に歩き寄らない。
     float preShift = 0.0f;
+    // 滑って入る（c-7b1a07。表の「滑って入る m」）：斬りの型・連撃の前隙の終わり（ボスの slideInFrames F）に、プレイヤーの
+    // 手前（ボスの slideInStopDistance m）へ低く滑って詰める最長の距離 (m)。0 は滑らない（今までどおり歩き寄る）。
+    float slideIn = 0.0f;
+    // モーション（c-7b1a08。表の「アニメーション」）：技の始めに骨格の体で流すクリップの名前（空は流さない）。clipFrames は
+    // クリップの長さ (F。クリップの長さの表と区間の表から技の区切りを決めた時だけ 0 より大きい＝技の長さがクリップの長さ)。
+    std::string clip;
+    int clipFrames = 0;
     // 体の回転（c-b1824c。表の「体の回転 °」）：攻撃中の振りに合わせて体ごと回る角度 (rad)。正は横斬りの振りと同じ向き
     // （右から左へ）、負は逆（右横なぎ）。振りの速さの曲線で回り、振り終わりで回りきる（刀の当たりも一緒に回る）。
     float actSpin = 0.0f;
@@ -260,6 +269,10 @@ public:
     // 技の表を読む。先に LoadTypes を済ませておく。読めない値は行の warnings に入れ、既定値で動かす。
     bool LoadMoves(std::string_view csv, const BossTiming& timing, std::vector<std::string>& warnings);
     const std::vector<BossMove>& GetMoves() const { return moves_; }
+    // モーションの技の区切り（c-7b1a08）：LoadMoves の後に、クリップの長さの表（クリップ, 長さ F）と区間の表（技, 当たりの
+    // 始め F, 当たりの終わり F, 向き）を読み、アニメーションの列がある技の前隙・攻撃中・後隙をクリップの長さで決め直す。
+    // 前隙＝最初の当たりの始めまで、当たりと間は区間の表どおり、後隙＝最後の当たりの終わりからクリップの終わりまで。
+    void ApplyClips(std::string_view clipsCsv, std::string_view segmentsCsv, std::vector<std::string>& warnings);
     // 名前が完全に一致する行。無ければ -1。
     int Find(std::string_view name) const;
     static const char* TypeKey(BossMoveType type);

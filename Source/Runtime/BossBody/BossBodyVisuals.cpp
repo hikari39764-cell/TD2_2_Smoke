@@ -6,6 +6,7 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "HIKARI/Project/PresentationViews.h"
+#include "BossAnimBody.h"
 #include "BossBodyAccents.h"
 #include "BossBodyMath.h"
 #include "BossBodyRig.h"
@@ -351,8 +352,12 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossIntroVisuals::ApplyPose(boss, pose, seconds);
     // フェーズの変わり目の演出の間は、膝をついて刀を突き立て、刀身を拭い、斬り上げて抜く姿に直す。
     BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
-    // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。
-    if (!BossIntroVisuals::Showing(boss))
+    // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。骨格の体がクリップを流して
+    // いる間も同じ（c-7b1a06）。登場の間は骨格の体を出さない。
+    const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body, alpha);
+    if (BossIntroVisuals::Showing(boss))
+        BossAnimBody::Stop(world, boss);
+    if (!BossIntroVisuals::Showing(boss) && !animated)
         SubmitPose(world, object, boss, pose);
     BossPhaseShiftVisuals::Render(world, object, boss, pose, seconds);
     UpdateFireTongues(world, object, boss, pose);
@@ -382,6 +387,7 @@ void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
     BossVfx::StopHandle(world, boss.bodyState.smokeVfx);
     BossBodyAccents::Stop(world, boss);
     BossPhaseShiftVisuals::Stop(world, boss);
+    BossAnimBody::Stop(world, boss);
 }
 
 } // namespace Project_TD2_2

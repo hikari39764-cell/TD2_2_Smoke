@@ -157,10 +157,14 @@ void LogMoves(const BossComponent& boss) {
 
 // 表を読む。中身が前と同じなら何もしない（技を出すたびに呼ぶので、Play 中に保存した CSV が次の技から効く）。
 void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
-    TextSink types, moves, stance;
+    TextSink types, moves, stance, clips, segments;
     world.GetProjectData().ReadText(boss.typesPath, types);
     world.GetProjectData().ReadText(boss.movesPath, moves);
     world.GetProjectData().ReadText(boss.stancePath, stance);
+    if (!boss.clipsPath.empty())
+        world.GetProjectData().ReadText(boss.clipsPath, clips);
+    if (!boss.segmentsPath.empty())
+        world.GetProjectData().ReadText(boss.segmentsPath, segments);
     if (!types.ok || !moves.ok) {
         if (!boss.tableLoaded) {
             char message[256]{};
@@ -172,15 +176,21 @@ void LoadTable(HIKARI::WorldView& world, BossComponent& boss) {
         return;
     }
     if (types.text == boss.loadedTypesText && moves.text == boss.loadedMovesText &&
-        (!stance.ok || stance.text == boss.loadedStanceText))
+        (!stance.ok || stance.text == boss.loadedStanceText) && (!clips.ok || clips.text == boss.loadedClipsText) &&
+        (!segments.ok || segments.text == boss.loadedSegmentsText))
         return;
     std::vector<std::string> warnings;
     BossMoveTable table;
     table.LoadTypes(types.text, warnings);
     table.LoadMoves(moves.text, TimingOf(boss), warnings);
+    // モーションの技の区切り（c-7b1a08）：アニメーションの列がある技の長さを、クリップの長さと区間の表で決め直す。
+    table.ApplyClips(clips.ok ? std::string_view(clips.text) : std::string_view{},
+                     segments.ok ? std::string_view(segments.text) : std::string_view{}, warnings);
     boss.table = std::move(table);
     boss.loadedTypesText = types.text;
     boss.loadedMovesText = moves.text;
+    boss.loadedClipsText = clips.ok ? clips.text : std::string{};
+    boss.loadedSegmentsText = segments.ok ? segments.text : std::string{};
     // 姿勢と帯の重みの表（無ければ姿勢の節は歩くだけ）。技の名前を表の行へ結び付ける。
     BossStanceTable stanceTable;
     if (stance.ok) {

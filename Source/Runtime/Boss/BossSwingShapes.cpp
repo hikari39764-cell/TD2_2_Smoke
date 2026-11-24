@@ -74,6 +74,10 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("swingRiseFromDegrees", "炎走りの斬り上げ：縦の型のこの角度から（度）", riseFromDegrees, -180.0f,
                  180.0f);
     fields.Float("swingRiseToDegrees", "炎走りの斬り上げ：この角度まで逆に回す（度）", riseToDegrees, -180.0f, 180.0f);
+    fields.Float("swingRiseKesaFromDegrees", "連撃の斜めの斬り上げ ↗↖：袈裟の型のこの角度から（度）", riseKesaFromDegrees,
+                 -180.0f, 180.0f);
+    fields.Float("swingRiseKesaToDegrees", "連撃の斜めの斬り上げ ↗↖：この角度まで逆に回す（度）", riseKesaToDegrees,
+                 -180.0f, 180.0f);
     fields.Float("swingGreatswordCrouch", "霞の大剣：薙ぐ間に腰を落とす量 (m。見た目だけ)", greatswordCrouch, 0.0f,
                  3.0f);
     fields.Float("swingGreatswordLean", "霞の大剣：薙ぐ間の前傾 (度。見た目だけ)", greatswordLean, -30.0f, 30.0f);

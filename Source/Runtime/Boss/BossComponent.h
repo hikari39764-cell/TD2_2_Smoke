@@ -16,6 +16,7 @@
 #include "BossSwingShapes.h"
 #include "BossSwordPose.h"
 #include "BossWatch.h"
+#include "../BossBody/BossAnimBody.h"
 #include "../BossBody/BossBodySettings.h"
 #include "../Burn/BurnFieldComponent.h"
 #include "../Combat/Feedback.h"
@@ -519,6 +520,10 @@ public:
     std::string typesPath = "Boss/kasumi_bushi_move_types.csv";
     // 姿勢と帯の重みの表（c-19e3b0。行動ツリーの節「姿勢で技を選ぶ」が使う）。
     std::string stancePath = "Boss/kasumi_bushi_stance.csv";
+    // モーションの技の区切り（c-7b1a08）：クリップの長さの表（Tools/BossAnim/export_clip_lengths.ps1 が書き出す）と、
+    // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
+    std::string clipsPath = "Boss/boss_anim_clips.csv";
+    std::string segmentsPath;
     BossStanceSettings stance;
     // ヒョウタンの読み（c-14392d。攻勢の技選びの重み・一拍止め・横の剣気の寄せ）。
     BossGourdReadSettings gourdRead;
@@ -672,6 +677,10 @@ public:
     float slashApproachSpeed = 1.2f;
     float stringApproachSpeed = 1.6f;
     float stringApproachStop = 3.942f;
+    // 滑って入る（c-7b1a07）：表の「滑って入る m」がある斬りの技は、前隙の終わりのこの F で、プレイヤーからこの距離 (m)
+    // の所へ低く滑って詰める（突進と同じ滑らかな速さ。もう近ければ動かない）。
+    int slideInFrames = 16;
+    float slideInStopDistance = 4.0f;
     float overheadLungeDistance = 2.43f;
     // 上段溜め（c-b1824c）：前隙の始めの overheadRaiseFrames F で大上段へ振りかぶり、残りは溜める（溜めの揺らぎは跳ぶ前に
     // 入る）。前隙の終わりの overheadLeapFrames F で、プレイヤーから overheadLeapStop m の所へ跳び込み（最長 overheadLeapMax m。
@@ -959,6 +968,8 @@ public:
     BossBodySettings body;
     // 登場（散らばった鎧と黒い煙から組み上がり、刀を抜く。c-429242）。
     BossIntroSettings intro;
+    // 骨格の体（技をモーションで見せる体。登場の役者と同じ骨格。c-7b1a06）。
+    BossAnimBodySettings animBody;
     // フェーズの変わり目の演出（c-8dd296）。
     BossPhaseShiftSettings shift;
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
@@ -1137,6 +1148,8 @@ public:
     BossMoveTable table;
     BossStanceTable stanceTable;
     std::string loadedStanceText;
+    std::string loadedClipsText;
+    std::string loadedSegmentsText;
     BossStanceMemory stanceMemory;
     BossGourdReadMemory gourdReadMemory;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
@@ -1301,6 +1314,7 @@ public:
     BossGreatswordVisualState greatswordVisual;
     BossBodyState bodyState;
     BossIntroState introState;
+    BossAnimBodyState animBodyState;
     BossPhaseShiftState shiftState;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
