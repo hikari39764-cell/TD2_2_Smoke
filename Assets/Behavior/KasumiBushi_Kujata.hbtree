@@ -6,22 +6,1041 @@
     {
       "id": 1,
       "type": "Selector",
-      "name": "霞武士（作り直し中）",
-      "note": "SmokeArena_Kujata 専用の木（c-7b1a01）。最終版の 12 パターンで作り直すため、節を全部外した。新しい節は c-7b1a03 で組む。元の木は Assets/Behavior/KasumiBushi.hbtree。",
-      "params": {
-        "reactive": true
-      },
+      "name": "霞武士（12 パターン）",
+      "note": "SmokeArena_Kujata 専用の木（c-7b1a03）。最終版の 12 パターン（Data/Boss/kasumi_bushi_moves_kujata.csv）を、プレイヤーの射程に合わせた間合いの帯ごとに重みで選んで出し、技の後に待つ。反応の枝はまだ無い。元の木は Assets/Behavior/KasumiBushi.hbtree。",
       "children": [
-        2
+        2,
+        101
       ]
     },
     {
       "id": 2,
-      "type": "Wait",
-      "name": "仮：立って待つ",
-      "note": "Selector は子が 1 つ以上いるので置いた仮の節。ボスは技を出さずに立つ。c-7b1a03 で新しい節に置き換える。",
+      "type": "Sequence",
+      "name": "中立",
+      "children": [
+        3,
+        100
+      ]
+    },
+    {
+      "id": 3,
+      "type": "Selector",
+      "name": "間合いで選ぶ（プレイヤーの射程の帯）",
+      "note": "帯の境はプレイヤーの射程から取った：7 m＝吸い込みが届く（Gourd.gatherRange）、10 m＝弾が弱まり始める（GourdShot.falloffStart）、15 m＝弾が消える（GourdShot.range）。プレイヤーの値を変えたら、各帯の「距離」の節も合わせる。ボスは歩いて 6.5 m（Boss.walkInStopDistance）まで詰める。",
+      "children": [
+        4,
+        25,
+        57,
+        89
+      ]
+    },
+    {
+      "id": 4,
+      "type": "Sequence",
+      "name": "近い：吸い込みが届く（0〜7 m）",
+      "children": [
+        5,
+        6
+      ]
+    },
+    {
+      "id": 5,
+      "type": "Project_TD2_2.BossDistance",
       "params": {
-        "seconds": 1.0
+        "max": 7,
+        "min": 0
+      }
+    },
+    {
+      "id": 6,
+      "type": "Selector",
+      "name": "近い：吸い込みが届く（0〜7 m）の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        7,
+        9,
+        11,
+        13,
+        15,
+        17,
+        19,
+        21,
+        23
+      ]
+    },
+    {
+      "id": 7,
+      "type": "Score",
+      "name": "斜め切り下ろし（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        8
+      ]
+    },
+    {
+      "id": 8,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろし",
+      "params": {
+        "move": "斜め切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 9,
+      "type": "Score",
+      "name": "横二連撃（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        10
+      ]
+    },
+    {
+      "id": 10,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横二連撃",
+      "params": {
+        "move": "横二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 11,
+      "type": "Score",
+      "name": "溜め横（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        12
+      ]
+    },
+    {
+      "id": 12,
+      "type": "Project_TD2_2.BossMove",
+      "name": "溜め横",
+      "params": {
+        "move": "溜め横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 13,
+      "type": "Score",
+      "name": "三連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        14
+      ]
+    },
+    {
+      "id": 14,
+      "type": "Project_TD2_2.BossMove",
+      "name": "三連撃",
+      "params": {
+        "move": "三連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 15,
+      "type": "Score",
+      "name": "五連撃（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        16
+      ]
+    },
+    {
+      "id": 16,
+      "type": "Project_TD2_2.BossMove",
+      "name": "五連撃",
+      "params": {
+        "move": "五連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 17,
+      "type": "Score",
+      "name": "範囲爆発二連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        18
+      ]
+    },
+    {
+      "id": 18,
+      "type": "Project_TD2_2.BossMove",
+      "name": "範囲爆発二連撃",
+      "params": {
+        "move": "範囲爆発二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 19,
+      "type": "Score",
+      "name": "二連撃からの三連撃目（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        20
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Project_TD2_2.BossMove",
+      "name": "二連撃からの三連撃目",
+      "params": {
+        "move": "二連撃からの三連撃目",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 21,
+      "type": "Score",
+      "name": "斜め切り下ろしからの回転切り下ろし（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        22
+      ]
+    },
+    {
+      "id": 22,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろしからの回転切り下ろし",
+      "params": {
+        "move": "斜め切り下ろしからの回転切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 23,
+      "type": "Score",
+      "name": "後ろへ下がる（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        24
+      ]
+    },
+    {
+      "id": 24,
+      "type": "Project_TD2_2.BossMove",
+      "name": "後ろへ下がる",
+      "params": {
+        "move": "後ろへ下がる",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 25,
+      "type": "Sequence",
+      "name": "中くらい：弾が強い（7〜10 m）",
+      "children": [
+        26,
+        27
+      ]
+    },
+    {
+      "id": 26,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 10,
+        "min": 7
+      }
+    },
+    {
+      "id": 27,
+      "type": "Selector",
+      "name": "中くらい：弾が強い（7〜10 m）の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        28,
+        49,
+        51,
+        53,
+        55
+      ]
+    },
+    {
+      "id": 28,
+      "type": "Score",
+      "name": "詰めて斬る（4）",
+      "params": {
+        "score": 4
+      },
+      "children": [
+        29
+      ]
+    },
+    {
+      "id": 29,
+      "type": "Sequence",
+      "name": "詰めて斬る",
+      "note": "歩いて近づき（ボスの walkInStopDistance で止まる。歩く長さは表の「間合いを詰める」の攻撃中）、7 m 以内に入れていたら待たずに近い技を 1 つ出す。入れていなければ斬らずに待ちへ。",
+      "children": [
+        30,
+        31,
+        32
+      ]
+    },
+    {
+      "id": 30,
+      "type": "Project_TD2_2.BossMove",
+      "name": "間合いを詰める",
+      "params": {
+        "move": "間合いを詰める",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 31,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 7,
+        "min": 0
+      }
+    },
+    {
+      "id": 32,
+      "type": "Selector",
+      "name": "詰めた後の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        33,
+        35,
+        37,
+        39,
+        41,
+        43,
+        45,
+        47
+      ]
+    },
+    {
+      "id": 33,
+      "type": "Score",
+      "name": "斜め切り下ろし（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        34
+      ]
+    },
+    {
+      "id": 34,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろし",
+      "params": {
+        "move": "斜め切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 35,
+      "type": "Score",
+      "name": "横二連撃（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        36
+      ]
+    },
+    {
+      "id": 36,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横二連撃",
+      "params": {
+        "move": "横二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 37,
+      "type": "Score",
+      "name": "溜め横（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        38
+      ]
+    },
+    {
+      "id": 38,
+      "type": "Project_TD2_2.BossMove",
+      "name": "溜め横",
+      "params": {
+        "move": "溜め横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 39,
+      "type": "Score",
+      "name": "三連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        40
+      ]
+    },
+    {
+      "id": 40,
+      "type": "Project_TD2_2.BossMove",
+      "name": "三連撃",
+      "params": {
+        "move": "三連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 41,
+      "type": "Score",
+      "name": "五連撃（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        42
+      ]
+    },
+    {
+      "id": 42,
+      "type": "Project_TD2_2.BossMove",
+      "name": "五連撃",
+      "params": {
+        "move": "五連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 43,
+      "type": "Score",
+      "name": "範囲爆発二連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        44
+      ]
+    },
+    {
+      "id": 44,
+      "type": "Project_TD2_2.BossMove",
+      "name": "範囲爆発二連撃",
+      "params": {
+        "move": "範囲爆発二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 45,
+      "type": "Score",
+      "name": "二連撃からの三連撃目（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        46
+      ]
+    },
+    {
+      "id": 46,
+      "type": "Project_TD2_2.BossMove",
+      "name": "二連撃からの三連撃目",
+      "params": {
+        "move": "二連撃からの三連撃目",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 47,
+      "type": "Score",
+      "name": "斜め切り下ろしからの回転切り下ろし（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        48
+      ]
+    },
+    {
+      "id": 48,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろしからの回転切り下ろし",
+      "params": {
+        "move": "斜め切り下ろしからの回転切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 49,
+      "type": "Score",
+      "name": "ジャンプ二段（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        50
+      ]
+    },
+    {
+      "id": 50,
+      "type": "Project_TD2_2.BossMove",
+      "name": "ジャンプ二段",
+      "params": {
+        "move": "ジャンプ二段",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 51,
+      "type": "Score",
+      "name": "突進横（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        52
+      ]
+    },
+    {
+      "id": 52,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横",
+      "params": {
+        "move": "突進横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 53,
+      "type": "Score",
+      "name": "溜め横（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        54
+      ]
+    },
+    {
+      "id": 54,
+      "type": "Project_TD2_2.BossMove",
+      "name": "溜め横",
+      "params": {
+        "move": "溜め横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 55,
+      "type": "Score",
+      "name": "横歩き（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        56
+      ]
+    },
+    {
+      "id": 56,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横歩き",
+      "params": {
+        "move": "横歩き",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 57,
+      "type": "Sequence",
+      "name": "遠い：弾が弱まる（10〜15 m）",
+      "children": [
+        58,
+        59
+      ]
+    },
+    {
+      "id": 58,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 15,
+        "min": 10
+      }
+    },
+    {
+      "id": 59,
+      "type": "Selector",
+      "name": "遠い：弾が弱まる（10〜15 m）の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        60,
+        62,
+        64,
+        66,
+        68
+      ]
+    },
+    {
+      "id": 60,
+      "type": "Score",
+      "name": "突進横（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        61
+      ]
+    },
+    {
+      "id": 61,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横",
+      "params": {
+        "move": "突進横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 62,
+      "type": "Score",
+      "name": "ジャンプ二段（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        63
+      ]
+    },
+    {
+      "id": 63,
+      "type": "Project_TD2_2.BossMove",
+      "name": "ジャンプ二段",
+      "params": {
+        "move": "ジャンプ二段",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 64,
+      "type": "Score",
+      "name": "拡散ショット（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        65
+      ]
+    },
+    {
+      "id": 65,
+      "type": "Project_TD2_2.BossMove",
+      "name": "拡散ショット",
+      "params": {
+        "move": "拡散ショット",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 66,
+      "type": "Score",
+      "name": "煙弾速射（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        67
+      ]
+    },
+    {
+      "id": 67,
+      "type": "Project_TD2_2.BossMove",
+      "name": "煙弾速射",
+      "params": {
+        "move": "煙弾速射",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 68,
+      "type": "Score",
+      "name": "詰めて斬る（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        69
+      ]
+    },
+    {
+      "id": 69,
+      "type": "Sequence",
+      "name": "詰めて斬る",
+      "note": "歩いて近づき（ボスの walkInStopDistance で止まる。歩く長さは表の「間合いを詰める」の攻撃中）、7 m 以内に入れていたら待たずに近い技を 1 つ出す。入れていなければ斬らずに待ちへ。",
+      "children": [
+        70,
+        71,
+        72
+      ]
+    },
+    {
+      "id": 70,
+      "type": "Project_TD2_2.BossMove",
+      "name": "間合いを詰める",
+      "params": {
+        "move": "間合いを詰める",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 71,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 7,
+        "min": 0
+      }
+    },
+    {
+      "id": 72,
+      "type": "Selector",
+      "name": "詰めた後の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        73,
+        75,
+        77,
+        79,
+        81,
+        83,
+        85,
+        87
+      ]
+    },
+    {
+      "id": 73,
+      "type": "Score",
+      "name": "斜め切り下ろし（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        74
+      ]
+    },
+    {
+      "id": 74,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろし",
+      "params": {
+        "move": "斜め切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 75,
+      "type": "Score",
+      "name": "横二連撃（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        76
+      ]
+    },
+    {
+      "id": 76,
+      "type": "Project_TD2_2.BossMove",
+      "name": "横二連撃",
+      "params": {
+        "move": "横二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 77,
+      "type": "Score",
+      "name": "溜め横（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        78
+      ]
+    },
+    {
+      "id": 78,
+      "type": "Project_TD2_2.BossMove",
+      "name": "溜め横",
+      "params": {
+        "move": "溜め横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 79,
+      "type": "Score",
+      "name": "三連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        80
+      ]
+    },
+    {
+      "id": 80,
+      "type": "Project_TD2_2.BossMove",
+      "name": "三連撃",
+      "params": {
+        "move": "三連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 81,
+      "type": "Score",
+      "name": "五連撃（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        82
+      ]
+    },
+    {
+      "id": 82,
+      "type": "Project_TD2_2.BossMove",
+      "name": "五連撃",
+      "params": {
+        "move": "五連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 83,
+      "type": "Score",
+      "name": "範囲爆発二連撃（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        84
+      ]
+    },
+    {
+      "id": 84,
+      "type": "Project_TD2_2.BossMove",
+      "name": "範囲爆発二連撃",
+      "params": {
+        "move": "範囲爆発二連撃",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 85,
+      "type": "Score",
+      "name": "二連撃からの三連撃目（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        86
+      ]
+    },
+    {
+      "id": 86,
+      "type": "Project_TD2_2.BossMove",
+      "name": "二連撃からの三連撃目",
+      "params": {
+        "move": "二連撃からの三連撃目",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 87,
+      "type": "Score",
+      "name": "斜め切り下ろしからの回転切り下ろし（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        88
+      ]
+    },
+    {
+      "id": 88,
+      "type": "Project_TD2_2.BossMove",
+      "name": "斜め切り下ろしからの回転切り下ろし",
+      "params": {
+        "move": "斜め切り下ろしからの回転切り下ろし",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 89,
+      "type": "Sequence",
+      "name": "射程の外：弾が届かない（15 m〜）",
+      "children": [
+        90,
+        91
+      ]
+    },
+    {
+      "id": 90,
+      "type": "Project_TD2_2.BossDistance",
+      "params": {
+        "max": 40,
+        "min": 15
+      }
+    },
+    {
+      "id": 91,
+      "type": "Selector",
+      "name": "射程の外：弾が届かない（15 m〜）の技",
+      "note": "Score の数が重み（出やすさの比）。出せない技は飛ばして次を選ぶ。",
+      "params": {
+        "order": "random"
+      },
+      "children": [
+        92,
+        94,
+        96,
+        98
+      ]
+    },
+    {
+      "id": 92,
+      "type": "Score",
+      "name": "間合いを詰める（4）",
+      "params": {
+        "score": 4
+      },
+      "children": [
+        93
+      ]
+    },
+    {
+      "id": 93,
+      "type": "Project_TD2_2.BossMove",
+      "name": "間合いを詰める",
+      "params": {
+        "move": "間合いを詰める",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 94,
+      "type": "Score",
+      "name": "突進横（2）",
+      "params": {
+        "score": 2
+      },
+      "children": [
+        95
+      ]
+    },
+    {
+      "id": 95,
+      "type": "Project_TD2_2.BossMove",
+      "name": "突進横",
+      "params": {
+        "move": "突進横",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 96,
+      "type": "Score",
+      "name": "拡散ショット（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        97
+      ]
+    },
+    {
+      "id": 97,
+      "type": "Project_TD2_2.BossMove",
+      "name": "拡散ショット",
+      "params": {
+        "move": "拡散ショット",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 98,
+      "type": "Score",
+      "name": "煙弾速射（1）",
+      "params": {
+        "score": 1
+      },
+      "children": [
+        99
+      ]
+    },
+    {
+      "id": 99,
+      "type": "Project_TD2_2.BossMove",
+      "name": "煙弾速射",
+      "params": {
+        "move": "煙弾速射",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 100,
+      "type": "Project_TD2_2.BossWait",
+      "name": "技の後の待ち",
+      "params": {
+        "maxFrames": 110,
+        "minFrames": 20
+      }
+    },
+    {
+      "id": 101,
+      "type": "Project_TD2_2.BossWait",
+      "name": "出せる技が無い時の待ち",
+      "params": {
+        "maxFrames": 40,
+        "minFrames": 20
       }
     }
   ]
