@@ -784,7 +784,7 @@ BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSword
     BossSwordPoints points;
     points.base = Add(line.root, Mul(line.direction, boss.swordLength * kSwordBaseShare));
     points.inner = Add(line.root, Mul(line.direction, boss.swordLength * kSwordInnerShare));
-    points.outer = Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength));
+    points.outer = Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength + pose.reach));
     return points;
 }
 

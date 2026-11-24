@@ -77,6 +77,15 @@ const BossMove* CurrentMove(const BossComponent& boss) {
     return boss.state == BossState::Act ? BossRules::GetMove(boss, boss.move) : nullptr;
 }
 
+// 待機のクリップ（刀を肩に担ぐ姿）を出してよい間（c-40f6c1）：待機、移動の技（横歩き・寄る・下がる）、霞歩（回避の
+// 横っ飛び・怯み跳び）、クリップのある技。気絶・撃破・コードで姿を作るほかの技の間は、骨格の体を隠して今までの外形で動く。
+bool IdleAllowed(const BossComponent& boss, const BossMove* move) {
+    if (boss.state == BossState::Idle)
+        return true;
+    return move != nullptr &&
+           (BossMoveTable::IsMoveType(move->type) || move->type == BossMoveType::KasumiStep || !move->clip.empty());
+}
+
 // クリップの刀の骨（模型の空間）の、規則の時計の frame F の所（F の間は補間）。
 struct ClipSword {
     Vec3 position{};
@@ -126,6 +135,18 @@ void BossAnimBodySettings::Describe(HIKARI::PropertyFields& fields) {
                 clipSword);
     fields.Text("animBodySwordNode", "刀の骨の名前（模型の節点）", swordNode);
     fields.Text("animBodyLeftHandNode", "左手の骨の名前（模型の節点。左手の技の弾を出す所）", leftHandNode);
+    fields.Float("animBodyTwoHandNear", "両手の霧の刀：左手が柄からこの距離 (m) 以下で両手で握った", twoHandNear, 0.0f,
+                 10.0f);
+    fields.Float("animBodyTwoHandFar", "…この距離 (m) 以上で片手（間はなめらかに）", twoHandFar, 0.0f, 10.0f);
+    fields.Float("animBodyTwoHandReach", "…両手で握った刀の当たりを剣先の先へ伸ばす長さ (m)", twoHandReach, 0.0f,
+                 20.0f);
+    fields.Float("animBodyTwoHandMist", "…刀身に沿って場の霧へ入れる霧（毎秒。剣の煙と同じ単位。0 は出さない）",
+                 twoHandMist, 0.0f, 500.0f);
+    fields.Float("animBodyTwoHandMistRadius", "…霧を入れる半径 (m)", twoHandMistRadius, 0.1f, 10.0f);
+    fields.Float("animBodyLeftHandMist", "左手にまとう霧（毎秒。剣の煙と同じ単位。0 は出さない）", leftHandMist, 0.0f,
+                 500.0f);
+    fields.Float("animBodyLeftHandMistRadius", "…霧を入れる半径 (m)", leftHandMistRadius, 0.1f, 10.0f);
+    fields.Float("animBodyLeftHandMistSwirl", "…霧が左手の周りを回る速さ (m/秒)", leftHandMistSwirl, 0.0f, 50.0f);
 }
 
 bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body,
@@ -149,7 +170,7 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const H
     const BossMove* move = boss.state == BossState::Act ? BossRules::GetMove(boss, boss.move) : nullptr;
     const std::string* moveClip = move != nullptr && !move->clip.empty() && move->clip != state.failedClip ? &move->clip
                                                                                                              : nullptr;
-    const bool idle = !settings.idleClip.empty() && settings.idleClip != state.failedClip;
+    const bool idle = !settings.idleClip.empty() && settings.idleClip != state.failedClip && IdleAllowed(boss, move);
     if (moveClip == nullptr && !state.layerClip.empty()) {
         (void)animation.ClearMaskedPoseLayer(handle, settings.blendSeconds);
         state.layerClip.clear();
@@ -271,6 +292,7 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
         track.swordPosition.reserve(count);
         track.swordRotation.reserve(count);
         track.leftHand.reserve(count);
+        track.leftHandRotation.reserve(count);
         bool ok = true;
         for (size_t f = 0; f < count && ok; ++f) {
             // 模型の空間（Local。節点の全体の行列）で読む。体の置き場所（足元・向き・大きさ）は使う時に掛ける。
@@ -281,6 +303,7 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
             track.swordPosition.push_back(out[0].position);
             track.swordRotation.push_back(out[0].rotation);
             track.leftHand.push_back(out[1].position);
+            track.leftHandRotation.push_back(out[1].rotation);
         }
         char message[320]{};
         if (!ok) {
@@ -322,6 +345,8 @@ bool BossAnimBody::ClipSwordPose(const BossComponent& boss, BossSwordPose& out) 
     out.grip = BossMath::Mul(now.position, scale);
     out.direction = BladeDirection(now.rotation);
     out.twoHand = 0.0f;
+    // 両手で握った刀は霧をまとい、当たりが剣先の先へ伸びる（c-40f6c1）。
+    out.reach = boss.animBody.twoHandReach * TwoHand(boss);
     // 斬る向き：剣先の動き（次の F まで）の、刀に直交する成分（刀光が刃から先に進む向き）。動いていなければ決めない。
     const Vec3 tipNow = BossMath::Add(now.position, BossMath::Mul(out.direction, boss.swordLength));
     const Vec3 tipNext = BossMath::Add(next.position, BossMath::Mul(BladeDirection(next.rotation), boss.swordLength));
@@ -329,6 +354,17 @@ bool BossAnimBody::ClipSwordPose(const BossComponent& boss, BossSwordPose& out) 
     if (BossMath::Length(across) > 1e-4f)
         out.edge = BossMath::Normalize(across);
     return true;
+}
+
+float BossAnimBody::TwoHand(const BossComponent& boss) {
+    const BossMove* move = CurrentMove(boss);
+    if (move == nullptr || !ClipMove(boss, *move))
+        return 0.0f;
+    const BossAnimBodySettings& s = boss.animBody;
+    const ClipSword now = SampleTrack(*TrackOf(boss, move->clip), MoveElapsed(boss, *move));
+    const float gap = BossMath::Length(BossMath::Sub(now.leftHand, now.position));
+    const float u = (s.twoHandFar - gap) / std::max(1e-3f, s.twoHandFar - s.twoHandNear);
+    return BossMath::Smooth(u);
 }
 
 bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectFloat3& out) {
@@ -341,11 +377,24 @@ bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectF
     return true;
 }
 
-void BossAnimBody::ApplyPose(BossComponent& boss, float alpha, BossBodyPose& pose) {
+void BossAnimBody::ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, BossBodyPose& pose) {
     BossAnimBodyState& state = boss.animBodyState;
     const BossMove* move = CurrentMove(boss);
     state.tipSpeed = 0.0f;
-    if (!state.active || move == nullptr || !ClipMove(boss, *move))
+    state.leftHandSeen = false;
+    if (!state.active)
+        return;
+    // 左手の飾り（手の光・まとう霧）は、見えている左手の骨の所に付ける（待機の姿の間も。c-40f6c1）。
+    const HIKARI::ObjectView object = world.FindSceneObject(boss.animBody.object);
+    HIKARI::GameProjectTransform hand{};
+    if (object.IsValid() && world.GetAnimation().IsValid() &&
+        world.GetAnimation().GetSocketTransform(object.GetHandle().value, boss.animBody.leftHandNode,
+                                                HIKARI::GameProjectAnimationSocketSpace::World, hand)) {
+        pose.leftHand.position = hand.position;
+        state.leftHandWorld = hand.position;
+        state.leftHandSeen = true;
+    }
+    if (move == nullptr || !ClipMove(boss, *move))
         return;
     const BossClipSwordTrack& track = *TrackOf(boss, move->clip);
     const float frame = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);

@@ -269,10 +269,13 @@
           "id": 90,
           "properties": {
             "absorbCatchRange": 7.0,
+            "animBodyIdleClip": "Idle_Shoulder",
+            "animBodyLeftHandMist": 4.0,
             "animBodyObject": {
               "$hikariRef": "SceneObject",
               "id": 970
             },
+            "animBodyTwoHandMist": 24.0,
             "bodyHelmFillObject": {
               "$hikariRef": "SceneObject",
               "id": 966
@@ -318,7 +321,7 @@
             "enabled": true,
             "interval": 0.0,
             "tree": {
-              "$hikari.assetGuid": "f2529c5505bb568ddd4609bf02653f90"
+              "$hikari.assetGuid": "939fbcc60a243d750dfa4133eaaca3ea"
             },
             "update": "GameCode",
             "values": ""

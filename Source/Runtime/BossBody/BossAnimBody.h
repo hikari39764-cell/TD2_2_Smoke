@@ -38,6 +38,21 @@ struct BossAnimBodySettings {
     // 刀の骨・左手の骨の名前（模型の節点の名前。左手の技の弾はこの骨の所から出る）。
     std::string swordNode = "Sword";
     std::string leftHandNode = "LeftHand";
+    // 両手の霧の刀（c-40f6c1）：左手が刀の柄（刀の骨の原点）からこの距離 (m、模型の大きさ) まで近づくと両手で握った
+    // とみなす（twoHandNear 以下で 1、twoHandFar 以上で 0、間はなめらかに）。握っている間は当たりの線を剣先の先へ
+    // twoHandReach m 伸ばし、刀身に沿って場の霧へ霧を毎秒 twoHandMist（剣の煙と同じ単位。0 は出さない）、半径
+    // twoHandMistRadius m で入れる。
+    float twoHandNear = 0.9f;
+    float twoHandFar = 1.4f;
+    float twoHandReach = 2.5f;
+    float twoHandMist = 0.0f;
+    float twoHandMistRadius = 1.2f;
+    // 左手にまとう霧（c-40f6c1）：骨格の体が出ている間、見えている左手の所から場の霧へ霧を毎秒 leftHandMist（剣の煙と
+    // 同じ単位。0 は出さない）、半径 leftHandMistRadius m で入れる。霧は左手の周りを leftHandMistSwirl m/秒 で回る向きに
+    // 吹き出す（手に巻き付いて見える）。
+    float leftHandMist = 0.0f;
+    float leftHandMistRadius = 0.9f;
+    float leftHandMistSwirl = 3.0f;
 };
 
 // 技のクリップの、規則の時計の F（60 Hz）ごとの刀の骨と左手の骨の置き場所（模型の空間：足元が原点、+X 左・+Z 前、
@@ -47,6 +62,7 @@ struct BossClipSwordTrack {
     std::vector<HIKARI::GameProjectFloat3> swordPosition;
     std::vector<HIKARI::GameProjectQuaternion> swordRotation;
     std::vector<HIKARI::GameProjectFloat3> leftHand;
+    std::vector<HIKARI::GameProjectQuaternion> leftHandRotation;
 };
 
 // 骨格の体の、描画のフレームごとの状態（シーンに保存しない）。
@@ -70,6 +86,9 @@ struct BossAnimBodyState {
     HIKARI::GameProjectTransform placed{};
     // 見えているクリップの刀の剣先の速さ (m/s。描画のフレーム。刀光・振りのゆがみを出す目安)。
     float tipSpeed = 0.0f;
+    // 見えている左手の骨の所（世界。描画のフレーム。1 フレーム前に描いた姿）と、それを読めたか。
+    HIKARI::GameProjectFloat3 leftHandWorld{};
+    bool leftHandSeen = false;
 };
 
 namespace BossAnimBody {
@@ -91,9 +110,11 @@ bool ClipMove(const BossComponent& boss, const BossMove& move);
 bool ClipSwordPose(const BossComponent& boss, BossSwordPose& out);
 // 左手の骨の所（世界。規則の tick）。いまの技がクリップの刀で当たる技でなければ false（左手の技の弾を出す所）。
 bool LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectFloat3& out);
+// 両手で握っている度合い（0〜1。規則の tick のいまの時刻。クリップの刀で当たる技の間だけ。c-40f6c1）。
+float TwoHand(const BossComponent& boss);
 // 描画のフレーム（Update の後）：骨格の体が技のクリップを流している間、見た目の刀の置き場所（刀光・刀の霞）を、見えている
 // クリップの刀にし、剣先の速さ（tipSpeed）を求める（alpha は tick の間の補間）。
-void ApplyPose(BossComponent& boss, float alpha, BossBodyPose& pose);
+void ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, BossBodyPose& pose);
 
 } // namespace BossAnimBody
 

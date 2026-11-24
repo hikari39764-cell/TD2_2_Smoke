@@ -18,6 +18,8 @@ struct BossSwordPose {
     float lean = 0.0f;
     float twist = 0.0f;
     float twoHand = 0.0f;
+    // 当たりの線を剣先の先へ伸ばす長さ (m。霧をまとった刀。動捕の両手で握った振り。c-40f6c1)。
+    float reach = 0.0f;
 };
 
 } // namespace Project_TD2_2

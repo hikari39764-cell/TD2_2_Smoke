@@ -33,6 +33,12 @@ constexpr uint64_t kRingPushBase = 160;
 constexpr uint64_t kWavePartBase = 200;
 // 振りで場の霧を揺らす力（刀の外側・内側の 2 つ。c-4be37e）。
 constexpr uint64_t kSwingPushBase = 300;
+// 両手の霧の刀（c-40f6c1）：刀身に沿って霧を入れる点の数と、その提出 ID。
+constexpr uint64_t kTwoHandMistPoints = 4;
+constexpr uint64_t kTwoHandMistBase = 310;
+// 左手にまとう霧（c-40f6c1）の提出 ID と、吹き出す向きが左手の周りを 1 秒に回る回数。
+constexpr uint64_t kLeftHandMistId = 320;
+constexpr float kLeftHandMistTurnsPerSecond = 1.5f;
 constexpr int kRingPushCount = 6;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
@@ -102,6 +108,23 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
                                      boss.fluidAccepted;
             }
         }
+    }
+    // 両手の霧の刀（c-40f6c1）：左手が柄に重なっている間、刀身に沿って（当たりの伸びた先まで）場の霧へ霧を入れる。
+    if (const float hold = BossAnimBody::TwoHand(boss); hold > 0.01f && boss.animBody.twoHandMist > 0.0f) {
+        const BossSwordPoints blade = BossPose::SwordPoints(boss, boss.swordPose);
+        for (uint64_t k = 0; k < kTwoHandMistPoints; ++k) {
+            const float u = (static_cast<float>(k) + 0.5f) / static_cast<float>(kTwoHandMistPoints);
+            emitter.Emit(kTwoHandMistBase + k, Lerp(blade.base, blade.outer, u), boss.animBody.twoHandMistRadius,
+                         boss.animBody.twoHandMist * hold / static_cast<float>(kTwoHandMistPoints), {});
+        }
+    }
+    // 左手にまとう霧（c-40f6c1）：骨格の体が出ている間、見えている左手の所から、手の周りを回る向きに吹き出す。
+    if (boss.animBodyState.leftHandSeen && boss.animBody.leftHandMist > 0.0f) {
+        const float angle = kTau * kLeftHandMistTurnsPerSecond * boss.floatClock;
+        const Vec3 swirl{std::cos(angle) * boss.animBody.leftHandMistSwirl, 0.0f,
+                         std::sin(angle) * boss.animBody.leftHandMistSwirl};
+        emitter.Emit(kLeftHandMistId, boss.animBodyState.leftHandWorld, boss.animBody.leftHandMistRadius,
+                     boss.animBody.leftHandMist, swirl);
     }
     if (boss.glintFrames > 0) {
         // 構え：剣が止まり、剣先に霞が集まる（地面や画面の予告の代わり）。
