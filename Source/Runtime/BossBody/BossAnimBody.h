@@ -13,7 +13,10 @@ class BossComponent;
 // 骨格の体（c-7b1a06）：ボスの技をモーション（骨格の動画）で見せるための体。登場の役者と同じ骨格の模型
 // （Assets/Models/BossIntroActor）に動画の部品（AnimatorComponent）を付けたシーンの物体を、ボスの足元と向きに置いて
 // 流す。流すクリップがある間は、部品ごとに置く戦いの体の外形を出さない（骨格の体が体を演じる）。流すクリップが無い
-// 間は骨格の体を隠し、今までどおりの外形で動く。規則（当たり・技の長さ）はまだ今までどおり（c-7b1a08・c-7b1a09）。
+// 間は骨格の体を隠し、今までどおりの外形で動く。
+// 技のクリップ（技の表の「アニメーション」。c-7b1a08）は、技の規則の時計（前隙・攻撃中・後隙の経過 F）に合わせた時刻の姿を、
+// 骨格の根（Hips）から下へ重ねる層で出す（ヒットストップ・遅くする間も規則とずれない）。待機のクリップは下の層で繰り返す。
+// 当たりはまだ今までどおりの刀の線（c-7b1a09 でモーションの刀に合わせる）。
 struct BossAnimBodySettings {
     void Describe(HIKARI::PropertyFields& fields);
 
@@ -33,9 +36,8 @@ struct BossAnimBodyState {
     int8_t shown = -1;
     // いま流しているクリップ（空は何も流していない）。
     std::string playing;
-    // 技が流すように頼んだクリップ（c-7b1a08 で技の始めに入れる。空は無し）と、繰り返すか。
-    std::string moveClip;
-    bool moveLoop = false;
+    // いま重ねている技のクリップ（空は重ねていない）。
+    std::string layerClip;
     // 骨格の体が体を演じているか（外形を出さない）。
     bool active = false;
     // 流せなかったクリップ（同じクリップで何度も知らせない）。
@@ -46,9 +48,10 @@ struct BossAnimBodyState {
 
 namespace BossAnimBody {
 
-// 描画のフレームごと：流すクリップを決め、骨格の体をボスの足元 body（体の中心の変換）と向きに置いて流す。
+// 描画のフレームごと：流すクリップを決め、骨格の体をボスの足元 body（体の中心の変換）と向きに置いて流す。alpha は
+// 固定 tick の間の補間の割合（技のクリップの時刻を tick の間でも滑らかにする）。
 // 骨格の体が体を演じる時（流すクリップがある）は true（呼ぶ側は戦いの体の外形を出さない）。
-bool Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body);
+bool Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body, float alpha);
 // 骨格の体を隠して止める（ボスが消える・Play が止まる）。
 void Stop(HIKARI::WorldView& world, BossComponent& boss);
 // いま骨格の体が体を演じているか。

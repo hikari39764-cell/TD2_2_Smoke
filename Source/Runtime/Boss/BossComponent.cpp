@@ -8,6 +8,9 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     if (fields.Section("技の表", true)) {
         fields.Text("movesPath", "技の表（Data/ からの場所）", movesPath);
         fields.Text("stancePath", "姿勢と帯の重みの表（Data/ からの場所。行動ツリーの「姿勢で技を選ぶ」）", stancePath);
+        fields.Text("clipsPath", "クリップの長さの表（Data/ からの場所。Tools/BossAnim/export_clip_lengths.ps1 が書き出す）",
+                    clipsPath);
+        fields.Text("segmentsPath", "区間の表（Data/ からの場所。モーションの技の当たりの窓。空なら使わない）", segmentsPath);
         fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", typesPath);
         fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
                     "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。");

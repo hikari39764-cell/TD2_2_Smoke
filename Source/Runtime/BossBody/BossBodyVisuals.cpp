@@ -354,7 +354,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
     // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。骨格の体がクリップを流して
     // いる間も同じ（c-7b1a06）。登場の間は骨格の体を出さない。
-    const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body);
+    const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body, alpha);
     if (BossIntroVisuals::Showing(boss))
         BossAnimBody::Stop(world, boss);
     if (!BossIntroVisuals::Showing(boss) && !animated)

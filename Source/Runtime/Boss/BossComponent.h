@@ -520,6 +520,10 @@ public:
     std::string typesPath = "Boss/kasumi_bushi_move_types.csv";
     // 姿勢と帯の重みの表（c-19e3b0。行動ツリーの節「姿勢で技を選ぶ」が使う）。
     std::string stancePath = "Boss/kasumi_bushi_stance.csv";
+    // モーションの技の区切り（c-7b1a08）：クリップの長さの表（Tools/BossAnim/export_clip_lengths.ps1 が書き出す）と、
+    // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
+    std::string clipsPath = "Boss/boss_anim_clips.csv";
+    std::string segmentsPath;
     BossStanceSettings stance;
     // ヒョウタンの読み（c-14392d。攻勢の技選びの重み・一拍止め・横の剣気の寄せ）。
     BossGourdReadSettings gourdRead;
@@ -1144,6 +1148,8 @@ public:
     BossMoveTable table;
     BossStanceTable stanceTable;
     std::string loadedStanceText;
+    std::string loadedClipsText;
+    std::string loadedSegmentsText;
     BossStanceMemory stanceMemory;
     BossGourdReadMemory gourdReadMemory;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。

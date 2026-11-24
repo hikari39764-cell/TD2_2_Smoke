@@ -271,6 +271,7 @@
             "absorbCatchRange": 7.0,
             "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
             "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
+            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
             "animBodyObject": {
               "$hikariRef": "SceneObject",
               "id": 970

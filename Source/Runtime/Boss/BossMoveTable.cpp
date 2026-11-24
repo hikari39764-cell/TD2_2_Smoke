@@ -58,6 +58,7 @@ enum class Column {
     StepHeight,
     PreShift,
     SlideIn,
+    Animation,
     Delivery,
     ActSpin,
     Count
@@ -81,6 +82,7 @@ constexpr HeaderKey kHeaders[] = {
     {"跳ぶ高さ", Column::StepHeight},
     {"前隙の移動", Column::PreShift},
     {"滑って入る", Column::SlideIn},
+    {"アニメーション", Column::Animation},
     {"当て方", Column::Delivery},
     {"変化の前隙", Column::SwitchPre},
     {"変化確率", Column::SwitchChance},
@@ -754,6 +756,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         move.preShift = static_cast<float>(NumberOf(raw[Column::PreShift]).value_or(0.0));
         move.slideIn = static_cast<float>(std::max(0.0, NumberOf(raw[Column::SlideIn]).value_or(0.0)));
+        move.clip = Trim(raw[Column::Animation]);
         move.actSpin =
             static_cast<float>(NumberOf(raw[Column::ActSpin]).value_or(0.0) * 3.14159265358979323846 / 180.0);
         {
@@ -835,6 +838,125 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
     BossMoveLinks::LinkCombos(moves_, warnings);
     BossMoveLinks::AddSwitches(moves_, warnings);
     return !moves_.empty();
+}
+
+namespace {
+
+// 見出しの列（最初に text で始まる列。無ければ -1）。
+int ColumnOf(const Row& header, std::string_view text) {
+    for (size_t c = 0; c < header.size(); ++c) {
+        if (StartsWith(Trim(header[c]), text))
+            return static_cast<int>(c);
+    }
+    return -1;
+}
+
+std::string CellOf(const Row& row, int column) {
+    return column >= 0 && static_cast<size_t>(column) < row.size() ? Trim(row[static_cast<size_t>(column)]) : std::string{};
+}
+
+// 区間の表の 1 行（当たり 1 回）。
+struct ClipHit {
+    int start = 0;
+    int end = 0;
+    std::optional<BossStrikeDirection> direction;
+};
+
+} // namespace
+
+void BossMoveTable::ApplyClips(std::string_view clipsCsv, std::string_view segmentsCsv,
+                               std::vector<std::string>& warnings) {
+    // クリップの長さの表：クリップ, 長さ F（Tools/BossAnim/export_clip_lengths.ps1 が書き出す）。
+    std::vector<std::pair<std::string, int>> lengths;
+    const auto clipRows = ParseCsv(clipsCsv);
+    if (!clipRows.empty()) {
+        const int name = ColumnOf(clipRows[0], "クリップ");
+        int frames = -1;
+        for (size_t c = 0; c < clipRows[0].size() && frames < 0; ++c) {
+            const std::string header = Trim(clipRows[0][c]);
+            if (StartsWith(header, "長さ") && Contains(header, "F"))
+                frames = static_cast<int>(c);
+        }
+        for (size_t r = 1; r < clipRows.size() && name >= 0 && frames >= 0; ++r) {
+            const auto value = NumberOf(CellOf(clipRows[r], frames));
+            if (!CellOf(clipRows[r], name).empty() && value && *value > 0.0)
+                lengths.emplace_back(CellOf(clipRows[r], name), RoundHalfUp(*value));
+        }
+    }
+    // 区間の表：技, 当たりの始め F, 当たりの終わり F, 向き（矢印。空は表の一撃の向きのまま）。1 行が当たり 1 回。
+    std::vector<std::pair<std::string, ClipHit>> hits;
+    const auto segmentRows = ParseCsv(segmentsCsv);
+    if (!segmentRows.empty()) {
+        int name = ColumnOf(segmentRows[0], "技");
+        if (name < 0)
+            name = ColumnOf(segmentRows[0], "ボス行動");
+        const int start = ColumnOf(segmentRows[0], "当たりの始め");
+        const int end = ColumnOf(segmentRows[0], "当たりの終わり");
+        const int direction = ColumnOf(segmentRows[0], "向き");
+        for (size_t r = 1; r < segmentRows.size() && name >= 0 && start >= 0 && end >= 0; ++r) {
+            const std::string move = CellOf(segmentRows[r], name);
+            const auto a = NumberOf(CellOf(segmentRows[r], start));
+            const auto b = NumberOf(CellOf(segmentRows[r], end));
+            if (move.empty())
+                continue;
+            if (!a || !b || *b <= *a) {
+                warnings.push_back("区間の表：技「" + move + "」の当たりの始め・終わり F が読めません（終わりは始めより後）");
+                continue;
+            }
+            ClipHit hit{RoundHalfUp(*a), RoundHalfUp(*b), DirectionOf(CellOf(segmentRows[r], direction))};
+            hits.emplace_back(move, hit);
+        }
+    }
+    for (BossMove& move : moves_) {
+        if (move.clip.empty())
+            continue;
+        int clipFrames = 0;
+        for (const auto& [clip, frames] : lengths) {
+            if (clip == move.clip)
+                clipFrames = frames;
+        }
+        if (clipFrames <= 0) {
+            warnings.push_back("技「" + move.name + "」のクリップ「" + move.clip +
+                               "」の長さがクリップの長さの表にありません（Tools/BossAnim/export_clip_lengths.ps1 を流す）");
+            continue;
+        }
+        std::vector<ClipHit> own;
+        for (const auto& [name, hit] : hits) {
+            if (name == move.name)
+                own.push_back(hit);
+        }
+        // 当たりの無い技（移動など）はクリップを流すだけで、長さは表のまま。
+        if (own.empty())
+            continue;
+        std::sort(own.begin(), own.end(), [](const ClipHit& a, const ClipHit& b) { return a.start < b.start; });
+        bool valid = own.front().start >= 1 && own.back().end <= clipFrames;
+        for (size_t k = 1; k < own.size(); ++k)
+            valid = valid && own[k].start >= own[k - 1].end;
+        if (!valid) {
+            warnings.push_back("区間の表：技「" + move.name + "」の当たりが重なっているか、クリップ「" + move.clip + "」（" +
+                               std::to_string(clipFrames) + " F）の外にあります。表の長さのままにします");
+            continue;
+        }
+        // 一撃ぶんの値は表の一撃を写し、向きだけ区間の表で替える。
+        const std::vector<BossStrikeData> base = move.strikes;
+        move.strikes.clear();
+        move.segments.clear();
+        for (size_t k = 0; k < own.size(); ++k) {
+            BossStrikeData strike = base.empty() ? BossStrikeData{} : base[std::min(k, base.size() - 1)];
+            if (own[k].direction)
+                strike.direction = *own[k].direction;
+            move.strikes.push_back(strike);
+            if (k > 0 && own[k].start > own[k - 1].end)
+                move.segments.push_back({own[k].start - own[k - 1].end, false, static_cast<int>(k)});
+            move.segments.push_back({own[k].end - own[k].start, true, static_cast<int>(k)});
+        }
+        move.pre = own.front().start;
+        move.act = 0;
+        for (const BossSegment& segment : move.segments)
+            move.act += segment.length;
+        move.post = clipFrames - own.back().end;
+        move.clipFrames = clipFrames;
+    }
 }
 
 } // namespace Project_TD2_2
