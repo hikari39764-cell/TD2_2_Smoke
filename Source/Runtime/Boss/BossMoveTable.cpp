@@ -57,6 +57,7 @@ enum class Column {
     StepDistance,
     StepHeight,
     PreShift,
+    SlideIn,
     Delivery,
     ActSpin,
     Count
@@ -79,6 +80,7 @@ constexpr HeaderKey kHeaders[] = {
     {"跳ぶ距離", Column::StepDistance},
     {"跳ぶ高さ", Column::StepHeight},
     {"前隙の移動", Column::PreShift},
+    {"滑って入る", Column::SlideIn},
     {"当て方", Column::Delivery},
     {"変化の前隙", Column::SwitchPre},
     {"変化確率", Column::SwitchChance},
@@ -751,6 +753,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         move.homing = static_cast<float>(NumberOf(raw[Column::Homing]).value_or(T.homing));
         move.side = static_cast<float>(NumberOf(raw[Column::Side]).value_or(0.0));
         move.preShift = static_cast<float>(NumberOf(raw[Column::PreShift]).value_or(0.0));
+        move.slideIn = static_cast<float>(std::max(0.0, NumberOf(raw[Column::SlideIn]).value_or(0.0)));
         move.actSpin =
             static_cast<float>(NumberOf(raw[Column::ActSpin]).value_or(0.0) * 3.14159265358979323846 / 180.0);
         {

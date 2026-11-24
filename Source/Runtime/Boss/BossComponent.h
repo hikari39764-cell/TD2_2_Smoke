@@ -670,6 +670,10 @@ public:
     float slashApproachSpeed = 1.2f;
     float stringApproachSpeed = 1.6f;
     float stringApproachStop = 3.942f;
+    // 滑って入る（c-7b1a07）：表の「滑って入る m」がある斬りの技は、前隙の終わりのこの F で、プレイヤーからこの距離 (m)
+    // の所へ低く滑って詰める（突進と同じ滑らかな速さ。もう近ければ動かない）。
+    int slideInFrames = 16;
+    float slideInStopDistance = 4.0f;
     float overheadLungeDistance = 2.43f;
     // 上段溜め（c-b1824c）：前隙の始めの overheadRaiseFrames F で大上段へ振りかぶり、残りは溜める（溜めの揺らぎは跳ぶ前に
     // 入る）。前隙の終わりの overheadLeapFrames F で、プレイヤーから overheadLeapStop m の所へ跳び込み（最長 overheadLeapMax m。
