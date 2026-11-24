@@ -128,6 +128,15 @@
       }
     },
     {
+      "id": "Boss.Cinematic",
+      "name": "Boss Cinematic",
+      "description": "ボスの登場の演出の間は 1、ほかは 0（HUD がプレイヤーの条を引っ込める）。",
+      "default": {
+        "type": "Float",
+        "value": 0.0
+      }
+    },
+    {
       "id": "Boss.Phase",
       "name": "Boss Phase",
       "description": "ボスのいまのフェーズ（いまの HP の条が何本目か。1 か 2。1 本目が空になった時から 2）。",

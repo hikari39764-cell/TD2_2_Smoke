@@ -1,0 +1,24 @@
+{
+  "displayName": "BossIntroHelm",
+  "guid": "b84c2d1f6a3e4b7c9d0e5f1a2b3c4d51",
+  "importSettings": {
+    "clusterGeometry": {
+      "enabled": true,
+      "maxLodCount": 5,
+      "profile": "Scene"
+    },
+    "lightmapUv": {
+      "mode": "GenerateIfMissingOrInvalid",
+      "padding": 8,
+      "resolution": 64
+    },
+    "meshFormat": "HCMESH",
+    "outputFormat": "HMODEL",
+    "sourceFormat": ".gltf"
+  },
+  "importerId": "ModelImporter",
+  "importerVersion": 50,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/BossIntroHelm.gltf",
+  "type": "Model"
+}

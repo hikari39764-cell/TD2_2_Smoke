@@ -29,6 +29,8 @@ inline constexpr std::string_view kBossHealthVariable = "Boss.Health";
 inline constexpr std::string_view kBossMaxHealthVariable = "Boss.MaxHealth";
 // HP の条を出すか（1＝出す、0＝出さない。登場の演出の間は見得まで 0）。
 inline constexpr std::string_view kBossBarShownVariable = "Boss.BarShown";
+// 登場の演出の間は 1（HUD がプレイヤーの条を引っ込める。c-e0c500）。
+inline constexpr std::string_view kBossCinematicVariable = "Boss.Cinematic";
 // いまのフェーズ（1 か 2。Int）と、そのフェーズ（HP の条）に入ってからの秒（Float）。HUD が条の色と、2 本目が満ちて
 // 戻る見せ方に使う（c-3e0ffa）。Boss.Health・Boss.MaxHealth はいまの条の値。
 inline constexpr std::string_view kBossPhaseVariable = "Boss.Phase";
@@ -1122,6 +1124,8 @@ public:
     float shownMaxHealth = 0.0f;
     // HP の条を出すか（Boss.BarShown へ書く）。
     float shownBar = 1.0f;
+    // 登場の演出の間か（Boss.Cinematic へ書く）。
+    float shownCinematic = 0.0f;
     // Boss.Phase・Boss.PhaseSeconds へ書く値（固定 tick ごとに写す）。
     int shownPhase = 1;
     float shownPhaseSeconds = 0.0f;

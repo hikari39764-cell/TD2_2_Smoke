@@ -36,7 +36,7 @@ struct BodyFrame {
         const Vec3 centered{local.x * body.scale.x, (local.y - halfHeight) * body.scale.y, local.z * body.scale.z};
         return Add(body.position, Rotate(body.rotation, centered));
     }
-    // yaw で外へ向け、flare で裾を外へ開く部品（大袖・草摺）。roll は、吊る所を支点に裾を横へ振る角度。
+    // yaw で外へ向け、flare で裾を外へ開く部品（肩当て・草摺）。roll は、吊る所を支点に裾を横へ振る角度。
     BossBodyPlacement Hanging(Vec3 local, float yaw, float flareDegrees, float scale = 1.0f,
                               float rollDegrees = 0.0f) const {
         BossBodyPlacement placement;
@@ -47,17 +47,19 @@ struct BodyFrame {
         placement.scale = scale * body.scale.x;
         return placement;
     }
-    // 揺れを足した、垂れた部品。振れ（世界座標の度）のうち、外向きの成分は裾の開き、横の成分は横振りになる。
-    BossBodyPlacement Swinging(const BossBodyRigInput& in, Vec3 local, float yaw, float flareDegrees, int index) const {
+    // 揺れを足した、垂れた部品。振れ（世界座標の度）のうち、外向きの成分は裾の開き、横の成分は横振りになる。share は
+    // 振れと揺らぎを掛ける割合（布のように垂れる草摺は 1、硬い肩当ては小さく）。
+    BossBodyPlacement Swinging(const BossBodyRigInput& in, Vec3 local, float yaw, float flareDegrees, int index,
+                               float share = 1.0f) const {
         const Vec3 outward = Rotate(body.rotation, {std::sin(yaw), 0.0f, std::cos(yaw)});
         const Vec3 tangent = Rotate(body.rotation, {std::cos(yaw), 0.0f, -std::sin(yaw)});
         const Vec3 flat{in.sway.x, 0.0f, in.sway.z};
         const float flutter =
             in.settings.flutterDegrees * std::sin(2.0f * kPi * in.settings.flutterFrequency * in.clock +
                                                   kFlutterPhaseStep * static_cast<float>(index));
-        const float flare =
-            std::clamp(flareDegrees + Dot(flat, outward) + in.sway.y + flutter, kFlareMinDegrees, kFlareMaxDegrees);
-        return Hanging(local, yaw, flare, in.settings.bodyScale, Dot(flat, tangent));
+        const float flare = std::clamp(flareDegrees + share * (Dot(flat, outward) + in.sway.y + flutter),
+                                       kFlareMinDegrees, kFlareMaxDegrees);
+        return Hanging(local, yaw, flare, in.settings.bodyScale, share * Dot(flat, tangent));
     }
 };
 
@@ -72,18 +74,21 @@ Vec3 WaistPoint(float angle, float radiusSide, float radiusFront, float height) 
 void SolveArmor(const BossBodyRigInput& in, BossBodyPose& pose) {
     const BossBodySettings& body = in.settings;
     const BodyFrame frame{in.body, in.halfHeight};
-    // 胴・兜・大袖は、刀の横の向きに付いて縦の軸まわりに捻る（BossBodySword が進める）。兜はさらにプレイヤーを向く。
+    // 胴・兜・肩当ては、刀の横の向きに付いて縦の軸まわりに捻る（BossBodySword が進める）。兜はさらにプレイヤーを向く。
     const float twist = in.twist;
     const float size = body.bodyScale;
     pose.torso = frame.Hanging(RotateY(BodyPoint(body, body.torsoCenter), twist), twist, 0.0f, size);
-    pose.head =
-        frame.Hanging(RotateY(BodyPoint(body, body.headCenter), twist), in.headYaw, 0.0f, body.headScale * size);
+    // 兜のうつむきは Hanging の開きの角（+ で下の縁が前へ出る）を逆向きに使う（+ で顎を引く）。
+    pose.head = frame.Hanging(RotateY(BodyPoint(body, body.headCenter), twist), in.headYaw, -body.headPitchDegrees,
+                              body.headScale * size);
     const float sodeYaw = body.sodeYawDegrees * kRadiansPerDegree;
-    // 右の袖は -X の側（外向きは -X 寄り）、左は +X の側。
+    // 右の肩当ては -X の側（外向きは -X 寄り）、左は +X の側。硬い板なので、揺れは sodeSwayShare の割合だけ。
     const Vec3 sodeHang = BodyPoint(body, body.sodeHang);
-    pose.sode[0] = frame.Swinging(in, RotateY(sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100);
-    pose.sode[1] = frame.Swinging(in, RotateY({-sodeHang.x, sodeHang.y, sodeHang.z}, twist),
-                                  twist + sodeYaw, body.sodeFlareDegrees, 101);
+    const float sodeSway = std::clamp(body.sodeSwayShare, 0.0f, 1.0f);
+    pose.sode[0] =
+        frame.Swinging(in, RotateY(sodeHang, twist), twist - sodeYaw, body.sodeFlareDegrees, 100, sodeSway);
+    pose.sode[1] = frame.Swinging(in, RotateY({-sodeHang.x, sodeHang.y, sodeHang.z}, twist), twist + sodeYaw,
+                                  body.sodeFlareDegrees, 101, sodeSway);
     pose.tassetCount = std::clamp(body.tassetCount, 0, kBossBodyTassetCapacity);
     // 草摺は腰に付くので、捻りの一部だけ。
     const float tassetTwist = twist * std::clamp(body.motion.tassetTwistShare, 0.0f, 1.0f);

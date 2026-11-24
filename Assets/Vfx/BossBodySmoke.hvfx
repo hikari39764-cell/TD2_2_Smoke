@@ -294,13 +294,13 @@
           "maxSubsteps": 2,
           "multipleScattering": 0.699999988079071,
           "prewarmSeconds": 1.5,
-          "priority": 90,
+          "priority": 98,
           "relativeWind": 0.3499999940395355,
           "resolution": 72,
           "scatteringColor": [
-            0.04500000178813934,
-            0.04500000178813934,
-            0.05999999865889549
+            0.06,
+            0.062,
+            0.07
           ],
           "smokePerBurn": 0.3,
           "substepRate": 60.0,

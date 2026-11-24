@@ -261,7 +261,36 @@
         },
         {
           "id": 90,
-          "properties": {},
+          "properties": {
+            "introActorObject": {
+              "$hikariRef": "SceneObject",
+              "id": 960
+            },
+            "introHelmObject": {
+              "$hikariRef": "SceneObject",
+              "id": 961
+            },
+            "introGauntletRightObject": {
+              "$hikariRef": "SceneObject",
+              "id": 962
+            },
+            "introGauntletLeftObject": {
+              "$hikariRef": "SceneObject",
+              "id": 963
+            },
+            "introKeyLightObject": {
+              "$hikariRef": "SceneObject",
+              "id": 964
+            },
+            "bodyHelmSpotObject": {
+              "$hikariRef": "SceneObject",
+              "id": 965
+            },
+            "bodyHelmFillObject": {
+              "$hikariRef": "SceneObject",
+              "id": 966
+            }
+          },
           "type": "Project_TD2_2.Boss"
         },
         {
@@ -771,6 +800,411 @@
           1.0,
           1.0,
           1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          }
+        },
+        {
+          "id": 2,
+          "type": "AnimatorComponent",
+          "properties": {
+            "autoPlay": false,
+            "clip": "Rise",
+            "clipModelAssetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "finished": false,
+            "loop": false,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 960,
+      "name": "IntroActor",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "b84c2d1f6a3e4b7c9d0e5f1a2b3c4d51",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          }
+        },
+        {
+          "id": 2,
+          "type": "AnimatorComponent",
+          "properties": {
+            "autoPlay": false,
+            "clip": "",
+            "clipModelAssetId": "",
+            "finished": false,
+            "loop": false,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 961,
+      "name": "IntroHelm",
+      "parent": 960,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          -2.2301,
+          0.36,
+          0.2548
+        ],
+        "rotationEulerDeg": [
+          -109.247,
+          -27.106,
+          115.366
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "c95d3e2a7b4f4c8dae1f6a2b3c4d5e62",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          }
+        },
+        {
+          "id": 2,
+          "type": "AnimatorComponent",
+          "properties": {
+            "autoPlay": false,
+            "clip": "Twitch",
+            "clipModelAssetId": "c95d3e2a7b4f4c8dae1f6a2b3c4d5e62",
+            "finished": false,
+            "loop": false,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 962,
+      "name": "IntroGauntletR",
+      "parent": 960,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          4.6636,
+          0.16,
+          1.3972
+        ],
+        "rotationEulerDeg": [
+          -90.0,
+          -70.895,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "d06e4f3b8c5a4d9ebf2a7b3c4d5e6f73",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          }
+        },
+        {
+          "id": 2,
+          "type": "AnimatorComponent",
+          "properties": {
+            "autoPlay": false,
+            "clip": "Twitch",
+            "clipModelAssetId": "d06e4f3b8c5a4d9ebf2a7b3c4d5e6f73",
+            "finished": false,
+            "loop": false,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 963,
+      "name": "IntroGauntletL",
+      "parent": 960,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          -0.6999,
+          0.16,
+          -3.2225
+        ],
+        "rotationEulerDeg": [
+          90.0,
+          -44.105,
+          180.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "LightComponent",
+          "properties": {
+            "enabled": false,
+            "type": "Spot",
+            "color": [
+              1.0,
+              0.93,
+              0.84
+            ],
+            "intensityUnit": "SceneRelative",
+            "sceneRelativeIntensity": 40.0,
+            "intensity": 800.0,
+            "range": 60.0,
+            "castsShadows": false,
+            "sourceRadius": 0.3,
+            "innerConeAngleDegrees": 24.0,
+            "outerConeAngleDegrees": 40.0,
+            "angularFalloff": 1.0,
+            "priority": 50
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 964,
+      "name": "IntroKeyLight",
+      "parent": 960,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          -6.0,
+          5.5,
+          9.0
+        ],
+        "rotationEulerDeg": [
+          5.0,
+          146.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "LightComponent",
+          "properties": {
+            "enabled": false,
+            "type": "Spot",
+            "color": [
+              0.37,
+              0.58,
+              1.0
+            ],
+            "intensityUnit": "SceneRelative",
+            "sceneRelativeIntensity": 3.0,
+            "intensity": 800.0,
+            "range": 3.0,
+            "castsShadows": true,
+            "sourceRadius": 0.05,
+            "priority": 80,
+            "innerConeAngleDegrees": 34.0,
+            "outerConeAngleDegrees": 62.0,
+            "angularFalloff": 1.0
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 965,
+      "name": "BossHelmSpot",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3405.875,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          4.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "LightComponent",
+          "properties": {
+            "enabled": false,
+            "type": "Point",
+            "color": [
+              0.37,
+              0.58,
+              1.0
+            ],
+            "intensityUnit": "SceneRelative",
+            "sceneRelativeIntensity": 0.25,
+            "intensity": 800.0,
+            "range": 1.0,
+            "castsShadows": false,
+            "sourceRadius": 0.05,
+            "priority": 80
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 966,
+      "name": "BossHelmFill",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3405.875,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          180.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "type": "ModelComponent",
+          "properties": {
+            "assetId": "b1a52cf03fe7473cbbe74c310e9c5c29",
+            "castShadow": false,
+            "receiveShadow": false,
+            "renderStatic": false,
+            "visible": true
+          }
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 968,
+      "name": "BossBodyPreload",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3353.375,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          0.001,
+          0.001,
+          0.001
         ]
       }
     }

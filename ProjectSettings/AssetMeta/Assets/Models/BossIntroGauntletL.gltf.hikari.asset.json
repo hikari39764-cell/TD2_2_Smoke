@@ -1,0 +1,24 @@
+{
+  "displayName": "BossIntroGauntletL",
+  "guid": "d06e4f3b8c5a4d9ebf2a7b3c4d5e6f73",
+  "importSettings": {
+    "clusterGeometry": {
+      "enabled": true,
+      "maxLodCount": 5,
+      "profile": "Scene"
+    },
+    "lightmapUv": {
+      "mode": "GenerateIfMissingOrInvalid",
+      "padding": 8,
+      "resolution": 64
+    },
+    "meshFormat": "HCMESH",
+    "outputFormat": "HMODEL",
+    "sourceFormat": ".gltf"
+  },
+  "importerId": "ModelImporter",
+  "importerVersion": 50,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/BossIntroGauntletL.gltf",
+  "type": "Model"
+}

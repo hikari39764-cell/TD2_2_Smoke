@@ -360,19 +360,19 @@ void TraceGreat(const BossComponent& boss, const MotionTargets& t, BossBodyMotio
     BossLog::Write(message);
 }
 
-// 確かめ用の鎧の近似（半径 m）：胴（胴の中心から上下 kTorsoHalf の線）、草摺（裾へ開くので上下 2 段：胴の中心の
-// kTassetTop から kTassetMiddle 下までと、そこから kTassetBottom 下まで）、兜（球）、大袖（吊る所から垂れる向きへ
-// kSodeLength の線）、握りの拳。数値は模型の大きさの目安。
-constexpr float kTorsoHalf = 0.5f;
-constexpr float kTorsoRadius = 0.70f;
-constexpr float kTassetTop = 0.5f;
-constexpr float kTassetMiddle = 0.9f;
-constexpr float kTassetBottom = 1.25f;
+// 確かめ用の鎧の近似（半径 m）：胴（胸当ての原点から上下 kTorsoHalf の線）、草摺（裾へ開くので上下 2 段：胸当ての原点の
+// kTassetTop から kTassetMiddle 下までと、そこから kTassetBottom 下まで）、兜（球）、肩当て（吊る所から垂れる向きへ
+// kSodeLength の線）、握りの拳。数値は模型の大きさの目安（c-584825 で騎士の胸当て・肩当てに合わせた）。
+constexpr float kTorsoHalf = 0.6f;
+constexpr float kTorsoRadius = 0.62f;
+constexpr float kTassetTop = 0.2f;
+constexpr float kTassetMiddle = 0.62f;
+constexpr float kTassetBottom = 0.97f;
 constexpr float kTassetUpperRadius = 0.64f;
 constexpr float kTassetLowerRadius = 0.74f;
 constexpr float kHeadRadius = 0.55f;
-constexpr float kSodeLength = 0.65f;
-constexpr float kSodeRadius = 0.26f;
+constexpr float kSodeLength = 0.55f;
+constexpr float kSodeRadius = 0.30f;
 constexpr float kFistRadius = 0.12f;
 
 // 線分 a〜b と、鎧の近似のいちばん近い隙間 (m)。who にどの部品かを入れる。

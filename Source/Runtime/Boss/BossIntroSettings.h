@@ -1,31 +1,28 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Project/SequenceTypes.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "BossIntroActorState.h"
 #include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
-// 登場の段階。散らばって待つ → 煙が鎧に憑いて引き寄せる → 煙の中で形になる → 刀を抜く → 一振りして構える → 一息 → 済み。
-// 規則（BossIntro）が固定 tick ごとに進め、見た目（BossIntroVisuals）が読む。
-enum class BossIntroPhase { Scattered, Gather, Assemble, Draw, Flourish, Settle, Done };
+// 登場の段階（c-e0c500）。散らばって待つ（役者は最初の片段の最初の姿）→ 演技（役者が骨格の動画を演じる）→ 一息
+// （戦いの体に替わった後、ゲームのカメラへ戻る間）→ 済み。規則（BossIntro）が固定 tick ごとに進め、見た目
+// （BossIntroVisuals・BossIntroActor）が読む。
+enum class BossIntroPhase { Scattered, Show, Settle, Done };
 
-// とぐろの黒い煙の帯の数の上限。
-inline constexpr int kBossIntroCoilCapacity = 6;
-// 登場の間に吹く煙の塊（刀が抜ける瞬間・一振りの輪）を同時に持てる数と、鎧の部品の数の上限。
-inline constexpr int kBossIntroPuffCapacity = 24;
-inline constexpr int kBossIntroPartCapacity = 24;
-inline constexpr int kBossIntroTrailMarkCapacity = 8;
-
-// 登場（c-429242）：戦いの前、鎧の部品は地面に散らばり、刀は地面に刺さり、黒い煙が広く立ち込めて、中央でとぐろを巻いて
-// いる。戦いが始まると、周りの煙が中央へ流れ、煙の筋が鎧の部品へ這って憑き、引きずって集め、煙の塊の中で浮かび上がって
-// ゆるく形になり、しだいに締まって武者の姿になる。最後に右手で刀を抜いて、待機の構えに収まる。
-// 主役は煙で、鎧は煙に運ばれる殻（部品が自分で飛んで嵌まる動きにはしない）。
-// 位置は、ボスの始めの足元から、プレイヤーのいる側を前にした局所 m（+X が左、+Z が前）。体の大きさは掛けない。
+// 登場（c-e0c500）：戦いの前、鎧は地面に崩れ、兜と手甲は離れた所に落ちている。戦いが始まると、動きを捕まえた演技を、
+// 役者（骨格と動画を持つ模型。Assets/Models/BossIntroActor）がエンジンの動画の機能で演じる：煙に引き起こされ、手甲が
+// 付き、兜を被り、目が灯り、振り返って刀を抜き、右の肩に担ぐ。演出の資産（Sequence）が時計・カメラ・どの片段をいつ
+// 流すか（事件段 Anim.<片段>）・部品がいつ飛ぶか（Part.<部品>.Fly）・効果の拍を受け持つ。演技が済むと、役者を隠して
+// 戦いの体（部品ごとに置く外形）に替える。
 struct BossIntroSettings {
     void Describe(HIKARI::PropertyFields& fields);
 
@@ -33,298 +30,189 @@ struct BossIntroSettings {
     bool enabled = true;
     // Play の間に 1 度だけにする（負けてやり直した後は、初めから組み上がって立っている）。
     bool oncePerPlay = true;
-    // 各段の長さ (F)：煙が憑いて引き寄せる・煙の中で形になる・刀を抜く・一振りして構える・構えてから動き出すまで。
-    int gatherFrames = 270;
-    int assembleFrames = 270;
-    int drawFrames = 96;
-    int flourishFrames = 168;
-    int settleFrames = 24;
+    // 役者（骨格の動画で演じる体。模型と動画の部品を持つシーンの物体）と、付く前の部品の物体（兜・右の手甲・左の
+    // 手甲。役者の子）。役者が無い・動画の機能が切ってある時は、登場をしない（初めから構えて立つ）。部品の物体の位置と
+    // 向きは、シーンか演出の資産の物体の轨で決める（付く時は、コードが骨の所まで寄せる）。
+    uint64_t actorObject = 0;
+    uint64_t helmObject = 0;
+    uint64_t gauntletRightObject = 0;
+    uint64_t gauntletLeftObject = 0;
+    // 演出の間だけ点ける灯（役者の子。置き場所・向き・明るさは、演出の資産の物体の轨がカットごとに決める）。0 なら使わない。
+    uint64_t keyLightObject = 0;
+    // 演出の資産（Sequence の GUID）。演技の時計・カメラ・片段・部品・効果の拍。空・流せない時は登場をしない。
+    std::string sequence{"d66fc20a364f475699efb34fe4632336"};
+    // 演技を流す速さの倍率（1 で資産のまま）。
+    float playbackRate = 1.0f;
+    // 演技が済んで戦いの体に替わった後、プレイヤーの入力を止めたまま待つ長さ (秒。ゲームのカメラへ戻り、肩に担いだ
+    // 刀を待機の構えへ下ろす間)。
+    float settleSeconds = 1.4f;
+    // 一息の段に入ってから、役者を戦いの体に替えるまでの秒（settleSeconds より短く）。演技の後はカメラがゲームのカメラへ
+    // 滑らかに引いて行くので、すぐ替えると、近くで体が入れ替わるのが見える。カメラが引いてから替える。0 ですぐ替える。
+    float settleSwapSeconds = 0.8f;
+    // 一息の段に入ってから、演出の灯をこの秒で 0 まで落とす（settleSwapSeconds より長ければ、替える時に 0 にそろえる）。
+    // 灯を替える瞬間に急に消すと、ボスに当たる光が一気に変わって画が光ったように見え、動的な GI も作り直しで重くなる。
+    float settleLightFadeSeconds = 0.7f;
+    // 部品が骨へ飛ぶ道：手甲は吸われる（初めゆっくり、最後に速い。この指数が大きいほど最後が速い）、途中で浮く高さ (m)。
+    // 兜は煙に持ち上げられる（ゆっくり動き出してゆっくり止まる）、途中で外へふくらむ幅 (m)。
+    float gauntletFlyPower = 2.6f;
+    float gauntletFlyLift = 0.9f;
+    float helmFlyBulge = 0.25f;
     // 確かめ用（正式シーンでは使わない）：0 以上なら、戦いの流れに関わらず、この tick に登場が始まる。
     int testStartFrames = -1;
-    // 演出のカメラ（カード c-cf4ed6）：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの
-    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。既定は切る（オーナーの判断でいったん外す。仕組みと表は残す）。
+    // 演出のカメラの表（カード c-cf4ed6）：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの
+    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。既定は切る（カメラは演出の資産が受け持つ）。
     bool cameraEnabled = false;
     std::string cameraPath = "Boss/kasumi_bushi_intro_camera.csv";
     float cameraFocusHeight = 4.0f;
     // 飛ばす：登場の間にこの入力（行動 id）を押すと、組み上がった待機の構えへ進む（空なら飛ばせない）。
     std::string skipAction = "Gameplay.Menu";
-    // 刀が地面を離れる瞬間のスロー：長さ（実時間の F。0 で、代わりに短い時間の停止）と時間の倍率。
-    int drawSlowFrames = 24;
+
+    // 効果の部品の既定（BossIntroEffects。フェーズの変わり目の演出も同じ口を使う）。
+    // スロー（Slow）の間の時間の倍率。
     float drawSlowScale = 0.35f;
-    // ボスの HP の条を出す所（一振りの段の中の割合。見得）。それまでは出さない。
-    float barShare = 0.5f;
-
-    // 立ち込める黒い煙：広い・低い流体域のエフェクト（場の雰囲気。全部は使わない）。登場が始まると湧き止み、中央へ
-    // 流れて薄れる（周りの煙が敵になっていく）。空なら出さない。
-    HIKARI::GameProjectVfxAssetReference hazeEffect{"9d2b6f40c7a14e83b5f0a6c1d8e37f12",
-                                                    "Assets/Vfx/BossIntroHaze.hvfx"};
-    // 立ち上がる瞬間まで湧き続け、その間、中央へゆっくり流れる：流す速さ (m/秒。届く半径の所での速さ)、届く半径 (m)。
-    // 登場が済んでから域を止めるまで (秒)。
-    float hazeDrain = 0.2f;
-    float hazeDrainRadius = 25.0f;
-    // 立ち上がって吹き払った後、登場の煙を消す速さ（毎秒の割合。大きいほど早く消える。戦いに煙を残さない）：
-    // 立ち込める煙と、とぐろの輪。
-    float hazeClearRate = 7.0f;
-    float coilClearRate = 10.0f;
-    float hazeFadeSeconds = 1.0f;
-
-    // とぐろの黒い煙：世界に固定の流体域のエフェクト（資産の輪の源が帯を作り、その上に、巡る頭の位置へコードから濃い煙と
-    // 熱を入れる）。
-    HIKARI::GameProjectVfxAssetReference coilEffect{"5e0c7a91b34d4c28a6f1d9e2037b84c5",
-                                                    "Assets/Vfx/BossIntroCoil.hvfx"};
-    // 巡る頭の数、いちばん下の輪の半径 (m)、上の輪ほど半径を変える量 (m。負で、上ほどすぼまる)、半径のうねり (m)。
-    int coilStreams = 3;
-    float coilRadius = 7.6f;
-    float coilRadiusStep = -0.6f;
-    float coilRadiusWave = 0.4f;
-    // いちばん下の輪の高さ (m)、上の輪ほど高くする量 (m)、上下のうねり (m)。
-    float coilHeight = 0.7f;
-    float coilHeightStep = 0.8f;
-    float coilHeightWave = 0.3f;
-    // 輪の傾き（度。輪ごとに傾く向きが違い、帯どうしが斜めに交わる）と、傾く向きがゆっくり回る速さ (度/秒)。
-    float coilTiltDegrees = 5.0f;
-    float coilTiltTurnDegrees = 4.0f;
-    // 頭が巡る速さ (m/秒)。
-    float coilSpeed = 2.4f;
-    // 頭が入れる煙：半径 (m)、中心の毎秒の密度、温度（内側の暗い赤の光。0 で光らない）、頭の速さを新しい煙に持たせる割合、
-    // 濃さのむら（0 で一様）。
-    float coilEmitRadius = 0.6f;
-    float coilDensity = 35.0f;
-    float coilHeat = 0.0f;
-    float coilCarry = 0.35f;
-    float coilFlicker = 0.3f;
-    // 鎌首：頭の 1 つが、この間隔 (秒) ごとに、この長さ (秒) をかけて、この高さ (m) まで持ち上がって沈む。
-    float coilRearSeconds = 5.0f;
-    float coilRearEverySeconds = 16.0f;
-    float coilRearHeight = 3.0f;
-    // 引き寄せる間：頭が寄る先の半径 (m)、昇る高さ (m)、巡りが速まる倍率。
-    float gatherRadius = 1.0f;
-    float gatherHeight = 3.0f;
-    float gatherSpeedScale = 1.6f;
-    // 頭が、プレイヤーの側（舞台の前）を通る間に入れる煙の量（後ろに対する割合。小さいほど、前が開いて舞台が見える）。
-    float coilFrontShare = 0.1f;
-    // 引き寄せる間、頭が寄る先を、ボスの後ろへずらす量 (m。体の前に煙が立たない)。
-    float mantleBack = 1.8f;
-    // 引き寄せ切った時の、とぐろの煙の量（待つ間に対する割合。減らして、憑かれた鎧が見えるようにする）。
-    float gatherCoilShare = 0.15f;
-    // 引き寄せる間、とぐろの煙を中央へ吸い寄せる流れ：速さ (m/秒。0 で吸わない)、届く半径 (m)、吸う点の高さ (m)。
-    float gatherPull = 0.0f;
-    float gatherPullRadius = 9.0f;
-    float gatherPullHeight = 1.8f;
-    // 形になる段のこの割合の間に、とぐろの煙を出し終える（胴の煙へ引き継ぐ）。出し終えてから域を止めるまで (秒)。
-    float coilHandoffShare = 0.5f;
-    float coilFadeSeconds = 1.0f;
-
-    // 刀：剣先が刺さる地面の点、柄が傾く向き（局所の yaw。度。0 で前へ倒れる）、傾き（度。0 でまっすぐ立つ）、
-    // 地面に埋まる長さ (m)、刃が向く向き（局所の yaw。度）。
-    HIKARI::GameProjectFloat3 swordGround{-1.5f, 0.0f, 1.5f};
-    float swordLeanYawDegrees = 174.0f;
-    float swordLeanDegrees = 12.0f;
-    float swordBuried = 1.0f;
-    float swordEdgeYawDegrees = -90.0f;
-    // 鎧の部品が地面に置いてある所（位置と、向き＝X・Y・Z まわりの度。Y → X → Z の順に回す）。
-    HIKARI::GameProjectFloat3 torsoRest{0.9f, 0.62f, -0.9f};
-    HIKARI::GameProjectFloat3 torsoRestTurn{-78.0f, 35.0f, 8.0f};
-    HIKARI::GameProjectFloat3 headRest{-0.7f, 0.50f, 3.2f};
-    HIKARI::GameProjectFloat3 headRestTurn{18.0f, 150.0f, 62.0f};
-    HIKARI::GameProjectFloat3 sodeRestRight{-3.4f, 0.14f, 0.4f};
-    HIKARI::GameProjectFloat3 sodeRestRightTurn{-86.0f, 70.0f, 0.0f};
-    HIKARI::GameProjectFloat3 sodeRestLeft{2.9f, 0.14f, 1.5f};
-    HIKARI::GameProjectFloat3 sodeRestLeftTurn{-84.0f, 200.0f, 0.0f};
-    HIKARI::GameProjectFloat3 cuffRestRight{-2.5f, 0.2f, -1.6f};
-    HIKARI::GameProjectFloat3 cuffRestRightTurn{0.0f, 40.0f, 0.0f};
-    HIKARI::GameProjectFloat3 cuffRestLeft{1.6f, 0.2f, 3.3f};
-    HIKARI::GameProjectFloat3 cuffRestLeftTurn{0.0f, 250.0f, 0.0f};
-    // 草摺：始めの足元の周りへ、この半径 (m) の間に散らす（向き・距離は tassetSeed から決まる）。地面からの高さ (m)。
-    float tassetRestRadiusMin = 2.2f;
-    float tassetRestRadiusMax = 4.6f;
-    float tassetRestHeight = 0.1f;
-    int tassetSeed = 11;
-
-    // 憑く：煙の筋が部品に届く時刻の幅（引き寄せる段の中の割合。胴がいちばん早く、兜がいちばん遅い）、筋が這う長さ（割合）、
-    // 憑かれた部品が浮く高さ (m)。
-    float possessFirstShare = 0.05f;
-    float possessLastShare = 0.42f;
-    float tendrilShare = 0.12f;
-    float possessLift = 0.16f;
-    // 引きずる：横へふらつく幅 (m)、運ばれる高さ (m)、中央で溜まる所の半径の幅 (m)。
-    float dragWobble = 0.45f;
-    float dragCarryHeight = 0.35f;
-    float pileRadiusMin = 0.9f;
-    float pileRadiusMax = 1.9f;
-    // 憑いた部品が出す黒い煙（引きずった跡に尾が残る）：半径 (m)、中心の毎秒の密度、温度（隙間の暗い赤の光）。
-    float pieceSmokeRadius = 0.38f;
-    float pieceSmokeDensity = 30.0f;
-    float pieceSmokeHeat = 0.0f;
-    // 形になる：浮き上がった部品の、付く所からのずれ (m) と傾き（度）。立ち上がる勢いで looseAfterBurst まで引き締まり、
-    // 形になる段のこの割合で締まり切る。
-    float looseOffset = 0.5f;
-    float looseTiltDegrees = 24.0f;
-    float looseAfterBurst = 0.15f;
-    float looseSettleEndShare = 0.86f;
-    // うずくまった姿から一気に立ち上がる：うずくまった高さ（立った高さに対する割合）、前へのめる量 (m)、前へ傾く角度
-    // （度）、立ち上がり始める・立ち上がり切る割合（形になる段の中で。この間が短いほど勢いがある）。
-    float slumpHeight = 0.42f;
-    float slumpLean = 0.8f;
-    float slumpPitchDegrees = 26.0f;
-    float riseStartShare = 0.50f;
-    float riseEndShare = 0.74f;
-    // 立ち上がる間に、ばねを硬くする倍率（締まっていく）。立った高さを少し行き過ぎて戻る量（立った高さに対する割合）。
-    float burstFollowScale = 1.8f;
-    float burstOvershoot = 0.03f;
-    // 演出のエフェクト（見える刀と体に付く、シェーダーの層のエフェクトを使う。Boss の「外形：技の演出」の資産）。
-    // 目が灯る瞬間の閃きの強さ（0 で出さない）。
-    float eyesFlare = 2.4f;
-    // 刀が地面を離れる瞬間：地面の衝撃の輪の大きさと、刀身を走る光の明るさ（0 で出さない）。
-    float drawShock = 1.2f;
-    float drawGlint = 2.0f;
-    // 部品が煙に遅れて付いて行くばね（1 秒あたりの揺れの回数・収まりの強さ。小さいほど柔らかく、行き過ぎて戻る）と、
-    // 向きが追う時間 (秒)。
-    float followFrequency = 1.3f;
-    float followDamping = 0.6f;
-    float turnSeconds = 0.3f;
-    // 兜が持ち上がる間に、左右を見回す角度（度）。
-    float headLookDegrees = 32.0f;
-    // 胴の煙：形になる段の始めに濃く立つ倍率と、この割合で普段の量に落ち着く。
-    float smokeColumnScale = 1.0f;
-    // 胴の煙：立ち上がる前（うずくまっている間）の量（倍率。胴の煙は立った高さで湧くので、少なくしておく）。
-    float smokeCrouchScale = 0.15f;
-    // 胴の煙：立ち上がった瞬間に、鎧の継ぎ目から噴き出す量（普段の量に足す倍率。すぐ収まる）。
-    float smokeBurstScale = 0.4f;
-    float smokeSettleShare = 0.8f;
-
-    // 握る前の右手の置き場所（1 倍の体での値。体の大きさを掛ける）。
-    HIKARI::GameProjectFloat3 rightRestWrist{-1.0f, 1.85f, 0.35f};
-    // 抜く（刀を抜く段の中の割合）：袖口の煙が柄へ流れ始める・手が柄に届く・力を込め終わる（ここから一気に斬り上げる）・
-    // 八相に構え切る（残りで構えが決まる）。
-    float drawTendrilShare = 0.04f;
-    float drawReachShare = 0.36f;
-    float drawHoldShare = 0.58f;
-    float drawRipShare = 0.84f;
-    // 斬り上げの道：地面に刺さった所 → 体の右の外へ振り出す所（正面から見て大きな弧になる） → 八相（右の肩の上に刀を立てた構え）。握りの位置（1 倍の体での
-    // 値。体の大きさを掛ける）と剣先の向き（局所。右が -X、前が +Z）。
-    HIKARI::GameProjectFloat3 drawRipGrip{-1.10f, 2.40f, 0.50f};
-    HIKARI::GameProjectFloat3 drawRipTip{-1.0f, 0.10f, 0.30f};
-    HIKARI::GameProjectFloat3 highGrip{-0.71f, 3.26f, 0.27f};
-    HIKARI::GameProjectFloat3 highTip{0.12f, 0.88f, -0.46f};
-    // 斬り上げが八相を行き過ぎる量（道のりに対する割合。すぐ戻って構えが決まる）。
-    float drawRipOvershoot = 0.06f;
-    // 斬り上げの間に刀の跡に残る黒い煙の濃さ（一振りの slashTrailScale と同じ倍率。体の前に煙の柱が立って体を隠すので、既定は 0）。
-    float drawTrailScale = 0.0f;
-    // 体の動き：力を込める間（刀の方へ捻り、前へ傾け、腰を落とす）と、八相の構え。捻りは度で、正が左、負が右（刀の側）。
-    // 傾きは度で、正が前。腰を落とす量は立った高さに対する割合。
-    float strainTwistDegrees = -14.0f;
-    float strainLeanDegrees = 10.0f;
-    float strainSink = 0.05f;
-    float highTwistDegrees = -28.0f;
-    float highLeanDegrees = -4.0f;
-    // 斬る前の溜め（刀を抜く段の始めから振り始めまで、だんだん強く）：周りの黒い煙が渦を巻いてボスへ集まり続ける。
-    // 外から巻き込む煙の筋の数・筋が出る半径と巻き込み終わる半径 (m)・1 本が巻き込むのにかかる秒・筋の濃さと塊の半径 (m)・
-    // 高さ（外・内 m）・1 回の巻き込みで回る角度（度）。とぐろの煙をボスの足元へ引き込む速さ (m/秒)、立ち込める煙を中央へ
-    // 流す速さ (m/秒。普段の introHazeDrain に足す)。
-    int chargeStreams = 8;
-    float chargeOuterRadius = 8.5f;
-    float chargeInnerRadius = 2.0f;
-    float chargeSeconds = 0.9f;
-    float chargeDensity = 60.0f;
-    float chargeRadius = 0.7f;
-    float chargeOuterHeight = 0.8f;
-    float chargeInnerHeight = 3.2f;
-    float chargeSpinDegrees = 160.0f;
-    float chargePull = 0.8f;
-    float chargeHazePull = 2.0f;
-    // 刀が地面から抜ける瞬間に、裂け目から噴く黒い煙：半径 (m)、密度、噴く長さ (秒)、噴き上がる速さ (m/秒)。
-    float drawBurstRadius = 0.8f;
-    float drawBurstDensity = 340.0f;
-    float drawBurstSeconds = 0.4f;
-    float drawBurstSpeed = 5.0f;
-    // 抜いてから振り下ろすまで、刀身が引く煙の弧：半径 (m)、密度、温度（暗い赤の光）。
-    float bladeTrailRadius = 0.28f;
-    float bladeTrailDensity = 70.0f;
-    float bladeTrailHeat = 0.0f;
-    // 一振り（登場の締め。両手の袈裟斬りで、周りに集まった煙を吹き払う）。一振りの段の中の割合：振り始める（それまでは
-    // 八相で溜め、左手を柄へ添え、少し引く）・振り抜く（振り始めとの間が短いほど速い）・残心が終わる（このあと見得へ）。
-    float slashHoldShare = 0.214f;
-    float slashStrikeShare = 0.262f;
-    float slashRestShare = 0.44f;
-    // 一振りの道：八相 → 体の前を通る所 → 左下へ振り抜いた所。握りの位置（1 倍の体での値）と剣先の向き（局所）。
-    HIKARI::GameProjectFloat3 slashMidGrip{-0.15f, 2.45f, 0.95f};
-    HIKARI::GameProjectFloat3 slashMidTip{0.35f, 0.55f, 0.76f};
-    HIKARI::GameProjectFloat3 slashEndGrip{0.35f, 1.75f, 1.00f};
-    HIKARI::GameProjectFloat3 slashEndTip{0.62f, -0.50f, 0.60f};
-    // 振り抜いた体：捻り（度。正が左）、前への傾き（度）、腰を落とす量（立った高さに対する割合）。
-    float slashTwistDegrees = 30.0f;
-    float slashLeanDegrees = 16.0f;
-    float slashSink = 0.08f;
-    // 締めの見得（血振り）：残心の後、刀を体の右の外へ一気に振り払い、腕を伸ばして刀身を横へ出したまま胸を張って止まる。
-    // 一振りの段の中の割合：振り払い終える・見得を解く（残りで待機の構えへ戻る）。握りの位置（1 倍の体での値）と剣先の
-    // 向き（局所）、体の捻り・前への傾き（度）。
-    float poseShare = 0.50f;
-    float poseHoldShare = 0.83f;
-    HIKARI::GameProjectFloat3 poseGrip{-1.45f, 2.55f, 0.45f};
-    HIKARI::GameProjectFloat3 poseTip{-0.92f, -0.30f, -0.10f};
-    float poseTwistDegrees = -10.0f;
-    float poseLeanDegrees = -5.0f;
-    // 溜めの間に刃口が明るくなる強さ、体を包む気配（ゆがみ）の強さ。
-    float slashEdge = 2.5f;
-    float slashAura = 2.0f;
-    // 振り抜いた瞬間（登場でいちばん強い拍）：衝撃の輪の大きさ（1 つ目・遅れて出る 2 つ目。1 で半径 約 3.4 m）、刀身を走る
-    // 光の明るさ、刀身の上で弾ける閃光のエフェクトとその大きさ、周りの煙を吹き払う強さ (m/秒) と半径 (m)、時間を止める長さ (F)。
-    float slashShock = 3.8f;
-    float slashShockSecond = 2.4f;
-    float slashGlint = 2.2f;
+    // 目の閃き（EyeFlare）の強さ。
+    float eyesFlare = 2.0f;
+    // 閃光のエフェクト（MistBurst）とその大きさ（0 で出さない）。
     HIKARI::GameProjectVfxAssetReference slashFlashEffect{"c7a41d6be2f0483a9d15b0e36f7a2c18",
                                                           "Assets/Vfx/BossMistBurst.hvfx"};
     float slashFlashScale = 2.0f;
-    float slashBlast = 22.0f;
-    float slashBlastRadius = 14.0f;
-    int slashHitStopFrames = 8;
-    // 振り抜いた瞬間に、ボスのまわりに集まった煙（とぐろの域）を外へ吹き飛ばす強さ (m/秒。0 で押さない)。
-    float slashCoilBlast = 32.0f;
-    // 振り抜いた瞬間の白黒の閃き（全画面の効果。Assets/Post/BossImpactMono）：プロファイル（空なら出さない）、反転した
-    // 白黒の長さ・反転しない白黒の長さ・色へ戻る長さ（実時間の秒。時間の停止の間も進む）、強さ（0〜1）。白と黒の境・硬さ・
+    // 白黒の閃き（MonoFlash。全画面の効果。Assets/Post/BossImpactMono）：プロファイル（空なら出さない）、反転した白黒の
+    // 長さ・反転しない白黒の長さ・色へ戻る長さ（実時間の秒。時間の停止の間も進む）、強さ（0〜1）。白と黒の境・硬さ・
     // 明るさは、効果の資産の項目で変える。
     std::string slashMonoProfile{"9e45ffde0ff4c6ee90345798c55b262f"};
     float slashMonoInvertSeconds = 0.035f;
     float slashMonoHoldSeconds = 0.05f;
     float slashMonoFadeSeconds = 0.12f;
     float slashMonoStrength = 1.0f;
-    // 振る間、刀の通った跡に残る黒い煙の弧：濃さ（刀身が引く煙に対する倍率。0 で出さない）、塊の半径 (m)、外へ広がる
-    // 速さ (m/秒。弧が波のように広がって、輪の所で消える)。
-    float slashTrailScale = 5.0f;
-    float slashTrailRadius = 0.55f;
-    float slashTrailSpeed = 3.0f;
-    // 振り下ろした時に、足元から広がる煙の輪（体が煙を吐く）：塊の数、出る半径 (m)、塊の半径 (m)、密度、長さ (秒)、
-    // 広がる速さ (m/秒)。
-    int flourishRingCount = 8;
-    float flourishRingStart = 2.4f;
-    float flourishRingRadius = 0.6f;
-    float flourishRingDensity = 100.0f;
-    float flourishRingSeconds = 0.16f;
-    float flourishRingSpeed = 12.0f;
-    // 一振りが地面の霧を外へ押す強さ (m/秒) と、押す半径 (m)。0 で押さない。
-    float flourishFogPush = 5.0f;
-    float flourishFogPushRadius = 3.0f;
-    // 手応え：刀が地面を離れる瞬間（登場でただ 1 つの強い拍）のカメラの揺れ（揺れ幅 m・長さ F・速さ）、時間を止める
-    // 長さ (F) とその間の時間の速さ、振動（コントローラー）の強さと長さ (F)。一振りの輪は accentSoftShare 倍の揺れ。
+    // 手応え（Shake）：強さ 1 の時のカメラの揺れ（揺れ幅 m・長さ F・速さ）、強さ 1 で画角を一瞬広げる量（度）、振動
+    // （コントローラー）の強さと長さ (F)。時間を止める間（HitStop）の時間の速さ。
     float accentShake = 0.14f;
     int accentShakeFrames = 16;
     float accentShakeFrequency = 20.0f;
-    // 手応え：強い拍で、画角を一瞬広げる量（度。0 で動かさない）。
     float accentFovDegrees = 2.5f;
-    float accentSoftShare = 0.35f;
-    int drawHitStopFrames = 2;
     float hitStopScale = 0.1f;
     float accentRumble = 0.6f;
     int accentRumbleFrames = 12;
+
+    // フェーズの変わり目の抜刀（BossPhaseShiftVisuals）が使う、斬り上げの道と八相の構え。握りの位置（1 倍の体での値。
+    // 体の大きさを掛ける）と剣先の向き（局所。右が -X、前が +Z）。体の捻り（度。正が左）と前への傾き（度）。
+    HIKARI::GameProjectFloat3 drawRipGrip{-1.10f, 2.40f, 0.50f};
+    HIKARI::GameProjectFloat3 drawRipTip{-1.0f, 0.10f, 0.30f};
+    HIKARI::GameProjectFloat3 highGrip{-0.71f, 3.26f, 0.27f};
+    HIKARI::GameProjectFloat3 highTip{0.12f, 0.88f, -0.46f};
+    float highTwistDegrees = -28.0f;
+    float highLeanDegrees = -4.0f;
+    // 登場の黒い煙（BossIntroSmoke）：コードからだけ煙を入れる流体の域（空なら煙を出さない）。量は「1 秒に入れる煙の総量」
+    // （点の大きさや数を変えても、全体の濃さは変わらない）。
+    HIKARI::GameProjectVfxAssetReference smokeEffect{"5c0e7a1b93d24f6e8a41b7d2c6f09e35",
+                                                     "Assets/Vfx/BossIntroSmoke.hvfx"};
+    // 地を走って鎧を起こす煙（拍 Smoke.Streak）：頭に付いて行く域のエフェクト（空なら出さない）、量の倍率、刀の向こう
+    // 何 m から来るか、途中で左右へうねる幅 (m。鎧に近づくほど小さくなる)、鎧に着いた瞬間に舞台の域で鎧を包む煙の量。
+    HIKARI::GameProjectVfxAssetReference streakEffect{"8f3b2c6d17a94e05b6d8c2a4e91f7350",
+                                                      "Assets/Vfx/BossIntroStreak.hvfx"};
+    float streakAmount = 1.0f;
+    float streakLead = 30.0f;
+    float streakSwerve = -1.2f;
+    float wrapAmount = 6.0f;
+    // 鎧を引き起こす煙（Smoke.Rise）：鎧の下の地面から、腰と胸を通って上へ抜ける柱の量。
+    float riseAmount = 14.0f;
+    // 腕の煙：手甲が付く前に肩から伸びる煙の腕（右 Smoke.Tendril・左 Smoke.TendrilLeft）の量、付いた後に鎧と手甲を
+    // つなぐ細い煙の量。手甲が付いた瞬間の弾け（Hand.Right・Hand.Left）の量と、その時のカメラの揺れ。
+    float tendrilAmount = 1.2f;
+    float armAmount = 0.25f;
+    float puffAmount = 4.0f;
+    float attachShake = 0.3f;
+    // 兜を持ち上げる煙の柱（Smoke.HelmLift）の量。
+    float liftAmount = 0.6f;
+    // 兜が頭に収まった瞬間（Helm.Seat。白黒の閃きと一緒に）：襟から噴く煙の量、衝撃の輪の大きさ（2 つ目は 1.4 倍）、
+    // カメラの揺れの強さ、時間を止める長さ (F)。
+    float seatBurstAmount = 10.0f;
+    float seatShock = 2.6f;
+    float seatShake = 1.2f;
+    int seatHitStopFrames = 7;
+    // 刀を握っている間（Sword.Grab）、根元から滲む煙の量。
+    float seepAmount = 42.0f;
+    // 刀を握っている間、画面の揺れが高まって行く強さ（握り終わりの強さ。0 で揺らさない）。
+    float grabRumble = 0.55f;
+    // 刀を握っている間、外から根元へ地面を這って集まって来る黒い霧の量。
+    float gatherAmount = 26.0f;
+    // 見得の黒い霧（抜刀の後から演技の終わりまで）：主役の後ろにゆっくり巻きながら立ち上がる壁と、両脇の地面を前へ
+    // 這い出す霧の量。見得の間の、画の縁の締まり（全画面の効果。0 で出さない）。
+    float backdropAmount = 90.0f;
+    float finaleTension = 0.35f;
+    // 見得の終わり（拍 Smoke.Disperse。音も衝撃も付けず、静かに晴れる）：黒い霧を主役から外へ流す加速 (m/秒²) と、
+    // 場の霧を外へ押す速さ (m/秒)。演技の後も、ゲームのカメラへ渡す間、流しながら消し切る。
+    float disperseBlow = 24.0f;
+    float disperseFogPush = 2.5f;
+    // 序幕の黒い煙（演技の前にプレイヤーを待つ間から、地を走る煙が来るまで。拍 Smoke.Ambient）：部品（鎧・兜・両の手甲・
+    // 刀の根元）の周りを巡る黒い煙の筋の量（全部を合わせて 1 秒に入れる総量）、筋が走る速さ (m/秒。遅いと尾がつながって、
+    // その場に溜まった塊に見える)、巡る輪の大きさ（部品ごとの半径に掛ける倍率）、煙の温度（上向きの加速 m/秒²。高いほど
+    // 立ちのぼる。0 なら地面を這う）、輪を同じ向きへ回し続ける加速 (m/秒²)、部品の周りの場の霧を押しのける速さ
+    // (m/秒。0 で押さない)。
+    float ambientAmount = 18.0f;
+    float ambientTurn = 2.2f;
+    float ambientRing = 1.0f;
+    float ambientHeat = 0.1f;
+    float ambientStir = 0.8f;
+    float ambientFogPush = 1.2f;
+    // 筋の尾を薄める速さ (1/秒。大きいほど尾が短い。0 だと尾がつながって、丸い塊に溜まる)。
+    float ambientFade = 1.2f;
+    // 前触れ（拍 Omen）：煙の筋が自分の部品を離れて鎧の周りへ寄り、渦になる。その渦を回す加速 (m/秒²。拍の終わり)、
+    // 画が暗くなる強さと縁が締まる強さ（全画面の効果。0 で出さない）、低く続く画面の揺れの強さ（拍の終わり）とその
+    // 速さ（1 秒の回数）。
+    float omenPull = 4.0f;
+    float omenDim = 0.5f;
+    float omenTension = 0.45f;
+    float omenRumble = 0.3f;
+    float rumbleFrequency = 6.0f;
+    // 落ちている兜の、面頬の隙間の瞬き（拍 Helm.Glint）：明るさ（画面基準。0 で出さない）。
+    float helmGlint = 2.4f;
+    // 刀身の光（登場の間だけ。戦いの間の刀の光は BossBlade のまま）：刃口の細い線の明るさ（画面基準。握る間に高まり、
+    // 抜けた後は弱く残る）と、振り上げの頂点で剣先に出る星の明るさ（0 で出さない）。
+    float bladeEdgeGlow = 6.0f;
+    float bladeStar = 1.0f;
+    // 全画面の効果（BossImpactMono の衝撃と張りつめ。白黒の閃きと同じ効果の資産）：握っている間に高まる張りつめの強さ
+    // （縁の減光と色ずれ。0 で出さない）、抜けた瞬間に根元から画の上を走る衝撃の輪の強さ（0 で出さない）と、輪が画面を
+    // 走り切る長さ (秒。実時間)。輪の幅・歪み・ぼかし・色ずれは、資産 BossImpactMono.hposteffect の項目。
+    float grabTension = 0.7f;
+    float drawShockPost = 1.0f;
+    float drawShockPostSeconds = 1.1f;
+    // 目の炎（既定では出さない。目は兜の中の自発光の模型 BossHelmEyes で見せる：BossBodySettings の helmEyesObject）：
+    // 目が灯ってから演技の終わりまで、面頬の左右の隙間から立つ青白い炎。兜の前に付いて動く細かい流体の域の
+    // エフェクト（空なら出さない）と、量（片目の、1 秒に入れる煙の総量。目が灯る拍の初めは 4 倍。0 で出さない）。
+    HIKARI::GameProjectVfxAssetReference eyeFireEffect{"b7e94c21d05a4f38a6c1e3f9027d5b84",
+                                                       "Assets/Vfx/BossEyeFire.hvfx"};
+    float eyeFireAmount = 0.0f;
+    // 刀が地から抜けた瞬間（Sword.Out。白黒の閃きと一緒に）：噴き上げる煙の量と噴く長さ (秒)、柱が上がる速さ
+    // (m/秒)、場の霧を外へ押す速さ (m/秒) と届く半径 (m)、刀身が引く煙の量、衝撃の輪の大きさ
+    // （2 つ目は 1.4 倍）、カメラの揺れの強さ、時間を止める長さ (F)。
+    float drawBurstAmount = 115.0f;
+    float drawBurstSeconds = 1.4f;
+    float drawJetSpeed = 4.0f;
+    float drawPush = 3.0f;
+    float drawPushRadius = 5.0f;
+    float drawTrailAmount = 18.0f;
+    float drawShock = 3.8f;
+    float drawShake = 1.6f;
+    int drawHitStopFrames = 9;
+    // 刀が抜けた瞬間の停止の後、噴き上がる間のスローの長さ (F。間の時間の倍率は drawSlowScale。0 でスローにしない)、
+    // 根元で弾ける閃光の大きさ（0 で出さない）。
+    int drawSlowFrames = 0;
+    float drawFlashScale = 3.2f;
+    // 刀へ歩く一歩（拍 Step。動きの記録の足が着く時刻に置いてある）：カメラの揺れの強さと、足元に立つ煙の量。
+    float stepShake = 0.32f;
+    float stepAmount = 2.5f;
+    // 煙を消す（Smoke.Clear と演技の後）：消す速さ (1/秒) と、演技の後に消し続けてから域を止めるまでの長さ (秒)。
+    float clearAbsorption = 6.0f;
+    float smokeLingerSeconds = 1.5f;
 };
 
 // 演出のカメラのカット 1 つ（表の 1 行）。位置は「ボスの始めの足元が原点、ボスの前（プレイヤーの側）が +Z、ボスの
 // 左が +X」の m、画角は度。始めから終わり（次のカットの始め）へ、なめらかに動く。
 struct BossIntroCut {
-    BossIntroPhase phase = BossIntroPhase::Gather;
+    BossIntroPhase phase = BossIntroPhase::Show;
     float share = 0.0f;
-    // 登場の始め（集める段の始め）からの F。
+    // 登場の始め（演技の段の始め）からの F。
     float at = 0.0f;
     HIKARI::GameProjectFloat3 eyeFrom{};
     HIKARI::GameProjectFloat3 eyeTo{};
@@ -337,65 +225,108 @@ struct BossIntroCut {
     float gameTo = 0.0f;
 };
 
+// 効果の拍（演出の資産の事件段）の種類。名前は読んだ後に 1 回だけ見分ける（毎フレーム文字を比べない）。
+enum class BossIntroCueKind : uint8_t {
+    Unread,
+    Other,
+    HelmSeat,
+    SwordOut,
+    Eyes,
+    SmokeStreak,
+    SmokeRise,
+    SmokeTendril,
+    SmokeTendrilLeft,
+    HandRight,
+    HandLeft,
+    HelmLift,
+    SwordGrab,
+    SmokeClear,
+    Step,
+    SmokeDisperse,
+    SmokeAmbient,
+    Omen,
+    HelmGlint
+};
+
+// 役者（BossIntroActor）が使う事件段の役：片段を流す（Anim.<片段>）、部品が骨へ飛ぶ（Part.<部品>.Fly）、落ちている部品が
+// 痙攣する（Part.<部品>.Twitch）。
+enum class BossIntroCueRole : uint8_t { None, Anim, PartFly, PartTwitch };
+
+// 効果の拍 1 つ：事件段（名前・始め・長さ）と、入った・出たか。役者が使う段は、役と部品の番号（BossIntroPart。無ければ負）。
+struct BossIntroCue {
+    HIKARI::GameProjectSequenceEventClip clip{};
+    BossIntroCueKind kind = BossIntroCueKind::Unread;
+    bool entered = false;
+    bool left = false;
+    BossIntroCueRole role = BossIntroCueRole::None;
+    int8_t part = -1;
+};
+
 // 登場の実行時の状態（保存しない）。
 struct BossIntroState {
     BossIntroPhase phase = BossIntroPhase::Done;
-    // いまの段に入ってからの F。
+    // いまの段に入ってからの F（固定 tick）。
     int frame = 0;
-    // 散らばりの基準：始めの足元と向き（Initialize が入れ、プレイヤーが見えた tick にプレイヤーの側へ向ける）。
+    // 舞台の枠：登場を始めた時のボスの足元と向き（Initialize が入れ、演技の前にプレイヤーが見えた tick に 1 度だけ
+    // プレイヤーの側へ向ける）。演技の間、ボスの物体はここに止める（演出の資産のカメラは物体に付く）。
     HIKARI::GameProjectFloat3 origin{};
     float yaw = 0.0f;
     // 戦いの流れ（Flow）に止められたのを見たか（止められる前の最初の数 tick で始めない）。
     bool heldSeen = false;
-    // 散らばりの基準を、プレイヤーのいる側へ向けたか。
+    // 舞台の枠を、プレイヤーのいる側へ向けたか。
     bool faced = false;
     // 登場が始まった。
     bool started = false;
-    // 見た目（BossIntroVisuals）：前に見た段と、その段に入ってからの秒（描画のフレームで進める）。
+    // 役者と部品（BossIntroActor）。
+    BossIntroActorState actor;
+    // 演技の段の長さ (固定 tick。演出の資産の長さから)。
+    int showTicks = 0;
+    // 演出の資産：流している手綱（0 は流していない・断られた）。
+    HIKARI::GameProjectSequencePlaybackHandle sequence{};
+    // 見た目：最後に見た資産の時刻、その時刻のまま進まない秒、進まないので自分の時計に切り替えたか。
+    float sequenceSeen = -1.0f;
+    float sequenceStall = 0.0f;
+    bool sequenceStalled = false;
+    // 効果の拍（読んだ数だけ使う。入れ物は Begin で確保する）。役者が使う段を見分けたか、役者と部品を隠したか。
+    std::vector<BossIntroCue> cues;
+    int cueCount = 0;
+    bool cueRolesRead = false;
+    bool actorHidden = false;
+    // 演技の最後に役者が担いでいた刀の置き場所（外形の約束）。一息の段で、戦いの体の刀をここから待機の構えへ下ろす。
+    bool carryValid = false;
+    HIKARI::GameProjectTransform carrySword{};
+    float settleClock = 0.0f;
+    // 見た目（BossIntroVisuals）：前に見た段、演技の時計（表の秒。描画のフレームで進める）、一息の段の秒、飛ばしたのを
+    // 見たか、目が灯ったか（Eyes の拍から）。
     BossIntroPhase seenPhase = BossIntroPhase::Done;
-    float phaseSeconds = 0.0f;
-    // 立ち込める煙・とぐろの煙：エフェクト、時計 (秒)、出し終えてからの秒。
-    HIKARI::GameProjectVfxPlaybackHandle hazeVfx{};
-    float hazeIdleSeconds = 0.0f;
-    HIKARI::GameProjectVfxPlaybackHandle coilVfx{};
-    std::array<float, kBossIntroCoilCapacity> coilAngle{};
-    bool coilReady = false;
-    float coilClock = 0.0f;
-    float coilIdleSeconds = 0.0f;
-    // 鎧の部品：ばねで追っている位置・速さ・向き（世界）と、煙を出す所・出す重み（0 で出さない）。
-    struct Part {
-        bool ready = false;
-        HIKARI::GameProjectFloat3 position{};
-        HIKARI::GameProjectFloat3 velocity{};
-        HIKARI::GameProjectQuaternion rotation{};
-        HIKARI::GameProjectFloat3 smokeAt{};
-        float smoke = 0.0f;
-    };
-    std::array<Part, kBossIntroPartCapacity> parts{};
-    // 袖口から柄へ流れる煙（抜く前）：出す所と重み。
-    HIKARI::GameProjectFloat3 sleeveAt{};
-    float sleeve = 0.0f;
-    // 煙の塊（置く所・吹く速さ・残りの秒・半径・密度・温度）。
-    struct Puff {
-        HIKARI::GameProjectFloat3 position{};
-        HIKARI::GameProjectFloat3 velocity{};
-        float seconds = 0.0f;
-        float radius = 0.5f;
-        float density = 0.0f;
-        float heat = 0.0f;
-    };
-    std::array<Puff, kBossIntroPuffCapacity> puffs{};
-    int puffCursor = 0;
-    // 刀が地面を離れたか・一振りの輪を出したか。一振りが場の霧を押すのを、次の描画のフレームで 1 回だけ出す。
-    bool drawBurst = false;
-    bool flourishRing = false;
-    bool fogPushPending = false;
-    // 一振りで周りの煙を吹き払ったか・目が灯った拍を出したか。周りの煙を吹き払うのを、次の描画のフレームで 1 回だけ出す。
-    bool fogBlown = false;
-    // 一振りで吹き払ってからの秒（登場の煙を消し始める時を計る）。
-    float clearSeconds = 0.0f;
-    // 演出のエフェクトへの頼み（BossBodyAccents が読んで出す）：体を包む気配の強さ、衝撃の輪（置く所・大きさ・出すまでの
-    // 秒。大きさ 0 は頼んでいない）、刀身を走る光の明るさ（0 は頼んでいない）、閃光を出すか。
+    float showSeconds = 0.0f;
+    float settleSeconds = 0.0f;
+    bool skipSeen = false;
+    bool eyesLit = false;
+    // 目の光へ足す明るさの倍率（このフレームだけ。BossIntroEffects が書き、BossBodyAccents が読む。0 は普段の明るさ）。
+    float eyeGlow = 0.0f;
+    // 登場の黒い煙（BossIntroSmoke）：流体の域の再生、演技の後に消し続けた秒、外へ 1 回押す頼み（兜が収まった・刀が抜けた）。
+    HIKARI::GameProjectVfxPlaybackHandle smokeHandle{};
+    float smokeLinger = 0.0f;
+    // 地を走る煙の域：再生、道の始めと終わり（世界。拍の始めに決める）、拍の後に置いておいた秒。
+    HIKARI::GameProjectVfxPlaybackHandle streakHandle{};
+    HIKARI::GameProjectVfxPlaybackHandle eyeFireHandle{};
+    bool streakSet = false;
+    HIKARI::GameProjectFloat3 streakFrom{};
+    HIKARI::GameProjectFloat3 streakTo{};
+    float streakFade = 0.0f;
+    bool smokeSeatPush = false;
+    bool smokeDrawPush = false;
+    // 刀身が引く煙：刀身を追いかける点の位置（世界）、もう置いたか、前に進めた時の演技の時刻 (秒)。
+    std::array<HIKARI::GameProjectFloat3, 5> smokeTrail{};
+    bool smokeTrailSet = false;
+    float smokeTrailAt = 0.0f;
+    // 編集器のプレビュー（Play の外）：流しているか、拍を読んだプレビューの手綱。
+    bool previewing = false;
+    HIKARI::GameProjectSequencePlaybackHandle previewHandle{};
+    // 効果への頼み（BossIntroEffects の部品が書き、BossBodyAccents と BossIntroEffects::Feedback が読む。フェーズの
+    // 変わり目の演出も同じ口を使う）：体を包む気配の強さ、衝撃の輪（置く所・大きさ・出すまでの秒。大きさ 0 は頼んで
+    // いない）、刀身を走る光の明るさ（0 は頼んでいない）、閃光（出すか・所・大きさ）。
     float aura = 0.0f;
     struct Shock {
         HIKARI::GameProjectFloat3 at{};
@@ -406,39 +337,46 @@ struct BossIntroState {
     float glint = 0.0f;
     bool flashPending = false;
     HIKARI::GameProjectFloat3 flashAt{};
-    bool eyesAccent = false;
-    bool blastPending = false;
-    // 刀身が引く煙：剣先と刀身の中ほどの位置（世界）と、出す重み（0 で出さない）。
-    HIKARI::GameProjectFloat3 trailTip{};
-    HIKARI::GameProjectFloat3 trailMiddle{};
-    float trailWeight = 0.0f;
-    // 前のフレームに煙を入れた剣先・中ほどの位置（速い一振りでも、弧が点に切れないように間を埋める）。
-    HIKARI::GameProjectFloat3 trailTipFrom{};
-    HIKARI::GameProjectFloat3 trailMiddleFrom{};
-    bool trailLinked = false;
-    // 一振りの煙の弧を入れた所の目印（吹き払った後、そこへ吸収を置いて弧を消す）。
-    HIKARI::GameProjectFloat3 trailMarks[kBossIntroTrailMarkCapacity]{};
-    int trailMarkCount = 0;
-    // 一振りの間の、刀に付くエフェクトへの頼み（BossBodyAccents が読む）：刃口の光の強さ・刀光とゆがみを出すか。
+    float flashScale = 0.0f;
+    // 刀に付くエフェクトへの頼み（BossBodyAccents が読む。毎フレーム 0 に戻す）：刃口の光の強さ・刀光とゆがみを出すか。
     float bladeEdge = 0.0f;
     bool bladeSwing = false;
-    // 振る間、刀の跡に残す黒い煙の濃さの倍率（斬り上げと一振りで違う）。
-    float trailScale = 0.0f;
-    // 溜めに入った合図（目の閃き・刀身の光）を出したか。
-    bool slashCharge = false;
-    // 斬る前の溜めの、煙の筋の時計（秒）。とぐろの域の煙を吹き飛ばすのを次の描画で 1 回だけ出す。白黒の閃きを次の
-    // 描画のフレームで始める・始めてからの実時間の秒（負は出していない）。見得に止まった拍を出したか。
-    float chargeClock = 0.0f;
-    bool coilBlastPending = false;
+    // 白黒の閃き：次の描画のフレームで始める（強さ・長さ。0 は既定）、出している強さ・長さ、始めてからの実時間の秒（負は
+    // 出していない）。
     bool monoPending = false;
+    float monoStrength = 0.0f;
+    float monoLength = 0.0f;
+    float monoActiveStrength = 0.0f;
+    float monoActiveLength = 0.0f;
     float monoSeconds = -1.0f;
-    bool poseAccent = false;
-    // 確かめ用（Boss.bodyTraceMotion）：前のフレームの剣先の位置。
-    HIKARI::GameProjectFloat3 traceTip{};
-    bool traceReady = false;
+    // 全画面の衝撃の輪：始まってからの秒（負なら出していない）と、中心（世界）。握っている間の張りつめ（毎フレーム入れる）。
+    float shockSeconds = -1.0f;
+    HIKARI::GameProjectFloat3 shockAt{};
+    float tensionPending = 0.0f;
+    // 剣先の星（全画面の効果）：始まってからの秒（負なら出していない）。
+    float starSeconds = -1.0f;
+    // 見得の終わり：霧を外へ流し始める 1 回の押しを頼んだか。
+    bool dispersePush = false;
+    // 序幕の黒い霧：点を巡らせる時計（秒。演技の前から進む。演技の時計は、始まるまで 0 のまま）。
+    float ambientClock = 0.0f;
+    // 画を暗くする頼み（このフレームだけ。拍が毎フレーム入れる）と、いま掛けている強さ・張りつめの強さ（急に切り替えず、
+    // 実時間で寄せる）。
+    float dimPending = 0.0f;
+    float dimNow = 0.0f;
+    float tensionNow = 0.0f;
+    // 続けて出す画面の揺れ：頼まれた強さ（このフレームだけ）と、揺れの位相（自分で進める）。
+    float rumblePending = 0.0f;
+    float rumblePhase = 0.0f;
+    // 落ちている兜の隙間の瞬き：頼まれた強さ（このフレームだけ。0〜1）。
+    float helmGlint = 0.0f;
+    // 演出の資産が流れている間の、最後に見たカメラの姿勢（演技の後、ここからゲームのカメラへ滑らかに渡す）。
+    bool filmValid = false;
+    HIKARI::GameProjectFloat3 filmEye{};
+    HIKARI::GameProjectFloat3 filmTarget{};
+    float filmFov = 1.0f;
     // 演出のカメラのカット（表を読んだもの。読めなければ空で、演出のカメラを出さない）。
     std::vector<BossIntroCut> cuts;
-    // 飛ばす：押された（次の tick に進める）・飛ばした。刀が地面を離れる瞬間のスローを次の描画のフレームで頼む F。
+    // 飛ばす：押された（次の tick に進める）・飛ばした。スローを次の描画のフレームで頼む F。
     bool skipRequested = false;
     bool skipped = false;
     int slowPending = 0;

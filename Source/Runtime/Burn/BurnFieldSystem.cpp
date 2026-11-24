@@ -112,14 +112,15 @@ void Trace(const BurnFieldComponent& field) {
     std::snprintf(
         message, sizeof(message),
         "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-        "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f blasts=%u "
+        "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f maxGap=%d blasts=%u "
         "blastPlan=%u effects=%u thinned=%u held=%u effectPeak=%u",
         static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
         static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds), field.fireDamageTotal,
         field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters, field.burningTiles, field.emitterStride,
         static_cast<double>(field.traceAlong), static_cast<double>(field.traceAcross),
-        static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.blastCount, field.blastPlan,
-        field.blastEffectsPlayed, field.blastEffectsThinned, field.blastEffectsHeld, field.blastEffectPeak);
+        static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.maxFeedGap, field.blastCount,
+        field.blastPlan, field.blastEffectsPlayed, field.blastEffectsThinned, field.blastEffectsHeld,
+        field.blastEffectPeak);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 

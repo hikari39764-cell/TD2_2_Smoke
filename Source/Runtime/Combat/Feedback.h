@@ -52,6 +52,11 @@ void StartCameraShake(CameraShake& shake, const CameraShakeParams& params);
 bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, uint64_t preferredCameraId, float unscaledDt,
                        HIKARI::GameProjectFloat3* offsetOut = nullptr);
 
+// カメラの位置と注視点を、カメラの局所の向きへ一緒にずらす（このフレームだけ）。続けて出す揺れは、呼ぶ側が位相を進めて
+// 毎フレーム出す。出せたら true。
+bool SubmitCameraOffset(HIKARI::WorldView& world, uint64_t sourceId, int priority,
+                        HIKARI::GameProjectFloat3 localOffset);
+
 } // namespace Feedback
 
 } // namespace Project_TD2_2

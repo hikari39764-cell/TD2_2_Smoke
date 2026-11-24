@@ -33,8 +33,9 @@
 #include "../Common/SessionMemory.h"
 #include "../Common/TraceInterval.h"
 #include "../BossBody/BossBodyVisuals.h"
+#include "../BossBody/BossIntroActor.h"
 #include "../BossBody/BossIntroCamera.h"
-#include "../BossBody/BossIntroVisuals.h"
+#include "../BossBody/BossIntroEffects.h"
 #include "../BossBody/BossPhaseTwoField.h"
 #include "../Combat/DamageableRules.h"
 #include "../Gourd/GourdRules.h"
@@ -219,6 +220,11 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     // 登場は Play の間に 1 度だけ：やり直し（シーンの読み直し）の後は、Play session が覚えている。
     auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession());
     BossIntro::Begin(boss, memory != nullptr && memory->GetMemory().bossIntroSeen);
+    // 役者（骨格の動画で演じる体）を探す。いなければ登場をしない。登場をしない時は、役者と落ちている部品を隠す。
+    if (!BossIntroActor::Find(world, boss))
+        BossIntro::Cancel(boss);
+    if (!BossIntro::Holding(boss))
+        BossIntroActor::Hide(world, boss);
     BossIntroCamera::Load(world, boss);
     BossIntroCamera::LoadShift(world, boss);
     LoadTable(world, boss);
@@ -559,6 +565,10 @@ void ApplyTransform(HIKARI::ObjectView object, BossComponent& boss, float dt) {
         vanish = std::max(kVanishMinScale, 1.0f - progress);
     }
     transform.scale = {vanish, squash * vanish, vanish};
+    // 登場の演技の前と間は、体の物体を舞台に止める（演出の資産のカメラは物体に付く。浮遊のゆれ・傾きを入れない。
+    // c-e0c500）。上の傾き・構えの値は、いつも通り進めておく（演技の後の戦いの見た目を変えない）。
+    if (BossIntro::Pinned(boss))
+        transform = BossIntro::StageTransform(boss);
     object.SetWorldTransform(transform);
     // 外形は描画のフレームで、前の tick とこの tick の間を補間して置く。
     BossBodyVisuals::NoteTick(boss, transform.position);
@@ -674,7 +684,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 boss.bodyState.lookTargetSeen = player != nullptr;
                 if (player != nullptr)
                     BossIntro::Face(boss, playerCenter);
-                BossIntro::Step(boss);
+                BossIntro::Step(world, boss);
                 BossHealthBars::Step(boss);
                 BossPhaseShift::Step(boss);
                 // 演出の間（登場・フェーズの変わり目）は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。
@@ -684,6 +694,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 if (player != nullptr)
                     BossPhaseShift::Push(boss, *player, playerCenter);
                 boss.shownBar = BossIntro::BarShown(boss) ? 1.0f : 0.0f;
+                boss.shownCinematic = BossIntro::Cinematic(boss) ? 1.0f : 0.0f;
                 if (BossIntro::Started(boss)) {
                     if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
                         memory->GetMemory().bossIntroSeen = true;
@@ -788,6 +799,11 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
 }
 
 void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+    // 編集中（Play の外）：登場の演出の資産のプレビューだけ（c-e0c500。ほかの見た目・規則は動かさない）。
+    if (world.GetGameSession() == nullptr) {
+        BossBodyVisuals::UpdatePreviews(world);
+        return;
+    }
     if (!IsPlaying(world, frame))
         return;
     size_t demand = 0;
@@ -809,7 +825,7 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                                    frame.gameDt);
                                                   });
                                               BossFeedback::Update(world, object, boss, frame);
-                                              BossIntroVisuals::Feedback(world, object, boss, frame.unscaledDt);
+                                              BossIntroEffects::Feedback(world, object, boss, frame.unscaledDt);
                                               // 登場の演出：飛ばす入力と、演出のカメラ（プレイヤーのカメラへ渡す）。
                                               if (BossIntro::Cinematic(boss) && !boss.intro.skipAction.empty() &&
                                                   GameSession::ReadAction(world.GetInput(), boss.intro.skipAction)
@@ -854,7 +870,7 @@ void BossSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext&
                                               if (!boss.initialized)
                                                   return;
                                               BossSmoke::Render(world, object, boss, smokePerVolume);
-                                              BossIntroVisuals::Render(world, object, boss, frame.gameDt);
+                                              BossIntroEffects::Render(world, object, boss, frame.gameDt);
                                           });
 }
 
@@ -864,7 +880,6 @@ void BossSystem::OnWorldDetached(HIKARI::WorldView& world) {
                                               BossVisuals::Stop(world, boss);
                                               BossBodyVisuals::Stop(world, boss);
                                               BossPhaseTwoField::Stop(world, boss);
-                                              BossIntroVisuals::Stop(world, boss);
                                               BossWaves::Clear(boss);
                                           });
 }

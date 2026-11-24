@@ -1,0 +1,24 @@
+{
+  "displayName": "BossIntroActor",
+  "guid": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+  "importSettings": {
+    "clusterGeometry": {
+      "enabled": true,
+      "maxLodCount": 5,
+      "profile": "Scene"
+    },
+    "lightmapUv": {
+      "mode": "GenerateIfMissingOrInvalid",
+      "padding": 8,
+      "resolution": 64
+    },
+    "meshFormat": "HCMESH",
+    "outputFormat": "HMODEL",
+    "sourceFormat": ".gltf"
+  },
+  "importerId": "ModelImporter",
+  "importerVersion": 50,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/BossIntroActor.gltf",
+  "type": "Model"
+}

@@ -711,6 +711,7 @@ void BossComponent::Update(HIKARI::GameComponentContext& context, float) {
     ObjectVariables::PublishFloat(context, category, kBossHealthVariable, shownHealth, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossMaxHealthVariable, shownMaxHealth, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossBarShownVariable, shownBar, variableWriteWarned);
+    ObjectVariables::PublishFloat(context, category, kBossCinematicVariable, shownCinematic, variableWriteWarned);
     ObjectVariables::PublishInt(context, category, kBossPhaseVariable, shownPhase, variableWriteWarned);
     ObjectVariables::PublishFloat(context, category, kBossPhaseSecondsVariable, shownPhaseSeconds, variableWriteWarned);
 }

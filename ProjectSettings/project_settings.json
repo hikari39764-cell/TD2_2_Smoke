@@ -8,7 +8,9 @@
     "Physics",
     "GameplayBasic",
     "Vfx",
-    "ActionPresentation"
+    "ActionPresentation",
+    "Cinematics",
+    "Animation"
   ],
   "startupSceneGuid": "a3c3ee3ba2d420afff05ff8fc9e6916f",
   "version": 5
