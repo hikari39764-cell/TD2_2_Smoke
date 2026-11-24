@@ -17,7 +17,7 @@
     "sourceFormat": ".gltf"
   },
   "importerId": "ModelImporter",
-  "importerVersion": 50,
+  "importerVersion": 59,
   "metaVersion": 1,
   "sourcePath": "Assets/Models/BossIntroHelm.gltf",
   "type": "Model"

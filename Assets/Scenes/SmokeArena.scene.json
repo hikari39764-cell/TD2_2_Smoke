@@ -29,8 +29,8 @@
       "northYawDegrees": 0.0,
       "utcOffsetHours": 9.0
     },
-    "profile": "engine.environment.default",
-    "renderStyle": "engine.style.realistic",
+    "profile": "389cc875d687acf35ac426a5fd242dd9",
+    "renderStyle": "95e9c9b55ee486c4be8e2afacdb4a8dc",
     "time": {
       "day": 21,
       "localHours": 16.4,
@@ -162,10 +162,20 @@
               "$hikariRef": "SceneObject",
               "id": 4
             },
+            "downFrames": 30,
+            "downRollFrame": 8,
+            "getUpFrames": 18,
             "lockTarget": {
               "$hikariRef": "SceneObject",
               "id": 3
-            }
+            },
+            "moveSpeed": 4.0,
+            "rollEasePower": 1.600000023841858,
+            "rollFogStrength": 5.0,
+            "rollFrames": 22,
+            "rollInvincibleFrames": 15,
+            "rollStamina": 15.0,
+            "sprintSpeed": 6.199999809265137
           },
           "type": "Project_TD2_2.Player"
         }
@@ -180,7 +190,7 @@
       "transform": {
         "position": [
           0.0,
-          3400.85,
+          3400.85009765625,
           -14.0
         ],
         "rotationEulerDeg": [
@@ -255,13 +265,14 @@
         {
           "id": 5,
           "properties": {
-            "maxHealth": 1800.0
+            "maxHealth": 2200.0
           },
           "type": "Project_TD2_2.Damageable"
         },
         {
           "id": 90,
           "properties": {
+            "stunMax": 320.0,
             "introActorObject": {
               "$hikariRef": "SceneObject",
               "id": 960
@@ -354,6 +365,7 @@
               0.6,
               0.0
             ],
+            "screenCompositionEnabled": true,
             "targetObjectId": {
               "$hikariRef": "SceneObject",
               "id": 2
@@ -485,27 +497,31 @@
         },
         {
           "id": 3,
-          "type": "Project_TD2_2.Gourd",
           "properties": {
-            "player": {
-              "$hikariRef": "SceneObject",
-              "id": 2
-            },
             "camera": {
               "$hikariRef": "SceneObject",
               "id": 4
+            },
+            "player": {
+              "$hikariRef": "SceneObject",
+              "id": 2
             }
-          }
+          },
+          "type": "Project_TD2_2.Gourd"
         },
         {
           "id": 4,
-          "type": "Project_TD2_2.GourdShot",
           "properties": {
+            "damage": 80.0,
+            "initialSpeed": 80.0,
+            "smokeCost": 15.0,
+            "staminaCost": 18.0,
             "trailEffect": {
               "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
               "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
             }
-          }
+          },
+          "type": "Project_TD2_2.GourdShot"
         }
       ],
       "editorLocked": false,
@@ -517,9 +533,9 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          0.65,
-          3401.4,
-          -14.15
+          0.6499999761581421,
+          3401.39990234375,
+          -14.149999618530273
         ],
         "rotationEulerDeg": [
           0.0,
@@ -949,9 +965,9 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          4.6636,
+          5.2833,
           0.16,
-          1.3972
+          2.4272
         ],
         "rotationEulerDeg": [
           -90.0,
@@ -1003,9 +1019,9 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          -0.6999,
+          -0.6039,
           0.16,
-          -3.2225
+          -4.0715
         ],
         "rotationEulerDeg": [
           90.0,

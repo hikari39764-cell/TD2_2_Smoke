@@ -1,0 +1,25 @@
+{
+  "effect": "engine.post.effect.ani",
+  "formatVersion": 1,
+  "name": "Ani",
+  "values": {
+    "edgeSoftness": [
+      1.468999981880188,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "ink": [
+      0.08009999990463257,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "posterize": [
+      0.38999998569488525,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

@@ -6,7 +6,7 @@
     "sourceAuthoritative": true
   },
   "importerId": "SceneAssetImporter",
-  "importerVersion": 2,
+  "importerVersion": 3,
   "metaVersion": 1,
   "sourcePath": "Assets/Scenes/KujataSandBox.scene.json",
   "type": "Scene"

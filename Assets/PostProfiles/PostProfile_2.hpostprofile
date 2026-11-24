@@ -1,0 +1,25 @@
+{
+  "effect": "engine.post.effect.outline",
+  "formatVersion": 1,
+  "name": "Outline",
+  "values": {
+    "depthSensitivity": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "lineWidth": [
+      3.7639999389648438,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "lumaSensitivity": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

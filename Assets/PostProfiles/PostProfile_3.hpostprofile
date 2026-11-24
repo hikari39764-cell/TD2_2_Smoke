@@ -1,0 +1,19 @@
+{
+  "effect": "engine.post.effect.cyber",
+  "formatVersion": 1,
+  "name": "CYBER",
+  "values": {
+    "edgeGlow": [
+      3.5,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "glitch": [
+      0.257999986410141,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}
