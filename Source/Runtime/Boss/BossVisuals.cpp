@@ -304,11 +304,15 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
             continue;
         boss.waveVfxId[i] = wave.id;
         const Vec3 velocity = Mul(wave.direction, wave.speed);
+        // 霧の弾（左手の技。c-4be37e）：刃を出さず、尾の霞を弾の大きさにして霧の芯を灯す。
+        const bool mist = boss.knifeMistBullet;
         HIKARI::GameProjectVfxPlayRequest tail{};
         tail.asset = boss.swordEffect;
-        tail.transform = Placed(wave.position, 1.0f);
-        tail.parameters = Parameters(boss, boss.knifeEffectAmount, 0.0f);
+        tail.transform = Placed(wave.position, mist ? boss.knifeMistScale : 1.0f);
+        tail.parameters = Parameters(boss, boss.knifeEffectAmount, mist ? boss.knifeMistCore : 0.0f);
         handle = StartMoving(world, boss, tail, velocity);
+        if (mist)
+            continue;
         // 刃のエフェクトには入力が無い（霞の尾の入力を渡すと、知らない入力として再生を断られる）。
         HIKARI::GameProjectVfxPlayRequest blade{};
         blade.asset = boss.knifeEffect;

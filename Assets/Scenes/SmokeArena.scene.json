@@ -281,6 +281,7 @@
               "$hikariRef": "SceneObject",
               "id": 965
             },
+            "bodyTrailGroundCut": 0.9,
             "introActorObject": {
               "$hikariRef": "SceneObject",
               "id": 960
@@ -302,10 +303,12 @@
               "id": 964
             },
             "kamaeFrames": 20,
+            "knifeMistBullet": true,
             "movesPath": "Boss/kasumi_bushi_moves_mocap.csv",
             "raiseFrames": 12,
             "segmentsPath": "Boss/kasumi_bushi_segments_mocap.csv",
-            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv"
+            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
+            "swingPushForce": 40.0
           },
           "type": "Project_TD2_2.Boss"
         },

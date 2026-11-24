@@ -1087,6 +1087,15 @@ public:
     float knifeEffectAmount = 0.8f;
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
     HIKARI::GameProjectVfxAssetReference knifeEffect{"26fa37413fbcc48cc52d0605225433bb", "Assets/Vfx/BossKnife.hvfx"};
+    // 見た目：左手の技の霧の弾（c-4be37e）。入れると投げナイフの刃を出さず、尾の霞（swordEffect）を弾の大きさ
+    // knifeMistScale 倍にして、霧の芯を knifeMistCore の明るさで灯して飛ばす。
+    bool knifeMistBullet = false;
+    float knifeMistScale = 2.5f;
+    float knifeMistCore = 1.5f;
+    // 見た目：振りで場の霧を揺らす（c-4be37e）。当たりの窓の間、刀の外側と内側の所で、刃が進む向きへ場の霧を押す力
+    // (m/s²。0 は押さない) と、その力が届く半径 (m)。
+    float swingPushForce = 0.0f;
+    float swingPushRadius = 2.0f;
     // 見た目：回し蹴りの霞の輪（広がる炎の輪。自前の流体域を 1 つ使う。足元の霧を外へ押す）
     HIKARI::GameProjectVfxAssetReference ringEffect{"cbffd59dc133951894e126d8243b0fd2", "Assets/Vfx/BossKickRing.hvfx"};
     float ringEffectRadius = 9.0f;

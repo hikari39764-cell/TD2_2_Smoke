@@ -767,6 +767,9 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
                         const Vec3 forward = Forward(boss.yaw);
                         Vec3 from = Add(boss.ground, Mul(forward, boss.knifeForward));
                         from.y = boss.ground.y + BossPose::RootHeight(boss) + boss.knifeHeight;
+                        // 動捕の技は、見えている左手の骨の所から出す（c-4be37e）。
+                        if (Vec3 hand{}; BossAnimBody::LeftHandPoint(boss, hand))
+                            from = hand;
                         BossWaves::SpawnKnives(frame, boss.move, from, AimDirection(frame, from));
                     } else {
                         BossSpecialMoves::Trigger(frame, move);

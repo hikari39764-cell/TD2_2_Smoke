@@ -31,6 +31,8 @@ constexpr float kTau = 6.28318530718f;
 constexpr uint64_t kRingPushBase = 160;
 // 飛ぶ斬撃が、真下の場の霧を左右へ割る押しの提出 ID（斬撃 1 つにつき左右 2 つ）。
 constexpr uint64_t kWavePartBase = 200;
+// 振りで場の霧を揺らす力（刀の外側・内側の 2 つ。c-4be37e）。
+constexpr uint64_t kSwingPushBase = 300;
 constexpr int kRingPushCount = 6;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
@@ -85,6 +87,21 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         emitter.Emit(kSwordOuterId, boss.swordOuter, boss.swordSmokeRadius, boss.swordSmokeRate * kSwordOuterShare, {});
         emitter.Emit(kSwordInnerId, boss.swordInner, boss.swordSmokeRadius,
                      boss.swordSmokeRate * (1.0f - kSwordOuterShare), {});
+        // 振りの空気（c-4be37e）：刃が進む向き（規則の剣の構えの斬る向き）へ、刀の外側・内側の所で場の霧を押す。
+        const Vec3 edge = RotateY(boss.swordPose.edge, boss.yaw);
+        if (boss.swingPushForce > 0.0f && Length(edge) > 0.5f) {
+            const Vec3 at[2] = {boss.swordOuter, boss.swordInner};
+            for (uint64_t k = 0; k < 2; ++k) {
+                HIKARI::GameProjectFluidInteraction push{};
+                push.kind = HIKARI::GameProjectFluidInteractionKind::Force;
+                push.direction = Normalize(edge);
+                push.position = at[k];
+                push.extents = {boss.swingPushRadius, 0.0f, 0.0f};
+                push.strength = boss.swingPushForce;
+                boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), kSwingPushBase + k, push).Accepted() &&
+                                     boss.fluidAccepted;
+            }
+        }
     }
     if (boss.glintFrames > 0) {
         // 構え：剣が止まり、剣先に霞が集まる（地面や画面の予告の代わり）。

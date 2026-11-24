@@ -672,6 +672,15 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
         fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", knifeEffectAmount, 0.0f, 20.0f);
         fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", knifeEffect);
+        fields.Bool("knifeMistBullet",
+                    "投げナイフを霧の弾にする（刃を出さず、尾の霞を弾の大きさで、霧の芯を灯して飛ばす）",
+                    knifeMistBullet);
+        fields.Float("knifeMistScale", "…霧の弾の大きさ（尾の霞の倍率）", knifeMistScale, 0.1f, 10.0f);
+        fields.Float("knifeMistCore", "…霧の弾の芯の明るさ（尾の霞のエフェクトの霧の芯）", knifeMistCore, 0.0f, 10.0f);
+        fields.Float("swingPushForce",
+                     "振りで場の霧を揺らす力（m/s²。当たりの窓の間、刃が進む向きへ押す。0 は押さない）", swingPushForce,
+                     0.0f, 400.0f);
+        fields.Float("swingPushRadius", "…力が届く半径 (m)", swingPushRadius, 0.1f, 10.0f);
         fields.Vfx("ringEffect", "回し蹴りの霞の輪のエフェクト（広がる炎の輪。自前の流体域を持つ）", ringEffect);
         fields.Float("ringEffectRadius", "…エフェクトが作られている半径 (m。輪の半径 ÷ これ が大きさの倍率)",
                      ringEffectRadius, 0.5f, 50.0f);
