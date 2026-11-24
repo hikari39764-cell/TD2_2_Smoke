@@ -309,6 +309,10 @@
             "knifeMistBullet": true,
             "movesPath": "Boss/kasumi_bushi_moves_mocap.csv",
             "raiseFrames": 12,
+            "ringEffect": {
+              "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
+              "assetPath": "Assets/Vfx/BossMistRing.hvfx"
+            },
             "segmentsPath": "Boss/kasumi_bushi_segments_mocap.csv",
             "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
             "swingPushForce": 40.0

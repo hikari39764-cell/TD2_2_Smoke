@@ -1,0 +1,14 @@
+{
+  "displayName": "BossMistRing",
+  "guid": "45fbe978d1a9fd41254945306ae724a9",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossMistRing.hvfx",
+  "type": "VfxEffect"
+}
