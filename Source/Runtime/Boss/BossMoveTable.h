@@ -80,7 +80,9 @@ struct BossStepSpec {
 enum class BossKnock { Flinch, Blow, LastBlow };
 
 // 連撃の一撃の振り方。横は左右を往復、縦は上から下、袈裟・逆袈裟は斜め。
-enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa };
+// 矢印で書いた一撃（c-7b1a04。ボスから見た斬りつける向き）：Left ←・Right → は往復せずその向き、Up ↑ は下から上、
+// UpRight ↗・UpLeft ↖ は斜めに斬り上げる。↓ は Vertical、↘ は Kesa、↙ は ReverseKesa と同じ。
+enum class BossStrikeDirection { Horizontal, Vertical, Kesa, ReverseKesa, Left, Right, Up, UpRight, UpLeft };
 
 // 技の出し方（試作の use）。
 enum class BossMoveUse {

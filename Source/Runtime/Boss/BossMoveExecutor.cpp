@@ -164,10 +164,11 @@ void SideMove(BossFrame& frame, const BossMove& move) {
     const float d = move.side * (ease(static_cast<float>(tw) / length) - ease(static_cast<float>(tw - 1) / length));
     const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
     const BossStrikeDirection direction = BossMoveTable::Strike(move, strike).direction;
-    // 横の一撃は左へ、縦の一撃は右へ（プレイヤーから見た左右）。袈裟などは左右交互。
-    const float sign = direction == BossStrikeDirection::Horizontal ? -1.0f
-                       : direction == BossStrikeDirection::Vertical ? 1.0f
-                                                                    : (strike % 2 ? -1.0f : 1.0f) * boss.sideSign;
+    // 横の一撃は左へ、縦の一撃は右へ（プレイヤーから見た左右）。袈裟などは左右交互。矢印の ←→ は横、↑ は縦と同じ。
+    const bool across = direction == BossStrikeDirection::Horizontal || direction == BossStrikeDirection::Left ||
+                        direction == BossStrikeDirection::Right;
+    const bool upright = direction == BossStrikeDirection::Vertical || direction == BossStrikeDirection::Up;
+    const float sign = across ? -1.0f : upright ? 1.0f : (strike % 2 ? -1.0f : 1.0f) * boss.sideSign;
     boss.ground = Add(boss.ground, Mul(Vec3{toPlayer.z, 0.0f, -toPlayer.x}, d * sign));
 }
 

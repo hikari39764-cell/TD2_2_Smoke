@@ -132,6 +132,23 @@ std::optional<BossStrikeDirection> DirectionOf(std::string_view body) {
         return BossStrikeDirection::Kesa;
     if (body == "逆袈裟")
         return BossStrikeDirection::ReverseKesa;
+    // 矢印（c-7b1a04）：ボスから見た斬りつける向き。
+    if (body == "←")
+        return BossStrikeDirection::Left;
+    if (body == "→")
+        return BossStrikeDirection::Right;
+    if (body == "↓")
+        return BossStrikeDirection::Vertical;
+    if (body == "↑")
+        return BossStrikeDirection::Up;
+    if (body == "↘")
+        return BossStrikeDirection::Kesa;
+    if (body == "↙")
+        return BossStrikeDirection::ReverseKesa;
+    if (body == "↗")
+        return BossStrikeDirection::UpRight;
+    if (body == "↖")
+        return BossStrikeDirection::UpLeft;
     return std::nullopt;
 }
 
@@ -529,7 +546,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                     if (found < 0) {
                         move.warnings.push_back(
                             "連撃の「" + token.body +
-                            "」という行動が表にありません（横/縦/袈裟/逆袈裟か、行動名を書きます）");
+                            "」という行動が表にありません（横/縦/袈裟/逆袈裟、矢印 ←→↓↑↘↙↗↖ か、行動名を書きます）");
                     } else {
                         strike.ref = found;
                         const Parsed& ref = (*references)[static_cast<size_t>(found)];
@@ -543,8 +560,8 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                 parsed.strikes.push_back(strike);
             }
             if (parsed.strikes.empty()) {
-                move.warnings.push_back("連撃は「小横/小横/大縦」のように書きます（小中大＋横/縦/袈裟/逆袈裟、"
-                                        "または行動名。「遅」を付けるとフェイント：中遅横）");
+                move.warnings.push_back("連撃は「小横/小横/大縦」「→/←/↗」のように書きます（小中大＋横/縦/袈裟/逆袈裟か"
+                                        "矢印 ←→↓↑↘↙↗↖、または行動名。「遅」を付けるとフェイント：中遅横）");
                 parsed.strikes.push_back({});
             }
             auto gapOf = [&](const Parsed::Strike& strike) {
