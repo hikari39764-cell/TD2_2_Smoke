@@ -1302,6 +1302,8 @@ public:
     uint64_t ringVfxId = 0;
     // この技で霞の輪をもう出したか（回転斬り）。
     bool spinRingOut = false;
+    // クリップの回転斬りの型で、最後に輪を出した当たりの番号（当たりの窓ごとに 1 つ出す。-1 はまだ）。
+    int spinRingHit = -1;
     // 輪が消えた後、炎が消えるのを待っている残り時間（秒。負は輪が広がっている間）。
     float ringFade = -1.0f;
     float ringScale = 0.0f;

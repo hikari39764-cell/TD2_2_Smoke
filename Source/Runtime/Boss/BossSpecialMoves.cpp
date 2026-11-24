@@ -127,10 +127,16 @@ void SpinAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress& 
     BossComponent& boss = frame.boss;
     const float coil = boss.spinCoilDegrees * kRadiansPerDegree;
     const float share = g.hit ? BossPose::SwingShare(boss, g.tIn, g.swingLength) : 1.0f;
-    boss.spin = Lerp(-coil, boss.spinTurns * 2.0f * kPi, share);
-    boss.crouch = Lerp(boss.crouch, 0.0f, kKickCrouchBlend);
-    if (!boss.spinRingOut && share >= boss.spinRingShare) {
+    // クリップの技（c-7b1a09）：回転も沈みもクリップが演じるので、規則の体は回さない（骨格の体は回らず、技の終わりに
+    // 向きが回転ぶん飛ぶ）。輪は当たりの窓ごとに 1 つ（叩きつけごとに広がる）。
+    const bool clip = BossAnimBody::ClipMove(boss, move);
+    boss.spin = clip ? 0.0f : Lerp(-coil, boss.spinTurns * 2.0f * kPi, share);
+    boss.crouch = clip ? 0.0f : Lerp(boss.crouch, 0.0f, kKickCrouchBlend);
+    const bool ringDue = clip ? g.hit && g.hitIndex != boss.spinRingHit && share >= boss.spinRingShare
+                              : !boss.spinRingOut && share >= boss.spinRingShare;
+    if (ringDue) {
         boss.spinRingOut = true;
+        boss.spinRingHit = g.hitIndex;
         BossWaves::SpawnRing(frame, boss.move);
         BossWaves::AddBlast(boss, {.effectPending = true,
                                    .fire = boss.bladeLit,
@@ -174,6 +180,8 @@ void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progres
     }
     case BossMoveType::Kick: {
         // 回転斬り（c-427df4）：刀を引きながら体を逆へ捻り込み、沈んで溜める（溜めの揺らぎで止まっている間もそのまま）。
+        if (BossAnimBody::ClipMove(boss, move))
+            break;
         boss.crouch = 0.5f * std::clamp(progress, 0.0f, 1.0f);
         boss.spin = -boss.spinCoilDegrees * kRadiansPerDegree *
                     Smooth(Share(boss.stateFrame, std::max(1, std::min(boss.spinCoilFrames, move.pre))));

@@ -162,16 +162,16 @@
               "$hikariRef": "SceneObject",
               "id": 4
             },
+            "knockbackDistance": 2.0,
             "lockTarget": {
               "$hikariRef": "SceneObject",
               "id": 3
             },
             "moveSpeed": 5.2,
-            "sprintSpeed": 5.2,
-            "sprintStaminaPerSecond": 0.0,
-            "rollFrames": 26,
             "rollActionCancelFrame": 26,
-            "knockbackDistance": 2.0
+            "rollFrames": 26,
+            "sprintSpeed": 5.2,
+            "sprintStaminaPerSecond": 0.0
           },
           "type": "Project_TD2_2.Player"
         }
@@ -186,7 +186,7 @@
       "transform": {
         "position": [
           0.0,
-          3400.85,
+          3400.85009765625,
           -14.0
         ],
         "rotationEulerDeg": [
@@ -269,43 +269,43 @@
           "id": 90,
           "properties": {
             "absorbCatchRange": 7.0,
-            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
-            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
-            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
             "animBodyObject": {
               "$hikariRef": "SceneObject",
               "id": 970
             },
-            "kamaeFrames": 20,
-            "raiseFrames": 12,
-            "introActorObject": {
+            "bodyHelmFillObject": {
               "$hikariRef": "SceneObject",
-              "id": 960
-            },
-            "introHelmObject": {
-              "$hikariRef": "SceneObject",
-              "id": 961
-            },
-            "introGauntletRightObject": {
-              "$hikariRef": "SceneObject",
-              "id": 962
-            },
-            "introGauntletLeftObject": {
-              "$hikariRef": "SceneObject",
-              "id": 963
-            },
-            "introKeyLightObject": {
-              "$hikariRef": "SceneObject",
-              "id": 964
+              "id": 966
             },
             "bodyHelmSpotObject": {
               "$hikariRef": "SceneObject",
               "id": 965
             },
-            "bodyHelmFillObject": {
+            "introActorObject": {
               "$hikariRef": "SceneObject",
-              "id": 966
-            }
+              "id": 960
+            },
+            "introGauntletLeftObject": {
+              "$hikariRef": "SceneObject",
+              "id": 963
+            },
+            "introGauntletRightObject": {
+              "$hikariRef": "SceneObject",
+              "id": 962
+            },
+            "introHelmObject": {
+              "$hikariRef": "SceneObject",
+              "id": 961
+            },
+            "introKeyLightObject": {
+              "$hikariRef": "SceneObject",
+              "id": 964
+            },
+            "kamaeFrames": 20,
+            "movesPath": "Boss/kasumi_bushi_moves_mocap.csv",
+            "raiseFrames": 12,
+            "segmentsPath": "Boss/kasumi_bushi_segments_mocap.csv",
+            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv"
           },
           "type": "Project_TD2_2.Boss"
         },
@@ -502,41 +502,41 @@
         },
         {
           "id": 3,
-          "type": "Project_TD2_2.Gourd",
           "properties": {
-            "player": {
-              "$hikariRef": "SceneObject",
-              "id": 2
-            },
+            "absorbMoveScale": 0.06,
+            "absorbRecoveryFrames": 0,
+            "absorbTurnSpeed": 240.0,
+            "absorbWindupFrames": 8,
             "camera": {
               "$hikariRef": "SceneObject",
               "id": 4
             },
-            "absorbWindupFrames": 8,
-            "absorbRecoveryFrames": 0,
-            "absorbMoveScale": 0.06,
-            "absorbTurnSpeed": 240.0,
-            "gatherRange": 7.0
-          }
+            "gatherRange": 7.0,
+            "player": {
+              "$hikariRef": "SceneObject",
+              "id": 2
+            }
+          },
+          "type": "Project_TD2_2.Gourd"
         },
         {
           "id": 4,
-          "type": "Project_TD2_2.GourdShot",
           "properties": {
+            "damage": 80.0,
+            "moveCancelFrames": 36,
+            "recoilDistance": 0.5,
+            "recoveryFrames": 36,
+            "rollCancelFrames": 36,
+            "shotMoveScale": 0.0,
+            "smokeCost": 10.0,
+            "staminaCost": 12.0,
             "trailEffect": {
               "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
               "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
             },
-            "windupFrames": 12,
-            "recoveryFrames": 36,
-            "rollCancelFrames": 36,
-            "moveCancelFrames": 36,
-            "shotMoveScale": 0.0,
-            "staminaCost": 12.0,
-            "smokeCost": 10.0,
-            "damage": 80.0,
-            "recoilDistance": 0.5
-          }
+            "windupFrames": 12
+          },
+          "type": "Project_TD2_2.GourdShot"
         }
       ],
       "editorLocked": false,
@@ -548,9 +548,9 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          0.65,
-          3401.4,
-          -14.15
+          0.6499999761581421,
+          3401.39990234375,
+          -14.149999618530273
         ],
         "rotationEulerDeg": [
           0.0,
@@ -838,18 +838,17 @@
       "components": [
         {
           "id": 1,
-          "type": "ModelComponent",
           "properties": {
             "assetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
             "castShadow": true,
             "receiveShadow": true,
             "renderStatic": false,
             "visible": true
-          }
+          },
+          "type": "ModelComponent"
         },
         {
           "id": 2,
-          "type": "AnimatorComponent",
           "properties": {
             "autoPlay": false,
             "clip": "Rise",
@@ -860,7 +859,8 @@
             "rootMotionEnabled": false,
             "speed": 1.0,
             "timeSec": 0.0
-          }
+          },
+          "type": "AnimatorComponent"
         }
       ],
       "editorLocked": false,
@@ -892,18 +892,17 @@
       "components": [
         {
           "id": 1,
-          "type": "ModelComponent",
           "properties": {
             "assetId": "b84c2d1f6a3e4b7c9d0e5f1a2b3c4d51",
             "castShadow": true,
             "receiveShadow": true,
             "renderStatic": false,
             "visible": true
-          }
+          },
+          "type": "ModelComponent"
         },
         {
           "id": 2,
-          "type": "AnimatorComponent",
           "properties": {
             "autoPlay": false,
             "clip": "",
@@ -914,7 +913,8 @@
             "rootMotionEnabled": false,
             "speed": 1.0,
             "timeSec": 0.0
-          }
+          },
+          "type": "AnimatorComponent"
         }
       ],
       "editorLocked": false,
@@ -926,14 +926,14 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          -2.2301,
-          0.36,
-          0.2548
+          -2.23009991645813,
+          0.36000001430511475,
+          0.2547999918460846
         ],
         "rotationEulerDeg": [
-          -109.247,
-          -27.106,
-          115.366
+          -109.24700164794922,
+          -27.106000900268555,
+          115.36599731445313
         ],
         "scale": [
           1.0,
@@ -946,18 +946,17 @@
       "components": [
         {
           "id": 1,
-          "type": "ModelComponent",
           "properties": {
             "assetId": "c95d3e2a7b4f4c8dae1f6a2b3c4d5e62",
             "castShadow": true,
             "receiveShadow": true,
             "renderStatic": false,
             "visible": true
-          }
+          },
+          "type": "ModelComponent"
         },
         {
           "id": 2,
-          "type": "AnimatorComponent",
           "properties": {
             "autoPlay": false,
             "clip": "Twitch",
@@ -968,7 +967,8 @@
             "rootMotionEnabled": false,
             "speed": 1.0,
             "timeSec": 0.0
-          }
+          },
+          "type": "AnimatorComponent"
         }
       ],
       "editorLocked": false,
@@ -980,13 +980,13 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          5.2833,
-          0.16,
-          2.4272
+          5.283299922943115,
+          0.1599999964237213,
+          2.4272000789642334
         ],
         "rotationEulerDeg": [
           -90.0,
-          -70.895,
+          -70.8949966430664,
           0.0
         ],
         "scale": [
@@ -1000,18 +1000,17 @@
       "components": [
         {
           "id": 1,
-          "type": "ModelComponent",
           "properties": {
             "assetId": "d06e4f3b8c5a4d9ebf2a7b3c4d5e6f73",
             "castShadow": true,
             "receiveShadow": true,
             "renderStatic": false,
             "visible": true
-          }
+          },
+          "type": "ModelComponent"
         },
         {
           "id": 2,
-          "type": "AnimatorComponent",
           "properties": {
             "autoPlay": false,
             "clip": "Twitch",
@@ -1022,7 +1021,8 @@
             "rootMotionEnabled": false,
             "speed": 1.0,
             "timeSec": 0.0
-          }
+          },
+          "type": "AnimatorComponent"
         }
       ],
       "editorLocked": false,
@@ -1034,13 +1034,13 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          -0.6039,
-          0.16,
-          -4.0715
+          -0.6039000153541565,
+          0.1599999964237213,
+          -4.071499824523926
         ],
         "rotationEulerDeg": [
           90.0,
-          -44.105,
+          -44.10499954223633,
           180.0
         ],
         "scale": [
@@ -1054,26 +1054,26 @@
       "components": [
         {
           "id": 1,
-          "type": "LightComponent",
           "properties": {
-            "enabled": false,
-            "type": "Spot",
+            "angularFalloff": 1.0,
+            "castsShadows": false,
             "color": [
               1.0,
               0.93,
               0.84
             ],
-            "intensityUnit": "SceneRelative",
-            "sceneRelativeIntensity": 40.0,
-            "intensity": 800.0,
-            "range": 60.0,
-            "castsShadows": false,
-            "sourceRadius": 0.3,
+            "enabled": false,
             "innerConeAngleDegrees": 24.0,
+            "intensity": 800.0,
+            "intensityUnit": "SceneRelative",
             "outerConeAngleDegrees": 40.0,
-            "angularFalloff": 1.0,
-            "priority": 50
-          }
+            "priority": 50,
+            "range": 60.0,
+            "sceneRelativeIntensity": 40.0,
+            "sourceRadius": 0.3,
+            "type": "Spot"
+          },
+          "type": "LightComponent"
         }
       ],
       "editorLocked": false,
@@ -1105,26 +1105,26 @@
       "components": [
         {
           "id": 1,
-          "type": "LightComponent",
           "properties": {
-            "enabled": false,
-            "type": "Spot",
+            "angularFalloff": 1.0,
+            "castsShadows": true,
             "color": [
               0.37,
               0.58,
               1.0
             ],
-            "intensityUnit": "SceneRelative",
-            "sceneRelativeIntensity": 3.0,
-            "intensity": 800.0,
-            "range": 3.0,
-            "castsShadows": true,
-            "sourceRadius": 0.05,
-            "priority": 80,
+            "enabled": false,
             "innerConeAngleDegrees": 34.0,
+            "intensity": 800.0,
+            "intensityUnit": "SceneRelative",
             "outerConeAngleDegrees": 62.0,
-            "angularFalloff": 1.0
-          }
+            "priority": 80,
+            "range": 3.0,
+            "sceneRelativeIntensity": 3.0,
+            "sourceRadius": 0.05,
+            "type": "Spot"
+          },
+          "type": "LightComponent"
         }
       ],
       "editorLocked": false,
@@ -1156,23 +1156,23 @@
       "components": [
         {
           "id": 1,
-          "type": "LightComponent",
           "properties": {
-            "enabled": false,
-            "type": "Point",
+            "castsShadows": false,
             "color": [
               0.37,
               0.58,
               1.0
             ],
-            "intensityUnit": "SceneRelative",
-            "sceneRelativeIntensity": 0.25,
+            "enabled": false,
             "intensity": 800.0,
+            "intensityUnit": "SceneRelative",
+            "priority": 80,
             "range": 1.0,
-            "castsShadows": false,
+            "sceneRelativeIntensity": 0.25,
             "sourceRadius": 0.05,
-            "priority": 80
-          }
+            "type": "Point"
+          },
+          "type": "LightComponent"
         }
       ],
       "editorLocked": false,
@@ -1204,14 +1204,14 @@
       "components": [
         {
           "id": 1,
-          "type": "ModelComponent",
           "properties": {
             "assetId": "b1a52cf03fe7473cbbe74c310e9c5c29",
             "castShadow": false,
             "receiveShadow": false,
             "renderStatic": false,
             "visible": true
-          }
+          },
+          "type": "ModelComponent"
         }
       ],
       "editorLocked": false,
@@ -1233,9 +1233,9 @@
           0.0
         ],
         "scale": [
-          0.001,
-          0.001,
-          0.001
+          0.0010000000474974513,
+          0.0010000000474974513,
+          0.0010000000474974513
         ]
       }
     },

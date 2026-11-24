@@ -304,7 +304,10 @@ BossSegmentProgress BossPose::Progress(const BossComponent& boss, const BossMove
             result.segment = static_cast<int>(k);
             result.hitIndex = hitIndex;
             result.tIn = boss.stateFrame - accumulated;
-            result.swingLength = std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames));
+            // クリップの刀で当てる技は、当たりの窓（区間の表）の長さ全部が振り（クリップの刀が窓の間ずっと動く）。
+            result.swingLength = BossAnimBody::ClipMove(boss, move)
+                                     ? std::max(1, length)
+                                     : std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames));
             result.hit = segment.hit;
             result.progress = segment.hit ? static_cast<float>(result.tIn) / static_cast<float>(result.swingLength)
                                           : static_cast<float>(result.tIn) / static_cast<float>(length);
@@ -328,7 +331,9 @@ int LastSwingEnd(const BossComponent& boss, const BossMove& move) {
     for (size_t k = 0; k < move.segments.size(); ++k) {
         const int length = SegmentLength(boss, move, k);
         if (move.segments[k].hit)
-            end = accumulated + std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames));
+            end = accumulated + (BossAnimBody::ClipMove(boss, move)
+                                     ? std::max(1, length)
+                                     : std::max(1, std::min(length, boss.swingInFrames + boss.swingFrames)));
         accumulated += length;
     }
     return end;
@@ -681,6 +686,9 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     const BossMove& move = moves[static_cast<size_t>(boss.move)];
     if (boss.greatsword.phase != BossGreatswordPhase::None)
         return GreatswordPose(boss);
+    // 技のクリップの刀（c-7b1a09）：クリップのある技は、見えているクリップの刀の骨の所で当てる。
+    if (BossSwordPose clip; BossAnimBody::ClipSwordPose(boss, clip))
+        return clip;
     switch (move.type) {
     case BossMoveType::Dash: return DashPose(boss, move);
     case BossMoveType::SlashR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, false));

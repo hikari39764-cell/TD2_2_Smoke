@@ -167,7 +167,10 @@ void UpdateBlade(HIKARI::WorldView& world, BossComponent& boss, const BossBodyPo
     const bool great = boss.greatsword.phase != BossGreatswordPhase::None;
     // 刀光：命中の窓の間と、その後の振り抜き（剣先がまだ速い間）。
     a.trailHold = boss.swordSmoke ? s.trailFollowSeconds : std::max(0.0f, a.trailHold - seconds);
-    const float tipSpeed = Length(boss.bodyState.motion.velocity) * VisibleBladeReach(boss);
+    // 骨格の体が技のクリップを流している間は、見えているクリップの刀の剣先の速さ（c-7b1a09）。
+    const float tipSpeed = BossAnimBody::Showing(boss)
+                               ? boss.animBodyState.tipSpeed
+                               : Length(boss.bodyState.motion.velocity) * VisibleBladeReach(boss);
     // 剣先が地面に届く少し手前で切る（地面に止められた剣先は地面に沿って滑り、折れ線の帯を引く）。
     const bool grounded = pose.swordTipClearance < s.trailGroundCut;
     // 登場の一振りの間も出す（登場の演出が頼む）。

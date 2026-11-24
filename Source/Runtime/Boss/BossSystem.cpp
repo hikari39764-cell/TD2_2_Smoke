@@ -675,6 +675,8 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
         HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
             if (!boss.initialized)
                 Initialize(world, object, boss);
+            // 技のクリップの刀の骨（c-7b1a09）を、技の規則が使う前に読んでおく（クリップごとに初めての時だけ）。
+            BossAnimBody::PrepareSword(world, boss);
             ++boss.tick;
             boss.clockSeconds += frame.fixedDt;
             boss.floatClock += frame.fixedDt;
