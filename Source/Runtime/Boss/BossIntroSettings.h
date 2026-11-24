@@ -52,6 +52,12 @@ struct BossIntroSettings {
     // 一息の段に入ってから、演出の灯をこの秒で 0 まで落とす（settleSwapSeconds より長ければ、替える時に 0 にそろえる）。
     // 灯を替える瞬間に急に消すと、ボスに当たる光が一気に変わって画が光ったように見え、動的な GI も作り直しで重くなる。
     float settleLightFadeSeconds = 0.7f;
+    // 演出の動きのぼかし（c-bc5908）：演技の間、画面のカメラに掛ける動きのぼかし。シャッター角（度。180 で映画の
+    // 標準、大きいほど長く流れる。0 で掛けない）と、ぼかしの長さの上限（1080p の画素）。一息の段では、ゲームのカメラへ
+    // 渡すのに合わせて弱めて 0 にする。画質の設定の motionBlurQuality が Off なら出ない。カットの切り替わりでは
+    // エンジンが前の画を捨てるので、切り替わりの画は流れない。既定は掛けない（SmokeArena の場面で 180°）。
+    float motionBlurShutterDegrees = 0.0f;
+    float motionBlurMaxPixels = 24.0f;
     // 部品が骨へ飛ぶ道：手甲は吸われる（初めゆっくり、最後に速い。この指数が大きいほど最後が速い）、途中で浮く高さ (m)。
     // 兜は煙に持ち上げられる（ゆっくり動き出してゆっくり止まる）、途中で外へふくらむ幅 (m)。
     float gauntletFlyPower = 2.6f;
@@ -379,6 +385,8 @@ struct BossIntroState {
     // 飛ばす：押された（次の tick に進める）・飛ばした。スローを次の描画のフレームで頼む F。
     bool skipRequested = false;
     bool skipped = false;
+    // 演出の動きのぼかしを頼んで受け付けられたか（変わった時だけ記録に書く）。
+    bool motionBlurAccepted = false;
     int slowPending = 0;
     // 手応え：頼まれた強さ（0〜1。描画のフレームで使ったら 0 に戻す）、時間を止める F、カメラの揺れ。
     float accentPending = 0.0f;

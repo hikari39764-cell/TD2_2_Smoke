@@ -1,0 +1,13 @@
+{
+  "displayName": "BossIntroSmokeArena",
+  "guid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c",
+  "importSettings": {
+    "runtimeLoader": "SequenceAssetStore",
+    "sourceAuthoritative": true
+  },
+  "importerId": "SequenceAssetImporter",
+  "importerVersion": 3,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Sequences/BossIntroSmokeArena.hsequence",
+  "type": "Sequence"
+}

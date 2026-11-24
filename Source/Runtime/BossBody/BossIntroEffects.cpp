@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <iterator>
 #include <string_view>
 
@@ -11,6 +12,7 @@
 #include "BossBodyMath.h"
 #include "BossIntroActor.h"
 #include "BossIntroSmoke.h"
+#include "../Boss/BossFrame.h"
 #include "../Boss/BossIntro.h"
 #include "../Boss/BossVfx.h"
 #include "../Combat/Feedback.h"
@@ -25,6 +27,8 @@ constexpr uint64_t kAccentCameraSource = 0x5444324A11ull;
 constexpr uint64_t kAccentHitStopSource = 0x5444324A12ull;
 constexpr uint64_t kAccentSlowSource = 0x5444324A14ull;
 constexpr uint64_t kRumbleCameraSource = 0x5444324A15ull;
+// 演出の動きのぼかしの出し元の番号（c-bc5908）。
+constexpr uint64_t kMotionBlurSource = 0x5444324A16ull;
 // 続けて出す揺れの 1 周（ラジアン）。全画面の効果の張りつめ・暗さを、頼まれた値へ寄せる速さ (1/秒。実時間) と、これより
 // 弱ければ出さない下限。落ちている兜の隙間の瞬き：拍のこの割合までで灯り切り、残りで消える。
 constexpr float kRumbleTurn = 6.2831853f;
@@ -396,6 +400,48 @@ void BossIntroEffects::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
                                      boss.intro.helmGlint * boss.introState.helmGlint);
 }
 
+namespace {
+
+// 演出の動きのぼかし（c-bc5908）：演技の間は設定のまま、一息の段ではゲームのカメラへ渡すのに合わせて弱める
+// （BossIntroCamera の渡しと同じ進み）。飛ばした時は掛けない。頼みは 1 フレームだけ効くので、描画のフレームごとに出す。
+void SubmitMotionBlur(HIKARI::WorldView& world, BossComponent& boss, uint64_t owner) {
+    const BossIntroSettings& s = boss.intro;
+    BossIntroState& state = boss.introState;
+    float weight = 0.0f;
+    if (!state.skipped && s.motionBlurShutterDegrees > 0.0f && s.motionBlurMaxPixels > 0.0f) {
+        if (state.phase == BossIntroPhase::Show) {
+            weight = 1.0f;
+        } else if (state.phase == BossIntroPhase::Settle) {
+            const float u =
+                std::clamp(static_cast<float>(state.frame) / std::max(1.0f, s.settleSeconds * 60.0f), 0.0f, 1.0f);
+            weight = 1.0f - u * u * (3.0f - 2.0f * u);
+        }
+    }
+    bool accepted = false;
+    if (weight > 0.0f) {
+        HIKARI::GameProjectCameraMotionBlurRequest blur{};
+        blur.cameraObjectHandle = 0; // いま画を出しているカメラ（演技の間は演出の資産のカメラ）
+        blur.sourceId = kMotionBlurSource ^ owner;
+        blur.priority = kAccentPriority;
+        // 重みはカメラの元の設定（無効なら 0°）からのシャッター角と長さの補間。
+        blur.weight = weight;
+        blur.settings.enabled = 1;
+        blur.settings.shutterAngleDegrees = std::clamp(s.motionBlurShutterDegrees, 0.0f, 360.0f);
+        blur.settings.maxBlur1080pPixels = std::clamp(s.motionBlurMaxPixels, 0.0f, 64.0f);
+        accepted = world.GetCamera().SubmitMotionBlur(blur);
+    }
+    if (accepted != state.motionBlurAccepted) {
+        state.motionBlurAccepted = accepted;
+        char message[128]{};
+        std::snprintf(message, sizeof(message), "IntroMotionBlur accepted=%d weight=%.3f shutter=%.1f pixels=%.1f",
+                      static_cast<int>(accepted), static_cast<double>(weight),
+                      static_cast<double>(s.motionBlurShutterDegrees), static_cast<double>(s.motionBlurMaxPixels));
+        BossLog::Write(message);
+    }
+}
+
+} // namespace
+
 void BossIntroEffects::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
                                 float unscaledSeconds) {
     const BossIntroSettings& s = boss.intro;
@@ -464,6 +510,7 @@ void BossIntroEffects::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obj
         state.filmTarget = film.target;
         state.filmFov = film.verticalFovRadians;
     }
+    SubmitMotionBlur(world, boss, owner);
     Project_TD2_2::Feedback::SubmitCameraShake(world, state.shake, 0, unscaledSeconds);
 }
 

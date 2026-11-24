@@ -305,6 +305,11 @@
               "$hikariRef": "SceneObject",
               "id": 964
             },
+            "introMotionBlurMaxPixels": 24.0,
+            "introMotionBlurShutter": 180.0,
+            "introSequence": {
+              "$hikari.assetGuid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c"
+            },
             "kamaeFrames": 20,
             "knifeMistBullet": true,
             "movesPath": "Boss/kasumi_bushi_moves_mocap.csv",

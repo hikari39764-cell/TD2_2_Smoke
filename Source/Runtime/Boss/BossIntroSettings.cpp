@@ -30,6 +30,11 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("introSettleLightFadeSeconds",
                  "演技が済んでから、演出の灯を消し切るまでの秒（役者を替える時には必ず 0。0 で替える時にすぐ消す）",
                  settleLightFadeSeconds, 0.0f, 10.0f);
+    fields.Float("introMotionBlurShutter",
+                 "演出の動きのぼかし：シャッター角（度。180 で映画の標準、大きいほど長く流れる。0 で掛けない）",
+                 motionBlurShutterDegrees, 0.0f, 360.0f);
+    fields.Float("introMotionBlurMaxPixels", "演出の動きのぼかし：ぼかしの長さの上限（1080p の画素）",
+                 motionBlurMaxPixels, 0.0f, 64.0f);
     fields.Float("introGauntletFlyPower", "手甲が吸われる道：最後の速さ（大きいほど、初めゆっくりで最後に速い）",
                  gauntletFlyPower, 1.0f, 6.0f);
     fields.Float("introGauntletFlyLift", "手甲が吸われる道：途中で浮く高さ (m)", gauntletFlyLift, 0.0f, 5.0f);
