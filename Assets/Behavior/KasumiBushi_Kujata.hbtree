@@ -1,0 +1,17 @@
+{
+  "formatVersion": 3,
+  "blackboard": [],
+  "root": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "Selector",
+      "name": "霞武士（作り直し中）",
+      "note": "SmokeArena_Kujata 専用の木（c-7b1a01）。最終版の 12 パターンで作り直すため、節を全部外した。新しい節は c-7b1a03 で組む。元の木は Assets/Behavior/KasumiBushi.hbtree。",
+      "params": {
+        "reactive": true
+      },
+      "children": []
+    }
+  ]
+}
