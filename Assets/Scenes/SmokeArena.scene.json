@@ -162,20 +162,16 @@
               "$hikariRef": "SceneObject",
               "id": 4
             },
-            "downFrames": 30,
-            "downRollFrame": 8,
-            "getUpFrames": 18,
             "lockTarget": {
               "$hikariRef": "SceneObject",
               "id": 3
             },
-            "moveSpeed": 4.0,
-            "rollEasePower": 1.600000023841858,
-            "rollFogStrength": 5.0,
-            "rollFrames": 22,
-            "rollInvincibleFrames": 15,
-            "rollStamina": 15.0,
-            "sprintSpeed": 6.199999809265137
+            "moveSpeed": 5.2,
+            "sprintSpeed": 5.2,
+            "sprintStaminaPerSecond": 0.0,
+            "rollFrames": 26,
+            "rollActionCancelFrame": 26,
+            "knockbackDistance": 2.0
           },
           "type": "Project_TD2_2.Player"
         }
@@ -190,7 +186,7 @@
       "transform": {
         "position": [
           0.0,
-          3400.85009765625,
+          3400.85,
           -14.0
         ],
         "rotationEulerDeg": [
@@ -265,14 +261,23 @@
         {
           "id": 5,
           "properties": {
-            "maxHealth": 2200.0
+            "maxHealth": 1800.0
           },
           "type": "Project_TD2_2.Damageable"
         },
         {
           "id": 90,
           "properties": {
-            "stunMax": 320.0,
+            "absorbCatchRange": 7.0,
+            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
+            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
+            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
+            "animBodyObject": {
+              "$hikariRef": "SceneObject",
+              "id": 970
+            },
+            "kamaeFrames": 20,
+            "raiseFrames": 12,
             "introActorObject": {
               "$hikariRef": "SceneObject",
               "id": 960
@@ -310,7 +315,7 @@
             "enabled": true,
             "interval": 0.0,
             "tree": {
-              "$hikari.assetGuid": "4aff4df1aef95d8a09e8215bca9d7eb7"
+              "$hikari.assetGuid": "f2529c5505bb568ddd4609bf02653f90"
             },
             "update": "GameCode",
             "values": ""
@@ -497,31 +502,41 @@
         },
         {
           "id": 3,
+          "type": "Project_TD2_2.Gourd",
           "properties": {
+            "player": {
+              "$hikariRef": "SceneObject",
+              "id": 2
+            },
             "camera": {
               "$hikariRef": "SceneObject",
               "id": 4
             },
-            "player": {
-              "$hikariRef": "SceneObject",
-              "id": 2
-            }
-          },
-          "type": "Project_TD2_2.Gourd"
+            "absorbWindupFrames": 8,
+            "absorbRecoveryFrames": 0,
+            "absorbMoveScale": 0.06,
+            "absorbTurnSpeed": 240.0,
+            "gatherRange": 7.0
+          }
         },
         {
           "id": 4,
+          "type": "Project_TD2_2.GourdShot",
           "properties": {
-            "damage": 80.0,
-            "initialSpeed": 80.0,
-            "smokeCost": 15.0,
-            "staminaCost": 18.0,
             "trailEffect": {
               "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
               "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
-            }
-          },
-          "type": "Project_TD2_2.GourdShot"
+            },
+            "windupFrames": 12,
+            "recoveryFrames": 36,
+            "rollCancelFrames": 36,
+            "moveCancelFrames": 36,
+            "shotMoveScale": 0.0,
+            "staminaCost": 12.0,
+            "smokeCost": 10.0,
+            "damage": 80.0,
+            "recoilDistance": 0.5
+          }
         }
       ],
       "editorLocked": false,
@@ -533,9 +548,9 @@
       "sourcePrefabId": "",
       "transform": {
         "position": [
-          0.6499999761581421,
-          3401.39990234375,
-          -14.149999618530273
+          0.65,
+          3401.4,
+          -14.15
         ],
         "rotationEulerDeg": [
           0.0,
@@ -1221,6 +1236,60 @@
           0.001,
           0.001,
           0.001
+        ]
+      }
+    },
+    {
+      "components": [
+        {
+          "id": 1,
+          "properties": {
+            "assetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "castShadow": true,
+            "receiveShadow": true,
+            "renderStatic": false,
+            "visible": true
+          },
+          "type": "ModelComponent"
+        },
+        {
+          "id": 2,
+          "properties": {
+            "autoPlay": false,
+            "clip": "",
+            "clipModelAssetId": "a7d41c9e5b3f4a60921d8e7c6f5b4a31",
+            "finished": false,
+            "loop": true,
+            "playing": false,
+            "rootMotionEnabled": false,
+            "speed": 1.0,
+            "timeSec": 0.0
+          },
+          "type": "AnimatorComponent"
+        }
+      ],
+      "editorLocked": false,
+      "editorVisible": true,
+      "enabled": true,
+      "id": 970,
+      "name": "BossAnimBody",
+      "parent": null,
+      "sourcePrefabId": "",
+      "transform": {
+        "position": [
+          0.0,
+          3400.0,
+          6.0
+        ],
+        "rotationEulerDeg": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
         ]
       }
     }

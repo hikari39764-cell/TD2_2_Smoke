@@ -1,7 +1,7 @@
 {
   "grid": {
     "heightMin": 3300.0,
-    "heightRange": 131.07,
+    "heightRange": 131.07000732421875,
     "tileCells": 256,
     "tileSizeMeters": 128.0
   },
@@ -28,7 +28,7 @@
       "masked": false,
       "name": "Base Noise",
       "noise": {
-        "amplitudeMeters": 1.2,
+        "amplitudeMeters": 1.2000000476837158,
         "basis": "simplex",
         "encodedNodeTree": "",
         "featureSizeMeters": 28.0,
@@ -41,7 +41,7 @@
         ],
         "massifRadiusMeters": 0.0,
         "octaves": 4,
-        "offsetMeters": 1.2,
+        "offsetMeters": 1.2000000476837158,
         "seed": 2611,
         "weightedStrength": 0.0
       },
@@ -49,15 +49,15 @@
       "spline": {
         "bridge": true,
         "bridgeArchMeters": 4.0,
-        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeEdgeNoiseMeters": 0.6000000238418579,
         "bridgeThicknessMeters": 2.5,
-        "clarityMeters": 1.2,
+        "clarityMeters": 1.2000000476837158,
         "crownMeters": 4.0,
         "depthMeters": 2.5,
         "edgeMeters": 3.0,
         "edgeSurface": 1,
         "falloffMeters": 12.0,
-        "flowSpeed": 1.2,
+        "flowSpeed": 1.2000000476837158,
         "guide": false,
         "kind": "road",
         "paint": true,
@@ -69,9 +69,9 @@
         "undersideNoiseMeters": 6.0,
         "undersideTaper": 2.0,
         "waterColor": [
-          0.035,
-          0.13,
-          0.12
+          0.03500000014901161,
+          0.12999999523162842,
+          0.11999999731779099
         ],
         "wetMeters": 6.0
       }
@@ -119,15 +119,15 @@
       "spline": {
         "bridge": true,
         "bridgeArchMeters": 4.0,
-        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeEdgeNoiseMeters": 0.6000000238418579,
         "bridgeThicknessMeters": 2.5,
-        "clarityMeters": 1.2,
+        "clarityMeters": 1.2000000476837158,
         "crownMeters": 4.0,
         "depthMeters": 2.5,
         "edgeMeters": 3.0,
         "edgeSurface": 1,
         "falloffMeters": 12.0,
-        "flowSpeed": 1.2,
+        "flowSpeed": 1.2000000476837158,
         "guide": false,
         "kind": "road",
         "paint": true,
@@ -139,9 +139,9 @@
         "undersideNoiseMeters": 6.0,
         "undersideTaper": 2.0,
         "waterColor": [
-          0.035,
-          0.13,
-          0.12
+          0.03500000014901161,
+          0.12999999523162842,
+          0.11999999731779099
         ],
         "wetMeters": 6.0
       }
@@ -189,112 +189,112 @@
       "spline": {
         "bridge": true,
         "bridgeArchMeters": 4.0,
-        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeEdgeNoiseMeters": 0.6000000238418579,
         "bridgeThicknessMeters": 2.5,
-        "clarityMeters": 1.2,
+        "clarityMeters": 1.2000000476837158,
         "crownMeters": 0.0,
         "depthMeters": 2.5,
         "edgeMeters": 3.0,
         "edgeSurface": 1,
         "falloffMeters": 10.0,
-        "flowSpeed": 1.2,
+        "flowSpeed": 1.2000000476837158,
         "guide": false,
         "kind": "island",
         "paint": false,
         "points": [
           {
             "position": [
-              52.0,
+              89.8204345703125,
               3400.0,
-              0.0
+              41.34458923339844
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              40.7,
+              49.53131866455078,
               3400.0,
-              23.5
+              88.86865234375
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              27.5,
+              9.824284553527832,
               3400.0,
-              47.63
+              88.47065734863281
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              0.0,
+              -26.798885345458984,
               3400.0,
-              50.0
+              90.70903015136719
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              -22.0,
+              -55.63661193847656,
               3400.0,
-              38.11
+              59.05535888671875
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              -42.44,
+              -75.48225402832031,
               3400.0,
-              24.5
+              33.6573486328125
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              -56.0,
+              -75.27751159667969,
               3400.0,
-              0.0
+              -2.5281982421875
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              -44.17,
+              -61.034149169921875,
               3400.0,
-              -25.5
+              -36.471763610839844
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              -23.0,
+              -35.217132568359375,
               3400.0,
-              -39.84
+              -72.4735336303711
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              0.0,
+              1.328094482421875,
               3400.0,
-              -53.0
+              -73.77448272705078
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              24.0,
+              38.481956481933594,
               3400.0,
-              -41.57
+              -64.83149719238281
             ],
             "widthMeters": 1.0
           },
           {
             "position": [
-              43.3,
+              73.70319366455078,
               3400.0,
-              -25.0
+              -19.839691162109375
             ],
             "widthMeters": 1.0
           }
@@ -306,9 +306,9 @@
         "undersideNoiseMeters": 5.0,
         "undersideTaper": 2.5,
         "waterColor": [
-          0.035,
-          0.13,
-          0.12
+          0.03500000014901161,
+          0.12999999523162842,
+          0.11999999731779099
         ],
         "wetMeters": 6.0
       }
@@ -356,15 +356,15 @@
       "spline": {
         "bridge": false,
         "bridgeArchMeters": 4.0,
-        "bridgeEdgeNoiseMeters": 0.6,
+        "bridgeEdgeNoiseMeters": 0.6000000238418579,
         "bridgeThicknessMeters": 2.5,
-        "clarityMeters": 1.2,
+        "clarityMeters": 1.2000000476837158,
         "crownMeters": 4.0,
         "depthMeters": 2.5,
         "edgeMeters": 2.0,
         "edgeSurface": 7,
         "falloffMeters": 10.0,
-        "flowSpeed": 1.2,
+        "flowSpeed": 1.2000000476837158,
         "guide": false,
         "kind": "road",
         "paint": true,
@@ -385,9 +385,9 @@
         "undersideNoiseMeters": 6.0,
         "undersideTaper": 2.0,
         "waterColor": [
-          0.035,
-          0.13,
-          0.12
+          0.03500000014901161,
+          0.12999999523162842,
+          0.11999999731779099
         ],
         "wetMeters": 6.0
       }
