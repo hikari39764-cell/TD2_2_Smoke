@@ -270,6 +270,7 @@
           "properties": {
             "absorbCatchRange": 7.0,
             "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
+            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
             "kamaeFrames": 20,
             "raiseFrames": 12
           },
