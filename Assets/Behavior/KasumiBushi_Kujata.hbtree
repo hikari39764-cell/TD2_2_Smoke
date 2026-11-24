@@ -11,7 +11,18 @@
       "params": {
         "reactive": true
       },
-      "children": []
+      "children": [
+        2
+      ]
+    },
+    {
+      "id": 2,
+      "type": "Wait",
+      "name": "仮：立って待つ",
+      "note": "Selector は子が 1 つ以上いるので置いた仮の節。ボスは技を出さずに立つ。c-7b1a03 で新しい節に置き換える。",
+      "params": {
+        "seconds": 1.0
+      }
     }
   ]
 }
