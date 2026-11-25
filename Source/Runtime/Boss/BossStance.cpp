@@ -363,11 +363,9 @@ BossBand BossStance::BandOf(const BossStanceSettings& s, float distance) {
     return BossBand::Out;
 }
 
-const char* BossStance::BandName(BossBand band) { return kBandNames[std::min(3, static_cast<int>(band))]; }
 const char* BossStance::StanceName(BossStanceKind stance) {
     return kStanceNames[std::min(2, static_cast<int>(stance))];
 }
-const char* BossStance::ClassName(BossMoveClass kind) { return kClassNames[std::min(2, static_cast<int>(kind))]; }
 
 BossStanceChoice BossStance::Decide(BossComponent& boss, int phase, float distance, float random0, float) {
     const BossStanceSettings& s = boss.stance;

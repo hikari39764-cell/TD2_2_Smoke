@@ -276,10 +276,4 @@ HIKARI::GameProjectFloat3 BurnMap::CellCenter(int ix, int iz) const {
             originZ_ + (static_cast<float>(iz) + 0.5f) * cellSize_};
 }
 
-float BurnMap::Remaining(int ix, int iz) const {
-    if (ix < 0 || iz < 0 || ix >= width_ || iz >= height_)
-        return 0.0f;
-    return cells_[Index(ix, iz)];
-}
-
 } // namespace Project_TD2_2

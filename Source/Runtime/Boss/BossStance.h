@@ -181,9 +181,7 @@ struct BossStanceChoice {
 class BossStance final {
 public:
     static BossBand BandOf(const BossStanceSettings& s, float distance);
-    static const char* BandName(BossBand band);
     static const char* StanceName(BossStanceKind stance);
-    static const char* ClassName(BossMoveClass kind);
     static BossStanceChoice Decide(BossComponent& boss, int phase, float distance, float random0, float random1);
     // 頼んだ技が終わった（コンボを含めて）時に呼ぶ：覚えを進める。
     static void Finished(BossComponent& boss, const BossStanceChoice& choice, float random);

@@ -85,7 +85,6 @@ public:
     static bool TakeLockSwitch(PlayerComponent& player);
     // ロック中のカメラが見る点のずれ（世界 m）。外部が入れた値を次に入れ直すまで使う。
     static void SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset);
-    static HIKARI::GameProjectFloat3 GetLockPivotOffset(const PlayerComponent& player);
     // ロック対象の体の高さの半分 (m) と、隠れているか（c-880340）。対象を知っている側（ボス）が毎 tick 入れる。
     static void SetLockTargetShape(PlayerComponent& player, float halfHeight, bool hidden);
     // ロック中のカメラが見る点＝照準の点：対象の原点（物体の位置）＋ずれ＋体の高さの半分×lockAimHeightShare の上。

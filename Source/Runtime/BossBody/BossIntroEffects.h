@@ -43,7 +43,6 @@ void Shock(BossComponent& boss, int slot, HIKARI::GameProjectFloat3 at, float si
 // 刀身を走る光（1 回）・刃口の光の強さと刀光（このフレームだけ）。
 void Glint(BossComponent& boss, float brightness);
 void BladeEdge(BossComponent& boss, float strength);
-void BladeSwing(BossComponent& boss);
 // 目の閃き（0 以下は introEyesFlare）。
 void EyeFlare(BossComponent& boss, float strength = 0.0f);
 

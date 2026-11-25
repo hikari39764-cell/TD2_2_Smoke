@@ -81,7 +81,6 @@ public:
     HIKARI::GameProjectFloat3 CellCenter(int ix, int iz) const;
     // 点（高さは見ない）が入るセルの番号。格子の外なら false。
     bool CellOf(HIKARI::GameProjectFloat3 point, int& ix, int& iz) const;
-    float Remaining(int ix, int iz) const;
     // 燃えているセルを訪ねる。visit(ix, iz, 残り秒)。燃えた所を囲む範囲だけを走査する。
     template <class Visitor>
     void ForEachBurning(Visitor&& visit) const {

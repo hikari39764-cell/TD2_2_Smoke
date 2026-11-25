@@ -15,11 +15,6 @@ using namespace BossBodyMath;
 inline Quat AroundX(float radians) { return {std::sin(radians * 0.5f), 0.0f, 0.0f, std::cos(radians * 0.5f)}; }
 inline Quat AroundY(float radians) { return {0.0f, std::sin(radians * 0.5f), 0.0f, std::cos(radians * 0.5f)}; }
 inline Quat AroundZ(float radians) { return {0.0f, 0.0f, std::sin(radians * 0.5f), std::cos(radians * 0.5f)}; }
-inline Quat AroundAxis(Vec3 axis, float radians) {
-    const Vec3 n = Normalize(axis, {0.0f, 1.0f, 0.0f});
-    const float s = std::sin(radians * 0.5f);
-    return {n.x * s, n.y * s, n.z * s, std::cos(radians * 0.5f)};
-}
 
 // 向きを近い側で混ぜる（正規化した線形補間）。
 inline Quat Blend(Quat a, Quat b, float t) {

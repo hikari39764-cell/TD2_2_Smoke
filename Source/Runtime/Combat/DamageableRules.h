@@ -20,7 +20,6 @@ public:
     static float GetMaxHealth(const DamageableComponent& target);
     // HP を下回る残量でも、最後のダメージ量には攻撃そのものの量を記録する。
     static float GetLastDamage(const DamageableComponent& target);
-    static HIKARI::GameProjectFloat3 GetLastDirection(const DamageableComponent& target);
     static uint64_t GetHitCount(const DamageableComponent& target);
     // 光りだけを frames F 出す（命中ではない場面。ボスの崩し・気絶）。長い方が残り、手応えのほかの動きは起こさない。
     static void RequestFlash(DamageableComponent& target, int frames);

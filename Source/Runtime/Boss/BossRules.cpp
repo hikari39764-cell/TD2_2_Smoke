@@ -35,15 +35,9 @@ const BossMove* BossRules::GetMove(const BossComponent& boss, int index) {
 
 BossState BossRules::GetState(const BossComponent& boss) { return boss.state; }
 
-bool BossRules::IsIdle(const BossComponent& boss) { return boss.state == BossState::Idle && boss.requestedMove < 0; }
-
 int BossRules::GetCurrentMove(const BossComponent& boss) { return boss.state == BossState::Act ? boss.move : -1; }
 
-BossActPhase BossRules::GetActPhase(const BossComponent& boss) { return boss.phase; }
-
 int BossRules::GetChain(const BossComponent& boss) { return boss.chain; }
-
-int BossRules::GetPhaseNumber(const BossComponent& boss) { return boss.lastPhaseNumber; }
 
 bool BossRules::IsPhaseShifting(const BossComponent& boss) { return boss.phaseShiftLeft > 0; }
 
@@ -67,18 +61,8 @@ bool BossRules::IsBladeLit(const BossComponent& boss) {
                                          !boss.hidden && !boss.shiftState.lookPending);
 }
 
-float BossRules::GetStun(const BossComponent& boss) { return boss.stun; }
-
 float BossRules::GetStunThreshold(const BossComponent& boss) {
     return boss.stunMax * (1.0f + std::max(0.0f, boss.stunMaxGrowth) * static_cast<float>(boss.stunCount));
 }
-
-int BossRules::GetStunCount(const BossComponent& boss) { return boss.stunCount; }
-
-bool BossRules::IsStunned(const BossComponent& boss) { return boss.state == BossState::Stunned; }
-
-HIKARI::GameProjectFloat3 BossRules::GetGroundPosition(const BossComponent& boss) { return boss.ground; }
-
-float BossRules::GetYaw(const BossComponent& boss) { return boss.yaw; }
 
 } // namespace Project_TD2_2

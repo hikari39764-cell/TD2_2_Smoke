@@ -26,26 +26,15 @@ public:
     // 読んだ表の 1 行（無ければ nullptr）。
     static const BossMove* GetMove(const BossComponent& boss, int index);
     static BossState GetState(const BossComponent& boss);
-    // 技を出していない（待機中で、要求も無い）。
-    static bool IsIdle(const BossComponent& boss);
     static int GetCurrentMove(const BossComponent& boss);
-    static BossActPhase GetActPhase(const BossComponent& boss);
     static int GetChain(const BossComponent& boss);
-    // フェーズ（1 か 2）。HP の条の何本目か（c-3e0ffa。1 本目が空になった tick から 2）。
-    static int GetPhaseNumber(const BossComponent& boss);
     // フェーズ 2 への変わり目の間（1 本目が空になった tick から phaseShiftFrames F。無敵で技を出さない）。
     static bool IsPhaseShifting(const BossComponent& boss);
-    static float GetStun(const BossComponent& boss);
     // いま気絶するのに要る気絶値。気絶するたびに stunMax の stunMaxGrowth 倍ずつ増える（崩れた気絶も数える）。
     static float GetStunThreshold(const BossComponent& boss);
-    static int GetStunCount(const BossComponent& boss);
-    static bool IsStunned(const BossComponent& boss);
     // 剣が燃えているか：火を残す技の間は前隙の最初から、フェーズ 2 では待機中も技の間もいつも。気絶・隠れている間は消える。
     // 剣先の光のエフェクトと、外形の刀身（灼けた刀身への差し替え）が同じ判断を使う。
     static bool IsBladeLit(const BossComponent& boss);
-    // ボスの足元（地面の点）と向き。行動ツリーが距離や角度を測るのに使う。
-    static HIKARI::GameProjectFloat3 GetGroundPosition(const BossComponent& boss);
-    static float GetYaw(const BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

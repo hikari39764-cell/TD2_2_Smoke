@@ -26,8 +26,6 @@ public:
         const BossShiftBeat beat = boss.shiftState.beat;
         return beat != BossShiftBeat::None && beat != BossShiftBeat::Done;
     }
-    // フェーズ 2 の見た目を、閃光まで待っている。
-    static bool LookPending(const BossComponent& boss) { return boss.shiftState.lookPending; }
     // 演出の後の、技を選ばない間。
     static bool Calm(const BossComponent& boss) { return boss.shiftState.calmLeft > 0; }
     // 閃光の後の最初の tick：プレイヤーを押し出す（ボスから pushToDistance まで。場の縁の内側で止める）。

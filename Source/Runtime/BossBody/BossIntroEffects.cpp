@@ -557,8 +557,6 @@ void BossIntroEffects::BladeEdge(BossComponent& boss, float strength) {
     boss.introState.bladeEdge = std::max(boss.introState.bladeEdge, strength);
 }
 
-void BossIntroEffects::BladeSwing(BossComponent& boss) { boss.introState.bladeSwing = true; }
-
 void BossIntroEffects::EyeFlare(BossComponent& boss, float strength) {
     float& flare = boss.bodyState.accents.flare;
     flare = std::max(flare, strength > 0.0f ? strength : boss.intro.eyesFlare);

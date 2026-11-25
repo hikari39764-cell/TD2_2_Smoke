@@ -343,10 +343,6 @@ void PlayerRules::SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObje
         player.lockTarget = target;
 }
 
-HIKARI::GameProjectFloat3 PlayerRules::GetLockPivotOffset(const PlayerComponent& player) {
-    return player.lockPivotOffset;
-}
-
 bool PlayerRules::TakeLockSwitch(PlayerComponent& player) {
     const bool requested = player.lockSwitchRequested;
     player.lockSwitchRequested = false;

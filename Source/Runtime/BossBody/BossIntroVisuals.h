@@ -13,8 +13,6 @@ public:
     // 描画のフレームごとに、演技の時計を進めて役者を動かす（外形を置く前に呼ぶ）。演出の資産を流している間は、その
     // 資産の時刻に合わせる（エンジンが資産を進めるのは systems の後なので 1 フレーム遅れる）。演技が済んだら役者を隠す。
     static void Advance(HIKARI::WorldView& world, BossComponent& boss, float seconds);
-    // 演技の時計（演出の資産の秒）。
-    static float ShowSeconds(const BossComponent& boss) { return boss.introState.showSeconds; }
     // 役者が出ている間（演技の前・演技の間）。この間、戦いの体の外形は出さない。
     static bool Showing(const BossComponent& boss);
     // 見た目の体の変換：役者が出ている間は、役者の腰の真下の足元と向き（胴の煙・気配・衝撃の輪など、体に付く効果が

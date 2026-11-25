@@ -68,10 +68,6 @@ float DamageableRules::GetMaxHealth(const DamageableComponent& target) {
 
 float DamageableRules::GetLastDamage(const DamageableComponent& target) { return target.lastDamage; }
 
-HIKARI::GameProjectFloat3 DamageableRules::GetLastDirection(const DamageableComponent& target) {
-    return target.lastDirection;
-}
-
 uint64_t DamageableRules::GetHitCount(const DamageableComponent& target) { return target.hitCount; }
 
 void DamageableRules::RequestFlash(DamageableComponent& target, int frames) {
