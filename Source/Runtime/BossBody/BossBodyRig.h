@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "BossBodySettings.h"
 #include "../Boss/BossComponent.h"
 
 namespace Project_TD2_2 {
@@ -24,9 +25,6 @@ struct BossBodyPose {
     BossBodyPlacement rightCuff;
     BossBodyPlacement leftHand;
     BossBodyPlacement leftCuff;
-    BossBodyHandShape leftShape = BossBodyHandShape::Open;
-    // 両手を描くか（登場で、手が煙から現れる前は描かない）。
-    bool showHands = true;
     // 刀身を、灼けた刀身（火の技・フェーズ 2）で出す。
     bool bladeHot = false;
     // 剣先の、地面からの高さ (m)。
@@ -47,7 +45,9 @@ struct BossBodyPose {
 class BossBodyRig final {
 public:
     // 骨から置き場所を受け取る前の一式：どの部品も体の物体の所と向きに置き、大きさ・灼け・目の光をボスの状態から決める。
-    static BossBodyPose Base(const BossComponent& boss, const HIKARI::GameProjectTransform& body);
+    // settings は体の見た目の設定（大きさ・草摺の枚数）。
+    static BossBodyPose Base(const BossComponent& boss, const BossBodySettings& settings,
+                             const HIKARI::GameProjectTransform& body);
 };
 
 } // namespace Project_TD2_2

@@ -65,7 +65,10 @@ class GourdRules final {
     // direction は世界方向。反動の距離と F 数は射撃コンポーネント側で調整する。
     static void AddRecoil(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction, float distance, int frames);
     // 射撃側の LateUpdate から毎フレーム要求する。追従処理が消費し、次フレームへ残さない。
+    // 撃っている間、描画のヒョウタンを撃つ向きへ向ける（見た目だけ。規則の口・向きは変えない）。
     static void SetAimOverride(GourdComponent& gourd, HIKARI::GameProjectFloat3 direction);
+    // 描画のフレームで読み戻した霧の増えを、次の固定 tick の始めに煙の量へ入れる（c-164cab。容量で止める）。
+    static void ApplyPendingSmoke(GourdComponent& gourd);
     // GPU の累計値が 120 フレーム後に失効した場合も、新しい累計の増分だけを収入にする。
     static void ReceiveRemovedSmoke(GourdComponent& gourd, double removedTotal);
 };

@@ -44,7 +44,7 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             seen.position = transform.position;
             seen.facing = PlayerRules::GetFacing(player);
             seen.component = &player;
-            field.fireDamageTotal = player.burnDamageTotal;
+            field.fireDamageTotal = PlayerRules::GetBurnDamageTotal(player);
             // 無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず 0 に戻す：転がって火を抜ければ燃え移らない。
             // 床から fireReachHeight より高い所（筋斗雲で飛んでいる時など）は触れていない。
             if (!PlayerRules::IsAlive(player) || PlayerRules::IsInvulnerable(player) ||
@@ -57,8 +57,7 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             if (field.contactSeconds + kContactSlack < field.damageDelay)
                 return;
             PlayerRules::Ignite(player, PlayerBurnCause::Ground, tick);
-            player.burnInGroundFire = true;
-            player.burnGroundDamagePerSecond = field.damagePerSecond;
+            PlayerRules::SetGroundFire(player, field.damagePerSecond);
         });
     if (!seen.found)
         field.contactSeconds = 0.0f;
@@ -107,20 +106,16 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
 void Trace(const BurnFieldComponent& field) {
     if (!TraceInterval::Due(field.traceEveryFrames, field.tick))
         return;
-    // 爆発のエフェクトは累計（出した・均等に間引いた・窓の上限で止めた）と、窓の中に同時にあった数の最大。
     char message[576]{};
-    std::snprintf(
-        message, sizeof(message),
-        "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-        "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f maxGap=%d blasts=%u "
-        "blastPlan=%u effects=%u thinned=%u held=%u effectPeak=%u",
-        static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
-        static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds), field.fireDamageTotal,
-        field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters, field.burningTiles, field.emitterStride,
-        static_cast<double>(field.traceAlong), static_cast<double>(field.traceAcross),
-        static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.maxFeedGap, field.blastCount,
-        field.blastPlan, field.blastEffectsPlayed, field.blastEffectsThinned, field.blastEffectsHeld,
-        field.blastEffectPeak);
+    std::snprintf(message, sizeof(message),
+                  "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
+                  "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d maxGap=%d blasts=%u",
+                  static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
+                  static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds),
+                  field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters,
+                  field.burningTiles, field.emitterStride, static_cast<double>(field.traceAlong),
+                  static_cast<double>(field.traceAcross), static_cast<int>(field.fluidAccepted), field.maxFeedGap,
+                  field.blastCount);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 
@@ -134,9 +129,10 @@ BurnBody SeeBody(HIKARI::WorldView& world) {
                 return;
             body.found = true;
             body.position = transform.position;
-            body.remaining = player.burnRemaining;
-            body.endings = player.burnEndings;
-            body.scatter = player.burnEndReason == PlayerBurnEnd::Roll || player.burnEndReason == PlayerBurnEnd::Absorb;
+            body.remaining = PlayerRules::GetBurnRemaining(player);
+            body.endings = PlayerRules::GetBurnEndings(player);
+            const PlayerBurnEnd reason = PlayerRules::GetBurnEndReason(player);
+            body.scatter = reason == PlayerBurnEnd::Roll || reason == PlayerBurnEnd::Absorb;
         });
     return body;
 }

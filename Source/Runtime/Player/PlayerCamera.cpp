@@ -176,7 +176,7 @@ void NoteLockJump(PlayerComponent& player, Vec3 targetPoint) {
     const bool jumped = player.lockPointKnown &&
                         std::hypot(targetPoint.x - player.lockPointLast.x, targetPoint.z - player.lockPointLast.z) >
                             player.lockJumpDistance;
-    if (player.lockReacquireEnabled && (player.lockTargetHidden || (player.lockPointKnown && (switched || jumped))))
+    if (player.lockReacquireEnabled && player.lockPointKnown && (switched || jumped))
         player.lockReacquiring = true;
     if (!player.lockReacquireEnabled)
         player.lockReacquiring = false;
@@ -228,7 +228,6 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
     float yawMaxSpeed = player.lockYawMaxSpeed;
     float basePitch = player.lockPitch;
     float minPitch = limits.minPitch;
-    bool hold = false;
     if (lockFraming) {
         const float closeness =
             1.0f - SmoothStep(player.lockTurnNearDistance, player.lockTurnFarDistance, flatDistance);
@@ -236,8 +235,7 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
         yawMaxSpeed = Lerp(player.lockYawMaxSpeed, player.lockYawMaxSpeedNear, closeness);
         basePitch = Lerp(player.lockPitch, player.lockPitchNear, player.lockNearness);
         minPitch = std::max(minPitch, player.lockMinPitch);
-        hold = player.lockReacquireEnabled && player.lockTargetHidden;
-        if (player.lockReacquiring && !hold) {
+        if (player.lockReacquiring) {
             // 向き直しの間は、遅い方を使う。向きがそろったら普段の追いへ戻す。
             yawSeconds = std::max(yawSeconds, player.lockReacquireSeconds);
             yawMaxSpeed = std::min(yawMaxSpeed, player.lockReacquireMaxSpeed);
@@ -245,12 +243,6 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
             if (flatDistance > kMinimumAimDistance && error < 3.0f * kRadiansPerDegree)
                 player.lockReacquiring = false;
         }
-    }
-    if (hold) {
-        // 隠れている間は向きも見上げも保つ（地面の下・消えた所を追わない）。
-        player.cameraYawVelocity = 0.0f;
-        player.cameraPitchVelocity = 0.0f;
-        return;
     }
     if (flatDistance > kMinimumAimDistance)
         player.cameraYaw = SmoothDampAngle(player.cameraYaw, std::atan2(offsetX, offsetZ), player.cameraYawVelocity,
@@ -365,7 +357,7 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         message, sizeof(message),
         "CameraTrace eye=(%.4f,%.4f,%.4f) target=(%.4f,%.4f,%.4f) player=(%.4f,%.4f,%.4f) locked=%d "
         "distance=%.4f fov=%.4f roll=%.4f lookDown=%.4f follow=%.4f pitch=%.4f yaw=%.4f dt=%.5f modifier=%.5f "
-        "lockNear=%.3f lockAmount=%.3f reacquire=%d hidden=%d lockTarget=%llu marker=(%.1f,%.1f)",
+        "lockNear=%.3f lockAmount=%.3f reacquire=%d lockTarget=%llu marker=(%.1f,%.1f)",
         static_cast<double>(pose.eye.x), static_cast<double>(pose.eye.y), static_cast<double>(pose.eye.z),
         static_cast<double>(pose.target.x), static_cast<double>(pose.target.y), static_cast<double>(pose.target.z),
         static_cast<double>(body.x), static_cast<double>(body.y), static_cast<double>(body.z), static_cast<int>(locked),
@@ -377,9 +369,8 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         static_cast<double>(std::hypot(pose.eye.x - player.cameraTraceEye.x, pose.eye.y - player.cameraTraceEye.y,
                                        pose.eye.z - player.cameraTraceEye.z)),
         static_cast<double>(player.lockNearness), static_cast<double>(player.lockAmount),
-        static_cast<int>(player.lockReacquiring), static_cast<int>(player.lockTargetHidden),
-        static_cast<unsigned long long>(player.lockTarget.value), static_cast<double>(player.lockMarkerX),
-        static_cast<double>(player.lockMarkerY));
+        static_cast<int>(player.lockReacquiring), static_cast<unsigned long long>(player.lockTarget.value),
+        static_cast<double>(player.lockMarkerX), static_cast<double>(player.lockMarkerY));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerCamera", message);
     player.cameraTraceEye = submittedEye;
 }
@@ -540,7 +531,7 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
         player.cinematicPending = false;
     }
     player.cameraAccepted = world.GetCamera().SubmitPose(request);
-    DrawLockMarker(world, player, request.pose, locked && !player.lockTargetHidden && !cinematic, targetPoint);
+    DrawLockMarker(world, player, request.pose, locked && !cinematic, targetPoint);
     if (player.cameraTrace)
         Trace(world, player, body.position, locked, eye, distance, request.pose.verticalFovRadians,
               limits.followSeconds, dt);

@@ -9,7 +9,7 @@
 #include "BossMath.h"
 #include "BossRules.h"
 #include "BossSelection.h"
-#include "../Burn/BurnFieldRules.h"
+#include "../Burn/BurnField.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -44,7 +44,7 @@ char DirectionLetter(BossRollDirection direction) {
 // 時のボスの左右（ボスの右＝ボスの前を右へ 90 度回した向き。右手系で前 f の右は (−f.z, 0, f.x)）。
 BossRollDirection RollDirectionOf(const BossComponent& boss, const PlayerComponent& player, Vec3 playerCenter) {
     const Vec3 toBoss = FlatNormalize(Sub(boss.ground, playerCenter));
-    const Vec3 roll = FlatNormalize(player.actionDirection);
+    const Vec3 roll = FlatNormalize(PlayerRules::GetActionDirection(player));
     const float along = Dot(roll, toBoss);
     const float axis = std::cos(std::clamp(boss.rollAxisDegrees, 0.0f, 90.0f) * kRadiansPerDegree);
     if (along >= axis)
@@ -78,8 +78,8 @@ void LogHabit(const BossComponent& boss) {
 // ローリングの始まり：転がっていなかった所から転がった、または続けてもう一度転がった（経過 F が戻った）。
 void ObserveRoll(BossComponent& boss, const PlayerComponent& player, Vec3 playerCenter) {
     BossPlayerWatch& watch = boss.watch;
-    const bool rolling = player.state == PlayerState::Roll;
-    if (rolling && (!watch.wasRolling || player.stateFrame < watch.rollFrame)) {
+    const bool rolling = PlayerRules::GetState(player) == PlayerState::Roll;
+    if (rolling && (!watch.wasRolling || PlayerRules::GetStateFrame(player) < watch.rollFrame)) {
         watch.rollSeconds = boss.clockSeconds;
         watch.rollDirection = RollDirectionOf(boss, player, playerCenter);
         watch.rollHabit[watch.rollHabitNext] = watch.rollDirection;
@@ -93,7 +93,7 @@ void ObserveRoll(BossComponent& boss, const PlayerComponent& player, Vec3 player
         LogHabit(boss);
     }
     watch.wasRolling = rolling;
-    watch.rollFrame = player.stateFrame;
+    watch.rollFrame = PlayerRules::GetStateFrame(player);
 }
 
 // 狙いの線（水平）が、ボスの体の軸からどれだけ外れて通るか (m)。後ろや真上・真下へ向いていれば float の最大。
@@ -221,19 +221,19 @@ void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const 
     BossPlayerWatch& watch = boss.watch;
     const float now = boss.clockSeconds;
     watch.tickSeconds = std::max(1e-4f, tickSeconds);
-    watch.burningPercent = BurnFieldRules::GetBurningFraction(world) * 100.0f;
-    watch.present = player != nullptr && player->state != PlayerState::Dead;
+    watch.burningPercent = BurnField::GetBurningFraction(world) * 100.0f;
+    watch.present = player != nullptr && PlayerRules::GetState(*player) != PlayerState::Dead;
     if (!watch.present) {
         watch.healing = watch.absorbing = watch.inFire = watch.wasRolling = false;
         watch.shotPending = watch.shotWindup = false;
         PushStance(watch, 0.0f, 0.0f);
         return;
     }
-    watch.healing = player->state == PlayerState::Heal;
+    watch.healing = PlayerRules::GetState(*player) == PlayerState::Heal;
     if (gear.absorbing && !watch.absorbing)
         watch.absorbSince = now;
     watch.absorbing = gear.absorbing;
-    const bool inFire = BurnFieldRules::IsBurning(world, playerCenter);
+    const bool inFire = BurnField::IsBurning(world, playerCenter);
     if (inFire && !watch.inFire)
         watch.fireSince = now;
     watch.inFire = inFire;

@@ -12,6 +12,7 @@ class BossSystem final : public HIKARI::IGameSystem {
 public:
     void OnWorldAttached(HIKARI::WorldView& world) override;
     void FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
+    void Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
     void LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
     void PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) override;
     void OnWorldDetached(HIKARI::WorldView& world) override;

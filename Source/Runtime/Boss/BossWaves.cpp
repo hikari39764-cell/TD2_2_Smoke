@@ -11,7 +11,7 @@
 #include "BossGourdRead.h"
 #include "BossMath.h"
 #include "BossRules.h"
-#include "../Burn/BurnFieldRules.h"
+#include "../Burn/BurnField.h"
 #include "../Gourd/GourdRules.h"
 #include "../Player/PlayerRules.h"
 
@@ -27,8 +27,6 @@ constexpr float kBelowGroundLimit = 1.0f;
 constexpr float kResidueStep = 2.0f;
 // 放った直後に貯めた残り煙を、1 tick にこの割合ずつ足して返す。
 constexpr float kOwedSmokeShare = 0.25f;
-// F は 1/60 秒の固定 tick。1 tick の量を 1 秒あたりの量へ直す。
-constexpr float kFramesPerSecond = 60.0f;
 // 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
 constexpr int kRingResiduePoints = 6;
 // 引き込みの前半のこの割合の間に、三日月の端（ナイフは刃先）を口へ向け終える。
@@ -131,9 +129,6 @@ void Capture(BossFrame& frame, BossWave& wave) {
     wave.crossPending = false;
     wave.smokeOwed = 0.0f;
     LogWave(boss, wave, "WaveCaptured");
-    // ヒョウタンの読み（c-14392d）：剣気を続けて吸われたかを数える（ナイフは数えない）。
-    if (!wave.knife)
-        BossGourdRead::NoteCatch(boss);
 }
 
 // 捕まえた斬撃・ナイフを、口へ 1 tick ぶん引き込む。入りきったら真。
@@ -186,8 +181,8 @@ void StepRing(BossFrame& frame, BossWave& wave) {
             continue;
         const Vec3 offset = Sub(frame.playerCenter, wave.position);
         if (std::abs(FlatLength(offset) - wave.radius) < wave.thickness * 0.5f + boss.playerHitRadius) {
-            wave.struck = BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring",
-                                               PlayerDamageType::Slash, wave.fire);
+            wave.struck =
+                BossWaves::HitPlayer(frame, wave.damage, offset, wave.blow, wave.move, wave.strike, "ring", wave.fire);
             wave.done = true;
         }
     }
@@ -220,7 +215,7 @@ bool BossWaves::Touches(const BossFrame& frame, Vec3 a, Vec3 b, float thickness)
 }
 
 bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blow, int move, int strike,
-                          const char* source, PlayerDamageType type, bool fire, bool* dodged) {
+                          const char* source, bool fire, bool* dodged) {
     if (frame.player == nullptr || !PlayerRules::IsAlive(*frame.player))
         return false;
     BossComponent& boss = frame.boss;
@@ -232,19 +227,17 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
             *dodged = true;
         std::snprintf(message, sizeof(message), "PlayerDodge tick=%llu move=%s strike=%d source=%s playerState=%d",
                       static_cast<unsigned long long>(boss.tick), row ? row->name.c_str() : "?", strike, source,
-                      static_cast<int>(frame.player->state));
+                      static_cast<int>(PlayerRules::GetState(*frame.player)));
         BossLog::Write(message);
         return false;
     }
     const Vec3 push = FlatNormalize(direction);
-    const bool explosion = type == PlayerDamageType::Explosion;
-    // 吹っ飛ばす距離は斬撃の表の値（空欄はプレイヤーの既定）。添えて起きる爆発は表の値を使わず、既定の距離にする。
-    const float knockDistance = row != nullptr && !explosion ? BossMoveTable::Strike(*row, strike).knockDistance : 0.0f;
-    const bool accepted =
-        PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
-                                 blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger, type, knockDistance);
-    // 火の当たり（火の刃・燃える地面の爆発）は体に燃え移る。霞の噴き上がりのような火の無い爆発は燃え移らない
-    // （ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
+    // 吹っ飛ばす距離は斬撃の表の値（空欄はプレイヤーの既定）。
+    const float knockDistance = row != nullptr ? BossMoveTable::Strike(*row, strike).knockDistance : 0.0f;
+    const bool accepted = PlayerRules::ApplyDamage(*frame.player, static_cast<float>(damage), push,
+                                                   blow ? PlayerDamageKind::Knockback : PlayerDamageKind::Stagger,
+                                                   PlayerDamageType::Slash, knockDistance);
+    // 火の刃は体に燃え移る（ログの順を「当たった → 燃えた」にするため、PlayerHit の後で点ける）。
     const bool ignite = accepted && fire;
     if (accepted) {
         ++boss.playerHitCount;
@@ -256,7 +249,6 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
                         .effectPending = true,
                         .fire = fire,
                         .playerHit = true,
-                        .explosion = explosion,
                         .scale = std::string_view(source) == "knife" ? boss.knifeBlastScale : 1.0f,
                         .position = frame.playerCenter,
                         .direction = push});
@@ -265,12 +257,12 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
                   "PlayerHit tick=%llu move=%s strike=%d source=%s damage=%d kind=%s type=%s fire=%d accepted=%d "
                   "playerHealth=%.3f playerState=%d",
                   static_cast<unsigned long long>(boss.tick), row ? row->name.c_str() : "?", strike, source, damage,
-                  blow ? "Knockback" : "Stagger", explosion ? "explosion" : "slash", static_cast<int>(fire),
-                  static_cast<int>(accepted), static_cast<double>(PlayerRules::GetHealth(*frame.player)),
-                  static_cast<int>(frame.player->state));
+                  blow ? "Knockback" : "Stagger", "slash", static_cast<int>(fire), static_cast<int>(accepted),
+                  static_cast<double>(PlayerRules::GetHealth(*frame.player)),
+                  static_cast<int>(PlayerRules::GetState(*frame.player)));
     BossLog::Write(message);
     if (ignite)
-        PlayerRules::Ignite(*frame.player, explosion ? PlayerBurnCause::Explosion : PlayerBurnCause::Slash, boss.tick);
+        PlayerRules::Ignite(*frame.player, PlayerBurnCause::Slash, boss.tick);
     return accepted;
 }
 
@@ -430,7 +422,7 @@ void BossWaves::Step(BossFrame& frame) {
             const Vec3 half = Mul(wave.across, wave.width * 0.5f);
             if (Touches(frame, Sub(wave.position, half), Add(wave.position, half), wave.thickness)) {
                 wave.struck = HitPlayer(frame, wave.damage, wave.direction, wave.blow, wave.move, wave.strike,
-                                        wave.knife ? "knife" : "wave", PlayerDamageType::Slash, wave.fire);
+                                        wave.knife ? "knife" : "wave", wave.fire);
                 wave.done = true;
                 // 振り抜く前に放った斬撃が当たった（か、無敵で抜けられた）：同じ一撃の剣は、もう当たらない。
                 for (auto& swing : boss.swings) {
@@ -447,7 +439,7 @@ void BossWaves::Step(BossFrame& frame) {
             const float lag = ending ? 0.0f : std::max(0.0f, boss.burnLineLag);
             if (wave.travelled > lag) {
                 const Vec3 to = Sub(wave.position, Mul(wave.direction, lag));
-                BurnFieldRules::PaintSegment(frame.world, wave.burnFrom, to, wave.burnWidth, wave.burnSeconds);
+                BurnField::PaintSegment(frame.world, wave.burnFrom, to, wave.burnWidth, wave.burnSeconds);
                 wave.burnFrom = to;
             }
         }
@@ -481,31 +473,10 @@ void BossWaves::Step(BossFrame& frame) {
     }
 }
 
-void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames,
-                           float mergeDistance) {
+void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames) {
     if (smoke <= 0.0f)
         return;
     const float perFrameShare = 1.0f / static_cast<float>(std::max(1, frames));
-    if (mergeDistance > 0.0f) {
-        // 近くに、まだ出し始めていない煙があれば、そこへ足す（同じ所で続けて爆ぜる引爆が、枠を使い切らないように）。
-        BossSmokeDeposit* waiting = nullptr;
-        float best = mergeDistance;
-        for (auto& deposit : boss.deposits) {
-            if (!deposit.active || deposit.waitFrames <= 0)
-                continue;
-            const float distance = FlatLength(Sub(deposit.position, position));
-            if (distance <= best) {
-                best = distance;
-                waiting = &deposit;
-            }
-        }
-        if (waiting != nullptr) {
-            waiting->smokeLeft += smoke;
-            waiting->smokePerFrame = waiting->smokeLeft * perFrameShare;
-            waiting->waitFrames = std::max(waiting->waitFrames, waitFrames);
-            return;
-        }
-    }
     BossSmokeDeposit* target = nullptr;
     for (auto& deposit : boss.deposits) {
         if (!deposit.active) {
@@ -553,9 +524,8 @@ float BossWaves::GetPullingSmoke(const BossComponent& boss) {
 
 void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
     boss.blasts[boss.blastCursor++ % boss.blasts.size()] = blast;
-    // 爆発の跡：真下の地面の近くへ、吸える煙を残す。霞の塊は puffResidue が、爆発がプレイヤーに当たった所は
-    // 燃える地面の爆ぜた塊（AddDetonationFog）が残すので、ここでは足さない（二重にしない）。
-    if (!blast.leavesFog || blast.puff || blast.explosion)
+    // 爆発の跡：真下の地面の近くへ、吸える煙を残す。
+    if (!blast.leavesFog)
         return;
     const float scale = std::max(0.0f, blast.scale);
     const float smoke = boss.blastFogSmoke * scale;
@@ -576,40 +546,6 @@ void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
                   static_cast<int>(blast.fire), static_cast<int>(blast.playerHit), static_cast<double>(at.x),
                   static_cast<double>(at.y), static_cast<double>(at.z), boss.blastFogTotal);
     BossLog::Write(message);
-}
-
-float BossWaves::AddDetonationFog(BossComponent& boss, const BurnExplosion& explosion, float limit,
-                                  const char* source) {
-    const float perArea = std::max(0.0f, boss.detonationFogSmokePerArea);
-    const float radius = std::max(kMinimumFogRadius, boss.blastFogRadius);
-    float left = std::max(0.0f, limit);
-    float placed = 0.0f;
-    uint32_t blocks = 0;
-    // 爆ぜた面積に応じて、爆ぜた所へ置く。前線は内側から外へ進むので、上限に届いた後の（外側の）塊には置かない。
-    for (uint32_t k = 0; k < explosion.blockCount && left > 0.0f; ++k) {
-        const Vec3 center = explosion.blockCenters[k];
-        const float smoke = std::min(explosion.blockAreas[k] * perArea, left);
-        if (!(smoke > 0.0f))
-            continue;
-        AddDeposit(boss, {center.x, center.y + boss.depositHeight, center.z}, smoke, radius, boss.blastFogFrames,
-                   boss.blastFogDelayFrames, boss.detonationFogMergeDistance);
-        left -= smoke;
-        placed += smoke;
-        ++blocks;
-    }
-    // 上限に届いた後の tick（置いた塊が無い）は書かない。1 回の合計は DetonateEnd・SkyfallBurst の fog に出る。
-    if (blocks == 0)
-        return 0.0f;
-    boss.blastFogTotal += static_cast<double>(placed);
-    char message[256]{};
-    std::snprintf(message, sizeof(message),
-                  "DetonationFog tick=%llu source=%s blocks=%u placed=%u smoke=%.3f limit=%.3f perArea=%.3f "
-                  "total=%.3f",
-                  static_cast<unsigned long long>(boss.tick), source, explosion.blockCount, blocks,
-                  static_cast<double>(placed), static_cast<double>(std::max(0.0f, limit)), static_cast<double>(perArea),
-                  boss.blastFogTotal);
-    BossLog::Write(message);
-    return placed;
 }
 
 void BossWaves::StepDeposits(BossComponent& boss) {
@@ -638,6 +574,68 @@ void BossWaves::Clear(BossComponent& boss) {
         deposit = {};
     for (auto& blast : boss.blasts)
         blast = {};
+}
+
+void BossWaves::DescribeAbsorb(HIKARI::PropertyFields& fields, BossComponent& boss) {
+    if (fields.Section("吸い込み")) {
+        fields.Float("absorbCatchRange", "吸い込み：斬撃・ナイフを吸える距離 (m)", boss.absorbCatchRange, 0.0f, 50.0f);
+        fields.Float("absorbCatchAngle", "吸い込み：吸える角度（片側、度）", boss.absorbCatchAngle, 0.0f, 180.0f);
+        fields.Float("absorbCatchNear", "吸い込み：向きを問わず吸える近さ (m)", boss.absorbCatchNear, 0.0f, 10.0f);
+        fields.Int("absorbPullFrames", "引き込み：捕まえた斬撃が口へ入りきるまで (F)", boss.absorbPullFrames, 1, 240);
+        fields.Int("knifePullFrames", "引き込み：捕まえたナイフが口へ入りきるまで (F)", boss.knifePullFrames, 1, 240);
+        fields.Float("absorbPullEasePower", "引き込み：初めゆっくり・終わり速くの強さ（1 は一定の速さ）",
+                     boss.absorbPullEasePower, 0.1f, 8.0f);
+        fields.Float("absorbPullSwirlDegrees", "引き込み：巻き込む弧（出だしを口への線から横へ振る角度、度）",
+                     boss.absorbPullSwirlDegrees, 0.0f, 85.0f);
+        fields.Float("absorbPullEndScale", "引き込み：入りきる時の大きさ（元の大きさに対する割合）",
+                     boss.absorbPullEndScale, 0.01f, 1.0f);
+        fields.Int("absorbPullStaggerFrames", "引き込み：同時に捕まえた分を、順に入れる間隔 (F)",
+                   boss.absorbPullStaggerFrames, 0, 60);
+        fields.Float("absorbPullTurn", "引き込み：三日月の端を口へ向ける割合（0 は向きを変えない）",
+                     boss.absorbPullTurn, 0.0f, 1.0f);
+        fields.Float("absorbPullFly", "引き込み：刃の霧の量（飛んでいる時を 1 として。0 は霧を出さない）",
+                     boss.absorbPullFly, 0.0f, 4.0f);
+        fields.Float("absorbPullPinch", "引き込み：入りきる時の刃の細さ（厚み・前後の倍率。1 はそのまま）",
+                     boss.absorbPullPinch, 0.05f, 1.0f);
+        fields.Float("absorbPullFadeSeconds", "引き込み：入りきった後、残った霧と光が消えるまで (秒)",
+                     boss.absorbPullFadeSeconds, 0.0f, 2.0f);
+        fields.Float("absorbPullSqueeze", "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)",
+                     boss.absorbPullSqueeze, 0.0f, 5000.0f);
+        fields.Float("absorbPullSqueezeRadius", "…その力の半径 (m)", boss.absorbPullSqueezeRadius, 0.1f, 20.0f);
+    }
+}
+
+void BossWaves::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
+    if (fields.Section("剣と斬撃の出方")) {
+        fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", boss.swordShoulder);
+        fields.Float("swordLength", "剣の長さ (m)", boss.swordLength, 0.1f, 20.0f);
+        fields.Float("swordHazeLength", "剣先の霞の長さ (m)", boss.swordHazeLength, 0.0f, 10.0f);
+        fields.Float("waveForward", "斬撃を放つ位置：体の前 (m)", boss.waveForward, 0.0f, 10.0f);
+        fields.Float("waveMinHeight", "斬撃を放つ高さ 最低 (m)", boss.waveMinHeight, 0.0f, 10.0f);
+        fields.Float("waveMaxHeight", "斬撃を放つ高さ 最高 (m、跳んだ高さを足す)", boss.waveMaxHeight, 0.0f, 10.0f);
+        fields.Bool("waveFromBlade", "斬撃を、振った刀の通った所・面・時に合わせて放つ", boss.waveFromBlade);
+        fields.Float("waveCutShare", "…刀が正面を斬る部分の始まり（振りの長さに対する割合）", boss.waveCutShare, 0.0f,
+                     0.95f);
+        fields.Float("waveBladeShare", "…斬撃の中心を置く刃の位置（0 は付け根、1 は剣先）", boss.waveBladeShare, 0.0f,
+                     1.0f);
+        fields.Float("wavePlaneMatch", "…三日月の向きを、刀が斬った面へ合わせる割合（0 は前の向き）",
+                     boss.wavePlaneMatch, 0.0f, 1.0f);
+        fields.Note(
+            "合わせて放つ時：振りの後ろの部分で、剣先がボスの前へ一番出た所を過ぎた瞬間に放ちます（振り抜くより"
+            "数 F 早い）。放つ所は、その時の刃の上の点（体の前 waveForward より手前には出さず、高さは最低〜最高に"
+            "切り詰める）。三日月の向きは、刀の線が掃いた面に合わせます（斜めに斬れば斜めの三日月）。"
+            "切ると、振り抜いた瞬間に体の正面から、剣先の最初と最後を結ぶ向きで放ちます。");
+        fields.Int("waveGrowFrames", "放った斬撃が判定サイズまで伸びる長さ (F)", boss.waveGrowFrames, 1, 120);
+        fields.Float("knifeHeight", "ナイフを投げる高さ (m)", boss.knifeHeight, 0.0f, 10.0f);
+        fields.Float("knifeForward", "ナイフを投げる位置：体の前 (m)", boss.knifeForward, 0.0f, 10.0f);
+        fields.Float("knifeSpreadDegrees", "ナイフの扇の間隔 (度)", boss.knifeSpreadDegrees, 0.0f, 90.0f);
+        fields.Float("knifeWidth", "ナイフの当たりの幅 (m)", boss.knifeWidth, 0.01f, 5.0f);
+        fields.Float("knifeThickness", "ナイフの当たりの厚み (m)", boss.knifeThickness, 0.01f, 5.0f);
+        fields.Float("playerHitLow", "プレイヤーの当たり：下端（原点から m）", boss.playerHitLow, -5.0f, 5.0f);
+        fields.Float("playerHitHigh", "プレイヤーの当たり：上端（原点から m）", boss.playerHitHigh, -5.0f, 5.0f);
+        fields.Float("playerHitRadius", "プレイヤーの当たり：半径 (m)", boss.playerHitRadius, 0.0f, 5.0f);
+        fields.Float("playerAimHeight", "狙う高さ（プレイヤーの原点から m）", boss.playerAimHeight, -5.0f, 5.0f);
+    }
 }
 
 } // namespace Project_TD2_2

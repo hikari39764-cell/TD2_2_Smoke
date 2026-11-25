@@ -1,7 +1,5 @@
 #include "BossBodySettings.h"
 
-#include "HIKARI/Project/AssetKind.h"
-
 namespace Project_TD2_2 {
 
 void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
@@ -10,7 +8,7 @@ void BossBodySettings::Describe(HIKARI::PropertyFields& fields) {
 }
 
 void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
-    if (!fields.Section("外形：技の演出（見た目だけ）", false))
+    if (!fields.Section("体：技の演出（見た目だけ）", false))
         return;
     fields.Note("技の点描の演出です。当たり・F 数は変えません。色・明るさ・消える時間は、演出の値の資産と各エフェクトの中に"
                 "あります。");
@@ -40,8 +38,6 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float3("bodyEyesMistColor", "目の光：ふだんの色と明るさ", eyesMistColor);
     fields.Float3("bodyEyesFireColor", "目の光：フェーズ 2 の色と明るさ", eyesFireColor);
     fields.Float("bodyEyeFlare", "目の閃き：ふつうの技を出すと決めた瞬間の強さ（0 で出さない）", eyeFlare, 0.0f, 8.0f);
-    fields.Float("bodyEyeFlareBig", "目の閃き：大技（引爆・天降り斬り・退き溜め・霞の大剣）の強さ", eyeFlareBig, 0.0f,
-                 8.0f);
     fields.Float("bodyEyeFlareSeconds", "目の閃き：消えるまでの時間 (秒)", eyeFlareSeconds, 0.01f, 3.0f);
     fields.SceneObject("bodyHelmSpotObject", "兜の中の灯：前を向くスポットライトの物体（無ければ貼り付けの光を出す）",
                        helmSpotObject);
@@ -63,7 +59,6 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyEdgeIdle", "刃口の光：待機の明るさ（倍率。弱いが必ず見える）", edgeIdle, 0.0f, 8.0f);
     fields.Float("bodyEdgeWindup", "刃口の光：前隙の終わり（構え切った所）の明るさ", edgeWindup, 0.0f, 8.0f);
     fields.Float("bodyEdgeSwing", "刃口の光：振る間（命中の窓）の明るさ", edgeSwing, 0.0f, 8.0f);
-    fields.Float("bodyEdgeCharge", "刃口の光：大きな溜め（溜めの見た目 1 あたり）で足す明るさ", edgeCharge, 0.0f, 8.0f);
     fields.Float("bodyEdgeStunned", "刃口の光：気絶の間の明るさ", edgeStunned, 0.0f, 8.0f);
     fields.Float("bodyEdgeRampPower", "刃口の光：前隙の立ち上がりの曲がり（1 で一定、大きいほど終わりに急に明るく）",
                  edgeRampPower, 0.2f, 6.0f);
@@ -103,8 +98,6 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float3("bodyAuraMistColor", "溜めの気配：霞の技の色と明るさ", auraMistColor);
     fields.Float3("bodyAuraFireColor", "溜めの気配：刀が燃えている技の色と明るさ", auraFireColor);
     fields.Float("bodyAuraSeconds", "溜めの気配：立ち上がる・引く時間 (秒)", auraSeconds, 0.01f, 3.0f);
-    fields.Float("bodyAuraConjure", "溜めの気配：霞の大剣を作り出す間の強さ（溜め切りを 1 として）", auraConjure, 0.0f,
-                 2.0f);
     fields.Float("bodySmokeChargeAmount", "胴の煙：溜め切った時の量（倍率）", smokeChargeAmount, 0.0f, 8.0f);
     fields.Float("bodySmokeNearScale", "胴の煙：プレイヤーが近い時の量（倍率。画面を塞がないように）", smokeNearScale,
                  0.0f, 1.0f);
@@ -120,40 +113,26 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
                shockEffect);
     fields.Float3("bodyShockMistColor", "衝撃の輪：霞の技の色と明るさ", shockMistColor);
     fields.Float3("bodyShockFireColor", "衝撃の輪：刀が燃えている技の色と明るさ", shockFireColor);
-    fields.Float("bodyShockSkyfall", "衝撃の輪の大きさ：天降り斬りの着地（倍率。0 で出さない）", shockSkyfall, 0.0f, 6.0f);
-    fields.Float("bodyShockCleave", "衝撃の輪の大きさ：霞の大剣の叩きつけ", shockCleave, 0.0f, 6.0f);
     fields.Float("bodyShockKick", "衝撃の輪の大きさ：回し蹴り", shockKick, 0.0f, 6.0f);
-    fields.Float("bodyShockDetonate", "衝撃の輪の大きさ：引爆の爆ぜ始め", shockDetonate, 0.0f, 6.0f);
-    fields.Float("bodyShockRelease", "衝撃の輪の大きさ：溜めた一撃を放つ瞬間（退き溜め）", shockRelease, 0.0f, 6.0f);
     fields.Vfx("bodyDashEffect", "突進の尾のエフェクト（体が速く動く間の光の帯とゆがみ。空なら出さない）", dashEffect);
     fields.Float3("bodyDashMistColor", "突進の尾：ふだんの色と明るさ", dashMistColor);
     fields.Float3("bodyDashFireColor", "突進の尾：刀が燃えている間の色と明るさ", dashFireColor);
     fields.Float("bodyDashMinSpeed", "突進の尾：出始める体の速さ (m/秒)", dashMinSpeed, 0.0f, 100.0f);
     fields.Float("bodyDashFullSpeed", "突進の尾：出切る体の速さ (m/秒)", dashFullSpeed, 0.1f, 100.0f);
-    fields.Vfx("bodyHandEffect", "左手の光のエフェクト（所作の間、掌に集まる光。空なら出さない）", handEffect);
-    fields.Vfx("bodyHandBurstEffect", "左手の弾けのエフェクト（握る・印を切る・投げる瞬間。空なら出さない）",
-               handBurstEffect);
-    fields.Float3("bodyHandMistColor", "左手の光：霞の所作の色と明るさ", handMistColor);
-    fields.Float3("bodyHandFireColor", "左手の光：火の所作の色と明るさ", handFireColor);
-    fields.Float("bodyHandDetonate", "左手の光の強さ：引爆（掲げた掌。0 で出さない）", handDetonate, 0.0f, 8.0f);
-    fields.Float("bodyHandSeal", "左手の光の強さ：刀印（霞分身・霞隠れ）", handSeal, 0.0f, 8.0f);
-    fields.Float("bodyHandKnife", "左手の光の強さ：投げナイフ（引いた手）", handKnife, 0.0f, 8.0f);
-    fields.Float("bodyHandWipe", "左手の光の強さ：刀身をなぞる（炎走り）", handWipe, 0.0f, 8.0f);
-    fields.Float("bodyHandAim", "左手の光の強さ：狙い（退き溜めの溜め切り）", handAim, 0.0f, 8.0f);
+    fields.Vfx("bodyHandEffect", "左手の光のエフェクト（投げナイフの前隙の間、掌に集まる光。空なら出さない）",
+               handEffect);
+    fields.Vfx("bodyHandBurstEffect", "左手の弾けのエフェクト（ナイフを投げる瞬間。空なら出さない）", handBurstEffect);
+    fields.Float3("bodyHandMistColor", "左手の光：色と明るさ", handMistColor);
+    fields.Float("bodyHandKnife", "左手の光の強さ（投げナイフの引いた手）", handKnife, 0.0f, 8.0f);
     fields.Float("bodyHandSeconds", "左手の光：立ち上がる・引く時間 (秒)", handSeconds, 0.01f, 2.0f);
     fields.Float("bodyHandBurst", "左手の弾けの大きさ（倍率。0 で出さない）", handBurst, 0.0f, 6.0f);
     fields.Float3("bodyHandPoint", "左手の光を置く所（左手の模型の座標・実寸 m）", handPoint);
 }
 
-
-
 void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
-    if (!fields.Section("外形（鎧・刀・手の模型）", false))
+    if (!fields.Section("体（大きさ・胴の煙と火・フェーズ 2 の場）", false))
         return;
-    fields.Asset("bodyModel", "外形の模型（部品がノードで分かれた 1 つの模型。空なら出さない）",
-                 HIKARI::GameProjectAssetKind::Model, model);
-    fields.Bool("bodyVisible", "外形の模型を出す", visible);
-    fields.Bool("bodyInterpolate", "外形を前の tick との間で補間して置く（描画が tick より速い時のがくつきを消す）",
+    fields.Bool("bodyInterpolate", "体を前の tick との間で補間して置く（描画が tick より速い時のがくつきを消す）",
                 interpolate);
     fields.Float("bodySwordModelLength", "刀の模型の、握りの中央から剣先までの長さ (m。見える刀の長さに合うよう拡大する)",
                  swordModelLength, 0.1f, 20.0f);
@@ -162,11 +141,10 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  swordVisibleLength, 0.0f, 20.0f);
     fields.Float("bodySwordGripAlong", "握りの位置：剣の付け根から剣の向きへ (m)", swordGripAlong, -1.0f, 2.0f);
     fields.Float("bodyHandScale", "手の大きさ（刀の拡大に掛ける倍率）", handScale, 0.1f, 5.0f);
-    fields.Float("bodyScale", "体の大きさ（倍率。鎧・肩・左手の置き場所・待機の握りに掛ける。当たりの型には掛けない）",
-                 bodyScale, 0.2f, 5.0f);
-    fields.Float3("bodyShoulder", "肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転。肩当ての中）：籠手の筒が向く先",
-                  shoulder);
-    fields.Float("bodyCuffModelLength", "籠手の筒の模型の長さ (m。模型を作るスクリプトの値)", cuffModelLength, 0.05f, 5.0f);
+    fields.Float("bodyScale", "体の大きさ（倍率。鎧に付く効果の大きさに掛ける。当たりの型には掛けない）", bodyScale,
+                 0.2f, 5.0f);
+    fields.Float("bodyCuffModelLength", "籠手の筒の模型の長さ (m。模型を作るスクリプトの値)", cuffModelLength, 0.05f,
+                 5.0f);
     fields.Float("bodyHeadScale", "鎧：兜の大きさ（倍率）", headScale, 0.2f, 4.0f);
     fields.Int("bodyTassetCount", "鎧：草摺の枚数", tassetCount, 0, kBossBodyTassetCapacity);
     fields.Vfx("bodySmokeEffect", "胴の煙のエフェクト（ボスの足元に付く流体。空なら出さない）", smokeEffect);
@@ -212,10 +190,8 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  0.1f, 4.0f);
     fields.Float("bodyFieldScorchSeconds", "フェーズ 2 の場：焦げた輪が現れる時間 (秒)", fieldScorchSeconds, 0.0f,
                  30.0f);
-    fields.Note("刀と右手は、振っている間は剣の姿勢（剣の付け根 Boss.swordShoulder と剣の向き）に重なり、"
-                "ほかの時は「刀と手の動き」の節の構えを追います。"
-                "剣の長さは Boss.swordLength です。「握りの右手の模型」の 3 つは、模型を作り直した時にだけ、"
-                "作るスクリプトが出す値へ合わせます。");
+    fields.Note("体は骨格の体（「骨格の体」の節）が描きます。ここの値は、体に付く効果（刀光・胴の煙・火の舌・兜の光）の"
+                "大きさと置き場所です。剣の長さは Boss.swordLength です。");
 }
 
 } // namespace Project_TD2_2

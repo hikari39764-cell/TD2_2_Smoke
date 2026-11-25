@@ -62,14 +62,24 @@ void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
     if (ReadAction(input, "Gameplay.Heal").pressed) {
         player.healBuffer = player.inputBufferFrames;
     }
-    if (ReadAction(input, "Gameplay.LockOn").pressed && PlayerRules::IsAlive(player)) {
-        const auto target = world.FindSceneObject(player.lockTargetId);
-        player.lockedOn = !player.lockedOn && target.IsValid();
-        player.lockTarget = player.lockedOn ? target.GetHandle() : HIKARI::GameProjectObjectHandle{};
-    }
-    // 対象の候補（ボスと分身）はプレイヤーは知らないので、押されたことだけを覚えておく。
+    // ロックオンの入れ切りは押したことだけを覚え、次の固定 tick の始めに決める（ApplyLockToggle）。
+    if (ReadAction(input, "Gameplay.LockOn").pressed)
+        player.lockToggleRequested = true;
+    // 対象の候補はプレイヤーは知らないので、押されたことだけを覚えておく。
     if (ReadAction(input, "Gameplay.LockSwitch").pressed && player.lockedOn)
         player.lockSwitchRequested = true;
+}
+
+// Update で覚えたロックオンの入れ切りを、固定 tick の始めに決める（c-164cab）。
+void ApplyLockToggle(HIKARI::WorldView& world, PlayerComponent& player) {
+    if (!player.lockToggleRequested)
+        return;
+    player.lockToggleRequested = false;
+    if (!PlayerRules::IsAlive(player))
+        return;
+    const auto target = world.FindSceneObject(player.lockTargetId);
+    player.lockedOn = !player.lockedOn && target.IsValid();
+    player.lockTarget = player.lockedOn ? target.GetHandle() : HIKARI::GameProjectObjectHandle{};
 }
 
 int StateDuration(const PlayerComponent& player) {
@@ -581,6 +591,7 @@ void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameC
                                                 // 演出の間の止め（演出の側が毎 tick 入れ直す）を 1 tick 進める。
                                                 if (player.cinematicHold > 0)
                                                     --player.cinematicHold;
+                                                ApplyLockToggle(world, player);
                                                 // この tick の始めの体の位置（描画のフレームの補間の起点）。
                                                 HIKARI::GameProjectTransform start{};
                                                 if (object.GetWorldTransform(start)) {

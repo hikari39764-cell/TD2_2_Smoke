@@ -13,15 +13,15 @@ struct AmbientSite {
 };
 
 // 煙の筋が巡る所（鎧・刀の根元・兜・右の手甲・左の手甲。部品は、まだ体に付いていないものだけ）。数を返す。先頭は鎧。
-int AmbientPlaces(const BossComponent& boss, std::array<AmbientSite, kAmbientSites>& sites) {
-    const BossIntroState& state = boss.introState;
+int AmbientPlaces(const BossIntroComponent& intro, std::array<AmbientSite, kAmbientSites>& sites) {
+    const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     if (!a.socketsValid)
         return 0;
     int count = 0;
     sites[static_cast<size_t>(count++)] = {0, Ground(state, Lerp(a.hips.position, a.chest.position, 0.5f)), 0.30f, 2.3f,
                                            1.0f, 2};
-    sites[static_cast<size_t>(count++)] = {1, Ground(state, BossIntroActor::SwordEntry(boss)), 0.20f, 1.5f, -1.0f, 1};
+    sites[static_cast<size_t>(count++)] = {1, Ground(state, BossIntroActor::SwordEntry(intro)), 0.20f, 1.5f, -1.0f, 1};
     struct Part {
         BossIntroPart part;
         float share;
@@ -46,9 +46,9 @@ int AmbientPlaces(const BossComponent& boss, std::array<AmbientSite, kAmbientSit
 // 閉じず、彗星のような筋が部品を巡る形になる（点を増やしたり遅くしたりすると、尾がつながって、その場に溜まった丸い塊に
 // 見える。薄く広げると、形の無い濁りになる）。部品そのものは輪の中にあって、煙に隠れない。前触れ（拍 Omen）が進むと、筋は
 // 自分の部品を離れて鎧へ寄り、鎧の周りを巡る渦になる。地を走る煙が鎧に着く前に引いていく（拍 Smoke.Ambient の終わり）。
-void Ambient(const Feed& feed, const BossComponent& boss) {
-    const BossIntroSettings& s = boss.intro;
-    const BossIntroState& state = boss.introState;
+void Ambient(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroSettings& s = intro.settings;
+    const BossIntroState& state = intro.state;
     if (s.ambientAmount <= 0.0f)
         return;
     float level = Smooth(state.ambientClock / kAmbientIn);
@@ -64,7 +64,7 @@ void Ambient(const Feed& feed, const BossComponent& boss) {
         omen = since >= 0.0f ? Smooth(since / length) : Passed(state, Kind::Omen) ? 1.0f : 0.0f;
     }
     std::array<AmbientSite, kAmbientSites> sites{};
-    const int count = AmbientPlaces(boss, sites);
+    const int count = AmbientPlaces(intro, sites);
     if (level <= 0.0f || count == 0)
         return;
     const Vec3 armour = sites[0].at;

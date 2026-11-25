@@ -1,20 +1,13 @@
 #pragma once
 
-#include <string>
-
 #include "HIKARI/Project/EnvironmentTypes.h"
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
 
 namespace Project_TD2_2 {
 
-// 左手の形（模型のノードを差し替える。指の骨は無い）。
-enum class BossBodyHandShape { Fist, Open, Seal };
-
-// 左手の手振り（技の型ごとに決める。BossBodyLeftHand の表）。
-enum class BossBodyLeftGesture { Balance, Detonate, Knife, Seal, FlameWipe, Aim, TwoHand, Kick, Limp };
-
-
+// 左手の所作（手の光の演出が読む）：ふだんと、投げナイフの前隙。
+enum class BossBodyLeftGesture { Balance, Knife };
 
 // 技の点描の演出（見た目だけ）。当たり・F 数は変えない。地面や画面への予告は出さない。
 struct BossBodyAccentSettings {
@@ -47,7 +40,7 @@ struct BossBodyAccentSettings {
     float bladeEmbers = 1.0f;
     // 刃口の常時の光（刀に付くエフェクトの Edge Line・Edge Glow。入力 input.edge）：刀を見れば何をしているか分かるように、
     // 段階で明るさを変える（倍率。色は edgeMistColor／edgeFireColor に掛ける）。待機 edgeIdle は弱いが必ず見える、前隙は
-    // 進みにつれて edgeWindup まで（曲がり edgeRampPower、溜めの見た目 1 あたり edgeCharge を足す、ゆっくり脈打つ）、
+    // 進みにつれて edgeWindup まで（曲がり edgeRampPower、ゆっくり脈打つ）、
     // 振る間（命中の窓）は edgeSwing、後隙は待機へ戻る。気絶は edgeStunned。燃える刀身の間は edgeHotShare を掛ける
     // （炎と重ねて白く飛ばない）。地面や画面の予告ではなく、刀そのものの見え方。
     HIKARI::GameProjectFloat3 edgeMistColor{0.55f, 0.85f, 1.60f};
@@ -55,7 +48,6 @@ struct BossBodyAccentSettings {
     float edgeIdle = 0.35f;
     float edgeWindup = 0.9f;
     float edgeSwing = 1.6f;
-    float edgeCharge = 0.5f;
     float edgeStunned = 0.15f;
     float edgeRampPower = 1.5f;
     float edgePulseDepth = 0.25f;
@@ -104,10 +96,9 @@ struct BossBodyAccentSettings {
     // 目の光の色と明るさ：ふだん（霞）と、フェーズ 2（火）。
     HIKARI::GameProjectFloat3 eyesMistColor{0.70f, 1.10f, 1.90f};
     HIKARI::GameProjectFloat3 eyesFireColor{3.60f, 1.30f, 0.30f};
-    // 閃きの強さ：ふつうの技・大技（引爆・天降り斬り・退き溜め・霞の大剣）と、消えるまでの時間 (秒)。0 で出さない。
+    // 閃きの強さと、消えるまでの時間 (秒)。0 で出さない。
     float eyeFlare = 0.6f;
-    float eyeFlareBig = 1.6f;
-    float eyeFlareSeconds = 0.45f;
+    float eyeFlareSeconds = 0.16875f;
     // 兜の中の灯（c-e0c500）：面頬の隙間から漏れる光を、兜の中に置いた本物の灯で出す。前を向く影付きのスポットライト
     // （隙間から漏れて、面頬の縁・襟・顔の前の手を照らす）と、兜の中を満たす弱い点光（影なし）。どちらもシーンの物体で、
     // 置き場所と明るさはコードが毎フレーム入れる（色は上の目の光の色）。物体が無ければ、前の貼り付けの光（eyesEffect）を
@@ -138,9 +129,8 @@ struct BossBodyAccentSettings {
     HIKARI::GameProjectVfxAssetReference auraEffect{"5b0d3e9a7c124f6e8a2b1c0d9e3f4a75", "Assets/Vfx/BossAura.hvfx"};
     HIKARI::GameProjectFloat3 auraMistColor{0.45f, 0.75f, 1.40f};
     HIKARI::GameProjectFloat3 auraFireColor{1.60f, 0.55f, 0.12f};
-    // 気配が立ち上がる・引く時間 (秒) と、霞の大剣を作り出す間の強さ（溜め切りを 1 として）。
+    // 気配が立ち上がる・引く時間 (秒)。
     float auraSeconds = 0.25f;
-    float auraConjure = 0.7f;
 
     // 胴の煙を技に合わせる：溜め切った時の量（倍率）、フェーズ 1 で刀が燃えている間の熱さ（熱い煙は橙に光る）、
     // 振り終わった直後に吹き出す量（倍率）とその時間 (秒)。
@@ -159,13 +149,8 @@ struct BossBodyAccentSettings {
     HIKARI::GameProjectVfxAssetReference shockEffect{"e1a7c3f05b2d4d96a8c4f7b16d0e3a29", "Assets/Vfx/BossShock.hvfx"};
     HIKARI::GameProjectFloat3 shockMistColor{0.80f, 1.10f, 1.70f};
     HIKARI::GameProjectFloat3 shockFireColor{2.00f, 0.85f, 0.30f};
-    // 輪の大きさ（倍率。1 で半径 約 3.4 m まで広がる。0 で出さない）：天降り斬りの着地、霞の大剣の叩きつけ、回し蹴り、
-    // 引爆の爆ぜ始め、溜めた一撃を放つ瞬間（退き溜め）。
-    float shockSkyfall = 1.6f;
-    float shockCleave = 1.4f;
+    // 回し蹴りの輪の大きさ（倍率。1 で半径 約 3.4 m まで広がる。0 で出さない）。
     float shockKick = 1.0f;
-    float shockDetonate = 1.8f;
-    float shockRelease = 0.9f;
 
     // 突進の尾：体が速く動く間、肩と背から流れる光の帯と、空気のゆがみの尾を引く。空なら出さない。
     HIKARI::GameProjectVfxAssetReference dashEffect{"2c9f6b1e8a7d43f0b5e3d1c0a9f84726", "Assets/Vfx/BossDash.hvfx"};
@@ -175,20 +160,16 @@ struct BossBodyAccentSettings {
     float dashMinSpeed = 9.0f;
     float dashFullSpeed = 18.0f;
 
-    // 左手の光：所作の間、掌に集まる光（暈・芯・ゆがみ・速く動いた時の尾）。左手の掌に付けて出し続ける。空なら出さない。
+    // 左手の光：投げナイフの前隙の間、掌に集まる光（暈・芯・ゆがみ・速く動いた時の尾）。左手の掌に付けて出し続ける。
+    // 空なら出さない。
     HIKARI::GameProjectVfxAssetReference handEffect{"7e3a9c5d1b8f4e62a0d4c6b2f1e8a937", "Assets/Vfx/BossHand.hvfx"};
-    // 左手の弾け：握る・印を切る・投げる・刀身をなぞり終える瞬間に、手元で弾ける閃きと輪（1 回きり）。空なら出さない。
+    // 左手の弾け：ナイフを投げる瞬間に、手元で弾ける閃きと輪（1 回きり）。空なら出さない。
     HIKARI::GameProjectVfxAssetReference handBurstEffect{"0f6d2b8e4c1a49d7b3e5a7c9d1f20b64",
                                                          "Assets/Vfx/BossHandBurst.hvfx"};
-    // 色と明るさ：霞の所作（刀印・投げナイフ・狙い）と、火の所作（引爆・刀身をなぞる・刀が燃えている時の狙い）。
+    // 色と明るさ。
     HIKARI::GameProjectFloat3 handMistColor{0.70f, 1.05f, 1.80f};
-    HIKARI::GameProjectFloat3 handFireColor{2.00f, 0.80f, 0.22f};
-    // 所作ごとの光の強さ（0 で出さない）：引爆（掲げた掌）、刀印、投げナイフ（引いた手）、刀身をなぞる、狙い（溜め切り）。
-    float handDetonate = 1.0f;
-    float handSeal = 0.8f;
+    // 光の強さ（引いた手。0 で出さない）。
     float handKnife = 0.5f;
-    float handWipe = 1.2f;
-    float handAim = 0.9f;
     // 光が立ち上がる・引く時間 (秒) と、弾けの大きさ（倍率。0 で出さない）。
     float handSeconds = 0.12f;
     float handBurst = 1.0f;
@@ -237,52 +218,38 @@ struct BossBodyAccentState {
     float dash = 0.0f;
     HIKARI::GameProjectFloat3 previousFeet{};
     bool feetSeen = false;
-    uint64_t teleportSeen = 0;
-    // 衝撃の輪を出す瞬間を見分ける、前のフレームの様子（-1＝まだ見ていない）。
-    int previousSkyfall = -1;
-    int previousGreatsword = -1;
-    int previousActPhase = -1;
+    // 衝撃の輪を出す瞬間を見分ける、前のフレームの回し蹴りの輪（shockSeen が偽の間は、まだ見ていない）。
+    bool shockSeen = false;
     uint64_t previousRing = 0;
-    float previousCharge = 0.0f;
-    // 左手の光の再生と明るさ（0〜1）、前のフレームの所作・手の形（弾ける瞬間を見分ける。-1＝まだ見ていない）。
+    // 左手の光の再生と明るさ（0〜1）、前のフレームの所作・技の段（弾ける瞬間を見分ける。-1＝まだ見ていない）。
     HIKARI::GameProjectVfxPlaybackHandle handVfx{};
     float hand = 0.0f;
-    bool handFire = false;
     int previousGesture = -1;
-    int previousShape = -1;
     int previousHandPhase = -1;
 };
 
-// ボスの外形（模型の部品）の、人が調整する値。ボスの部品（BossComponent）が持ち、項目は「外形」の節に出る。
-// 模型は 1 つの資産（glTF）で、部品がノードに分かれて入っている。コードがノードごとに置き場所を決めて出す。
+// ボスの体の見た目の、人が調整する値（体に付く効果の大きさと置き場所・胴の煙と火・フェーズ 2 の場）。体そのものは
+// 骨格の体（BossAnimBody）か登場の役者が描く。ボスの部品（BossComponent）が持ち、項目は「体」の節に出る。
 struct BossBodySettings {
     void Describe(HIKARI::PropertyFields& fields);
 
-    // 外形の模型の資産（GUID）。空なら何も出さない。
-    std::string model{"b1a52cf03fe7473cbbe74c310e9c5c29"};
-    bool visible = true;
-    // 描画のフレームで、外形（鎧・刀・手・胴の煙・突進の尾）を前の tick とこの tick の間で補間して置く（エンジンが体を
-    // 描くのと同じ。切ると tick の位置に置く：描画が tick より速い時、速い動きでがくつく）。
+    // 描画のフレームで、体と体に付く効果（胴の煙・突進の尾など）を前の tick とこの tick の間で補間して置く（エンジンが
+    // 体を描くのと同じ。切ると tick の位置に置く：描画が tick より速い時、速い動きでがくつく）。
     bool interpolate = true;
     // 刀の模型の、握りの中央（ノードの原点）から剣先までの長さ。見える刀の長さ（swordVisibleLength）に合うように拡大する。
     // 模型を作るスクリプトが出す値（KATANA_LENGTH）に合わせる。
     float swordModelLength = 2.3411f;
     // 見える刀の、剣の付け根（Boss.swordShoulder）から剣先までの長さ。刀も手もこの長さに合わせて大きくなる。
     // 当たりの線（Boss.swordLength＋swordHazeLength）より先へは伸ばさない（当たらない刃を見せない）。0 なら Boss.swordLength。
-    // 刀の長さに付く見た目の値（握りの位置・両手の間隔・鍔の位置・溜めと振りの手の動き）は、刀と同じ倍率で揃えてある。
     float swordVisibleLength = 5.13f;
     // 握りの中央を、剣の付け根（Boss.swordShoulder）から剣の向きへどれだけ先に置くか。
     float swordGripAlong = 0.0945f;
     // 手の大きさ（刀の拡大に掛ける。1 で刀と同じ拡大）。
     float handScale = 1.25f;
-    // 体の大きさ（倍率）：鎧（胸当て・兜・肩当て・草摺）の置き場所と大きさ、肩、左手の手振りと待機の置き場所、待機の構えの握りに
-    // 掛ける（下の位置の値は 1 倍の体での値）。体を大きくする時は、Boss.bodyHalfHeight・bodyRadius・シーンのカプセル・
+    // 体の大きさ（倍率）：鎧（胸当て・兜・肩当て・草摺）に付く効果の大きさに掛ける（下の位置の値は 1 倍の体での値）。体を大きくする時は、Boss.bodyHalfHeight・bodyRadius・シーンのカプセル・
     // 胴の煙のエフェクト（make_body_smoke.py の scale）も一緒に変える（調整ガイド g-fe0396 の一覧）。
     // 1.6875＝身長 6.75 m（c-a30eaf で 1.875、c-e97b18 でその 0.9 倍）。
     float bodyScale = 1.6875f;
-    // 肩の位置（体の足元から、局所 m。右肩。左肩は左右を反転）。籠手の筒は、手首からこの肩の方へ伸びる
-    // （腕は無いが、筒が肩を向くと腕があるように読める）。肩当ての中（下の口から腕が出る所）に置く（c-584825）。
-    HIKARI::GameProjectFloat3 shoulder{-0.70f, 2.72f, 0.0f};
     // 籠手の筒の模型の長さ（手首から先まで、模型の実寸 m。模型を作るスクリプトの build_cuff の length）。
     float cuffModelLength = 0.62f;
 
@@ -356,39 +323,11 @@ private:
 // 草摺の枚数の上限（表示の番号を先に取っておく数）。
 inline constexpr int kBossBodyTassetCapacity = 12;
 
-// 刀と手の動きの実行時の状態（保存しない）。向き・位置は体の向き（yaw）の局所（足元が原点）。
-struct BossBodyMotionState {
-    bool ready = false;
-    // 見せる刀の向き（剣先）・その速さ（接ベクトル rad/秒）・刃の向き（刀に直交）・刃を向けたい先。
-    HIKARI::GameProjectFloat3 direction{0.0f, 0.0f, 1.0f};
-    HIKARI::GameProjectFloat3 velocity{};
-    HIKARI::GameProjectFloat3 edge{0.0f, -1.0f, 0.0f};
-    // 見せる握りの位置と速さ。
-    HIKARI::GameProjectFloat3 grip{};
-    // 規則の線（体の向きだけの枠）へ寄せる重み（0＝体の傾きに付く、1＝規則の線）。前のフレームが窓だったか。
-    float lock = 0.0f;
-    bool wasWindow = false;
-    // 溜めの重み（見た目の震えに使う）。
-    float charge = 0.0f;
-    // 胴の捻り・兜の向き（体の向きからの rad）と、左手の釣り合いのずれ（局所 m）。
-    float twist = 0.0f;
-    HIKARI::GameProjectFloat3 leftBack{1.0f, 0.0f, 0.0f};
-    BossBodyHandShape leftShape = BossBodyHandShape::Open;
-    BossBodyLeftGesture leftGesture = BossBodyLeftGesture::Balance;
-    // 霞の大剣に重ねる重み（0〜1）と、確かめ用に覚える前の tick の大剣の向き（局所）・その tick。
-    float great = 0.0f;
-    // 前のフレームの足元（確かめ用の記録に出す足元の速さを測る）と、前に見た規則の層の teleportCount。
-    HIKARI::GameProjectFloat3 ground{};
-    uint64_t teleportSeen = 0;
-};
-
-// 外形の実行時の状態（保存しない）。
+// 体の見た目の実行時の状態（保存しない）。
 struct BossBodyState {
     HIKARI::GameProjectVfxPlaybackHandle smokeVfx{};
-    // フェーズ 2 の燃える胴の強さ（0〜1。c-857ae3）と、火の舌の注入で前に見た teleportCount（瞬間移動したフレームは
-    // 注入を休み、移った線に沿って火を引かない）。
+    // フェーズ 2 の燃える胴の強さ（0〜1。c-857ae3）。
     float fire = 0.0f;
-    uint64_t fireTeleports = 0;
     // フェーズ 2 の場（BossPhaseTwoField）：場の色の進み（0〜1）と、最後に送った進み（負は「置き換えていない」）、
     // 置き換える前の色調整（初めて置き換える時に覚える）、火の粉と焦げた輪のエフェクト、焦げた輪の場所と進み。
     float fieldWarm = 0.0f;
@@ -400,24 +339,8 @@ struct BossBodyState {
     HIKARI::GameProjectFloat3 fieldScorchAt{};
     bool fieldScorchPlaced = false;
     float fieldScorchShow = 0.0f;
-    // 垂れた部品の振れ（度。世界座標の x・z が水平の向き、y が持ち上がり）と、その速さ。
-    HIKARI::GameProjectFloat3 sway{};
-    HIKARI::GameProjectFloat3 previousPosition{};
-    float clock = 0.0f;
-    // 撃たれた数（増えたら、振れを弾く）。
-    uint64_t seenHits = 0;
-    // 兜が向く先：プレイヤーの位置（BossSystem が固定 tick ごとに書く。見た目だけが読む）。
-    HIKARI::GameProjectFloat3 lookTarget{};
-    bool lookTargetSeen = false;
-    // 補間：前の tick とこの tick の終わりに体の物体へ置いた位置、覚えた tick の数（2 で補間できる）、前に見た
-    // teleportCount（瞬間移動した tick は補間しない）。BossSystem が固定 tick の終わりに書く（BossBodyVisuals::NoteTick）。
-    HIKARI::GameProjectFloat3 tickFrom{};
-    HIKARI::GameProjectFloat3 tickTo{};
-    int ticksSeen = 0;
-    uint64_t tickTeleports = 0;
-    // このフレームに外形をずらした量（補間した位置 − この tick の位置）。刀を規則の線へ寄せる枠も同じだけずらす。
-    HIKARI::GameProjectFloat3 presentShift{};
-    BossBodyMotionState motion;
+    // 左手の所作（技の型から。手の光の演出が読む）。
+    BossBodyLeftGesture leftGesture = BossBodyLeftGesture::Balance;
     BossBodyAccentState accents;
 };
 

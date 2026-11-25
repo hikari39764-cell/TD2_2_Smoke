@@ -9,6 +9,8 @@ class PlayerRules final {
 public:
     static void Initialize(PlayerComponent& player);
     static bool IsAlive(const PlayerComponent& player);
+    // いまの状態（ほかのモジュールが読む。固定 tick の値）。
+    static PlayerState GetState(const PlayerComponent& player);
     static bool CanStartAction(const PlayerComponent& player);
     static bool IsInvulnerable(const PlayerComponent& player);
     // direction は攻撃が押す世界方向。kind は体の反応、type はダメージの種類（Slash か Explosion）。
@@ -75,19 +77,17 @@ public:
     static HIKARI::GameProjectObjectHandle GetLockTarget(const PlayerComponent& player);
     // ロックオンを押した時に狙う相手（シーン物体 id）。ロックしていない時の照準補助も同じ相手を見る。
     static uint64_t GetLockCandidateId(const PlayerComponent& player);
-    // 照準補助の候補（ボス本体＋その tick に出ている分身）を入れ替える。候補を知っているボスの側が毎 tick 呼ぶ。
+    // 照準補助の候補（その tick にロックできる物）を入れ替える。候補を知っているボスの側が毎 tick 呼ぶ。
     static void SetLockCandidates(PlayerComponent& player, const HIKARI::GameProjectObjectHandle* handles, size_t count);
     static size_t GetLockCandidateCount(const PlayerComponent& player);
     static HIKARI::GameProjectObjectHandle GetLockCandidate(const PlayerComponent& player, size_t index);
-    // ロックオン中なら、ロック対象を target に変える（ボスと分身の切り替え）。ロックしていなければ何もしない。
+    // ロックオン中なら、ロック対象を target に変える。ロックしていなければ何もしない。
     static void SetLockTarget(PlayerComponent& player, HIKARI::GameProjectObjectHandle target);
     // 「ロック対象を変える」が押されていたら true を返して消す（対象の候補を知っている側が呼ぶ）。
     static bool TakeLockSwitch(PlayerComponent& player);
-    // ロック中のカメラが見る点のずれ（世界 m）。外部が入れた値を次に入れ直すまで使う。
-    static void SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset);
-    // ロック対象の体の高さの半分 (m) と、隠れているか（c-880340）。対象を知っている側（ボス）が毎 tick 入れる。
-    static void SetLockTargetShape(PlayerComponent& player, float halfHeight, bool hidden);
-    // ロック中のカメラが見る点＝照準の点：対象の原点（物体の位置）＋ずれ＋体の高さの半分×lockAimHeightShare の上。
+    // ロック対象の体の高さの半分 (m)（c-880340）。対象を知っている側（ボス）が毎 tick 入れる。
+    static void SetLockTargetShape(PlayerComponent& player, float halfHeight);
+    // ロック中のカメラが見る点＝照準の点：対象の原点（物体の位置）＋体の高さの半分×lockAimHeightShare の上。
     // カメラ（PlayerCamera）と砲撃の照準（GourdShotSystem）が同じ点を使う。
     static HIKARI::GameProjectFloat3 LockAimPoint(const PlayerComponent& player, HIKARI::GameProjectFloat3 origin);
     // ロックを外す（対象が倒れた時など）。
@@ -105,6 +105,27 @@ public:
     // 要求する。止めると、見せ方と限度の外の見上げは要求の releaseSeconds で Player の値へ戻る。
     static void RequestCamera(PlayerComponent& player, const PlayerCameraRequest& request);
     static HIKARI::GameProjectFloat3 GetCameraLook(const PlayerComponent& player);
+    // 演出のカメラ（ボスの登場・変わり目）：その描画フレームだけ、カメラをこの姿勢にしてゲームのカメラと混ぜる。
+    static void RequestCinematic(PlayerComponent& player, const PlayerCinematicRequest& request);
+    // 演出の間、入力を止めて無敵にする（ticks 固定 tick の間。長い方が残る。PlayerSystem が tick ごとに減らす）。
+    static void HoldForCinematic(PlayerComponent& player, int ticks);
+    static bool IsCinematicHeld(const PlayerComponent& player);
+    // 燃える地面の上に立っている（この tick だけ。燃え移った火の 1 秒あたりのダメージ）。
+    static void SetGroundFire(PlayerComponent& player, float damagePerSecond);
+    // 以下は読むだけ（ほかのモジュールがプレイヤーを見る）。
+    static int GetStateFrame(const PlayerComponent& player);
+    // いまの行動（ローリングなど）の向き。
+    static HIKARI::GameProjectFloat3 GetActionDirection(const PlayerComponent& player);
+    // 歩きの速度（世界 m/s）と、落ちる速さの上限 (m/s)。
+    static HIKARI::GameProjectFloat3 GetMoveVelocity(const PlayerComponent& player);
+    static float GetMaximumFallSpeed(const PlayerComponent& player);
+    // プレイヤーのカメラの物体（シーンの物体 ID。0 は無し）。
+    static uint64_t GetCameraId(const PlayerComponent& player);
+    // 炎上：受けた火のダメージの累計、残り秒、消えた回数、最後に消えた訳。
+    static double GetBurnDamageTotal(const PlayerComponent& player);
+    static float GetBurnRemaining(const PlayerComponent& player);
+    static uint32_t GetBurnEndings(const PlayerComponent& player);
+    static PlayerBurnEnd GetBurnEndReason(const PlayerComponent& player);
     static float GetHealth(const PlayerComponent& player);
     static float GetMaxHealth(const PlayerComponent& player);
     static float GetStamina(const PlayerComponent& player);

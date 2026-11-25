@@ -17,7 +17,7 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      "火に触れたとみなす体の半径 (m。足元からこの円に燃えているセルが掛かれば触れている)",
                      contactRadius, 0.0f, 2.0f);
         fields.Float("fireReachHeight",
-                     "火と引爆が届く高さ (m。体の中心が床からこれより高いと当たらない。筋斗雲で飛んでいる時など)",
+                     "火が届く高さ (m。体の中心が床からこれより高いと当たらない。筋斗雲で飛んでいる時など)",
                      fireReachHeight, 0.0f, 100.0f);
         fields.Float("damageDelay", "火に触れ続けてから燃え移るまで (秒)", damageDelay, 0.0f, 5.0f);
         fields.Float("damagePerSecond", "火の中にいる間に減る HP (/秒。プレイヤーの炎上の減り方の代わりに使う)",
@@ -26,14 +26,6 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                     "火はのけぞり・吹っ飛び・ヒットストップ・カメラの揺れを起こさず、HP だけを少しずつ減らします。"
                     "無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず、0 に戻します"
                     "（ローリングで火を抜ければ燃え移りません）。");
-    }
-    if (fields.Section("爆発の当たり", true)) {
-        fields.Float("blastCoreShare", "爆心の半径（爆発の当たりの半径に対する割合）", blastCoreShare, 0.0f, 1.0f);
-        fields.Float("blastEdgeDamageShare", "外の輪で当たった時のダメージ（威力に対する割合）", blastEdgeDamageShare,
-                     0.0f, 1.0f);
-        fields.Note(
-            "引爆・天降り斬りの爆発は、爆ぜた火から当たりの半径以内なら当たります。そのうち爆心（半径 × 割合以内）は"
-            "威力のまま技の表の被弾で、外の輪は威力 × 割合でのけぞります。どちらでも炎上します。");
     }
     if (fields.Section("火を吸う", true)) {
         fields.Float("absorbRange", "吸い込みで火を消せる前方の距離 (m)", absorbRange, 0.0f, 50.0f);
@@ -76,38 +68,12 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
             "毎フレーム同じ所へ燃料を入れます（つながって燃える炎になります）。"
             "火が広がって点が足りなくなると、1 点が受け持つ半径を広げます（炎は太く、粗くなります）。");
     }
-    if (fields.Section("引爆の見た目")) {
-        fields.Float("blastBlockSize", "爆ぜたセルを 1 つの塊にまとめる大きさ (m)", blastBlockSize, 0.5f, 20.0f);
-        fields.Note(
-            "ボスの引爆で同じ tick に爆ぜたセルを、この大きさの升ごとに 1 つの塊（爆発の見た目 1 つ）にまとめます。"
-            "当たりはセルごとに見るので、ここを変えても当たりは変わりません。");
-    }
-    if (fields.Section("引爆の見た目")) {
-        fields.Float("chargeTemperature", "溜めきった時の燃料の温度（高いほど火が白く締まる）", chargeTemperature, 0.0f,
-                     64.0f);
-        fields.Float("chargeShrink", "溜めきった時の火の幅 (倍。小さいほど内側へ縮む)", chargeShrink, 0.1f, 1.0f);
-        fields.Float("chargeFuelScale", "溜めきった時の燃料の量 (倍)", chargeFuelScale, 0.0f, 10.0f);
-        fields.Float("chargeRiseScale", "溜めきった時の、燃料を上へ押す速さ (倍。小さいほど炎が低く張り付く)",
-                     chargeRiseScale, 0.0f, 4.0f);
-        fields.Float("hotspotTemperature", "一か所だけの溜め（天降り斬りの着地の火）：溜めきった時の燃料の温度",
-                     hotspotTemperature, 0.0f, 64.0f);
-        fields.Float("hotspotFuelScale", "…溜めきった時の燃料の量 (倍。大きいほど炎が濃く大きい)", hotspotFuelScale,
-                     0.0f, 10.0f);
-        fields.Float("hotspotRise", "…溜めきった時に、燃料を上へ押す速さへ足す分 (m/s。大きいほど炎が高い)",
-                     hotspotRise, 0.0f, 30.0f);
-        fields.Vfx("blastEffect", "爆ぜた所の爆発のエフェクト（光・衝撃の輪・火花・煙）", blastEffect);
-        fields.Float("blastEffectScale", "…爆発のエフェクトの大きさ (火球の半径に対する倍)", blastEffectScale, 0.0f,
-                     10.0f);
-        fields.Int("blastEffectCap", "…爆発のエフェクトの上限 (直近の窓の間に出す数)", blastEffectCap, 1,
-                   static_cast<int>(kBlastEffectCapMax));
-        fields.Float("blastEffectWindow", "…上限を数える窓 (秒。エフェクトの長さより少し長く)", blastEffectWindow, 0.1f,
-                     10.0f);
-        fields.Float("blastRadiusScale", "火球の半径 (規則の塊の半径に対する倍)", blastRadiusScale, 0.1f, 10.0f);
+    if (fields.Section("当たった所と体の炎の見た目")) {
         fields.Float("blastFuel", "火球へ 1 フレームに入れる燃料の強さ", blastFuel, 0.0f, 10000.0f);
         fields.Float("blastTemperature", "火球の燃料の温度", blastTemperature, 0.0f, 64.0f);
         fields.Float("blastRise", "火球を上へ押す速さ (m/s。煙の柱の高さ)", blastRise, 0.0f, 20.0f);
         fields.Float("blastPush", "爆発が火と霧を外へ押す速さ (m/s)", blastPush, 0.0f, 100.0f);
-        fields.Float("hitFuelScale", "炎の刃が当たった所・刀の点火の火球の燃料 (引爆の火球に対する倍)", hitFuelScale,
+        fields.Float("hitFuelScale", "炎の刃が当たった所・刀の点火の火球の燃料 (blastFuel に対する倍)", hitFuelScale,
                      0.0f, 4.0f);
         fields.Float("smokeBlastStrength", "煙の塊へ 1 フレームに入れる煙の強さ", smokeBlastStrength, 0.0f, 10000.0f);
         fields.Float("smokeBlastFuelShare", "煙の塊に混ぜる燃料の割合（煙の中の炎のひらめき）", smokeBlastFuelShare,
@@ -135,12 +101,6 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("bodyFireFadeSeconds", "…消える前に細らせる長さ (秒)", bodyFireFadeSeconds, 0.0f, 10.0f);
         fields.Float("bodyFireScatter", "…ローリング・吸い込みで消えた瞬間に、炎を外へ散らす速さ (m/s。0 は散らさない)",
                      bodyFireScatter, 0.0f, 100.0f);
-        fields.Note("溜めは、火そのものが熱く・細く・低くなることで見せます（地面や画面の予兆は出しません）。"
-                    "爆発は、規則が爆ぜさせた火の塊ごとに、火の域へ燃料と衝撃を入れ、爆発のエフェクトを 1 つ出します"
-                    "（1 フレームに 3 つまで。残りは次のフレームへ回るので、広い火は波のように順に爆ぜます）。"
-                    "爆ぜる塊が上限より多い引爆では、爆発のエフェクトだけを引爆の広がり全体へ均等に間引きます"
-                    "（最初の塊には必ず出します。火球の燃料と衝撃は全部の塊に入れます）。"
-                    "重なったエフェクトが多すぎると画面が止まって戻りません（155 個は平気、226 個で止まった）。");
     }
     if (fields.Section("検証")) {
         fields.Int("traceEveryFrames", "状態ログ間隔（0 は無効）", traceEveryFrames, 0, 7200);

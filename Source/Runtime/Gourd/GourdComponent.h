@@ -4,7 +4,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
-#include "../Combat/Feedback.h"
+#include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -149,11 +149,30 @@ class GourdComponent final : public HIKARI::IGameComponent {
     bool readAccepted = true;
     uint32_t fluidSubmissions = 0;
     float storedSmoke = 0.0f;
+    // 描画のフレームで読み戻した霧の増え（煙の量。c-164cab）。次の固定 tick の始めに storedSmoke へ入れる（規則の量を
+    // 描画のフレームで変えない）。
+    double pendingSmoke = 0.0;
     double lastRemovedTotal = 0.0;
     double removedDelta = 0.0;
     uint64_t processedTick = 0;
     uint64_t renderFrameCount = 0;
+    // 規則のヒョウタンの置き場所（c-164cab）：固定 tick の終わり（PostFixedUpdate）に、プレイヤーのその tick の位置・
+    // 向き・吸い込みの段階・ロック対象と、Update で覚えたカメラの正面から決める。砲撃の口・ボスの斬撃を捕まえる口・
+    // 満杯で跳ねる向きはこれを読む（描画のフレームの値に頼らない）。
     HIKARI::GameProjectFloat3 position{};
+    HIKARI::GameProjectFloat3 aimDirection{0.0f, 0.0f, 1.0f};
+    HIKARI::GameProjectFloat3 mouthPosition{};
+    HIKARI::GameProjectFloat3 sinkPosition{};
+    bool rulePoseReady = false;
+    // Update で覚えたカメラの正面（水平。プレイヤーの入力の基準）と、覚えられたか。
+    HIKARI::GameProjectFloat3 inputCameraForward{0.0f, 0.0f, 1.0f};
+    bool inputCameraForwardValid = false;
+    // 描画のヒョウタン（LateUpdate が描画のフレームごとに、補間した体を追うばねと反動で決める。見た目と流体の注入だけが
+    // 読む）。
+    HIKARI::GameProjectFloat3 drawPosition{};
+    HIKARI::GameProjectFloat3 drawAimDirection{0.0f, 0.0f, 1.0f};
+    HIKARI::GameProjectFloat3 drawMouthPosition{};
+    HIKARI::GameProjectFloat3 drawSinkPosition{};
     HIKARI::GameProjectFloat3 followPosition{};
     HIKARI::GameProjectFloat3 followVelocity{};
     // 肩への追従と砲撃の反動を分離し、反動後も元の追従位置へ戻す。
@@ -161,11 +180,9 @@ class GourdComponent final : public HIKARI::IGameComponent {
     HIKARI::GameProjectFloat3 recoilVelocity{};
     HIKARI::GameProjectFloat3 recoilPerFrame{};
     int recoilFramesLeft = 0;
+    // 撃っている間の描画のヒョウタンの向き（砲撃が LateUpdate で渡す。見た目だけ）。
     bool aimOverridePending = false;
     HIKARI::GameProjectFloat3 aimOverrideDirection{0.0f, 0.0f, 1.0f};
-    HIKARI::GameProjectFloat3 aimDirection{0.0f, 0.0f, 1.0f};
-    HIKARI::GameProjectFloat3 mouthPosition{};
-    HIKARI::GameProjectFloat3 sinkPosition{};
     // 見た目と手応えだけの状態。吸い込み・残量の規則はここを読まない。
     HIKARI::GameProjectVfxPlaybackHandle absorbVfx{};
     bool vfxAccepted = true;

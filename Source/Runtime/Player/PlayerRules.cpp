@@ -43,6 +43,8 @@ void PlayerRules::Initialize(PlayerComponent& player) {
     player.initialized = true;
 }
 
+PlayerState PlayerRules::GetState(const PlayerComponent& player) { return player.state; }
+
 bool PlayerRules::IsAlive(const PlayerComponent& player) {
     return GetHealth(player) > 0.0f && player.state != PlayerState::Dead;
 }
@@ -308,6 +310,42 @@ void PlayerRules::RequestCamera(PlayerComponent& player, const PlayerCameraReque
 
 HIKARI::GameProjectFloat3 PlayerRules::GetCameraLook(const PlayerComponent& player) { return player.cameraLook; }
 
+void PlayerRules::RequestCinematic(PlayerComponent& player, const PlayerCinematicRequest& request) {
+    player.cinematic = request;
+    player.cinematicPending = true;
+}
+
+void PlayerRules::HoldForCinematic(PlayerComponent& player, int ticks) {
+    player.cinematicHold = std::max(player.cinematicHold, ticks);
+}
+
+bool PlayerRules::IsCinematicHeld(const PlayerComponent& player) { return player.cinematicHold > 0; }
+
+void PlayerRules::SetGroundFire(PlayerComponent& player, float damagePerSecond) {
+    player.burnInGroundFire = true;
+    player.burnGroundDamagePerSecond = damagePerSecond;
+}
+
+int PlayerRules::GetStateFrame(const PlayerComponent& player) { return player.stateFrame; }
+
+HIKARI::GameProjectFloat3 PlayerRules::GetActionDirection(const PlayerComponent& player) {
+    return player.actionDirection;
+}
+
+HIKARI::GameProjectFloat3 PlayerRules::GetMoveVelocity(const PlayerComponent& player) { return player.moveVelocity; }
+
+float PlayerRules::GetMaximumFallSpeed(const PlayerComponent& player) { return player.maximumFallSpeed; }
+
+uint64_t PlayerRules::GetCameraId(const PlayerComponent& player) { return player.cameraId; }
+
+double PlayerRules::GetBurnDamageTotal(const PlayerComponent& player) { return player.burnDamageTotal; }
+
+float PlayerRules::GetBurnRemaining(const PlayerComponent& player) { return player.burnRemaining; }
+
+uint32_t PlayerRules::GetBurnEndings(const PlayerComponent& player) { return player.burnEndings; }
+
+PlayerBurnEnd PlayerRules::GetBurnEndReason(const PlayerComponent& player) { return player.burnEndReason; }
+
 HIKARI::GameProjectFloat3 PlayerRules::GetFacing(const PlayerComponent& player) { return player.facing; }
 
 HIKARI::GameProjectFloat3 PlayerRules::PresentedPosition(const PlayerComponent& player,
@@ -349,20 +387,12 @@ bool PlayerRules::TakeLockSwitch(PlayerComponent& player) {
     return requested;
 }
 
-void PlayerRules::SetLockPivotOffset(PlayerComponent& player, HIKARI::GameProjectFloat3 offset) {
-    if (std::isfinite(offset.x) && std::isfinite(offset.y) && std::isfinite(offset.z))
-        player.lockPivotOffset = offset;
-}
-
-void PlayerRules::SetLockTargetShape(PlayerComponent& player, float halfHeight, bool hidden) {
+void PlayerRules::SetLockTargetShape(PlayerComponent& player, float halfHeight) {
     player.lockTargetHalfHeight = std::isfinite(halfHeight) ? std::max(0.0f, halfHeight) : 0.0f;
-    player.lockTargetHidden = hidden;
 }
 
 HIKARI::GameProjectFloat3 PlayerRules::LockAimPoint(const PlayerComponent& player, HIKARI::GameProjectFloat3 origin) {
-    const float rise = player.lockTargetHalfHeight * player.lockAimHeightShare;
-    return {origin.x + player.lockPivotOffset.x, origin.y + player.lockPivotOffset.y + rise,
-            origin.z + player.lockPivotOffset.z};
+    return {origin.x, origin.y + player.lockTargetHalfHeight * player.lockAimHeightShare, origin.z};
 }
 
 void PlayerRules::ReleaseLock(PlayerComponent& player) {

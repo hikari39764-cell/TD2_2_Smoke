@@ -12,8 +12,8 @@
 #include "GourdShotVisuals.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Combat/Feedback.h"
-#include "../Combat/FeedbackCamera.h"
+#include "../Player/Feedback.h"
+#include "../Player/FeedbackCamera.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxPlayback.h"
 
@@ -80,8 +80,9 @@ void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdSho
     HIKARI::GameProjectFloat3 mouth{}, aim{0.0f, 0.0f, 1.0f};
     ForEachOnObject<GourdComponent>(world, kGourdType, object, [&](HIKARI::ObjectView, GourdComponent& gourd) {
         fire = GourdRules::IsFireShot(gourd);
-        mouth = GourdRules::GetMouthPosition(gourd);
-        aim = GourdRules::GetAimDirection(gourd);
+        // 合図は見えている口から（描画のヒョウタン）。
+        mouth = gourd.drawMouthPosition;
+        aim = gourd.drawAimDirection;
     });
     const bool started = fire && !shot.feedback.observedFireShot;
     shot.feedback.observedFireShot = fire;
@@ -183,7 +184,7 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
         // 合図のエフェクトは口の位置で一度だけ。空なら何も出さない。
         bool effectPlayed = false;
         if (!gourd.catchEffect.IsEmpty()) {
-            effectPlayed = VfxPlayback::PlayOneShot(world, gourd.catchEffect, GourdRules::GetMouthPosition(gourd));
+            effectPlayed = VfxPlayback::PlayOneShot(world, gourd.catchEffect, gourd.drawMouthPosition);
             gourd.vfxAccepted = effectPlayed && gourd.vfxAccepted;
         }
         char message[192]{};

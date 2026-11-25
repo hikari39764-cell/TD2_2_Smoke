@@ -6,7 +6,7 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/VfxView.h"
 #include "GourdRules.h"
-#include "../Combat/FeedbackCamera.h"
+#include "../Player/FeedbackCamera.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
 
@@ -37,9 +37,9 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     }
     const auto vfx = world.GetVfx();
     HIKARI::GameProjectTransform transform{};
-    transform.position = gourd.mouthPosition;
+    transform.position = gourd.drawMouthPosition;
     // 吸い込み中の口は霧の集まる点を向いているので、口の向きがそのまま流れの軸（資産の +X）になる。
-    transform.rotation = VectorMath::RotationFromXAxis(gourd.aimDirection);
+    transform.rotation = VectorMath::RotationFromXAxis(gourd.drawAimDirection);
     transform.scale = {gourd.absorbEffectScale, gourd.absorbEffectScale, gourd.absorbEffectScale};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     // 口の演出は、実際に吸えている速さで強める。霧の無い所では弱く、満杯で吸えない間は absorbFullEffect まで弱める。

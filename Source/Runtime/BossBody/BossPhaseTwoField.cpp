@@ -32,8 +32,8 @@ HIKARI::GameProjectFloat3 Tint(HIKARI::GameProjectFloat3 base, HIKARI::GameProje
 
 // 場の色：場面の環境の色調整（置き換える前に覚えた値）に、フェーズ 2 の色味を進みの分だけ掛けて置き換える。
 // 進みが 0 に戻ったら置き換えを解く。
-void UpdateGrade(HIKARI::WorldView& world, BossComponent& boss) {
-    BossBodyState& state = boss.bodyState;
+void UpdateGrade(HIKARI::WorldView& world, BossBodyComponent& look) {
+    BossBodyState& state = look.state;
     const HIKARI::EnvironmentView environment = world.GetEnvironment();
     const float warm = state.fieldWarm;
     if (warm <= 0.0f) {
@@ -53,7 +53,7 @@ void UpdateGrade(HIKARI::WorldView& world, BossComponent& boss) {
         state.fieldBase = base;
         state.fieldBaseSeen = true;
     }
-    const BossBodySettings& s = boss.body;
+    const BossBodySettings& s = look.settings;
     HIKARI::GameProjectColorGrading grading = state.fieldBase;
     grading.shadowsTint = Tint(grading.shadowsTint, s.fieldShadowsTint, warm);
     grading.midtonesTint = Tint(grading.midtonesTint, s.fieldMidtonesTint, warm);
@@ -63,9 +63,9 @@ void UpdateGrade(HIKARI::WorldView& world, BossComponent& boss) {
 }
 
 // 漂う火の粉（ボスの足元に付けて出し続ける）と焦げた輪（変わり目にボスが立っていた所）。
-void UpdateEffects(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
-    const BossBodySettings& s = boss.body;
-    BossBodyState& state = boss.bodyState;
+void UpdateEffects(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look, float seconds) {
+    const BossBodySettings& s = look.settings;
+    BossBodyState& state = look.state;
     const bool phaseTwo = BossBodyMath::PhaseTwoLook(boss);
     if (s.fieldEffect.IsEmpty() || (!phaseTwo && state.fieldWarm <= 0.0f && state.fieldScorchShow <= 0.0f)) {
         BossVfx::StopHandle(world, state.fieldEmbersVfx);
@@ -99,16 +99,16 @@ void UpdateEffects(HIKARI::WorldView& world, BossComponent& boss, float seconds)
 
 } // namespace
 
-void BossPhaseTwoField::Update(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
-    BossBodyState& state = boss.bodyState;
+void BossPhaseTwoField::Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look, float seconds) {
+    BossBodyState& state = look.state;
     const bool warm = BossBodyMath::PhaseTwoLook(boss) && boss.state != BossState::Dead;
-    state.fieldWarm = Approach(state.fieldWarm, warm ? 1.0f : 0.0f, seconds, boss.body.fieldWarmSeconds);
-    UpdateGrade(world, boss);
-    UpdateEffects(world, boss, seconds);
+    state.fieldWarm = Approach(state.fieldWarm, warm ? 1.0f : 0.0f, seconds, look.settings.fieldWarmSeconds);
+    UpdateGrade(world, look);
+    UpdateEffects(world, boss, look, seconds);
 }
 
-void BossPhaseTwoField::Stop(HIKARI::WorldView& world, BossComponent& boss) {
-    BossBodyState& state = boss.bodyState;
+void BossPhaseTwoField::Stop(HIKARI::WorldView& world, BossBodyComponent& look) {
+    BossBodyState& state = look.state;
     BossVfx::StopHandle(world, state.fieldEmbersVfx);
     BossVfx::StopHandle(world, state.fieldScorchVfx);
     if (state.fieldWarmSent >= 0.0f)

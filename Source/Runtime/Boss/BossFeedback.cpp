@@ -8,7 +8,7 @@
 #include "../Common/ComponentLookup.h"
 #include "../Combat/DamageableComponent.h"
 #include "../Combat/DamageableRules.h"
-#include "../Combat/Feedback.h"
+#include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 namespace {

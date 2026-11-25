@@ -25,6 +25,12 @@ public:
     static void RequestFlash(DamageableComponent& target, int frames);
     // 次に受けるダメージにかける倍率（0 以上）。ApplyDamage は amount × 倍率を HP から引く。
     static void SetIncomingDamageScale(DamageableComponent& target, float scale);
+    // 最大 HP を替える（HP は新しい最大を超えないように切る。まだ初期化していなければ最大で始める）。
+    static void SetMaxHealth(DamageableComponent& target, float maxHealth);
+    // 最大 HP を替えて満たす（ボスの 2 本目の条）。
+    static void RefillTo(DamageableComponent& target, float maxHealth);
+    // 無敵にする・戻す（ApplyDamage が拒否する）。
+    static void SetInvulnerable(DamageableComponent& target, bool invulnerable);
     // 倍率をかける前の量で数えた、受け付けたダメージの累計。
     static double GetBaseDamageTotal(const DamageableComponent& target);
 };

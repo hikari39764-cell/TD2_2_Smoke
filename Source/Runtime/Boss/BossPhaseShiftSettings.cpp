@@ -6,29 +6,25 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
     if (!fields.Section("フェーズの変わり目の演出（崩れる → 内から燃える → 火の輪が場を払う → 新しい構え）", false))
         return;
     fields.Note(
-        "1 本目の条が空になると、時間が一瞬止まり、よろめいて膝をつき、刀を地面に突き立てます。鎧の継ぎ目から黒い煙が"
-        "漏れ、胸の煙の中に火の粉が灯って内から火が回り、左手が刀身を拭って刀が灯ります。立ち上がって刀を抜くと火の輪が"
-        "場を払い（霧を押しのけ、プレイヤーを中距離まで押し出す。ダメージなし）、その閃光の中で鎧が灼けて場の色が"
-        "変わります。最後にフェーズ 2 の構えに収まり、HP の条が満ちます。演出の間、ボスは当たらず、プレイヤーは"
+        "1 本目の条が空になると、時間が一瞬止まります。鎧の継ぎ目から黒い煙が漏れ、胸の煙の中に火の粉が灯って内から"
+        "火が回り、刀身に根元から火が灯ります。閃光とともに火の輪が場を払い（霧を押しのけ、プレイヤーを中距離まで"
+        "押し出す。ダメージなし）、その閃光の中で鎧が灼けて場の色が変わります。最後に HP の条が満ちます。体は骨格の体が"
+        "待機の姿で見せ、ここの値は効果の拍を決めます。演出の間、ボスは当たらず、プレイヤーは"
         "動けず当たりません。位置は、変わり目に入った時の足元から、プレイヤーのいる側を前にした局所（+X が左、"
         "+Z が前）。");
     fields.Bool("shiftEnabled", "演出をする（切ると、変わり目は phaseShiftFrames の間、待機のまま）", enabled);
     fields.Int("shiftCollapseFrames", "拍の長さ：崩れる (F)", collapseFrames, 1, 1200);
     fields.Int("shiftIgniteFrames", "拍の長さ：内から燃える (F)", igniteFrames, 1, 1200);
-    fields.Int("shiftBurstFrames", "拍の長さ：刀を抜いて火の輪 (F)", burstFrames, 1, 1200);
-    fields.Int("shiftSettleFrames", "拍の長さ：新しい構えに収まる (F。HP の条はこの間に満ちる)", settleFrames, 1, 1200);
+    fields.Int("shiftBurstFrames", "拍の長さ：閃光と火の輪 (F)", burstFrames, 1, 1200);
+    fields.Int("shiftSettleFrames", "拍の長さ：収まる (F。HP の条はこの間に満ちる)", settleFrames, 1, 1200);
     fields.Int("shiftCalmFrames", "演出の後、技を選ばない間 (F)", calmFrames, 0, 600);
     fields.Bool("shiftSkippable", "飛ばせる", skippable);
     fields.Text("shiftSkipAction", "飛ばす入力（行動 id）", skipAction);
-    fields.Bool("shiftCameraEnabled", "演出のカメラ：出す（切るとゲームのカメラのまま）", cameraEnabled);
-    fields.Text("shiftCameraPath", "演出のカメラ：カットの表（Data/ からの場所）", cameraPath);
-    fields.Float("shiftCameraFocusHeight", "演出のカメラ：演出の間、ゲームのカメラが向くボスの高さ (m)",
-                 cameraFocusHeight, 0.0f, 20.0f);
 
     fields.Int("shiftHitStopFrames", "崩：最後の当たりで時間を止める長さ (F)", hitStopFrames, 0, 60);
     fields.Float("shiftHitStopScale", "崩：止める間の時間の速さ", hitStopScale, 0.0f, 1.0f);
-    fields.Float("shiftPlantShare", "崩：刀が地面に刺さる所（崩の中の割合）", plantShare, 0.1f, 1.0f);
-    fields.Float("shiftPlantBuried", "突き立てた刀：地面に埋まる長さ (m)", plantBuried, 0.0f, 4.0f);
+    fields.Float("shiftPlantShare", "崩：2 つ目の揺れを出す所（崩の中の割合）", plantShare, 0.1f, 1.0f);
+    fields.Float("shiftPlantBuried", "刀身の火：届かない、剣先の側の長さ (m)", plantBuried, 0.0f, 4.0f);
     fields.Float("shiftLeakDensity", "継ぎ目から漏れる黒い煙：濃さ（中心の毎秒の密度。0 で出さない）", leakDensity,
                  0.0f, 5000.0f);
     fields.Float("shiftLeakRadius", "継ぎ目から漏れる黒い煙：半径（1 倍の体での m）", leakRadius, 0.02f, 2.0f);
@@ -37,13 +33,13 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("shiftChestRadius", "燃：胸の火の粉の半径（1 倍の体での m）", chestRadius, 0.02f, 2.0f);
     fields.Float("shiftIgniteFire", "燃：胴の煙の火の強さを、燃の終わりにここまで上げる（0〜1）", igniteFire, 0.0f,
                  1.0f);
-    fields.Float("shiftWipeStartShare", "燃：拭い始める所（燃の中の割合）", wipeStartShare, 0.0f, 1.0f);
-    fields.Float("shiftWipeEndShare", "燃：先へ拭い終わる所（燃の中の割合）", wipeEndShare, 0.0f, 1.0f);
-    fields.Float("shiftBladeFuel", "燃：拭った刀身に灯る火（燃料）の強さ", bladeFuel, 0.0f, 1000.0f);
+    fields.Float("shiftWipeStartShare", "燃：刀身に火が灯り始める所（燃の中の割合）", wipeStartShare, 0.0f, 1.0f);
+    fields.Float("shiftWipeEndShare", "燃：刀身の火が剣先の側まで届く所（燃の中の割合）", wipeEndShare, 0.0f, 1.0f);
+    fields.Float("shiftBladeFuel", "燃：刀身に灯る火（燃料）の強さ", bladeFuel, 0.0f, 1000.0f);
     fields.Float("shiftBladeFuelRadius", "燃：刀身の火の半径 (m)", bladeFuelRadius, 0.02f, 2.0f);
     fields.Float("shiftBladeFuelHeat", "燃：刀身の火の温度", bladeFuelHeat, 0.0f, 20.0f);
-    fields.Float("shiftDrawShare", "爆：刀が地面を離れる所（火の輪と閃光。爆の中の割合）", drawShare, 0.0f, 1.0f);
-    fields.Float("shiftRipShare", "爆：八相に構え切る所（爆の中の割合）", ripShare, 0.0f, 1.0f);
+    fields.Float("shiftDrawShare", "爆：火の輪と閃光を出す所（爆の中の割合）", drawShare, 0.0f, 1.0f);
+    fields.Float("shiftRipShare", "爆：閃光の後、刀光を出し終える所（爆の中の割合）", ripShare, 0.0f, 1.0f);
     fields.Float("shiftRingRadius", "火の輪：広がり切る半径 (m。0 で出さない)", ringRadius, 0.0f, 40.0f);
     fields.Float("shiftRingSeconds", "火の輪：広がる長さ (秒)", ringSeconds, 0.05f, 3.0f);
     fields.Float("shiftRingFadeSeconds", "火の輪：光を下げて消す長さ (秒)", ringFadeSeconds, 0.05f, 3.0f);

@@ -10,7 +10,6 @@
 #include "BossIntroActor.h"
 #include "BossIntroSmokeFeed.h"
 #include "BossIntroSmokeShape.h"
-#include "BossPoseKit.h"
 #include "../Boss/BossVfx.h"
 #include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
@@ -98,9 +97,9 @@ void Wrap(const Feed& feed, const BossIntroSettings& s, Vec3 armor, float since)
 // 地を走って鎧に着き、鎧を包む煙。刀の向こう（カメラの後ろ）から来て、刀の横を抜ける。道に沿って置いた細長い格子の域
 // （BossIntroStreak。局所 +X が道の向き。動かさない）へ、走る頭の所から煙を入れる：入れた煙はその場に残って渦を巻き、
 // 頭の後ろに乱れた尾を引く。着いたら、舞台の域に鎧を包む煙を足す。
-void Streak(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, float seconds) {
-    const BossIntroSettings& s = boss.intro;
-    BossIntroState& state = boss.introState;
+void Streak(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, BossIntroComponent& intro, float seconds) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = state.phase == BossIntroPhase::Show && !state.skipped && a.socketsValid
@@ -111,7 +110,7 @@ void Streak(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, flo
             // 道は拍の始めに決めて、域を動かさない。
             state.streakSet = true;
             state.streakTo = Ground(state, Lerp(a.hips.position, a.chest.position, 0.5f));
-            const Vec3 sword = BossIntroActor::SwordEntry(boss);
+            const Vec3 sword = BossIntroActor::SwordEntry(intro);
             state.streakFrom = Add(sword, Mul(FlatNormalize(Sub(sword, state.streakTo)), s.streakLead));
         }
         const Vec3 armor = state.streakTo;
@@ -148,23 +147,23 @@ void Streak(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, flo
         return;
     // 域は道の真ん中に、道の向き（局所 +X）へ向けて置く。
     const Vec3 way = Sub(state.streakTo, state.streakFrom);
-    BossVfx::StartOrSend(world, boss, state.streakHandle, s.streakEffect,
-                         BossVfx::Placed(Lerp(state.streakFrom, state.streakTo, 0.5f), 1.0f,
-                                         BossPoseKit::AroundY(std::atan2(-way.z, way.x))),
-                         {});
+    BossVfx::StartOrSend(
+        world, boss, state.streakHandle, s.streakEffect,
+        BossVfx::Placed(Lerp(state.streakFrom, state.streakTo, 0.5f), 1.0f, YawRotation(std::atan2(-way.z, way.x))),
+        {});
 }
 
 // 鎧を引き起こす煙（Smoke.Rise）：倒れた鎧の軸（足元 → 胸の上）の周りを回りながら、ねじれた柱になって上へ抜ける。
 // 鎧は、上へ抜ける煙に吊られて起きる。初めに強く噴いて、起き上がるにつれて細る。
-void Rise(const Feed& feed, const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+void Rise(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SmokeRise, duration);
     if (local < 0.0f || !a.socketsValid)
         return;
     const float u = local / duration;
-    const float mass = boss.intro.riseAmount * (1.0f - u) * (1.0f - u) / static_cast<float>(kRiseWisps);
+    const float mass = intro.settings.riseAmount * (1.0f - u) * (1.0f - u) / static_cast<float>(kRiseWisps);
     const Vec3 ground = Ground(state, a.hips.position);
     const Vec3 top = Add(a.chest.position, Up(kRiseAbove));
     for (int k = 0; k < kRiseWisps; ++k) {
@@ -214,9 +213,9 @@ void Arm(const Feed& feed, uint64_t id, Vec3 shoulder, Vec3 elbow, Vec3 wrist, f
 
 // 両腕の煙：手甲が付く前は、肩から手首へ伸びていく濃い煙の腕（右は Smoke.Tendril、左は Smoke.TendrilLeft の拍）。
 // 付いた後は、鎧と手甲をつなぐ細い煙。
-void Arms(const Feed& feed, const BossComponent& boss) {
-    const BossIntroSettings& s = boss.intro;
-    const BossIntroState& state = boss.introState;
+void Arms(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroSettings& s = intro.settings;
+    const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     if (!a.socketsValid)
         return;
@@ -241,14 +240,14 @@ void Arms(const Feed& feed, const BossComponent& boss) {
 
 // 落ちている手甲を呼ぶ煙：痙攣の段の間、肩の下の地面から手甲へ、地を這う細い煙が伸びて行く（届くと手甲が震える）。
 // 飛んでいる間は、手甲が煙を引く。
-void Call(const Feed& feed, const BossComponent& boss, BossIntroPart part, Vec3 shoulder, uint64_t id) {
-    const BossIntroState& state = boss.introState;
+void Call(const Feed& feed, const BossIntroComponent& intro, BossIntroPart part, Vec3 shoulder, uint64_t id) {
+    const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     const size_t index = static_cast<size_t>(part);
     if (a.attached[index] || !a.socketsValid)
         return;
     const Vec3 at = a.partAt[index];
-    const float amount = boss.intro.tendrilAmount;
+    const float amount = intro.settings.tendrilAmount;
     // 震えている間・飛び立つ間は、場の霧を手甲の周りから押しのける（低い霧の中でも手甲が読める）。
     if (a.fly[index] > 0.0f || a.twitch[index] > 0.0f)
         feed.Burst(id + 7, Ground(state, at), kCallFogRadius, kCallFogPush, FluidChannels::kFog);
@@ -283,9 +282,9 @@ void Call(const Feed& feed, const BossComponent& boss, BossIntroPart part, Vec3 
 }
 
 // 手甲が腕に付いた瞬間：手首の継ぎ目から、前腕の周りへ輪に噴く（叩き込まれて、中の煙が継ぎ目から押し出される）。
-void Puff(const Feed& feed, const BossComponent& boss, Kind kind, Vec3 wrist, Vec3 elbow, uint64_t id) {
+void Puff(const Feed& feed, const BossIntroComponent& intro, Kind kind, Vec3 wrist, Vec3 elbow, uint64_t id) {
     float duration = 0.0f;
-    const float local = CueLocal(boss.introState, kind, duration);
+    const float local = CueLocal(intro.state, kind, duration);
     if (local < 0.0f || local >= kPuffSeconds)
         return;
     const Vec3 axis = Normalize(Sub(wrist, elbow), {0.0f, -1.0f, 0.0f});
@@ -304,13 +303,13 @@ void Puff(const Feed& feed, const BossComponent& boss, Kind kind, Vec3 wrist, Ve
         wisp.velocity = Add(Mul(out, kPuffSpeed), Mul(axis, -1.5f));
         wisp.gust = 1.5f;
         wisp.heat = 1.0f;
-        feed.Smoke(point, wisp, boss.intro.puffAmount / static_cast<float>(kPuffWisps));
+        feed.Smoke(point, wisp, intro.settings.puffAmount / static_cast<float>(kPuffWisps));
     }
 }
 
 // 兜を手の高さまで持ち上げる煙の柱（Smoke.HelmLift）：兜の下の地面から、ねじれながら立って兜を下から支える。
-void Lift(const Feed& feed, const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+void Lift(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::HelmLift, duration);
@@ -332,13 +331,13 @@ void Lift(const Feed& feed, const BossComponent& boss) {
         wisp.velocity = Add(Up(2.2f + 1.2f * share), Mul(Tangent(out), 1.6f));
         wisp.gust = 0.6f;
         wisp.heat = 1.5f;
-        feed.Smoke(id, wisp, boss.intro.liftAmount * fade / static_cast<float>(kLiftWisps));
+        feed.Smoke(id, wisp, intro.settings.liftAmount * fade / static_cast<float>(kLiftWisps));
     }
 }
 
 // 兜が頭に収まった瞬間の襟：兜の後ろ半分の弧から外へ噴く。冷たい煙なので、肩を越えて鎧を伝い落ちる。顔の前へは
 // 噴かない（目の灯りと兜を煙で隠さない）。
-void SeatCollar(const Feed& feed, const BossComponent& boss, Vec3 collar, Vec3 face, float local) {
+void SeatCollar(const Feed& feed, const BossIntroComponent& intro, Vec3 collar, Vec3 face, float local) {
     const float arc = 2.0f * kPi - 2.0f * kSeatFrontGapDegrees * kRadiansPerDegree;
     const float back = YawOf(face) + kPi;
     for (int k = 0; k < kSeatRing; ++k) {
@@ -352,13 +351,13 @@ void SeatCollar(const Feed& feed, const BossComponent& boss, Vec3 collar, Vec3 f
         wisp.radius = 0.24f;
         wisp.velocity = Add(Mul(out, kSeatRingSpeed * (0.7f + 0.6f * feed.Roll(id, 5u))), Up(-1.0f));
         wisp.gust = 2.0f;
-        feed.Smoke(id, wisp, boss.intro.seatBurstAmount / static_cast<float>(kSeatRing));
+        feed.Smoke(id, wisp, intro.settings.seatBurstAmount / static_cast<float>(kSeatRing));
     }
 }
 
 // 兜が頭に収まった瞬間：襟から煙が噴き、面頬の隙間から前へ細く噴き出し、周りが外へ押される。
-void Seat(const Feed& feed, BossComponent& boss) {
-    BossIntroState& state = boss.introState;
+void Seat(const Feed& feed, BossIntroComponent& intro) {
+    BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::HelmSeat, duration);
@@ -366,7 +365,7 @@ void Seat(const Feed& feed, BossComponent& boss) {
         return;
     const Vec3 collar = Add(a.head.position, Up(-kSeatCollarDrop));
     if (local < kSeatBurstSeconds)
-        SeatCollar(feed, boss, collar, FlatNormalize(Rotate(a.head.rotation, {0.0f, 0.0f, 1.0f})), local);
+        SeatCollar(feed, intro, collar, FlatNormalize(Rotate(a.head.rotation, {0.0f, 0.0f, 1.0f})), local);
     // 面頬の隙間から前へ：兜が叩き込まれて、中の煙が隙間から細く噴き出す（顔の前を塞がない細さと短さ）。
     if (local < kSeatJetSeconds) {
         const Vec3 forward = Rotate(a.head.rotation, {0.0f, 0.0f, 1.0f});
@@ -382,25 +381,25 @@ void Seat(const Feed& feed, BossComponent& boss) {
             wisp.gust = 1.0f;
             wisp.heat = 0.8f;
             feed.Smoke(kSeatId + 8 + static_cast<uint64_t>(k), wisp,
-                       boss.intro.seatBurstAmount * kSeatJetShare / static_cast<float>(kSeatJets));
+                       intro.settings.seatBurstAmount * kSeatJetShare / static_cast<float>(kSeatJets));
         }
     }
     if (state.smokeSeatPush) {
         state.smokeSeatPush = false;
         feed.Burst(kSeatId + 11, collar, 5.0f, 7.0f, FluidChannels::kIntroSmoke);
         // 足元の場の霧を、輪に押しのける（叩き込んだ重さが地面まで伝わる）。
-        feed.Burst(kSeatId + 12, BossIntroSmoke::FeetWorld(boss), kSeatFogRadius, kSeatFogPush, FluidChannels::kFog);
+        feed.Burst(kSeatId + 12, BossIntroSmoke::FeetWorld(intro), kSeatFogRadius, kSeatFogPush, FluidChannels::kFog);
     }
 }
 
 // 刀へ歩く一歩（拍 Step）：足元から黒い煙が滲み出て、自分でゆっくり立ち上がる（一歩ごとに噴き出させない）。場の霧は
 // 少し押しのける。
-void Step(const Feed& feed, const BossComponent& boss) {
+void Step(const Feed& feed, const BossIntroComponent& intro) {
     float duration = 0.0f;
-    const float local = CueLocal(boss.introState, Kind::Step, duration);
+    const float local = CueLocal(intro.state, Kind::Step, duration);
     if (local < 0.0f || local > kStepSeconds)
         return;
-    const Vec3 feet = BossIntroSmoke::FeetWorld(boss);
+    const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     for (int k = 0; k < kStepWisps; ++k) {
         const uint64_t id = kStepId + static_cast<uint64_t>(k);
         const Vec3 out =
@@ -412,22 +411,22 @@ void Step(const Feed& feed, const BossComponent& boss) {
         wisp.velocity = Add(Mul(out, kStepSpeed), Up(kStepRise));
         wisp.gust = 0.8f;
         wisp.heat = kStepHeat;
-        feed.Smoke(id, wisp, boss.intro.stepAmount / static_cast<float>(kStepWisps));
+        feed.Smoke(id, wisp, intro.settings.stepAmount / static_cast<float>(kStepWisps));
     }
     if (local < kStepPushSeconds)
         feed.Burst(kStepId + 5, feet, kStepFogRadius, kStepFogPush, FluidChannels::kFog);
 }
 
 // 刀を握っている間、刀の根元へ地面の煙がゆっくり寄り、刀身に沿って自分から立ち上がる（噴かない。握るほど濃くなる）。
-void Seep(const Feed& feed, const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+void Seep(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SwordGrab, duration);
     if (local < 0.0f)
         return;
-    const Vec3 entry = BossIntroActor::SwordEntry(boss);
+    const Vec3 entry = BossIntroActor::SwordEntry(intro);
     const float u = local / duration;
-    const float mass = boss.intro.seepAmount * u / static_cast<float>(kSeepGround + kSeepBlade);
+    const float mass = intro.settings.seepAmount * u / static_cast<float>(kSeepGround + kSeepBlade);
     for (int k = 0; k < kSeepGround; ++k) {
         const uint64_t id = kSeepId + static_cast<uint64_t>(k);
         const Vec3 out = Around(state.showSeconds * 1.7f + 2.0f * kPi * (static_cast<float>(k) + feed.Roll(id, 4u)) /
@@ -492,12 +491,13 @@ void DrawBurst(const Feed& feed, const BossIntroSettings& s, Vec3 root, Vec3 dri
 // 刀身が引く煙の幕：刀身の上の点を、速さを抑えて追いかける点から煙を入れる。刀身そのものは振りの間 60 m/秒を超え、
 // エンジンが「瞬間移動」とみなして掃かなくなる（煙が帯にならず、1 フレームごとの粒が弧に並ぶ）。追う点は遅れて付いて
 // 行くので、刀身の後ろに帯が残る。
-void Trail(const Feed& feed, BossComponent& boss, float local) {
-    BossIntroState& state = boss.introState;
+void Trail(const Feed& feed, const BossComponent& boss, const BossBodySettings& bodyLook, BossIntroComponent& intro,
+           float local) {
+    BossIntroState& state = intro.state;
     BossBodyPose pose{};
-    (void)BossIntroActor::Pose(boss, pose);
+    (void)BossIntroActor::Pose(intro, pose);
     const Vec3 tip = Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
-    const float reach = VisibleBladeReach(boss);
+    const float reach = VisibleBladeReach(boss, bodyLook);
     const float fade = 1.0f - local / kTrailSeconds;
     // 追う点が進める長さは、演技の時刻の進みで決める（スローの間は、流体の時間と同じだけ遅くなる）。
     const float step = std::max(0.0f, state.showSeconds - state.smokeTrailAt);
@@ -514,23 +514,23 @@ void Trail(const Feed& feed, BossComponent& boss, float local) {
         wisp.radius = 0.32f;
         wisp.gust = 2.5f;
         wisp.heat = kTrailHeat;
-        feed.Smoke(id, wisp, boss.intro.drawTrailAmount * fade * fade / static_cast<float>(kTrailWisps));
+        feed.Smoke(id, wisp, intro.settings.drawTrailAmount * fade * fade / static_cast<float>(kTrailWisps));
     }
     state.smokeTrailSet = true;
 }
 
 // 刀が地から抜けた瞬間：根元から柱が噴き上がり、地面を煙が外へ転がる。刀身は、地から引きずり出した煙の幕を頭の上へ
 // 引いて行く。ボスの体の側へは噴かない：噴いた煙は体の向こうの背景になり、主役を隠さない。
-void Draw(const Feed& feed, BossComponent& boss) {
-    const BossIntroSettings& s = boss.intro;
-    BossIntroState& state = boss.introState;
+void Draw(const Feed& feed, const BossComponent& boss, const BossBodySettings& bodyLook, BossIntroComponent& intro) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SwordOut, duration);
     if (local < 0.0f)
         return;
-    const Vec3 entry = BossIntroActor::SwordEntry(boss);
-    const Vec3 body = FlatNormalize(Sub(BossIntroSmoke::FeetWorld(boss), entry), Mul(Forward(state.yaw), -1.0f));
+    const Vec3 entry = BossIntroActor::SwordEntry(intro);
+    const Vec3 body = FlatNormalize(Sub(BossIntroSmoke::FeetWorld(intro), entry), Mul(Forward(state.yaw), -1.0f));
     // 煙を流して行く向き：刀のある側の外へ、後ろへ。抜刀は正面のカメラで見せるので、根元（主役の斜め前）から噴いた煙が
     // カメラの方へ来ると画を塞ぐ。主役の真後ろへも行かせない（黒い鎧の後ろに黒い煙が来ると、輪郭が読めなくなる）。
     const Vec3 forward = Forward(state.yaw);
@@ -577,15 +577,15 @@ void Draw(const Feed& feed, BossComponent& boss) {
         feed.Burst(kBurstId + 15, entry, s.drawPushRadius, s.drawPush, FluidChannels::kFog);
     }
     if (local < kTrailSeconds && a.socketsValid)
-        Trail(feed, boss, local);
+        Trail(feed, boss, bodyLook, intro, local);
 }
 
 // 目の炎：目が灯ってから演技の終わりまで、面頬の左右の隙間から青白い炎が細く立つ。兜の前に付いて動く細かい流体の域
 // （BossEyeFire。格 3 cm。空気は世界に残るので、頭が動くと炎が後ろへ流れる）へ、熱い煙を細く入れ続ける。目が灯る拍
 // （Eyes）の間は強く噴いて、引いて行く。光そのものは兜の中の灯（BossBodyAccents）。
-void EyeFire(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss) {
-    const BossIntroSettings& s = boss.intro;
-    BossIntroState& state = boss.introState;
+void EyeFire(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, BossIntroComponent& intro) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     if (state.phase != BossIntroPhase::Show || state.skipped || !state.eyesLit || !a.socketsValid ||
         s.eyeFireEffect.IsEmpty() || s.eyeFireAmount <= 0.0f) {
@@ -595,7 +595,7 @@ void EyeFire(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss) {
     }
     // 置き場所は、兜そのものの置き場所（兜の原点と傾き）と、模型から取った隙間の帯（BossHelmGlowData）で決める。
     BossBodyPose pose{};
-    (void)BossIntroActor::Pose(boss, pose);
+    (void)BossIntroActor::Pose(intro, pose);
     const BossBodyPlacement& helm = pose.head;
     const auto point = [&helm](Vec3 local) {
         return Add(helm.position, Rotate(helm.rotation, Mul(local, BossHelmGlowData::kActorHelmScale)));
@@ -622,10 +622,10 @@ void EyeFire(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss) {
 }
 
 // 舞台の煙を消す（刀の根元・体の周り）。吸収は中心から離れるほど弱いので、何か所かに置く。
-void Clear(const Feed& feed, const BossComponent& boss, float rate) {
-    const BossIntroState& state = boss.introState;
-    const Vec3 entry = BossIntroActor::SwordEntry(boss);
-    const Vec3 feet = BossIntroSmoke::FeetWorld(boss);
+void Clear(const Feed& feed, const BossIntroComponent& intro, float rate) {
+    const BossIntroState& state = intro.state;
+    const Vec3 entry = BossIntroActor::SwordEntry(intro);
+    const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     feed.Absorb(kClearId, Add(entry, Vec3{0.0f, 4.0f, 0.0f}), 9.0f, rate);
     feed.Absorb(kClearId + 1, Add(feet, Vec3{0.0f, 3.0f, 0.0f}), 8.0f, rate);
     const Vec3 corners[4] = {{7.0f, 2.0f, 0.0f}, {-7.0f, 2.0f, 0.0f}, {0.0f, 2.0f, 7.0f}, {0.0f, 2.0f, -7.0f}};
@@ -635,17 +635,18 @@ void Clear(const Feed& feed, const BossComponent& boss, float rate) {
 
 } // namespace
 
-void BossIntroSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds) {
-    const BossIntroSettings& s = boss.intro;
-    BossIntroState& state = boss.introState;
+void BossIntroSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+                            const BossBodySettings& body, BossIntroComponent& intro, float seconds) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
     if (s.smokeEffect.IsEmpty())
         return;
     // 煙の点の行き先（演技の時刻から決める：時間が止まっている間は動かない）。
     const float clock = std::max(0.0f, state.showSeconds) * kWispRate;
     const Feed feed{world, object.GetHandle(), clock};
-    Streak(world, feed, boss, seconds);
-    EyeFire(world, feed, boss);
-    const HIKARI::GameProjectTransform placed = BossVfx::Placed(state.origin, 1.0f, BossPoseKit::AroundY(state.yaw));
+    Streak(world, feed, boss, intro, seconds);
+    EyeFire(world, feed, boss, intro);
+    const HIKARI::GameProjectTransform placed = BossVfx::Placed(state.origin, 1.0f, YawRotation(state.yaw));
     // 序幕の霧の点は、演技の前から進む時計で、ゆっくり巡らせる。
     const Feed ambient{world, object.GetHandle(), state.ambientClock * kAmbientWispRate};
     if (state.phase == BossIntroPhase::Scattered) {
@@ -655,7 +656,7 @@ void BossIntroSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object,
             return;
         state.ambientClock += std::max(0.0f, seconds);
         BossVfx::StartOrSend(world, boss, state.smokeHandle, s.smokeEffect, placed, {});
-        Ambient(ambient, boss);
+        Ambient(ambient, intro);
         return;
     }
     if (state.phase != BossIntroPhase::Show || state.skipped) {
@@ -671,42 +672,42 @@ void BossIntroSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object,
         // ゲームのカメラへ渡す間：外へ流し続けながら、初めは弱く、だんだん強く消す（カメラが引いて行く間に晴れて行き、
         // 域を止める時には、何も残っていない）。
         const float gone = state.smokeLinger / std::max(kTiny, s.smokeLingerSeconds);
-        DisperseFlow(feed, boss, 1.0f - gone);
-        Clear(feed, boss, s.clearAbsorption * gone * (1.0f + kLingerClearGain * gone));
+        DisperseFlow(feed, intro, 1.0f - gone);
+        Clear(feed, intro, s.clearAbsorption * gone * (1.0f + kLingerClearGain * gone));
         return;
     }
     state.smokeLinger = 0.0f;
     BossVfx::StartOrSend(world, boss, state.smokeHandle, s.smokeEffect, placed, {});
     state.ambientClock += std::max(0.0f, seconds);
-    Ambient(ambient, boss);
+    Ambient(ambient, intro);
     const BossIntroActorState& a = state.actor;
-    Rise(feed, boss);
-    Arms(feed, boss);
-    Call(feed, boss, BossIntroPart::GauntletRight, a.rightShoulder.position, kCallId);
-    Call(feed, boss, BossIntroPart::GauntletLeft, a.leftShoulder.position, kCallId + 8);
+    Rise(feed, intro);
+    Arms(feed, intro);
+    Call(feed, intro, BossIntroPart::GauntletRight, a.rightShoulder.position, kCallId);
+    Call(feed, intro, BossIntroPart::GauntletLeft, a.leftShoulder.position, kCallId + 8);
     if (a.socketsValid) {
-        Puff(feed, boss, Kind::HandRight, a.rightHand.position, a.rightElbow.position, kPuffId);
-        Puff(feed, boss, Kind::HandLeft, a.leftHand.position, a.leftElbow.position, kPuffId + kPuffWisps);
+        Puff(feed, intro, Kind::HandRight, a.rightHand.position, a.rightElbow.position, kPuffId);
+        Puff(feed, intro, Kind::HandLeft, a.leftHand.position, a.leftElbow.position, kPuffId + kPuffWisps);
     }
-    Lift(feed, boss);
-    Seat(feed, boss);
-    Step(feed, boss);
-    Seep(feed, boss);
-    Gather(feed, boss);
-    Draw(feed, boss);
-    Backdrop(feed, boss);
-    Disperse(feed, boss);
+    Lift(feed, intro);
+    Seat(feed, intro);
+    Step(feed, intro);
+    Seep(feed, intro);
+    Gather(feed, intro);
+    Draw(feed, boss, body, intro);
+    Backdrop(feed, intro);
+    Disperse(feed, intro);
     float duration = 0.0f;
     if (CueLocal(state, Kind::SmokeClear, duration) >= 0.0f)
-        Clear(feed, boss, s.clearAbsorption);
+        Clear(feed, intro, s.clearAbsorption);
     // 鎧が起きた後、抜刀の柱が立っている間のほかは、体の周りに漂う薄い煙を消し続ける。鎧が起きる前（序幕）は消さない：
     // 部品の周りに溜めている霧まで消してしまう。
     else if (a.socketsValid && Passed(state, Kind::SmokeRise) && CueLocal(state, Kind::SwordOut, duration) < 0.0f)
         feed.Absorb(kClearId, Lerp(a.chest.position, a.head.position, kHazeHead), kHazeRadius, kHazeRate);
 }
 
-float BossIntroSmoke::BodyAmount(const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+float BossIntroSmoke::BodyAmount(const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     if (state.phase != BossIntroPhase::Show)
         return 1.0f;
     for (int k = 0; k < state.cueCount; ++k) {
@@ -725,15 +726,15 @@ float BossIntroSmoke::BodyAmount(const BossComponent& boss) {
     return 1.0f;
 }
 
-HIKARI::GameProjectFloat3 BossIntroSmoke::FeetWorld(const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+HIKARI::GameProjectFloat3 BossIntroSmoke::FeetWorld(const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     if (!state.actor.socketsValid)
         return state.origin;
     return {state.actor.hips.position.x, state.origin.y, state.actor.hips.position.z};
 }
 
-HIKARI::GameProjectFloat3 BossIntroSmoke::SwordEntryWorld(const BossComponent& boss) {
-    return BossIntroActor::SwordEntry(boss);
+HIKARI::GameProjectFloat3 BossIntroSmoke::SwordEntryWorld(const BossIntroComponent& intro) {
+    return BossIntroActor::SwordEntry(intro);
 }
 
 } // namespace Project_TD2_2

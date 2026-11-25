@@ -20,4 +20,20 @@ void ForEachOnObject(HIKARI::WorldView& world, std::string_view typeName, HIKARI
     });
 }
 
+// object と同じ物体に付いた、型 typeName の最初のコンポーネントを callback(T*) に渡す（無ければ nullptr を渡す）。
+// 参照はクエリのコールバックの中だけで使うので、callback もその中で呼ぶ。
+template <class T, class Callback>
+void WithFirstOnObject(HIKARI::WorldView& world, std::string_view typeName, HIKARI::ObjectView object,
+                       Callback&& callback) {
+    bool done = false;
+    ForEachOnObject<T>(world, typeName, object, [&](HIKARI::ObjectView, T& component) {
+        if (done)
+            return;
+        done = true;
+        callback(&component);
+    });
+    if (!done)
+        callback(static_cast<T*>(nullptr));
+}
+
 } // namespace Project_TD2_2::ComponentLookup

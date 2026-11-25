@@ -3,7 +3,7 @@
 #include <array>
 
 #include "HIKARI/Project/GameComponent.h"
-#include "../Combat/Feedback.h"
+#include "Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -79,7 +79,7 @@ struct PlayerCinematicRequest {
     // 演出の間、ゲームのカメラが向いておく点（ロックオンしていない時。戻った時にそちらを見ている）。
     HIKARI::GameProjectFloat3 focus{};
 };
-// 照準補助の候補（ボス本体＋出ている分身）を置いておける数。
+// 照準補助の候補（ボスの側が渡す）を置いておける数。
 inline constexpr size_t kPlayerLockCandidateCapacity = 8;
 
 // 外部の動作（ヒョウタンの吸い込み・砲撃）が、PlayerRules を通して出す 1 固定 tick ぶんの要求。
@@ -229,7 +229,7 @@ public:
     float lockLookUpNear = 6.0f;
     float lockLookUpFar = 4.0f;
     float lockPitchNear = 12.0f;
-    // ロック中の見上げの限度（度、負で見上げ。ボスの跳躍・天降りで高い所にいる時）。
+    // ロック中の見上げの限度（度、負で見上げ。ボスの跳躍で高い所にいる時）。
     float lockMinPitch = -10.0f;
     // 見る点の高さ：対象の中心から、体の高さの半分に対するこの割合だけ上（0.35 で胸のあたり）。照準も同じ点。
     float lockAimHeightShare = 0.35f;
@@ -281,16 +281,15 @@ public:
     HIKARI::GameProjectFloat3 actionDirection{};
     HIKARI::GameProjectObjectHandle lockTarget{};
     bool lockedOn = false;
-    // ロック対象を変える入力（Q）が押された。対象の候補を知っている側（ボスの分身）が使ったら消す。
+    // ロック対象を変える入力（Q）が押された。対象の候補を知っている側（ボスの BossLockTarget）が使ったら消す。
     bool lockSwitchRequested = false;
-    // 照準補助の候補。ボス側が毎 tick 作り直す（分身が消えたら次の tick で外れる）。空なら lockTargetId だけを見る。
+    // ロックオンの入れ切りを押した（Update で覚え、次の固定 tick の始めに入れ切りする。c-164cab）。
+    bool lockToggleRequested = false;
+    // 照準補助の候補。ボス側が毎 tick 作り直す（消えた候補は次の tick で外れる）。空なら lockTargetId だけを見る。
     std::array<HIKARI::GameProjectObjectHandle, kPlayerLockCandidateCapacity> lockCandidates{};
     size_t lockCandidateCount = 0;
-    // ロック中のカメラが見る点を、対象の原点からずらす量（世界 m）。霧へ沈んだボスを見続ける時など、外部が毎 tick 入れる。
-    HIKARI::GameProjectFloat3 lockPivotOffset{};
-    // ロック対象の体の高さの半分 (m) と、隠れている（霧へ沈んでいる）か。対象を知っている側（ボス）が毎 tick 入れる。
+    // ロック対象の体の高さの半分 (m)。対象を知っている側（ボス）が毎 tick 入れる。
     float lockTargetHalfHeight = 0.0f;
-    bool lockTargetHidden = false;
     bool rollFogPending = false;
     bool healApplied = false;
     bool motionAccepted = true;

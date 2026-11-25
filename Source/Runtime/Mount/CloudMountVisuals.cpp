@@ -7,7 +7,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/VfxView.h"
 #include "HIKARI/Project/WorldView.h"
-#include "../Combat/Feedback.h"
+#include "../Player/Feedback.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
@@ -67,9 +67,7 @@ HIKARI::GameProjectQuaternion Orientation(float yaw, float pitch, float bank) {
 
 // target へ seconds の時定数で寄せる（0 は一瞬）。描画フレームの長さに寄らない。
 float Smooth(float current, float target, float seconds, float dt) {
-    if (seconds <= 0.0f)
-        return target;
-    return target + (current - target) * std::exp(-dt / seconds);
+    return VectorMath::Approach(current, target, seconds, dt);
 }
 
 // 一定の速さで target へ寄せる（0〜1 を seconds で動く。0 は一瞬）。
@@ -438,7 +436,8 @@ void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body
         OnStateChange(world, mount, player, frame);
     Step(mount, dt);
     // カメラの沈みは、停止中も実時間で戻す。
-    Feedback::SubmitCameraShake(world, mount.arrival.cameraDip, player.cameraId, std::max(0.0f, frame.unscaledDt));
+    Feedback::SubmitCameraShake(world, mount.arrival.cameraDip, PlayerRules::GetCameraId(player),
+                                std::max(0.0f, frame.unscaledDt));
     HIKARI::GameProjectTransform bodyTransform{};
     const bool wanted =
         !mount.cloudEffect.IsEmpty() && (mount.cloudKeepAlive || mount.cloudHiddenSeconds < mount.cloudLingerSeconds ||

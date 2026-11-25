@@ -68,6 +68,22 @@ float DamageableRules::GetMaxHealth(const DamageableComponent& target) {
 
 float DamageableRules::GetLastDamage(const DamageableComponent& target) { return target.lastDamage; }
 
+void DamageableRules::SetMaxHealth(DamageableComponent& target, float maxHealth) {
+    target.maxHealth = maxHealth;
+    Initialize(target);
+    // 先に初期化されていた（先に当たった）時も、新しい最大を超えないようにする。
+    target.currentHealth = std::min(target.currentHealth, target.maxHealth);
+}
+
+void DamageableRules::RefillTo(DamageableComponent& target, float maxHealth) {
+    target.maxHealth = maxHealth;
+    target.currentHealth = target.maxHealth;
+}
+
+void DamageableRules::SetInvulnerable(DamageableComponent& target, bool invulnerable) {
+    target.invulnerable = invulnerable;
+}
+
 uint64_t DamageableRules::GetHitCount(const DamageableComponent& target) { return target.hitCount; }
 
 void DamageableRules::RequestFlash(DamageableComponent& target, int frames) {

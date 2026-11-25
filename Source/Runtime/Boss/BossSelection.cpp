@@ -11,7 +11,7 @@ namespace Project_TD2_2 {
 namespace {
 
 // 突進系：待機・移動中に撃たれるほど出やすくなる型。
-bool IsRushType(BossMoveType type) { return type == BossMoveType::Dash || type == BossMoveType::Ambush; }
+bool IsRushType(BossMoveType type) { return type == BossMoveType::Dash; }
 
 // 得意な距離（距離重み。0＝近い、1＝遠い）がいまの距離に近いほど大きい値。距離重みが空欄の行は 0（近い）として扱う。
 float DistanceFit(const BossComponent& boss, const BossMove& move, const BossSituation& situation, float power) {
@@ -28,8 +28,8 @@ bool IsInterruptCandidate(const BossComponent& boss, int row, const BossSituatio
 // ふつうのコンボでつなげる行：割り込み専用・特別・連続攻撃が条件の行は出さない。
 bool IsComboCandidate(const BossComponent& boss, int row, const BossSituation& situation) {
     const BossMove* move = BossRules::GetMove(boss, row);
-    return move != nullptr && move->use != BossMoveUse::Interrupt && move->use != BossMoveUse::Special &&
-           !move->when.pressure && BossSelection::CanPerform(boss, row, situation);
+    return move != nullptr && move->use != BossMoveUse::Interrupt && !move->when.pressure &&
+           BossSelection::CanPerform(boss, row, situation);
 }
 
 bool HasComboTarget(const BossMove& move, int row) {
@@ -40,12 +40,10 @@ bool HasComboTarget(const BossMove& move, int row) {
 
 bool BossSelection::CanPerform(const BossComponent& boss, int row, const BossSituation& situation) {
     const BossMove* move = BossRules::GetMove(boss, row);
-    // 引爆は爆ぜさせる火が無ければ出せない（木の枝はここで断られて失敗し、次の枝へ進む）。霞歩は、かわさない間
-    // （息が切れている）は出さない（Boss.kasumiStepRestWhileSpent）。
+    // 霞歩は、かわさない間（息が切れている）は出さない（Boss.kasumiStepRestWhileSpent）。
+    // 断られた時は木の枝が失敗し、次の枝へ進む。
     return move != nullptr && move->executable && situation.distance >= 0.0f &&
-           BossMoveConditionHolds(move->when, situation) &&
-           (move->type != BossMoveType::Detonate || boss.watch.burningPercent > 0.0f) &&
-           BossKasumiStep::Allows(boss, *move);
+           BossMoveConditionHolds(move->when, situation) && BossKasumiStep::Allows(boss, *move);
 }
 
 float BossSelection::NeutralWeight(const BossComponent& boss, int row, const BossSituation& situation) {
@@ -167,9 +165,6 @@ void BossSelection::NoteStarted(BossComponent& boss, int row, int chain) {
     }
     if (IsRushType(move->type))
         boss.brain.moveHits = 0;
-    // 分身を撃たれた後の本体の突進（瞬間突進の型）が始まった。
-    if (move->type == BossMoveType::Dash)
-        boss.brain.cloneStruck = false;
 }
 
 float BossSelection::SwitchChance(const BossComponent& boss, int row) {
@@ -182,6 +177,47 @@ float BossSelection::SwitchChance(const BossComponent& boss, int row) {
                                   std::max(0, boss.punishSwitchMaxHits));
     return std::min(100.0f, move->switchChance *
                                 (1.0f + std::max(0.0f, boss.punishSwitchPerHit) * static_cast<float>(punished)));
+}
+
+void BossSelection::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
+    if (fields.Section("技の選び方（行動ツリーの節が使う値）", true)) {
+        fields.Float("selectFarDistance", "距離重み 1.0 になる距離 (m)", boss.selectFarDistance, 0.1f, 200.0f);
+        fields.Float("selectMinWeight", "重みの下限（得意な距離から一番遠い技にも残す分）", boss.selectMinWeight, 0.0f,
+                     1.0f, 0.01f);
+        fields.Float("selectPower", "得意な距離へのかたより（重みの指数。大きいほど距離に合う技ばかり出る）",
+                     boss.selectPower, 0.0f, 8.0f, 0.1f);
+        fields.Float("selectRepeatScale", "直前に始動した技の重み (倍)", boss.selectRepeatScale, 0.0f, 1.0f, 0.05f);
+        fields.Float("moveHitBoost", "待機・移動中の被弾 1 回ごとの突進系の重み (+倍)", boss.moveHitBoost, 0.0f, 10.0f,
+                     0.1f);
+        fields.Int("moveHitMax", "…数える被弾の上限 (回)", boss.moveHitMax, 0, 40);
+        fields.Float("interruptPower", "割り込みの技の、得意な距離へのかたより（重みの指数）", boss.interruptPower,
+                     0.0f, 8.0f, 0.1f);
+        fields.Int("comboMaxChain", "コンボの最大連続 (技の数)", boss.comboMaxChain, 1, 10);
+        fields.Int("recoveryGuardFrames", "後隙のうち、割り込み・反応で切り上げない最初の F", boss.recoveryGuardFrames,
+                   0, 600);
+        fields.Float("comboChancePercent", "コンボ確率（表の「コンボ確率%」が空欄のとき）(%)", boss.comboChancePercent,
+                     0.0f, 100.0f, 1.0f);
+        fields.Float("rollAxisDegrees",
+                     "ローリングの向き：ボスへ向かう・離れる向きからこの角度以内なら前後、外れたら横 (度)",
+                     boss.rollAxisDegrees, 0.0f, 90.0f, 1.0f);
+        fields.Int("watchShotChainFrames", "射撃：前の弾からこの F 以内に撃てば「続けて撃った」と数える",
+                   boss.watchShotChainFrames, 1, 600);
+        fields.Float("watchShotAimMargin", "射撃：狙いの線が体の半径＋この距離以内を通ればボスへ向いている (m)",
+                     boss.watchShotAimMargin, 0.0f, 10.0f, 0.05f);
+        fields.Int("watchLogFrames", "立ち位置のログ（SeeStance）の間隔 (F。0 で出さない)", boss.watchLogFrames, 0,
+                   600);
+        fields.Bool("punishSwitchEnabled", "咎められた技ほど変化しやすくする（技の表の「変化確率%」を増やす）",
+                    boss.punishSwitchEnabled);
+        fields.Float("punishSwitchPerHit", "…後隙に当てられた 1 回ごとに変化確率を何倍増やすか (+倍)",
+                     boss.punishSwitchPerHit, 0.0f, 10.0f, 0.05f);
+        fields.Int("punishSwitchMaxHits", "…数える回数の上限 (回)", boss.punishSwitchMaxHits, 0, 100);
+        fields.Note(
+            "どの技を出すかは、同じ物体の Behavior Tree（木は KasumiBushi_Kujata、Update は GameCode）が決めます。"
+            "技の間の待ち・連続攻撃とみなす命中数と時間は、木の節（待ち／連続攻撃された）で調整します。"
+            "プレイヤーへの反応（回復・吸い込み・ローリング・密着を咎める）は、木の枝「プレイヤーへの反応」の"
+            "節（条件と反応の間隔）で調整します。"
+            "距離重み・発生条件・コンボ先・コンボ確率は技の表の列です。");
+    }
 }
 
 } // namespace Project_TD2_2

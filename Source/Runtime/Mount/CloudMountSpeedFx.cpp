@@ -28,11 +28,7 @@ using VectorMath::Dot;
 using VectorMath::Lerp;
 
 // 目標へ seconds の時定数で近づく（0 以下で一瞬）。
-float Approach(float now, float target, float seconds, float dt) {
-    if (seconds <= 0.0f)
-        return target;
-    return now + (target - now) * (1.0f - std::exp(-std::max(dt, 0.0f) / seconds));
-}
+using VectorMath::Approach;
 
 } // namespace
 

@@ -7,7 +7,7 @@
 namespace Project_TD2_2 {
 
 // 技が地面に残す火：表の「残す火」「火の幅 m」「火の秒数」の読み方と、どの一撃が・いつ・どこへ塗るか。
-// 塗るのは燃える地面の入口（BurnFieldRules）。一撃の番号 strike は 0 から数える（表の「:N」は 1 から）。
+// 塗るのは燃える地面の入口（BurnField）。一撃の番号 strike は 0 から数える（表の「:N」は 1 から）。
 class BossBurnMarks final {
 public:
     // 「線/池」「交差:2」「輪@フェーズ2」のような列を読み、move.burnMarks へ入れる。読めない項目は行の警告にして入れない。
@@ -21,26 +21,12 @@ public:
     static void LightBlade(BossComponent& boss, const BossMove& move);
     // 斬撃・ナイフ・回し蹴りの輪を出した：火の刃か（wave.fire）と、線・輪の塗る幅と秒数を入れる。
     static void ArmWave(const BossComponent& boss, const BossMove& move, BossWave& wave);
-    // 一撃を放った（剣を振り抜いた・ナイフを投げた・輪を出した）：交差と池を塗る。霞隠れの池は現れた時に塗る。
+    // 一撃を放った（剣を振り抜いた・ナイフを投げた・輪を出した）：交差と池を塗る。
     static void Released(BossFrame& frame, const BossMove& move, int strike);
-    // 霞隠れで現れた（strike 回目の現れ）：足元に池を塗る。
-    static void Appeared(BossFrame& frame, const BossMove& move, int strike);
     // 瞬間突進の瞬間移動を終えた：突進の始まりから終わりまでの床に跡を塗る。
     static void DashLanded(BossFrame& frame, const BossMove& move);
     // 回し蹴りの輪が広がりきった：その半径に帯を塗る（wave.burnWidth が 0 なら塗らない）。
     static void RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave);
-    // 霞の大剣が薙いでいる 1 tick：ボスの中心 center・薙ぐ向きの基準 yaw (rad) から見て、薙ぎ始めの startDegrees から
-    // toDegrees まで剣が通った所に「弧」を塗る（greatswordFireStepDegrees 度ごと。painted は塗り終えた所の数で、呼ぶ側が持つ）。
-    static void SweptArc(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 center, float yaw,
-                         float startDegrees, float toDegrees, int& painted);
-    // 縦割り：叩きつけた刃の下と、地を走る噴き上がりが通った所（from→to）に「線」を塗る（mark は表の線の火）。
-    // 炎走りの前線が通った所もこれで塗る。
-    // 噴き上がり・前線は走る tick ごとに少しずつ塗るので、ログは loggedFrom がある時だけ（loggedFrom→to として）出す。
-    static void PaintCleaveLine(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 from,
-                                HIKARI::GameProjectFloat3 to, const BossBurnMark& mark,
-                                const HIKARI::GameProjectFloat3* loggedFrom);
-    // 天降り斬り（フェーズ 2）の着地の火が爆ぜた：着地点 center に、表の「池」を塗る（爆ぜた後に残る火）。
-    static void SkyfallBurst(BossFrame& frame, const BossMove& move, HIKARI::GameProjectFloat3 center);
     // 「交差」を待っている斬撃が、狙った所へ届いた・当たった・飛びきった時：そこで爆ぜて、X の火を塗る。
     static void WaveLanded(BossFrame& frame, const BossMove& move, BossWave& wave);
 };

@@ -28,11 +28,6 @@ struct BossKasumiStepSettings {
     float edgeMargin = 1.0f;
     float playerGap = 3.0f;
     float fireClearance = 1.35f;
-    // 前隙で屈む量・着地で沈む量（屈みの割合 0〜1。Boss.crouchSquash で縦に縮む）。
-    float takeoffCrouch = 0.4f;
-    float landCrouch = 0.6f;
-    // 跳ぶ向きへ体（鎧・刀・手）を傾ける角度（跳ぶ途中でいちばん傾く、度）。
-    float leanDegrees = 10.0f;
     // 弾をかわす霞歩の、跳び始めから当たらない F（0 は体が動いた分だけでよける）。
     int guardFrames = 0;
     // 着地で足元の霧を押す大きさ（当たった所の爆発の押しに対する倍。0 で押さない）。

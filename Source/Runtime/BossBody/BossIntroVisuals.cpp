@@ -8,7 +8,6 @@
 #include "BossIntroActor.h"
 #include "BossIntroEffects.h"
 #include "BossIntroSmoke.h"
-#include "BossPoseKit.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossIntro.h"
 
@@ -23,8 +22,8 @@ constexpr float kSequenceStallSeconds = 0.25f;
 // 演技の時計を演出の資産の時刻に合わせる（合わせたら true）。流れ終わった・止まったまま進まない時は false（ゲームの
 // 時間で進める）。資産は受け付けられても、演出の機能が切ってあると時刻が進まないので、流れているのに
 // kSequenceStallSeconds の間進まなければ、それからは自分の時計で流す（一時停止は待つ）。
-bool FollowSequence(HIKARI::WorldView& world, BossComponent& boss, float dt) {
-    BossIntroState& state = boss.introState;
+bool FollowSequence(HIKARI::WorldView& world, BossIntroComponent& intro, float dt) {
+    BossIntroState& state = intro.state;
     HIKARI::GameProjectSequencePlaybackSnapshot snapshot{};
     if (state.sequenceStalled || !state.sequence.IsValid() ||
         !world.GetSequence().GetSnapshot(state.sequence, snapshot))
@@ -39,7 +38,7 @@ bool FollowSequence(HIKARI::WorldView& world, BossComponent& boss, float dt) {
         // 資産は、このフレームの systems の後に、このフレームのゲームの時間だけ進み、カメラもその時刻で決まる。
         // 読める時刻より 1 歩先で演技を進める：役者の姿とカットの切り替わりが、同じフレームに来る（1 フレーム遅れると、
         // 片段が替わるカットの最初のフレームに、前の片段の最後の姿が写る）。
-        state.showSeconds = snapshot.timeSeconds + dt * std::clamp(boss.intro.playbackRate, 0.01f, 8.0f);
+        state.showSeconds = snapshot.timeSeconds + dt * std::clamp(intro.settings.playbackRate, 0.01f, 8.0f);
         return true;
     }
     state.sequenceStall += dt;
@@ -52,19 +51,19 @@ bool FollowSequence(HIKARI::WorldView& world, BossComponent& boss, float dt) {
 
 // 一息の段：戦いの体に替わった直後、肩に担いだ刀（演技の最後の置き場所）から、待機の構えへ下ろす。刀を握る右手と
 // 籠手の筒は、刀に付けたまま一緒に動かす。
-void SettleSword(BossComponent& boss, BossBodyPose& pose, float seconds) {
-    BossIntroState& state = boss.introState;
+void SettleSword(BossIntroComponent& intro, BossBodyPose& pose, float seconds) {
+    BossIntroState& state = intro.state;
     if (!state.carryValid || state.skipped)
         return;
     state.settleClock += std::max(0.0f, seconds);
     // 役者から替わった時から、一息の段の終わりまでに下ろし切る。
-    const float length = std::max(0.2f, boss.intro.settleSeconds - boss.intro.settleSwapSeconds);
+    const float length = std::max(0.2f, intro.settings.settleSeconds - intro.settings.settleSwapSeconds);
     const float w = length > kTiny ? Smooth(state.settleClock / length) : 1.0f;
     if (w >= 1.0f)
         return;
     const BossBodyPlacement solved = pose.sword;
     const Vec3 position = Lerp(state.carrySword.position, solved.position, w);
-    const Quat rotation = BossPoseKit::Blend(state.carrySword.rotation, solved.rotation, w);
+    const Quat rotation = Nlerp(state.carrySword.rotation, solved.rotation, Clamp01(w));
     const Quat turn =
         Multiply(rotation, Quat{-solved.rotation.x, -solved.rotation.y, -solved.rotation.z, solved.rotation.w});
     const auto carry = [&](BossBodyPlacement& part) {
@@ -78,41 +77,44 @@ void SettleSword(BossComponent& boss, BossBodyPose& pose, float seconds) {
 }
 
 // 事件段を読み直した後に 1 回、役者が使う段を見分ける。
-void EnsureRoles(BossComponent& boss) {
-    if (boss.introState.cueRolesRead)
+void EnsureRoles(BossIntroComponent& intro) {
+    if (intro.state.cueRolesRead)
         return;
-    boss.introState.cueRolesRead = true;
-    BossIntroActor::ReadCues(boss);
+    intro.state.cueRolesRead = true;
+    BossIntroActor::ReadCues(intro);
 }
 
 } // namespace
 
-bool BossIntroVisuals::Showing(const BossComponent& boss) {
-    const BossIntroPhase phase = boss.introState.phase;
-    return phase == BossIntroPhase::Scattered || phase == BossIntroPhase::Show || BossIntro::ActorLingers(boss);
+bool BossIntroVisuals::Showing(const BossIntroComponent* intro) {
+    if (intro == nullptr)
+        return false;
+    const BossIntroPhase phase = intro->state.phase;
+    return phase == BossIntroPhase::Scattered || phase == BossIntroPhase::Show || BossIntro::ActorLingers(intro);
 }
 
-void BossIntroVisuals::Advance(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
-    BossIntroState& state = boss.introState;
+void BossIntroVisuals::Advance(HIKARI::WorldView& world, const BossBodySettings& body, BossIntroComponent& intro,
+                               float seconds) {
+    BossIntroState& state = intro.state;
     state.seenPhase = state.phase;
     const float dt = std::max(0.0f, seconds);
-    const HIKARI::GameProjectTransform stage = BossIntro::GroundTransform(boss);
+    const HIKARI::GameProjectTransform stage = BossIntro::GroundTransform(intro);
     switch (state.phase) {
     case BossIntroPhase::Scattered:
         state.showSeconds = 0.0f;
-        BossIntroActor::Drive(world, boss, &stage, 0.0f, false);
+        BossIntroActor::Drive(world, body, intro, &stage, 0.0f, false);
         break;
     case BossIntroPhase::Show:
-        if (!FollowSequence(world, boss, dt))
-            state.showSeconds += dt * std::max(0.0f, boss.intro.playbackRate);
-        EnsureRoles(boss);
+        if (!FollowSequence(world, intro, dt))
+            state.showSeconds += dt * std::max(0.0f, intro.settings.playbackRate);
+        EnsureRoles(intro);
         // 役者の姿（姿の層・節点の偏移）は、エンジンの動画の更新が次のフレームに読む（こちらは LateUpdate、動画の更新は
         // Update）。もう 1 歩先の時刻を頼んでおくと、描かれる姿がカメラと同じ時刻になる。
-        BossIntroActor::Drive(world, boss, &stage,
-                              state.showSeconds + dt * std::clamp(boss.intro.playbackRate, 0.01f, 8.0f), true);
+        BossIntroActor::Drive(world, body, intro, &stage,
+                              state.showSeconds + dt * std::clamp(intro.settings.playbackRate, 0.01f, 8.0f), true);
         // 演出の灯が置かれている所を控える（演技の後、役者が出ている間は、ここに保つ）。
-        if (const HIKARI::ObjectView light = world.FindSceneObject(boss.intro.keyLightObject);
-            boss.intro.keyLightObject != 0u && light.IsValid()) {
+        if (const HIKARI::ObjectView light = world.FindSceneObject(intro.settings.keyLightObject);
+            intro.settings.keyLightObject != 0u && light.IsValid()) {
             state.actor.keyLightSeen = light.GetWorldTransform(state.actor.keyLightAt);
             HIKARI::GameProjectLightState lit{};
             if (light.GetLight().TryGetState(lit)) {
@@ -123,40 +125,40 @@ void BossIntroVisuals::Advance(HIKARI::WorldView& world, BossComponent& boss, fl
         break;
     default:
         // 一息の段の初め：役者を、演技の最後の姿のまま出しておく（カメラが引いてから、戦いの体に替える）。
-        if (BossIntro::ActorLingers(boss)) {
-            BossIntroActor::Drive(world, boss, &stage, state.showSeconds, true);
-            BossIntroActor::HoldKeyLight(world, boss);
+        if (BossIntro::ActorLingers(&intro)) {
+            BossIntroActor::Drive(world, body, intro, &stage, state.showSeconds, true);
+            BossIntroActor::HoldKeyLight(world, intro);
             break;
         }
         // 演技が済んだ（飛ばした）：役者と落ちている部品を隠す（戦いの体に替わる）。
         if (!state.actorHidden) {
             state.actorHidden = true;
-            BossIntroActor::Hide(world, boss);
+            BossIntroActor::Hide(world, intro);
         }
         break;
     }
 }
 
-HIKARI::GameProjectTransform BossIntroVisuals::BodyTransform(const BossComponent& boss,
+HIKARI::GameProjectTransform BossIntroVisuals::BodyTransform(const BossComponent& boss, const BossIntroComponent* intro,
                                                              const HIKARI::GameProjectTransform& body) {
     HIKARI::GameProjectTransform shown = body;
-    if (Showing(boss))
-        (void)BossIntroActor::BodyTransform(boss, shown);
+    if (Showing(intro))
+        (void)BossIntroActor::BodyTransform(boss, *intro, shown);
     return shown;
 }
 
-void BossIntroVisuals::ApplyPose(BossComponent& boss, BossBodyPose& pose, float seconds) {
-    BossIntroState& state = boss.introState;
-    BossIntroEffects::Update(boss, state.showSeconds, seconds);
-    if (state.phase == BossIntroPhase::Settle && !BossIntro::ActorLingers(boss)) {
-        SettleSword(boss, pose, seconds);
+void BossIntroVisuals::ApplyPose(BossComponent& boss, BossIntroComponent& intro, BossBodyPose& pose, float seconds) {
+    BossIntroState& state = intro.state;
+    BossIntroEffects::Update(boss, intro, state.showSeconds, seconds);
+    if (state.phase == BossIntroPhase::Settle && !BossIntro::ActorLingers(&intro)) {
+        SettleSword(intro, pose, seconds);
         return;
     }
-    if (!Showing(boss))
+    if (!Showing(&intro))
         return;
     // 体に付く効果（目の光・刀身の光）の置き場所を、役者の骨から。目は Eyes の拍から灯り、兜が頭に付く前は出さない。
     const bool lit = pose.eyesLit;
-    if (BossIntroActor::Pose(boss, pose) && state.phase == BossIntroPhase::Show) {
+    if (BossIntroActor::Pose(intro, pose) && state.phase == BossIntroPhase::Show) {
         // 演技の最後の刀の置き場所を覚えておく（一息の段で、ここから構えへ下ろす）。
         state.carryValid = true;
         state.carrySword = {pose.sword.position, pose.sword.rotation, {1.0f, 1.0f, 1.0f}};
@@ -168,28 +170,31 @@ void BossIntroVisuals::ApplyPose(BossComponent& boss, BossBodyPose& pose, float 
     pose.bladeHot = false;
 }
 
-float BossIntroVisuals::SmokeScale(const BossComponent& boss) {
-    // 散らばって待つ間は、まだ体が無いので出さない。演技の間は、地を走る煙が鎧に届く拍から満ちる。
-    return boss.introState.phase == BossIntroPhase::Scattered ? 0.0f : BossIntroSmoke::BodyAmount(boss);
+float BossIntroVisuals::SmokeScale(const BossIntroComponent* intro) {
+    // 散らばって待つ間は、まだ体が無いので出さない。演技の間は、地を走る煙が鎧に届く拍から満ちる。登場の部品が無ければ
+    // いつも満ちている。
+    if (intro == nullptr)
+        return 1.0f;
+    return intro->state.phase == BossIntroPhase::Scattered ? 0.0f : BossIntroSmoke::BodyAmount(*intro);
 }
 
-void BossIntroVisuals::Preview(HIKARI::WorldView& world, BossComponent& boss) {
-    BossIntroState& state = boss.introState;
+void BossIntroVisuals::Preview(HIKARI::WorldView& world, const BossBodySettings& body, BossIntroComponent& intro) {
+    BossIntroState& state = intro.state;
     HIKARI::GameProjectSequencePlaybackSnapshot snapshot{};
-    const bool shown = !boss.intro.sequence.empty() && world.GetSequence().GetEditorPreview(snapshot) &&
-                       boss.intro.sequence == snapshot.assetGuid;
+    const bool shown = !intro.settings.sequence.empty() && world.GetSequence().GetEditorPreview(snapshot) &&
+                       intro.settings.sequence == snapshot.assetGuid;
     if (!shown) {
         // プレビューをやめた：触った見せ方・偏移・姿の層を元へ戻す。
         if (state.previewing) {
             state.previewing = false;
-            BossIntroActor::Restore(world, boss);
+            BossIntroActor::Restore(world, intro);
         }
         return;
     }
     if (!state.previewing) {
         state.previewing = true;
         state.previewHandle = {};
-        if (!BossIntroActor::Find(world, boss))
+        if (!BossIntroActor::Find(world, intro))
             return;
     }
     // 流し直した（手綱が変わった）時に、事件段を読み直す。
@@ -197,10 +202,10 @@ void BossIntroVisuals::Preview(HIKARI::WorldView& world, BossComponent& boss) {
         state.previewHandle = snapshot.handle;
         BossIntro::ReadCues(world, snapshot.handle, state);
     }
-    EnsureRoles(boss);
+    EnsureRoles(intro);
     state.showSeconds = snapshot.timeSeconds;
     // 役者は、シーンに置いてある所のまま（舞台へ置き直さない）。
-    BossIntroActor::Drive(world, boss, nullptr, state.showSeconds, true);
+    BossIntroActor::Drive(world, body, intro, nullptr, state.showSeconds, true);
 }
 
 } // namespace Project_TD2_2

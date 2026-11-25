@@ -5,7 +5,7 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
-#include "../Combat/Feedback.h"
+#include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 

@@ -19,9 +19,6 @@ void BossKasumiStepSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("kasumiStepEdgeMargin", "戦場の縁からこれだけ内側に降りる (m)", edgeMargin, 0.0f, 10.0f);
     fields.Float("kasumiStepPlayerGap", "プレイヤーの中心からこれより近くへは降りない (m)", playerGap, 0.0f, 20.0f);
     fields.Float("kasumiStepFireClearance", "行き先のこの半径が燃えていたら跳ばない (m)", fireClearance, 0.0f, 10.0f);
-    fields.Float("kasumiStepTakeoffCrouch", "跳ぶ前に屈む量 (0〜1)", takeoffCrouch, 0.0f, 1.0f);
-    fields.Float("kasumiStepLandCrouch", "着地で沈む量 (0〜1。後隙の間に戻る)", landCrouch, 0.0f, 1.0f);
-    fields.Float("kasumiStepLeanDegrees", "跳ぶ向きへ体を傾ける角度 (度)", leanDegrees, 0.0f, 45.0f);
     fields.Int("kasumiStepGuardFrames", "弾をかわす霞歩：跳び始めから当たらない (F。0 は体が動いた分だけでよける)",
                guardFrames, 0, 30);
     fields.Float("kasumiStepLandPush", "着地で足元の霧を押す大きさ（爆発の押しに対する倍。0 で押さない）", landPush,

@@ -31,6 +31,20 @@ inline float Smoothstep(float x) {
     const float t = Clamp01(x);
     return t * t * (3.0f - 2.0f * t);
 }
+// 0〜1 の外は抑え、両端で速さも加速も 0 になる 5 次の曲線。
+inline float Smootherstep(float x) {
+    const float t = Clamp01(x);
+    return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+}
+// 時定数 seconds で目標へ近づく時に、dt 秒で縮める割合（0〜1。seconds が 0 以下なら一瞬で 1）。描画のフレームの
+// 長さに寄らない。
+inline float ExpFollow(float dt, float seconds) {
+    return seconds <= 0.0f ? 1.0f : 1.0f - std::exp(-std::max(dt, 0.0f) / seconds);
+}
+// now から target へ、時定数 seconds で dt 秒ぶん近づけた値。
+inline float Approach(float now, float target, float seconds, float dt) {
+    return now + (target - now) * ExpFollow(dt, seconds);
+}
 
 inline Vec3 Normalize(Vec3 vector, Vec3 fallback) {
     const float length = std::sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);

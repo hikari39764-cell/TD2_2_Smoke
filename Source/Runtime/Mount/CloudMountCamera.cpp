@@ -29,11 +29,7 @@ float StageValue(float stage, float stop, float cruise, float boost) {
 }
 
 // 目標へ seconds の時定数で近づく（0 以下で一瞬）。
-float Approach(float now, float target, float seconds, float dt) {
-    if (seconds <= 0.0f)
-        return target;
-    return now + (target - now) * (1.0f - std::exp(-std::max(dt, 0.0f) / seconds));
-}
+using VectorMath::Approach;
 
 // 水平に追うならし：速さが増えている間は伸ばし（体が先に画面の奥へ出る）、減っている間は縮める。伸ばす時はすぐ、
 // 戻す時は cameraFollowRecoverSeconds でならす（伸びたまま速さが一定になると、カメラが追いついて元の構図へ戻る）。

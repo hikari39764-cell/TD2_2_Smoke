@@ -27,6 +27,10 @@ public:
     // 構えの間と押し続けている間の狙い：撃つ所（ヒョウタンの位置）と撃つ向き（単位ベクトル）。
     static HIKARI::GameProjectFloat3 GetAimOrigin(const GourdShotComponent& shot);
     static HIKARI::GameProjectFloat3 GetAimDirection(const GourdShotComponent& shot);
+    // 1 発に使う煙の量。
+    static float GetSmokeCost(const GourdShotComponent& shot);
+    // 炎の流体域の枠を count 個譲る（ほかの機能の斬撃のエフェクトが使う。描画のフレームごとに入れ直す）。
+    static void ReserveFluidDomains(GourdShotComponent& shot, size_t count);
 };
 
 } // namespace Project_TD2_2

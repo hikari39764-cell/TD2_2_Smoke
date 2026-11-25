@@ -7,19 +7,14 @@
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
+#include "BossCinematicFxSettings.h"
 #include "BossGourdRead.h"
-#include "BossIntroSettings.h"
 #include "BossKasumiStepSettings.h"
-#include "BossPhaseShiftSettings.h"
 #include "BossMoveTable.h"
-#include "BossStance.h"
-#include "BossSwingShapes.h"
 #include "BossSwordPose.h"
 #include "BossWatch.h"
 #include "../BossBody/BossAnimBody.h"
-#include "../BossBody/BossBodySettings.h"
-#include "../Burn/BurnFieldComponent.h"
-#include "../Combat/Feedback.h"
+#include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -41,11 +36,9 @@ inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
 // 場の霧・吸い口・砲撃と分け合う（出している間は砲撃の枠を同じ数だけ減らす）。
 inline constexpr size_t kBossSlashEffectCapacity = 2;
-// 当たった所の爆発と、霞隠れ・分身の霞の爆ぜ（押す力の無い爆発）の枠。分身を出す時の 4 つと当たりが重なっても足りる数。
+// 当たった所の爆発の枠。
 inline constexpr size_t kBossBlastCapacity = 6;
-// 霞分身で一度に出せる分身の数の上限（実際の数は表の判定サイズと、シーンに置いた分身の物体の数で決まる）。
-inline constexpr size_t kBossCloneCapacity = 4;
-// 斬撃が消えた所などに置く残り煙の枠。爆発の跡の煙（炎が消えるまで待つ）と引爆の塊の煙も入るので 8 から増やした。
+// 斬撃が消えた所などに置く残り煙の枠。爆発の跡の煙（炎が消えるまで待つ）も入るので 8 から増やした。
 // 出している枠は 1 つが場の霧の域の干渉を 1 つ使う（BossSmoke の kEmitBudget の中）。
 inline constexpr size_t kBossDepositCapacity = 12;
 // 連続攻撃の判定に覚えておく命中の数（試作と同じ 40）。
@@ -155,16 +148,12 @@ struct BossSlashEffect {
 struct BossBlast {
     bool pushPending = false;
     bool effectPending = false;
-    // 霞隠れ・分身の消える／現れる所（煙の塊のエフェクト）。偽なら当たった所の爆発。
-    bool puff = false;
     // 火を残す技の間に出た（剣が燃えている）。当たった所を火球にする。偽なら暗い煙の塊。
     bool fire = false;
     // プレイヤーに当たった所（direction は押した向き）。火の刃なら、火球の代わりに、体を突き抜ける炎と火花を出す。
     bool playerHit = false;
-    // 当たったのが爆発（引爆・着地の火の爆発）。爆発そのものの火球があるので、当たった所には何も足さない。
-    bool explosion = false;
-    // 爆発の後、真下の地面へ吸える煙を残す（BossWaves::AddBlast）。霧を押すだけに枠を使う所（大剣の薙ぎ終わり）は偽。
-    // 霞の塊（puff。puffResidue がある）と、爆発がプレイヤーに当たった所（燃える地面の塊の側で残す）は、ここに関わらず残さない。
+    // 爆発の後、真下の地面へ吸える煙を残す（BossWaves::AddBlast）。爆発がプレイヤーに当たった所（燃える地面の塊の側で
+    // 残す）は残さない。
     bool leavesFog = true;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
@@ -221,245 +210,6 @@ struct BossSwing {
     uint64_t waveId = 0;
 };
 
-// 引爆の 1 回ぶん。攻撃中に入った tick に始め、前線が火を通り過ぎたら（または打ち切られたら）終える。
-struct BossDetonation {
-    bool active = false;
-    // 前隙で、剣を地面へ突き立てた（足元の火球を 1 回だけ出すため）。
-    bool planted = false;
-    // 溜めの進みを燃える地面へ渡している間（溜めをやめた tick に 0 へ戻すため）。
-    bool charging = false;
-    // 前線の中心（攻撃中に入った時のボスの足元）と、その時に一番遠かった燃えているセルまでの距離 (m)。
-    HIKARI::GameProjectFloat3 origin{};
-    float farthest = -1.0f;
-    uint32_t startCells = 0;
-    uint32_t exploded = 0;
-    uint32_t blasts = 0;
-    uint32_t blastsDropped = 0;
-    // この引爆で、爆ぜた塊の跡に残した煙の合計（煙の単位。detonationFogSmokeMax で止める）。
-    float fogSmoke = 0.0f;
-    // 当たり（1 回の引爆で 1 回だけ）：当てた・無敵でよけられた。
-    bool caught = false;
-    bool hit = false;
-    bool dodged = false;
-    // 当たった（よけられた）時の輪。
-    BurnBlastZone zone = BurnBlastZone::None;
-};
-
-// 天降り斬りの段階。屈む → 跳び上がる → 空中で溜める → 落ちる → 着地した（技が終わるまで）。技の外は None。
-enum class BossSkyfallPhase { None, Crouch, Rise, Hang, Dive, Landed };
-
-// 天降り斬りのいまの様子。規則（BossSkyfall）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
-struct BossSkyfallState {
-    BossSkyfallPhase phase = BossSkyfallPhase::None;
-    // 空中の溜めの進み（溜め始めの tick で 0 から、落ち始める tick で 1）。溜めの揺らぎで延びた分も含めて進む。
-    float charge = 0.0f;
-    // 落ちる進み（落ち始めで 0 から、着地の tick で 1）。高さと水平の進みはこれに落ち方の曲線を掛けたもの。
-    float dive = 0.0f;
-    // 跳んだ所と落ちる所（どちらも地面の高さ）。落ちる所は、locked までは毎 tick の見込み、locked の後は決まった所。
-    HIKARI::GameProjectFloat3 takeoff{};
-    HIKARI::GameProjectFloat3 target{};
-    bool locked = false;
-    // ここから下は規則の内側の覚え（見た目は読まない）。
-    // 跳ぶ間に流れる向き（跳んだ時のプレイヤーから離れる向き）と、落ち始めた所・高さ。
-    HIKARI::GameProjectFloat3 away{};
-    HIKARI::GameProjectFloat3 diveFrom{};
-    float diveHeight = 0.0f;
-    // 前隙の分け方（技を始めた時のボスの項目と前隙で決める）と、空中で溜めた tick の数。
-    int crouchFrames = 0;
-    int riseFrames = 1;
-    int hangFrames = 0;
-    int hangElapsed = 0;
-    // 着地の当たり（1 回の着地で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
-    bool caught = false;
-    bool hit = false;
-    bool dodged = false;
-};
-
-// 退き溜めの溜め（退き終えてから斬撃を放つまで）。技を始めた tick に消す。
-struct BossRetreatState {
-    // 溜めている（溜め始めた tick に立て、放った・打ち切られた tick に下ろす）。崩せる被弾数はこの間だけ数える。
-    bool charging = false;
-    // 溜めの長さ（前隙の残り＋溜めの揺らぎ）と、溜めた tick の数。
-    int chargeFrames = 0;
-    int chargeElapsed = 0;
-};
-
-// 霞の大剣の段階。作り出す（前隙。最後の greatswordWindFrames で薙ぎ始めの構えへ下ろす）→ 薙ぐ（攻撃中）→
-// ほどける（後隙の始めの greatswordDissolveFrames）。それ以外は None。
-// 縦割り（型 greatswordCleave）は、作り出す（前隙。最後の greatswordCleaveLiftFrames で頭上へ振りかぶる＝Raise）→
-// 叩きつける（攻撃中）→ 刺さっている（後隙の始めの greatswordCleaveStuckFrames）→ ほどける。
-// 連撃でつないだ時は剣を作り出さない：縦割りへは前隙の全部が振りかぶる（Raise）、横薙ぎへは前隙の全部が、刺さった剣を
-// 抜いて薙ぎ始めの構えへ回す（構え直す＝Ready）。後の値ほど新しい（前の値の意味は変えない）。
-enum class BossGreatswordPhase { None, Conjure, Sweep, Dissolve, Ready, Raise, Slam, Stuck };
-
-// 霞の大剣のいまの形。規則（BossGreatsword）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
-struct BossGreatswordState {
-    BossGreatswordPhase phase = BossGreatswordPhase::None;
-    // 柄から剣先へ満ちた割合（作り出す間に 0→1。薙ぐ・ほどける間は 1）。
-    float fill = 0.0f;
-    // 薙ぎ始めの構えへ下ろす進み（作り出す間の最後の greatswordWindFrames で 0→1。薙ぐ・ほどける間は 1）。
-    float wind = 0.0f;
-    // 薙ぐ進み（薙ぐ間に 0→1。ほどける間は 1）と、ほどける進み（ほどける間に 0→1）。
-    float sweep = 0.0f;
-    float dissolve = 0.0f;
-    // 柄（握り）の世界の位置と、柄から剣先への向き（単位ベクトル）、剣の長さ (m)。
-    HIKARI::GameProjectFloat3 hilt{};
-    HIKARI::GameProjectFloat3 direction{0.0f, 1.0f, 0.0f};
-    float length = 0.0f;
-    // 炎の大剣か（技を始めた tick の bladeLit。フェーズ 2 で「残す火」が付く時）。連撃でつないだ技でも変えない。
-    bool fire = false;
-    // 連撃でつないだ一振りか（剣を作り出さずに、前の技の剣のまま続けた）。
-    bool chained = false;
-    // いまの一振りが縦割りか（振りかぶり始めから、次に構え直すまで。剣の平らな面が横を向く）。
-    bool cleave = false;
-    // 振りかぶる進み（振りかぶる間に 0→1。叩きつける・刺さっている・ほどける間は 1）と、叩きつける進み（攻撃中に 0→1）。
-    float raise = 0.0f;
-    float slam = 0.0f;
-    // 剣を作り終えた爆ぜを出したか。
-    bool burst = false;
-    // 縦割りの向き（rad。振りかぶる間は毎 tick のボスの向き、叩きつけ始めた tick に決まる）。
-    float cleaveYaw = 0.0f;
-    // 剣先が地面に着いた tick（boss.tick。まだなら 0）と、その tick だけ立つ印。
-    uint64_t landTick = 0;
-    bool landed = false;
-    // 地を走る噴き上がり：走っているか、前線の世界の位置（地面の高さ）、走り始めた所（着いた剣先の真下）。
-    // 剣先から cleaveYaw の向きへ greatswordEruptionSpeed で greatswordEruptionReach まで走る。次の技の前隙の間も走り続ける。
-    bool erupting = false;
-    HIKARI::GameProjectFloat3 eruptionFront{};
-    HIKARI::GameProjectFloat3 eruptionFrom{};
-    // この縦割りがプレイヤーに当たったか（刃か噴き上がり。次に叩きつけ始めるまで残る。連撃でつないでも消さない）。
-    // 見た目が、地を走る刃をプレイヤーの後ろのカメラへ通さないために読む。
-    bool cleaveStruck = false;
-    // ここから下は規則の内側の覚え（見た目は読まない）。
-    // 連撃でつないだ一振りの、つなぎ始めの柄と向き（構え直す・振りかぶるのはここから）。
-    HIKARI::GameProjectFloat3 fromHilt{};
-    HIKARI::GameProjectFloat3 fromDirection{0.0f, 1.0f, 0.0f};
-    // 噴き上がり：前線のボスの中心（着いた tick）からの距離 m、中心、出した技の行、火の幅と秒（0 は残さない）・塗り終えた距離。
-    float eruptionDistance = 0.0f;
-    HIKARI::GameProjectFloat3 eruptionOrigin{};
-    int eruptionMove = -1;
-    float eruptionBurnWidth = 0.0f;
-    float eruptionBurnSeconds = 0.0f;
-    float eruptionPainted = 0.0f;
-    // 噴き上がりの当たり（1 回の縦割りで 1 回だけ）：判定に入った・当てた・無敵でよけられた。
-    bool eruptionCaught = false;
-    bool eruptionHit = false;
-    bool eruptionDodged = false;
-    // 薙ぐ向きの基準（薙ぎ始めの tick のボスの向き。rad）と、いまと 1 tick 前の剣の角度（基準からの度。右が負）。
-    float yaw = 0.0f;
-    float angle = 0.0f;
-    float previousAngle = 0.0f;
-    // 当たり（1 回の薙ぎ・縦割りの刃で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
-    bool caught = false;
-    bool hit = false;
-    bool dodged = false;
-    // 「弧」の火を塗り終えた所の数。
-    int firePainted = 0;
-};
-
-// 炎走りの前線を持てる数（フェーズ 2 の 5 本が入る数。項目 flameRunCount／flameRunCountPhase2 の上限）。
-inline constexpr size_t kBossFlameRunCapacity = 5;
-
-// 炎走りの、地を走る炎の前線 1 本。規則（BossFlameRun）が固定 tick ごとに書き、見た目（エフェクト）は読むだけ。保存しない。
-// 放った技が気絶・崩れで打ち切られても、走り切るまで進む（BossSystem が毎 tick 進める）。
-struct BossFlameRunFront {
-    // 走っている（放った tick に立て、走り切った tick に下ろす）。ended は走り切った tick に立ち、同じ枠で次に放つまで残る。
-    bool running = false;
-    bool ended = false;
-    // 走り始めた所（地面の高さ。放った時のボスの足元から flameRunStartDistance m 前）、走る向き（水平の単位ベクトル）と
-    // その yaw (rad)。
-    HIKARI::GameProjectFloat3 origin{};
-    HIKARI::GameProjectFloat3 direction{0.0f, 0.0f, 1.0f};
-    float yaw = 0.0f;
-    // 走り始めから走った距離 m と、走る長さ m（放った時の flameRunLength）。
-    float travelled = 0.0f;
-    float length = 0.0f;
-    // この tick に進む前と後の前線（地面の高さ）。当たりはこの 2 点を結ぶ線分で見る。
-    HIKARI::GameProjectFloat3 previous{};
-    HIKARI::GameProjectFloat3 front{};
-    // 放った tick（boss.tick）。
-    uint64_t releaseTick = 0;
-    // ここから下は規則の内側の覚え（見た目は読まない）。
-    // 放った技の行と、前線の速さ m/s（表の斬撃速度）、火の幅と秒（0 は残さない）・塗り終えた距離（走り始めから m）。
-    int move = -1;
-    float speed = 0.0f;
-    float burnWidth = 0.0f;
-    float burnSeconds = 0.0f;
-    float painted = 0.0f;
-    // 当たり（1 本で 1 回だけ）：判定に入った・当てた・無敵でよけられた。
-    bool caught = false;
-    bool hit = false;
-    bool dodged = false;
-};
-
-// 炎走りの 1 回の技の様子。前線の枠 k は、その技で k 本目に放った前線（次の炎走りで放つ時に上書きする）。
-// 炎走りの見た目（BossFlameRunVisuals）が、描画フレームをまたいで持つ分。
-struct BossFlameRunVisualState {
-    // 放った瞬間を出し終えた前線の数（BossFlameRunState::released と比べる）。
-    int seenReleased = 0;
-    // 前のフレームに走っていた前線（走り切った瞬間を拾う）。
-    std::array<bool, kBossFlameRunCapacity> wasRunning{};
-};
-
-struct BossFlameRunState {
-    std::array<BossFlameRunFront, kBossFlameRunCapacity> fronts{};
-    // この技で放つ数（技を始めた tick のフェーズで決まる）と、放った数（放つたびに +1。技を始めた tick に 0）。
-    // 見た目は released が増えた tick に、fronts[released − 1] の放つ瞬間を出す。
-    int count = 0;
-    int released = 0;
-    // 扇の真ん中の向き（rad。1 本目を放つ tick＝前隙が終わった次の tick のボスの向き。その後ボスは向き直らない）。
-    float yaw = 0.0f;
-};
-
-// 天降り斬り（フェーズ 2）の、着地の火とその後の爆発。規則（BossSkyfall）が固定 tick ごとに書く。保存しない。
-// 技が終わっても、コンボで次の技へつないでも進む。気絶・撃破で打ち切られたら爆ぜない（火は燃え尽きるまで残る）。
-struct BossSkyfallBurst {
-    bool active = false;
-    // 気絶・撃破で打ち切られた（次の StepBurst が、溜めの見た目を下ろして止める）。
-    bool cut = false;
-    HIKARI::GameProjectFloat3 center{};
-    // 落ちてきた向き (rad)。火の筋は、この向きを挟んで等間隔に走る。
-    float yaw = 0.0f;
-    // 着地からの tick の数と、着地した技の番号（爆ぜた後に残す池と、当たりの記録に使う）。
-    int elapsed = 0;
-    int move = -1;
-};
-
-// 天降り斬りの見た目の状態。見た目（BossSkyfallVisuals）だけが描画フレームごとに読み書きする。保存しない。
-struct BossSkyfallVisualState {
-    // 体と一緒に落ちる刃（斬撃のエフェクト）。
-    BossSlashEffect blade{};
-    // フェーズ 2 の着地で広がる炎の輪：エフェクト、出てからの秒、真ん中。
-    HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
-    float ringAge = 0.0f;
-    HIKARI::GameProjectFloat3 ringCenter{};
-    // 炎の輪を次のフレームに出す（着地のフレームは、一緒に落ちた刃の域がまだ数に入っているので 1 フレーム待つ）。
-    bool ringPending = false;
-    // 前のフレームに見た段階と、落ちる所が決まっていたか（変わった瞬間を見つける）。
-    BossSkyfallPhase seenPhase = BossSkyfallPhase::None;
-    bool seenLock = false;
-    // 落ちる所を決めた瞬間の剣の光の残り（1 から skyfallLockFlareSeconds で 0 へ）。剣先の霞のエフェクトが読む。
-    float flare = 0.0f;
-};
-
-// 霞の大剣の見た目の状態。見た目（BossGreatswordVisuals）だけが描画フレームごとに読み書きする。保存しない。
-struct BossGreatswordVisualState {
-    HIKARI::GameProjectVfxPlaybackHandle vfx{};
-    // 最後に送った変換（技が終わった後、消える間もそこに置く）と、消えるまでの残り秒。
-    HIKARI::GameProjectTransform transform{};
-    float fade = 0.0f;
-    // 前のフレームに見た段階（変わった瞬間を見つける）。
-    BossGreatswordPhase seenPhase = BossGreatswordPhase::None;
-    // 最後に見た着地の tick（変わったフレームに、叩きつけの塊と霧の割れを出す）。
-    uint64_t seenLandTick = 0;
-    // 噴き上がり：前のフレームに走っていたか、走り始めから塊を出し終えた所までの距離 m、最後に見た前線。
-    bool seenErupting = false;
-    float geyserBurstAt = 0.0f;
-    HIKARI::GameProjectFloat3 geyserFront{};
-    // 噴き上がりの前線と一緒に地を走る縦の刃（斬撃のエフェクトを 1 つ）。走り切ったら砕けて消える。
-    BossSlashEffect geyserBlade{};
-};
-
 // 行動ツリーの「反応の間隔」の節を、名前ごとに覚えておく数。
 inline constexpr size_t kBossReactionMemory = 16;
 
@@ -496,10 +246,6 @@ struct BossBrainMemory {
     std::array<size_t, 8> unknownNames{};
     size_t unknownCount = 0;
     bool treeProblemLogged = false;
-    // 分身が撃たれた：本体が突進系（瞬間突進）で来るまで立てておく（試作の forced）。突進系を始めると消える。
-    bool cloneStruck = false;
-    // 霞分身を次に出せる時刻（秒）。
-    float cloneReadySeconds = 0.0f;
     // 反応の間隔の節ごとの覚え。
     std::array<BossReactionMemory, kBossReactionMemory> reactions{};
     size_t reactionCount = 0;
@@ -516,16 +262,13 @@ public:
     void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
 
     // 表
-    std::string movesPath = "Boss/kasumi_bushi_moves.csv";
+    std::string movesPath = "Boss/kasumi_bushi_moves_kujata.csv";
     std::string typesPath = "Boss/kasumi_bushi_move_types.csv";
-    // 姿勢と帯の重みの表（c-19e3b0。行動ツリーの節「姿勢で技を選ぶ」が使う）。
-    std::string stancePath = "Boss/kasumi_bushi_stance.csv";
     // モーションの技の区切り（c-7b1a08）：クリップの長さの表（Tools/BossAnim/export_clip_lengths.ps1 が書き出す）と、
     // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
     std::string clipsPath = "Boss/boss_anim_clips.csv";
     std::string segmentsPath;
-    BossStanceSettings stance;
-    // ヒョウタンの読み（c-14392d。攻勢の技選びの重み・一拍止め・横の剣気の寄せ）。
+    // ヒョウタンの読み（c-14392d。横の剣気を転がる癖の側へ寄せる）。
     BossGourdReadSettings gourdRead;
     // 斬撃の共通の値（試作の共通パラメータ）
     float range = 26.0f;
@@ -543,17 +286,6 @@ public:
     // 振りの速さがいちばん速くなる所（当たりの窓の進み 0〜1）。ゆっくり動き始めて加速し、ここで最も速く、振り終わりへ
     // 減速して止まる（窓の途中で速さが落ちる・最速のまま止まることがない）。大きいほど溜めて遅く当たる。
     float swingPeakShare = 0.66f;
-    // 振りの気勢（c-4a8ea1。値は型の振りの角度の幅に対する割合）：振り上げは構えより swingOverwind だけ後ろまで行き過ぎ、
-    // swingOverwindFrames F で構えへ戻り、残りの構えの間に swingCoil まで引き絞る（刀がわずかに震える）。振りは引き絞った
-    // 所から振り終わりの swingOvershoot 先まで回り（勢いで流れる）、そこから止まらずに構えへ戻る（戻りの道は型の returnVia。
-    // c-999264）。振り終わりの後 swingSettleFrames F は、見せる刀を規則の刀に付けておく（霞隠れだけは振り終わりへ戻る F）。
-    float swingOverwind = 0.08f;
-    int swingOverwindFrames = 6;
-    float swingCoil = 0.05f;
-    float swingOvershoot = 0.07f;
-    int swingSettleFrames = 10;
-    // 引き絞る間の刀の震えの大きさ（度。構えの終わりでこの大きさ）。
-    float swingCoilTremorDegrees = 1.2f;
     float damageBase = 6.0f;
     float damagePerFrame = 0.15f;
     float thickness = 0.5f;
@@ -565,8 +297,8 @@ public:
     float phaseOneHealth = 0.0f;
     float phaseTwoHealth = 0.0f;
     float phaseOneShare = 0.4f;
-    // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。変わり目の演出（shift。c-8dd296）をする時は、
-    // その拍の長さの合計を使い、この値は演出を切った時だけ使う。
+    // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。変わり目の演出（同じ物体の
+    // BossPhaseShiftComponent。c-8dd296・c-3a0f87）をする時は、その拍の長さの合計を使い、この値は演出が無い・切った時だけ使う。
     int phaseShiftFrames = 90;
     // 類魂の崩れにくさ（c-ff3e98）。気絶値 110 → 220：精力満タンの連射（4 発）だけでは気絶しない。
     // 気絶するたびに、次に要る気絶値を stunMax × stunMaxGrowth ずつ増やす（2 回目 275、3 回目 330）。
@@ -596,8 +328,6 @@ public:
     // breakDuringWindup が入なら、前の作り（前隙に「崩せる被弾数」を当てると打ち切る）も使う。
     float poiseFlinchShare = 0.5f;
     float poiseFlinchCooldownSeconds = 8.0f;
-    // 怯みの見た目：前隙の間、上体を後ろへのけぞらせる角度（度。前隙の真ん中で最も大きい）。胴の煙は始めに吹き出す。
-    float poiseFlinchLeanDegrees = 14.0f;
     std::string poiseFlinchMove = "怯み跳び";
     bool breakDuringWindup = false;
     // 戻り（後隙）の間に当てた弾の倍率：威力・気絶値、当たりの手応え（押しの倍率・止めの F）。
@@ -650,12 +380,6 @@ public:
     float preTurnRate = 360.0f;
     float overheadTurnRate = 220.0f;
     float stringGapTurnRate = 200.0f;
-    float leanFromSpeed = 0.05f;
-    float leanMaxRadians = 0.3f;
-    float poseLeanDegrees = 9.0f;
-    float poseSwayDegrees = 7.0f;
-    float crouchSquash = 0.18f;
-    float stunLeanRadians = 0.45f;
     // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
     int deadVanishDelayFrames = 60;
     int deadVanishFrames = 30;
@@ -686,218 +410,15 @@ public:
     float walkInSpeedScale = 1.25f;
     float backstepDistance = 4.725f;
     float backstepHeight = 0.84375f;
-    // 後ろ跳びの重さ（c-95444e。後ろへ下がる・退き溜め・退き払いの跳び）：跳ぶ長さの始めの backstepTakeoffShare は動かずに
-    // 沈んで蹴り（沈み backstepTakeoffCrouch）、終わりの backstepLandShare は着地して沈んで戻る（backstepLandCrouch）。
-    // 間の空中は、速さが始めと終わりで 0 の曲線で、backstepPeakShare（空中の長さに対する割合）で最も速い（前は 1 tick 目に
-    // 最も速い 28 m/秒 へ跳んでいた）。沈みは Boss.crouchSquash で縦に縮む割合（0〜1）。
+    // 後ろ跳びの重さ（c-95444e。後ろへ下がる技の跳び）：跳ぶ長さの始めの backstepTakeoffShare は動かずに蹴り、
+    // 終わりの backstepLandShare は着地して止まる。間の空中は、速さが始めと終わりで 0 の曲線で、backstepPeakShare
+    // （空中の長さに対する割合）で最も速い。
     float backstepTakeoffShare = 0.17f;
     float backstepLandShare = 0.2f;
     float backstepPeakShare = 0.35f;
-    float backstepTakeoffCrouch = 0.55f;
-    float backstepLandCrouch = 0.7f;
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
     float jumpHeight = 3.6f;
-    float detonateRaiseShare = 0.42f;
-    float detonatePlantShare = 0.58f;
-    float detonateLift = 1.0125f;
-    float detonatePlantBlast = 0.9f;
-    int detonatePulses = 3;
-    float detonatePulseDepth = 0.45f;
-    float detonatePulseQuicken = 0.8f;
     float jumpCrouchShare = 0.28f;
-    // 天降り斬り（前隙＝屈む F ＋跳び上がる F ＋残りが空中の溜め。攻撃中＝落ちる F ＋残りが着地の当たり。
-    // 前隙・攻撃中・後隙・当たりの半径・威力・落ちる先を決める F（追尾を止める F）は技の表）
-    float skyfallHeight = 6.0f;
-    float skyfallBackDrift = 1.5f;
-    int skyfallCrouchFrames = 8;
-    int skyfallRiseFrames = 16;
-    int skyfallDiveFrames = 14;
-    float skyfallDiveEasePower = 2.0f;
-    float skyfallStopDistance = 1.7f;
-    float skyfallMaxTravel = 16.0f;
-    int skyfallLandCrouchFrames = 30;
-    float skyfallBlastScale = 1.8f;
-    // 天降り斬りのフェーズ 2：着地した所の周りに、まず火が現れ（着地点から地割れのような筋で走り、範囲の縁に炎の輪が立つ）、
-    // 少し後に爆ぜる。爆ぜる前に吸って消した所は爆ぜない。skyfallBurstDelayFrames が 0 なら無し（着地の瞬間に火球の
-    // 爆発が出て、表の「池」を着地で塗る）。爆ぜた後には、表の「池」が残る。
-    // 爆発が届くのは skyfallBurstRadius（炎の輪の半径）まで：火の筋はそこから技の表の「爆発の判定 m」手前まで走り、
-    // 爆ぜた火からその距離以内のプレイヤーに当たる。威力は表の「爆発の威力」。skyfallBurstBlow は爆心で当たった時の被弾。
-    int skyfallBurstDelayFrames = 40;
-    float skyfallBurstRadius = 3.5f;
-    int skyfallBurstSpokes = 8;
-    float skyfallBurstFireWidth = 0.8f;
-    int skyfallBurstIgniteFrames = 8;
-    bool skyfallBurstBlow = true;
-    float skyfallBurstFireSeconds = 6.0f;
-    float skyfallBurstPower = 0.5f;
-    float skyfallBurstBlastScale = 1.8f;
-    // 退き溜め（前隙＝退く F ＋残りが溜め。退く距離・高さは後ろへ下がると同じ backstepDistance／backstepHeight。
-    // 溜めの長さの揺らぎ・追尾を止める F・崩せる被弾数・斬撃の幅と速さは技の表）
-    // c-95444e で 20 → 24（後ろ跳びに蹴る前の沈みと着地の沈みを入れた分）。
-    int retreatStepFrames = 24;
-    // 退き払い（c-2dd9a2）：前隙の始めに後ろへ跳ぶ F（距離・高さは backstepDistance／backstepHeight。前隙の残りは着地の構え）。
-    int retreatSweepStepFrames = 18;
-    // 霞の大剣（前隙＝作り出す、攻撃中＝薙ぐ（表）。威力・被弾・追尾を止める F・崩せる被弾数・残す火は技の表）
-    // 剣の長さ。柄を体の外へ出すたびに同じだけ縮めて、届く距離（柄の距離＋長さ）を保つ（c-8c8d95 で 10.3 m、
-    // c-f91bd1 で 10.6 m。c-a30eaf で柄を 2.25 m へ、c-e97b18 で 2.025 m へ変えた時も 10.6 m のまま）。
-    float greatswordLength = 11.0f;
-    // 薙ぐ間の柄の、ボスの中心からの距離 (m)。両手で握る左手が胴に入らないよう、体の外へ出してある（c-8c8d95 で 0.8→1.2）。
-    float greatswordHiltOffset = 2.025f;
-    int greatswordFillFrames = 54;
-    float greatswordRaiseTilt = 15.0f;
-    float greatswordRaiseHeight = 4.3875f;
-    // 作り出す間の柄の横・前（足元から局所 m。右が負）。右肩の真上だと、両手で握る刀が右の大袖に入り、左手が体を
-    // 横切って届かない（c-8c8d95 で右の胸の前へ出した）。
-    float greatswordRaiseSide = -0.759375f;
-    float greatswordRaiseForward = 1.603125f;
-    int greatswordWindFrames = 24;
-    float greatswordSweepDegrees = 200.0f;
-    // 薙ぐ高さ（柄。見た目だけ：薙ぎの当たりは角度と距離だけで見る）と、剣先を下げる角度（度）。腰の高さで握り、
-    // 剣先へ下げて、プレイヤーの体の高さを通す（膝の高さで握ると、両手が肩から遠い）。体を大きくした時（c-a30eaf・c-e97b18）に、
-    // 柄を 2.45 m へ上げ、剣先を 13 度下げた（4 度のままだと、大剣がプレイヤーの頭の上を通って見える）。
-    float greatswordSweepHeight = 2.45f;
-    float greatswordSweepTiltDegrees = 13.0f;
-    float greatswordHitMarginDegrees = 4.0f;
-    float greatswordInnerRadius = 1.782f;
-    int greatswordDissolveFrames = 24;
-    // 縦割り（型 greatswordCleave。前隙・叩きつける F・後隙・刃の威力と被弾・追尾を止める F・崩せる被弾数・残す火は技の表）。
-    // 頭上の構え：柄の高さ（足元から m）・前への位置 m・真上から後ろへ倒す角度（度）。作り出してから振りかぶる F。
-    float greatswordOverheadHeight = 6.75f;
-    // 振りかぶりの柄の前への位置。兜の真上に近いと、叩きつけで両手が顔の前を通って兜に当たる（c-8c8d95 で 0.3→0.8）。
-    float greatswordOverheadForward = 1.35f;
-    float greatswordOverheadTilt = 10.0f;
-    int greatswordCleaveLiftFrames = 26;
-    // 叩きつけた時の柄の高さ（足元から m。剣先は地面に着く）。
-    // 刃の当たり：正面の線の半幅 m と、叩きつける進みのどこから当たるか（0〜1）。
-    float greatswordCleaveHiltHeight = 2.025f;
-    float greatswordCleaveHalfWidth = 1.4f;
-    float greatswordCleaveHitFrom = 0.5f;
-    // 剣が地面に刺さったままの長さ（F。後隙の始めから。その後 greatswordDissolveFrames でほどける）。
-    int greatswordCleaveStuckFrames = 40;
-    // 地を走る噴き上がり：速さ m/s・届く所（ボスの中心から m）・線の半幅 m・威力・吹っ飛ぶか（切はのけぞり）。
-    float greatswordEruptionSpeed = 30.0f;
-    float greatswordEruptionReach = 22.0f;
-    // 跳び割り（c-9143b5。縦割りの行で「前隙の移動 m」が正）：前隙の終わりの greatswordLeapFrames F で、プレイヤーから
-    // greatswordLeapStop m の所へ（最長は表の「前隙の移動 m」）弧の高さ greatswordLeapHeight m で跳び、着地と同時に叩きつける。
-    // 跳ぶ間の割合：跳び上がる greatswordLeapRiseShare → 頂きで溜める greatswordLeapHangShare（greatswordLeapHover m だけ浮く）
-    // → 残りで一気に落ちる（オーナーの案：空中で溜めてから落ちる斬り）。
-    int greatswordLeapFrames = 64;
-    float greatswordLeapHeight = 4.5f;
-    float greatswordLeapStop = 6.0f;
-    float greatswordLeapRiseShare = 0.30f;
-    float greatswordLeapHangShare = 0.50f;
-    float greatswordLeapHover = 0.35f;
-    // 剣を作り終えた瞬間の爆ぜ（握りの上。爆発の倍率。0 で出さない）。
-    float greatswordConjureBurstScale = 1.4f;
-    // 跳び割りの頂きで溜め始めた瞬間の、剣先の閃き（爆発の倍率。0 で出さない）。
-    float greatswordApexBurstScale = 0.8f;
-    // 薙ぎの速さの山（0〜1。大きいほど、ゆっくり振り出して溜めてから一気に薙ぐ。c-9143b5）。
-    float greatswordSweepPeak = 0.58f;
-    bool greatswordApexBurst = false;
-    float greatswordEruptionHalfWidth = 1.2f;
-    int greatswordEruptionDamage = 25;
-    bool greatswordEruptionBlow = false;
-    // 炎走り（前隙・攻撃中（最後の前線を放ってからの F）・後隙・当たりの距離・威力・被弾・前線の速さ・残す火・崩せる被弾数は
-    // 技の表）。放つ数（フェーズ 1／2 以上）、隣の前線との角度（度。真ん中の向きを挟んで左右に等しく並べ、左から順に放つ）、
-    // 放つ間隔 F、走り始める所（ボスの足元から前へ m）、走る長さ m。
-    int flameRunCount = 3;
-    int flameRunCountPhase2 = 5;
-    float flameRunStepDegrees = 22.0f;
-    int flameRunIntervalFrames = 10;
-    float flameRunStartDistance = 1.782f;
-    float flameRunLength = 26.0f;
-    float flameRunFuel = 220.0f;
-    float flameRunFuelRadius = 1.2f;
-    float flameRunFuelTemperature = 6.5f;
-    float flameRunFuelRise = 5.0f;
-    float flameRunFuelLean = 4.0f;
-    float flameRunFogPush = 80.0f;
-    float flameRunFogPushRadius = 1.6f;
-    float flameRunReleaseBlast = 0.6f;
-    float flameRunEndBlast = 0.9f;
-    float flameRunDragFuel = 60.0f;
-    float flameRunDragRadius = 0.35f;
-    // ── 霞の大剣の見た目（規則は変えない） ──
-    // 大剣のエフェクト：大剣の模型（Assets/Models/KasumiGreatsword.obj。握りから剣先まで 6.5 m）を、資産の中で
-    // 握りから剣先まで greatswordEffectLength（9.5 m）に伸ばして、その輪郭へ流体を流し込む。フェーズ 1 は霞、フェーズ 2
-    // （炎の大剣）は火。置く時の大きさは greatswordLength ÷ greatswordEffectLength（当たりの長さを少し変えても付いて来る。
-    // 流体の域の大きさは変わらないので、大きく変える時は資産を作り直す：Library/Handover/round28/greatsword_fx.py length=…）。
-    HIKARI::GameProjectVfxAssetReference greatswordMistEffect{"c2e6f08a4b1d47c39a5e7d103f8b6a42",
-                                                              "Assets/Vfx/BossGreatswordMist.hvfx"};
-    HIKARI::GameProjectVfxAssetReference greatswordFireEffect{"d93a7b15e0c24f8ab46d2e9c7a01f5b3",
-                                                              "Assets/Vfx/BossGreatswordFire.hvfx"};
-    // （c-9143b5：大剣を 11 m にしたので、資産を length=11 で作り直した。9.5 m の資産を 1.16 倍に置くと、流体の域が付いて来ず
-    // 剣先の霞が切れて形が崩れた。）
-    float greatswordEffectLength = 11.0f;
-    // 技が終わった・崩された後、残った霞が消えるまでエフェクトを止めずに待つ秒。
-    float greatswordFadeSeconds = 0.6f;
-    // 振りかぶる間に流し込む量（振りかぶり終わりに、作る間のこの倍まで増やす。刃がふくらんで明るくなる）。
-    float greatswordRaiseAmount = 3.0f;
-    // 薙ぐ間に流し込む量（作る間に対する倍）。速く回る域の中で霞が薄まるのを補い、刃を明るく保つ。
-    float greatswordSweepAmount = 3.0f;
-    // 薙ぐ間の剣の平らな面の傾き（0＝真上を向く＝横から見ると線、1＝ボスの正面へ 45 度傾いて、前のプレイヤーから面が見える）。
-    float greatswordSweepFaceTilt = 1.0f;
-    // 薙ぐ間、剣が通った所に霞（フェーズ 2 は火の粉の光）を残す：剣先の霞のエフェクトを、握りから剣の長さのこの割合の所に
-    // 置いて一緒に動かす。量と光は、ふだんの振りに対する倍（0 で出さない）。
-    float greatswordTrailAlong = 0.6f;
-    float greatswordTrailAmount = 4.5f;
-    float greatswordTrailGlow = 2.5f;
-    // 薙ぎ終わった時、剣が通った所の場の霧を外へ押す所の数と、ボスからの距離 m（0 で押さない）。
-    int greatswordSweepPushes = 4;
-    float greatswordSweepPushDistance = 6.5f;
-    // 縦割りの間の剣の平らな面：真横（刃が縦に立つ。正面から見ると線）から、正面へこの角度だけ回す（度。正面のプレイヤーから
-    // も面が見える）。
-    float greatswordCleaveFaceTurn = 35.0f;
-    // 叩きつけた瞬間：剣先に出す塊の大きさ（当たった所の爆発に対する倍。0 で出さない）と、刃の線に沿って
-    // 場の霧を左右へ割る押しの所の数・1 つの半径 m・速さ m/秒。
-    float greatswordLandBlastScale = 1.8f;
-    int greatswordSplitPushes = 4;
-    float greatswordSplitRadius = 2.5f;
-    float greatswordSplitSpeed = 14.0f;
-    // 地を走る噴き上がりの見た目。前線と一緒に、縦に立てた刃（斬撃のエフェクト：霞の刃／炎の刃）が地を走る：
-    // 地面から出ている高さ m（0 で出さない）と、刃の中心の高さ m。前線は、足元の場の霧を左右へ割りながら進む
-    // （半径と速さは上の「割る押し」と同じ）。
-    float greatswordGeyserBladeHeight = 5.0f;
-    float greatswordGeyserBladeLift = 0.6f;
-    // 前線から吹き上げる霞（炎の大剣は燃料）の半径 m・上向きの速さ m/秒・毎秒の濃さ／燃料と温度、
-    // 途中に塊を出す間隔 m と大きさ（倍）、走り切った所の塊の大きさ（倍。0 で出さない）。
-    float greatswordGeyserRadius = 1.2f;
-    float greatswordGeyserRise = 14.0f;
-    float greatswordGeyserFog = 0.0f;
-    float greatswordGeyserFuel = 250.0f;
-    float greatswordGeyserTemperature = 5.0f;
-    float greatswordGeyserBurstSpacing = 4.0f;
-    float greatswordGeyserBurstScale = 0.7f;
-    float greatswordGeyserEndScale = 1.3f;
-    // 「弧」の火：ボスからこの距離の間に rows 本、薙いだ角度の step 度ごとに小さな円を塗る（円の直径は表の火の幅）。
-    // 剣を 9.5 m に伸ばした時に、円の間隔が前（6.5 m の時の 3〜7 m・3 本・20 度）と同じくらいになるようにしてある。
-    float greatswordFireNear = 4.0f;
-    float greatswordFireFar = 10.0f;
-    int greatswordFireRows = 4;
-    float greatswordFireStepDegrees = 14.0f;
-    // ── 溜める技の見た目（天降り斬りの空中・退き溜め。規則は変えない） ──
-    // 溜める間（規則が書く chargeVisual が 0 より大きい間）、剣へ集まって来る光の粒
-    // （フェーズ 1 は冷たい白、フェーズ 2 は橙）と、その大きさ。
-    HIKARI::GameProjectVfxAssetReference gatherEffect{"b84f0c6d2e9a4f17a35d6c1e0f7b92d4", "Assets/Vfx/BossChargeGather.hvfx"};
-    float chargeGatherScale = 2.5785f;
-    // 溜め切った時の、剣の光の大きさと霞の量（構えの時に対する倍）。
-    float chargeGlowScale = 3.0f;
-    float chargeHazeScale = 3.0f;
-    // ── 天降り斬りの見た目（規則は変えない） ──
-    // 落ちる所を決めた瞬間に剣がひときわ光る（落ちて来る合図。光の倍率と、戻るまでの秒）。
-    float skyfallLockFlare = 2.5f;
-    float skyfallLockFlareSeconds = 0.25f;
-    // 跳び上がる時に足元から巻き上がる霞の塊の大きさ（消える所の煙の塊に対する倍。0 で出さない）。
-    float skyfallTakeoffBlastScale = 1.4f;
-    // 落ちる間、体と一緒に落ちる刃（斬撃のエフェクト）の幅 m（0 で出さない）。
-    float skyfallBladeWidth = 6.0f;
-    // 着地の周りに立つ霞（フェーズ 2 は火球）の塊：数・着地点からの距離 m・大きさ m。
-    int skyfallLandPuffs = 5;
-    float skyfallLandPuffDistance = 2.4f;
-    float skyfallLandPuffRadius = 1.3f;
-    // フェーズ 2 の着地で広がる炎の輪（回し蹴りの輪のエフェクト）：広がり切る半径 m と、広がる秒。
-    float skyfallRingRadius = 4.5f;
-    float skyfallRingSeconds = 0.22f;
     // 回転→霞の輪（試作：半径 0.8 m から判定サイズまで、斬撃速度で広がる。消えた所の 0.7 倍の円に残り煙 6 か所）
     float kickRingStartRadius = 1.512f;
     float kickResidueScale = 0.6f;
@@ -906,27 +427,6 @@ public:
     float burnCrossLength = 7.0f;
     float burnPoolForward = 2.5f;
     float burnLineLag = 1.2f;
-    // 霞隠れ→回り込み突進（試作：プレイヤーの向きの反対 ±100°、3.64 m に現れ、振りの間に 2.2 m 突っ込む）
-    float ambushAppearDistance = 5.346f;
-    float ambushAppearSpreadDegrees = 100.0f;
-    float ambushLungeDistance = 2.97f;
-    float ambushAppearTurnRate = 400.0f;
-    // 霞に隠れる見せ方：霧へ沈む深さ（前隙の間に少し、隠れたら見えない所まで）と、沈む・浮かぶ長さ
-    float hidePreSinkDepth = 1.99125f;
-    // 体（6.75 m）が地面の下へ隠れ切る深さ。
-    float hideSinkDepth = 10.8f;
-    int hideSinkFrames = 6;
-    int appearRiseFrames = 8;
-    // 霞分身（試作：再使用 22 秒・消えるまで 25 秒。プレイヤーから 6〜16 m の円に、0.9〜1.2 rad ずつ離して並べる）
-    float cloneCooldownSeconds = 22.0f;
-    float cloneLifeSeconds = 25.0f;
-    float cloneMinDistance = 6.0f;
-    float cloneMaxDistance = 16.0f;
-    float cloneSpreadRadians = 0.9f;
-    float cloneSpreadJitter = 0.3f;
-    // 霞隠れ・分身・消えた分身の霞（試作 puffResidue 25、半径 1.6 m。場の霧へ地面近くに入れる吸える煙）
-    float puffResidue = 25.0f;
-    float puffRadius = 1.6f;
     // 吸い込みで斬撃・ナイフを吸う範囲（試作 inhaleRange 5 m・inhaleAngle 片側 60°。1.5 m 以内は向きを問わない）
     float absorbCatchRange = 5.0f;
     float absorbCatchAngle = 60.0f;
@@ -949,26 +449,24 @@ public:
     // 域に残った三日月の両翼の霧を、刃の中心（口）へ押し寄せる力の強さ (m/s²) と半径 (m)。引き込みが進むほど強くなる。
     float absorbPullSqueeze = 700.0f;
     float absorbPullSqueezeRadius = 3.5f;
-    // 外形（刀・手・鎧の模型）。置き場所の規則は BossBodyRig、出す所は BossBodyVisuals。
-    BossBodySettings body;
-    // 登場（散らばった鎧と黒い煙から組み上がり、刀を抜く。c-429242）。
-    BossIntroSettings intro;
-    // 骨格の体（技をモーションで見せる体。登場の役者と同じ骨格。c-7b1a06）。
+    // 体の見た目（体に付く効果の大きさと置き場所・胴の煙と火）は、同じ物体の体の見た目の部品（BossBodyComponent。
+    // c-bd1a7a）。
+    // 演出の効果の部品の既定（登場とフェーズの変わり目の演出が共通で使う。登場そのものは、同じ物体の
+    // BossIntroComponent。c-eb3b08）。
+    BossCinematicFxSettings cinematicFx;
+    // 骨格の体（技をモーションで見せる体。登場の役者と同じ骨格。c-7b1a06）の物体・クリップ・骨の名前。規則が技の
+    // クリップの刀を読むのに使う（流して見せるのは体の見た目の部品）。
     BossAnimBodySettings animBody;
-    // フェーズの変わり目の演出（c-8dd296）。
-    BossPhaseShiftSettings shift;
-    // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・外形の刀が同じ線を使う。
-    // 両手の斬りは斬りの型（swing）の握りを使うので、ここは片手の技（回し蹴り・霞分身・引爆・天降り斬り・投げナイフ・
-    // 炎走りの前隙）の剣の付け根。体の倍率どおり（5 m の体の 1.35 倍）。
+    // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・刀光が同じ線を使う。付け根は、骨格の体の刀をまだ読めて
+    // いない間の休めの構え（BossPose::Rest）だけが使う（ほかはクリップの刀か見えている刀の骨）。
+    // 体の倍率どおり（5 m の体の 1.35 倍）。
     HIKARI::GameProjectFloat3 swordShoulder{-1.44315f, 4.00275f, 0.313875f};
-    // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（Boss.bodySwordVisibleLength）に
+    // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（BossBody.bodySwordVisibleLength）に
     // 合わせる：両手の斬りで当たりを見える刀に合わせた時（c-8c8d95）に、刀を 3.4 m へ大きくし、霞を剣先の少し先までにした。
     // 刀をもう一回り大きくした時（c-be27a9、見える刀 3.8 m）と、体を大きくした時（c-a30eaf・c-e97b18、見える刀 5.13 m）に、
     // 当たりの線も同じだけ伸ばした。
     float swordLength = 4.59f;
     float swordHazeLength = 0.6075f;
-    // 両手の斬りの型（横なぎ…）。規則の剣の線（当たり）と見える刀が、この型で手と刀を回す。
-    BossSwingSettings swing;
     // 霞歩（横っ飛び）とかわし。
     BossKasumiStepSettings kasumiStep;
     float waveForward = 1.324f;
@@ -1018,12 +516,6 @@ public:
     float blastFogRadius = 1.2f;
     int blastFogDelayFrames = 30;
     int blastFogFrames = 40;
-    // 引爆（燃える地面が爆ぜる。天降り斬りの着地の火も）：爆ぜた火の面積 1 m² あたりに残す煙と、1 回の引爆で残す煙の上限。
-    // 爆ぜた所に面積に応じて残すので、火の線・火の輪に沿って霧が湧く（上限に届くと、前線が後から通る外側には残らない）。
-    float detonationFogSmokePerArea = 2.0f;
-    float detonationFogSmokeMax = 60.0f;
-    // 同じ所で続けて爆ぜた分は、この距離より近い「まだ出していない跡の煙」へ足す（残り煙の枠を使い切らないため）。
-    float detonationFogMergeDistance = 1.5f;
     float bodySmokeRadius = 1.3f;
     // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
     float fireObstacleRadius = 1.38375f;
@@ -1093,10 +585,6 @@ public:
     float spinRingShare = 0.45f;
     float ringPush = 6.0f;
     float ringPushRadius = 1.2f;
-    // 見た目：霞隠れ・分身が消える／現れる所の煙の塊（流体域は使わない。場の霧へ煙は足さない。霧は押さない）
-    // 霞隠れ・分身の出入りの煙の塊は、場の火の域の流体で出す。ここは、その上に重ねるエフェクト（既定は無し）。
-    HIKARI::GameProjectVfxAssetReference puffEffect{};
-    float puffEffectScale = 1.0f;
     // 確かめ用（正式シーンでは使わない）
     std::string testMove;
     bool testSequence = false;
@@ -1136,18 +624,13 @@ public:
     bool variableWriteWarned = false;
     bool tableLoaded = false;
     BossMoveTable table;
-    BossStanceTable stanceTable;
-    std::string loadedStanceText;
     std::string loadedClipsText;
     std::string loadedSegmentsText;
-    BossStanceMemory stanceMemory;
-    BossGourdReadMemory gourdReadMemory;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
     unsigned playerHitCount = 0;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。
     std::string loadedMovesText;
     std::string loadedTypesText;
-    HIKARI::GameProjectFloat3 previousGround{};
     HIKARI::GameProjectFloat3 ground{};
     float yaw = 0.0f;
     float height = 0.0f;
@@ -1165,30 +648,11 @@ public:
     int move = -1;
     int chain = 0;
     int actFrames = 0;
-    int lastSegment = -1;
-    float crouch = 0.0f;
     float strafe = 1.0f;
-    // 散歩で回り合う時の、前の tick のプレイヤーの足元（横の速さを測る）。
-    HIKARI::GameProjectFloat3 strollPlayerLast{};
-    bool strollPlayerSeen = false;
     float sideSign = 1.0f;
-    float leanForward = 0.0f;
-    float leanSide = 0.0f;
-    float poseX = 70.0f;
-    float poseY = -10.0f;
-    // 両手の斬りの前傾 (rad) と腰の落とし (m)。構えの値を追う（見た目だけ）。
-    float poseLean = 0.0f;
-    float poseCrouch = 0.0f;
-    // 規則の剣の向き（BossPose::Target）。固定 tick の終わりに BossSystem が 1 度だけ書き、煙・外形・見た目・記録は
+    // 規則の剣の向き（BossPose::Target）。固定 tick の終わりに BossSystem が 1 度だけ書き、煙・見た目・記録は
     // これを読む。tick の途中（振りの最中の BossMoveExecutor）は、状態が変わる前の向きが要るので現場で求める。
     BossSwordPose swordPose;
-    // 構えが 1 tick で跳ばないための起点（BossMoveExecutor が書く）。moveStartPose：技を始めた時の向き（前隙の
-    // 振り上げの起点）。lastEndPose：後隙・待機に入った時の向き（そこから下ろした構えへ戻る起点）。
-    BossSwordPose moveStartPose;
-    BossSwordPose lastEndPose;
-    // 位置を不連続に跳ばした（霞隠れの現れる・分身との入れ替え）回数。外形が、前に見た数と違えば刀をばねで追わず目標へ
-    // そろえる。速いが連続の動き（突進・落下）は数えない。
-    uint64_t teleportCount = 0;
     HIKARI::GameProjectFloat3 stepFrom{};
     bool dashStarted = false;
     // 瞬間突進の瞬間移動を終えた（跡の火を 1 回だけ塗る）。
@@ -1208,28 +672,11 @@ public:
     bool aimFrozen = false;
     HIKARI::GameProjectFloat3 aimPoint{};
     int glintFrames = 0;
-    // 回し蹴りの回転（見た目の向きに足す rad）。霧へ沈んでいる深さ (m)。隠れている間は当たらない。
+    // 回し蹴りの回転（見た目の向きに足す rad）。
     float spin = 0.0f;
-    float sink = 0.0f;
-    bool hidden = false;
-    // Damageable の無敵を隠れている間だけ立てたか（シーンで最初から無敵にしてある時に戻しすぎない）。
-    bool hiddenApplied = false;
-    // 霞分身：出す場所（分身の物体へ渡す）と、いま出ている数。
-    std::array<HIKARI::GameProjectFloat3, kBossCloneCapacity> cloneSpots{};
-    int cloneSpotCount = 0;
-    bool cloneSpawnPending = false;
-    int activeClones = 0;
-    BossDetonation detonation;
-    BossSkyfallState skyfall;
-    BossSkyfallBurst skyfallBurst;
-    BossRetreatState retreat;
-    BossGreatswordState greatsword;
-    BossFlameRunState flameRun;
-    BossFlameRunVisualState flameRunVisual;
+    // Damageable の無敵を、霞歩の跳び始め・登場・変わり目の間だけ立てたか（シーンで最初から無敵にしてある時に戻しすぎない）。
+    bool shieldApplied = false;
     BossKasumiStepState kasumiStepState;
-    // 溜めの見た目の進み（0＝溜めていない。溜め始めから 0→1）。退き溜めの溜めと天降り斬りの空中の溜めが固定 tick ごとに
-    // 書き、それ以外の tick は 0（BossSystem が tick の始めに戻す）。規則は読まず、見た目（BossVisuals）が読む。
-    float chargeVisual = 0.0f;
     // いまの技のどれかの一撃が、いまのフェーズで火を残す＝この技の間は剣が燃えている。技を始めた tick に決め、
     // 待機へ戻る・打ち切られる（気絶・崩れ・撃破）まで保つ。規則は読まず、見た目（BossVisuals）が読む。
     bool bladeLit = false;
@@ -1259,6 +706,9 @@ public:
     uint64_t releaseTick = 0;
     uint32_t releaseCount = 0;
     int lastPhaseNumber = 1;
+    // フェーズ 2 の見た目（灼けた鎧・火の目・刀の常時の火・場の色）を、変わり目の演出の閃光まで待っている（演出が
+    // 立てて閃光で下ろす。BossBodyMath::PhaseTwoLook・BossRules::IsBladeLit が読む。c-3a0f87 で演出の状態から移した）。
+    bool phaseTwoLookPending = false;
     // 技の要求（行動ツリーや確かめ用が入れる）
     int requestedMove = -1;
     bool requestedAsCombo = false;
@@ -1273,7 +723,7 @@ public:
     std::array<BossSmokeDeposit, kBossDepositCapacity> deposits{};
     std::array<BossBlast, kBossBlastCapacity> blasts{};
     size_t blastCursor = 0;
-    // 爆発の跡（引爆の塊を含む）に残した煙の累計（煙の単位。ログ用）。
+    // 爆発の跡に残した煙の累計（煙の単位。ログ用）。
     double blastFogTotal = 0.0;
     float bodyTrail = 0.0f;
     float bodySmokeRate = 0.0f;
@@ -1300,14 +750,17 @@ public:
     HIKARI::GameProjectFloat3 ringCenter{};
     std::array<BossSlashEffect, kBossSlashEffectCapacity> slashEffects{};
     HIKARI::GameProjectVfxPlaybackHandle swordVfx{};
-    // 溜める間（天降り斬りの空中・退き溜め）、剣へ集まって来る光の粒。
-    HIKARI::GameProjectVfxPlaybackHandle gatherVfx{};
-    BossSkyfallVisualState skyfallVisual;
-    BossGreatswordVisualState greatswordVisual;
-    BossBodyState bodyState;
-    BossIntroState introState;
-    BossAnimBodyState animBodyState;
-    BossPhaseShiftState shiftState;
+    BossCinematicFxState cinematicFxState;
+    // 技のクリップの刀（規則の側。PrepareSword が固定 tick の中で読む）。
+    BossClipSwords clipSwords;
+    // プレイヤーの位置（固定 tick ごとに書く。見た目だけが読む：近い時は胴の煙を薄くする）。
+    HIKARI::GameProjectFloat3 lookTarget{};
+    bool lookTargetSeen = false;
+    // 補間：前の tick とこの tick の終わりに体の物体へ置いた位置と、覚えた tick の数（2 で補間できる）。
+    // 固定 tick の終わりに BossTransform が書き、体の見た目が描画のフレームで間を補間する。
+    HIKARI::GameProjectFloat3 tickFrom{};
+    HIKARI::GameProjectFloat3 tickTo{};
+    int ticksSeen = 0;
     bool vfxAccepted = true;
     bool fluidAccepted = true;
 };

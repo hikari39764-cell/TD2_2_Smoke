@@ -276,6 +276,22 @@
               "id": 970
             },
             "animBodyTwoHandMist": 24.0,
+            "kamaeFrames": 20,
+            "knifeMistBullet": true,
+            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
+            "raiseFrames": 12,
+            "ringEffect": {
+              "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
+              "assetPath": "Assets/Vfx/BossMistRing.hvfx"
+            },
+            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
+            "swingPushForce": 40.0
+          },
+          "type": "Project_TD2_2.Boss"
+        },
+        {
+          "id": 94,
+          "properties": {
             "bodyHelmFillObject": {
               "$hikariRef": "SceneObject",
               "id": 966
@@ -284,7 +300,18 @@
               "$hikariRef": "SceneObject",
               "id": 965
             },
-            "bodyTrailGroundCut": 0.9,
+            "bodyTrailGroundCut": 0.9
+          },
+          "type": "Project_TD2_2.BossBody"
+        },
+        {
+          "id": 93,
+          "properties": {},
+          "type": "Project_TD2_2.BossPhaseShift"
+        },
+        {
+          "id": 92,
+          "properties": {
             "introActorObject": {
               "$hikariRef": "SceneObject",
               "id": 960
@@ -310,19 +337,9 @@
             "introSequence": {
               "$hikari.assetGuid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c"
             },
-            "kamaeFrames": 20,
-            "knifeMistBullet": true,
-            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
-            "raiseFrames": 12,
-            "ringEffect": {
-              "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
-              "assetPath": "Assets/Vfx/BossMistRing.hvfx"
-            },
-            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
-            "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
-            "swingPushForce": 40.0
+            "introSkipAction": "Gameplay.Jump"
           },
-          "type": "Project_TD2_2.Boss"
+          "type": "Project_TD2_2.BossIntro"
         },
         {
           "id": 91,
@@ -566,200 +583,6 @@
           0.6499999761581421,
           3401.39990234375,
           -14.149999618530273
-        ],
-        "rotationEulerDeg": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "components": [
-        {
-          "id": 1,
-          "properties": {
-            "assetId": "",
-            "castShadow": true,
-            "receiveShadow": true,
-            "renderStatic": false,
-            "visible": false
-          },
-          "type": "ModelComponent"
-        },
-        {
-          "id": 2,
-          "properties": {
-            "depth": 2.7,
-            "doubleSided": false,
-            "generateTangents": true,
-            "height": 6.75,
-            "kind": "Capsule",
-            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 2.7
-          },
-          "type": "ProceduralMeshComponent"
-        },
-        {
-          "id": 3,
-          "properties": {
-            "center": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "enabled": true,
-            "fitMode": "Manual",
-            "height": 6.75,
-            "radius": 1.35,
-            "rotation": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "shape": "Capsule",
-            "trigger": false
-          },
-          "type": "ColliderComponent"
-        },
-        {
-          "id": 4,
-          "properties": {
-            "enabled": true,
-            "shapes": [],
-            "useColliders": true
-          },
-          "type": "FluidObstacleComponent"
-        },
-        {
-          "id": 5,
-          "properties": {
-            "maxHealth": 1000.0
-          },
-          "type": "Project_TD2_2.Damageable"
-        },
-        {
-          "id": 92,
-          "properties": {
-            "parkDepth": 40.0
-          },
-          "type": "Project_TD2_2.BossClone"
-        }
-      ],
-      "editorLocked": false,
-      "editorVisible": true,
-      "enabled": true,
-      "id": 30,
-      "name": "Boss Clone 1",
-      "parent": null,
-      "sourcePrefabId": "",
-      "transform": {
-        "position": [
-          0.0,
-          3363.375,
-          6.0
-        ],
-        "rotationEulerDeg": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ]
-      }
-    },
-    {
-      "components": [
-        {
-          "id": 1,
-          "properties": {
-            "assetId": "",
-            "castShadow": true,
-            "receiveShadow": true,
-            "renderStatic": false,
-            "visible": false
-          },
-          "type": "ModelComponent"
-        },
-        {
-          "id": 2,
-          "properties": {
-            "depth": 2.7,
-            "doubleSided": false,
-            "generateTangents": true,
-            "height": 6.75,
-            "kind": "Capsule",
-            "materialSelection": "generated://checker/bfbfbfff/8a8a8aff",
-            "width": 2.7
-          },
-          "type": "ProceduralMeshComponent"
-        },
-        {
-          "id": 3,
-          "properties": {
-            "center": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "enabled": true,
-            "fitMode": "Manual",
-            "height": 6.75,
-            "radius": 1.35,
-            "rotation": [
-              0.0,
-              0.0,
-              0.0
-            ],
-            "shape": "Capsule",
-            "trigger": false
-          },
-          "type": "ColliderComponent"
-        },
-        {
-          "id": 4,
-          "properties": {
-            "enabled": true,
-            "shapes": [],
-            "useColliders": true
-          },
-          "type": "FluidObstacleComponent"
-        },
-        {
-          "id": 5,
-          "properties": {
-            "maxHealth": 1000.0
-          },
-          "type": "Project_TD2_2.Damageable"
-        },
-        {
-          "id": 92,
-          "properties": {
-            "parkDepth": 40.0
-          },
-          "type": "Project_TD2_2.BossClone"
-        }
-      ],
-      "editorLocked": false,
-      "editorVisible": true,
-      "enabled": true,
-      "id": 31,
-      "name": "Boss Clone 2",
-      "parent": null,
-      "sourcePrefabId": "",
-      "transform": {
-        "position": [
-          0.0,
-          3363.375,
-          6.0
         ],
         "rotationEulerDeg": [
           0.0,

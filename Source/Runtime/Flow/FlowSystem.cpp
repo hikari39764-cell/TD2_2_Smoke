@@ -7,12 +7,14 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Boss/BossRules.h"
 #include "../Common/ObjectVariables.h"
 #include "../Gourd/GourdComponent.h"
 #include "../Gourd/GourdRules.h"
 #include "../Player/PlayerComponent.h"
+#include "../Player/PlayerRules.h"
 #include "FlowComponent.h"
 #include "FlowHud.h"
 #include "FlowRules.h"
@@ -77,22 +79,29 @@ bool GetPosition(const HIKARI::WorldView& world, HIKARI::GameProjectObjectHandle
     return true;
 }
 
-FlowObservation Observe(const HIKARI::WorldView& world, const Actors& actors) {
+// 勝ち負けは固定 tick の中で、プレイヤーとボスの規則の値（Rules）から読む（c-164cab。部品が描画のフレームごとに出す
+// 物体変数は HUD だけが読む）。
+FlowObservation Observe(HIKARI::WorldView& world, const Actors& actors) {
     FlowObservation observation;
     HIKARI::GameProjectFloat3 playerPosition{};
     if (GetPosition(world, actors.player, playerPosition)) {
         observation.playerPresent = true;
         observation.playerHeight = playerPosition.y;
-        int64_t state = 0;
-        const bool known = ObjectVariables::ReadInt(world, actors.player, kPlayerStateVariable, state);
-        observation.playerDead = known && state == static_cast<int64_t>(PlayerState::Dead);
-        observation.playerRiding = known && state == static_cast<int64_t>(PlayerState::Ride);
+        ComponentLookup::ForEachOnObject<PlayerComponent>(world, kPlayerType, world.FindObject(actors.player),
+                                                          [&](HIKARI::ObjectView, PlayerComponent& player) {
+                                                              const PlayerState state = PlayerRules::GetState(player);
+                                                              observation.playerDead = state == PlayerState::Dead;
+                                                              observation.playerRiding = state == PlayerState::Ride;
+                                                          });
     }
     HIKARI::GameProjectFloat3 bossPosition{};
     if (GetPosition(world, actors.boss, bossPosition)) {
-        observation.bossPresent =
-            ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, observation.bossHealth) &&
-            ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, observation.bossMaxHealth);
+        ComponentLookup::ForEachOnObject<BossComponent>(
+            world, kBossType, world.FindObject(actors.boss), [&](HIKARI::ObjectView, BossComponent& boss) {
+                observation.bossPresent = true;
+                observation.bossHealth = BossRules::GetShownHealth(boss);
+                observation.bossMaxHealth = BossRules::GetShownMaxHealth(boss);
+            });
         if (observation.playerPresent)
             observation.distanceToBoss =
                 std::hypot(playerPosition.x - bossPosition.x, playerPosition.z - bossPosition.z);

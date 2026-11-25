@@ -9,7 +9,6 @@
 #include "HIKARI/Project/SequenceTypes.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossIntroActorState.h"
-#include "../Combat/Feedback.h"
 
 namespace Project_TD2_2 {
 
@@ -22,7 +21,7 @@ enum class BossIntroPhase { Scattered, Show, Settle, Done };
 // 役者（骨格と動画を持つ模型。Assets/Models/BossIntroActor）がエンジンの動画の機能で演じる：煙に引き起こされ、手甲が
 // 付き、兜を被り、目が灯り、振り返って刀を抜き、右の肩に担ぐ。演出の資産（Sequence）が時計・カメラ・どの片段をいつ
 // 流すか（事件段 Anim.<片段>）・部品がいつ飛ぶか（Part.<部品>.Fly）・効果の拍を受け持つ。演技が済むと、役者を隠して
-// 戦いの体（部品ごとに置く外形）に替える。
+// 戦いの体（骨格の体）に替える。
 struct BossIntroSettings {
     void Describe(HIKARI::PropertyFields& fields);
 
@@ -65,43 +64,11 @@ struct BossIntroSettings {
     float helmFlyBulge = 0.25f;
     // 確かめ用（正式シーンでは使わない）：0 以上なら、戦いの流れに関わらず、この tick に登場が始まる。
     int testStartFrames = -1;
-    // 演出のカメラの表（カード c-cf4ed6）：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの
-    // 高さ (m。最後にゲームのカメラへ戻った時、ボスを見ている)。既定は切る（カメラは演出の資産が受け持つ）。
-    bool cameraEnabled = false;
-    std::string cameraPath = "Boss/kasumi_bushi_intro_camera.csv";
+    // 演出の後、ゲームのカメラへ渡す間にゲームのカメラが向くボスの高さ (m。戻り切った時、ボスを見ている)。
     float cameraFocusHeight = 4.0f;
     // 飛ばす：登場の間にこの入力（行動 id）を押すと、組み上がった待機の構えへ進む（空なら飛ばせない）。
     std::string skipAction = "Gameplay.Menu";
 
-    // 効果の部品の既定（BossIntroEffects。フェーズの変わり目の演出も同じ口を使う）。
-    // スロー（Slow）の間の時間の倍率。
-    float drawSlowScale = 0.35f;
-    // 目の閃き（EyeFlare）の強さ。
-    float eyesFlare = 2.0f;
-    // 閃光のエフェクト（MistBurst）とその大きさ（0 で出さない）。
-    HIKARI::GameProjectVfxAssetReference slashFlashEffect{"c7a41d6be2f0483a9d15b0e36f7a2c18",
-                                                          "Assets/Vfx/BossMistBurst.hvfx"};
-    float slashFlashScale = 2.0f;
-    // 白黒の閃き（MonoFlash。全画面の効果。Assets/Post/BossImpactMono）：プロファイル（空なら出さない）、反転した白黒の
-    // 長さ・反転しない白黒の長さ・色へ戻る長さ（実時間の秒。時間の停止の間も進む）、強さ（0〜1）。白と黒の境・硬さ・
-    // 明るさは、効果の資産の項目で変える。
-    std::string slashMonoProfile{"9e45ffde0ff4c6ee90345798c55b262f"};
-    float slashMonoInvertSeconds = 0.035f;
-    float slashMonoHoldSeconds = 0.05f;
-    float slashMonoFadeSeconds = 0.12f;
-    float slashMonoStrength = 1.0f;
-    // 手応え（Shake）：強さ 1 の時のカメラの揺れ（揺れ幅 m・長さ F・速さ）、強さ 1 で画角を一瞬広げる量（度）、振動
-    // （コントローラー）の強さと長さ (F)。時間を止める間（HitStop）の時間の速さ。
-    float accentShake = 0.14f;
-    int accentShakeFrames = 16;
-    float accentShakeFrequency = 20.0f;
-    float accentFovDegrees = 2.5f;
-    float hitStopScale = 0.1f;
-    float accentRumble = 0.6f;
-    int accentRumbleFrames = 12;
-
-    float highTwistDegrees = -28.0f;
-    float highLeanDegrees = -4.0f;
     // 登場の黒い煙（BossIntroSmoke）：コードからだけ煙を入れる流体の域（空なら煙を出さない）。量は「1 秒に入れる煙の総量」
     // （点の大きさや数を変えても、全体の濃さは変わらない）。
     HIKARI::GameProjectVfxAssetReference smokeEffect{"5c0e7a1b93d24f6e8a41b7d2c6f09e35",
@@ -158,18 +125,16 @@ struct BossIntroSettings {
     // 筋の尾を薄める速さ (1/秒。大きいほど尾が短い。0 だと尾がつながって、丸い塊に溜まる)。
     float ambientFade = 1.2f;
     // 前触れ（拍 Omen）：煙の筋が自分の部品を離れて鎧の周りへ寄り、渦になる。その渦を回す加速 (m/秒²。拍の終わり)、
-    // 画が暗くなる強さと縁が締まる強さ（全画面の効果。0 で出さない）、低く続く画面の揺れの強さ（拍の終わり）とその
-    // 速さ（1 秒の回数）。
+    // 画が暗くなる強さと縁が締まる強さ（全画面の効果。0 で出さない）、低く続く画面の揺れの強さ（拍の終わり。揺れの
+    // 速さはボスの部品の introRumbleFrequency）。
     float omenPull = 4.0f;
     float omenDim = 0.5f;
     float omenTension = 0.45f;
     float omenRumble = 0.3f;
-    float rumbleFrequency = 6.0f;
     // 落ちている兜の、面頬の隙間の瞬き（拍 Helm.Glint）：明るさ（画面基準。0 で出さない）。
     float helmGlint = 2.4f;
-    // 刀身の光（登場の間だけ。戦いの間の刀の光は BossBlade のまま）：刃口の細い線の明るさ（画面基準。握る間に高まり、
-    // 抜けた後は弱く残る）と、振り上げの頂点で剣先に出る星の明るさ（0 で出さない）。
-    float bladeEdgeGlow = 6.0f;
+    // 刀身の光（登場の間だけ）：振り上げの頂点で剣先に出る星の明るさ（全画面の効果。0 で出さない）。刃口の細い線の
+    // 明るさは、ボスの部品の introBladeEdgeGlow。
     float bladeStar = 1.0f;
     // 全画面の効果（BossImpactMono の衝撃と張りつめ。白黒の閃きと同じ効果の資産）：握っている間に高まる張りつめの強さ
     // （縁の減光と色ずれ。0 で出さない）、抜けた瞬間に根元から画の上を走る衝撃の輪の強さ（0 で出さない）と、輪が画面を
@@ -205,24 +170,6 @@ struct BossIntroSettings {
     // 煙を消す（Smoke.Clear と演技の後）：消す速さ (1/秒) と、演技の後に消し続けてから域を止めるまでの長さ (秒)。
     float clearAbsorption = 6.0f;
     float smokeLingerSeconds = 1.5f;
-};
-
-// 演出のカメラのカット 1 つ（表の 1 行）。位置は「ボスの始めの足元が原点、ボスの前（プレイヤーの側）が +Z、ボスの
-// 左が +X」の m、画角は度。始めから終わり（次のカットの始め）へ、なめらかに動く。
-struct BossIntroCut {
-    BossIntroPhase phase = BossIntroPhase::Show;
-    float share = 0.0f;
-    // 登場の始め（演技の段の始め）からの F。
-    float at = 0.0f;
-    HIKARI::GameProjectFloat3 eyeFrom{};
-    HIKARI::GameProjectFloat3 eyeTo{};
-    HIKARI::GameProjectFloat3 lookFrom{};
-    HIKARI::GameProjectFloat3 lookTo{};
-    float fovFrom = 50.0f;
-    float fovTo = 50.0f;
-    // ゲームのカメラへ戻す重み（0 で演出のカメラ、1 でゲームのカメラ）。
-    float gameFrom = 0.0f;
-    float gameTo = 0.0f;
 };
 
 // 効果の拍（演出の資産の事件段）の種類。名前は読んだ後に 1 回だけ見分ける（毎フレーム文字を比べない）。
@@ -292,7 +239,8 @@ struct BossIntroState {
     int cueCount = 0;
     bool cueRolesRead = false;
     bool actorHidden = false;
-    // 演技の最後に役者が担いでいた刀の置き場所（外形の約束）。一息の段で、戦いの体の刀をここから待機の構えへ下ろす。
+    // 演技の最後に役者が担いでいた刀の置き場所（体に付く効果の置き場所の約束）。一息の段で、刀の効果をここから
+    // 待機の構えへ移す。
     bool carryValid = false;
     HIKARI::GameProjectTransform carrySword{};
     float settleClock = 0.0f;
@@ -303,8 +251,6 @@ struct BossIntroState {
     float settleSeconds = 0.0f;
     bool skipSeen = false;
     bool eyesLit = false;
-    // 目の光へ足す明るさの倍率（このフレームだけ。BossIntroEffects が書き、BossBodyAccents が読む。0 は普段の明るさ）。
-    float eyeGlow = 0.0f;
     // 登場の黒い煙（BossIntroSmoke）：流体の域の再生、演技の後に消し続けた秒、外へ 1 回押す頼み（兜が収まった・刀が抜けた）。
     HIKARI::GameProjectVfxPlaybackHandle smokeHandle{};
     float smokeLinger = 0.0f;
@@ -324,49 +270,15 @@ struct BossIntroState {
     // 編集器のプレビュー（Play の外）：流しているか、拍を読んだプレビューの手綱。
     bool previewing = false;
     HIKARI::GameProjectSequencePlaybackHandle previewHandle{};
-    // 効果への頼み（BossIntroEffects の部品が書き、BossBodyAccents と BossIntroEffects::Feedback が読む。フェーズの
-    // 変わり目の演出も同じ口を使う）：体を包む気配の強さ、衝撃の輪（置く所・大きさ・出すまでの秒。大きさ 0 は頼んで
-    // いない）、刀身を走る光の明るさ（0 は頼んでいない）、閃光（出すか・所・大きさ）。
-    float aura = 0.0f;
-    struct Shock {
-        HIKARI::GameProjectFloat3 at{};
-        float size = 0.0f;
-        float delay = 0.0f;
-    };
-    std::array<Shock, 2> shocks{};
-    float glint = 0.0f;
-    bool flashPending = false;
-    HIKARI::GameProjectFloat3 flashAt{};
-    float flashScale = 0.0f;
-    // 刀に付くエフェクトへの頼み（BossBodyAccents が読む。毎フレーム 0 に戻す）：刃口の光の強さ・刀光とゆがみを出すか。
-    float bladeEdge = 0.0f;
-    bool bladeSwing = false;
-    // 白黒の閃き：次の描画のフレームで始める（強さ・長さ。0 は既定）、出している強さ・長さ、始めてからの実時間の秒（負は
-    // 出していない）。
-    bool monoPending = false;
-    float monoStrength = 0.0f;
-    float monoLength = 0.0f;
-    float monoActiveStrength = 0.0f;
-    float monoActiveLength = 0.0f;
-    float monoSeconds = -1.0f;
-    // 全画面の衝撃の輪：始まってからの秒（負なら出していない）と、中心（世界）。握っている間の張りつめ（毎フレーム入れる）。
+    // 全画面の衝撃の輪（刀が抜けた瞬間）：始まってからの秒（負なら出していない）と、中心（世界）。
     float shockSeconds = -1.0f;
     HIKARI::GameProjectFloat3 shockAt{};
-    float tensionPending = 0.0f;
     // 剣先の星（全画面の効果）：始まってからの秒（負なら出していない）。
     float starSeconds = -1.0f;
     // 見得の終わり：霧を外へ流し始める 1 回の押しを頼んだか。
     bool dispersePush = false;
     // 序幕の黒い霧：点を巡らせる時計（秒。演技の前から進む。演技の時計は、始まるまで 0 のまま）。
     float ambientClock = 0.0f;
-    // 画を暗くする頼み（このフレームだけ。拍が毎フレーム入れる）と、いま掛けている強さ・張りつめの強さ（急に切り替えず、
-    // 実時間で寄せる）。
-    float dimPending = 0.0f;
-    float dimNow = 0.0f;
-    float tensionNow = 0.0f;
-    // 続けて出す画面の揺れ：頼まれた強さ（このフレームだけ）と、揺れの位相（自分で進める）。
-    float rumblePending = 0.0f;
-    float rumblePhase = 0.0f;
     // 落ちている兜の隙間の瞬き：頼まれた強さ（このフレームだけ。0〜1）。
     float helmGlint = 0.0f;
     // 演出の資産が流れている間の、最後に見たカメラの姿勢（演技の後、ここからゲームのカメラへ滑らかに渡す）。
@@ -374,18 +286,11 @@ struct BossIntroState {
     HIKARI::GameProjectFloat3 filmEye{};
     HIKARI::GameProjectFloat3 filmTarget{};
     float filmFov = 1.0f;
-    // 演出のカメラのカット（表を読んだもの。読めなければ空で、演出のカメラを出さない）。
-    std::vector<BossIntroCut> cuts;
-    // 飛ばす：押された（次の tick に進める）・飛ばした。スローを次の描画のフレームで頼む F。
+    // 飛ばす：押された（次の tick に進める）・飛ばした。
     bool skipRequested = false;
     bool skipped = false;
     // 演出の動きのぼかしを頼んで受け付けられたか（変わった時だけ記録に書く）。
     bool motionBlurAccepted = false;
-    int slowPending = 0;
-    // 手応え：頼まれた強さ（0〜1。描画のフレームで使ったら 0 に戻す）、時間を止める F、カメラの揺れ。
-    float accentPending = 0.0f;
-    int hitStopPending = 0;
-    Feedback::CameraShake shake{};
 };
 
 } // namespace Project_TD2_2

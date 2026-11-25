@@ -35,30 +35,20 @@ const BossMove* BossRules::GetMove(const BossComponent& boss, int index) {
 
 BossState BossRules::GetState(const BossComponent& boss) { return boss.state; }
 
+float BossRules::GetShownHealth(const BossComponent& boss) { return boss.shownHealth; }
+
+float BossRules::GetShownMaxHealth(const BossComponent& boss) { return boss.shownMaxHealth; }
+
 int BossRules::GetCurrentMove(const BossComponent& boss) { return boss.state == BossState::Act ? boss.move : -1; }
 
 int BossRules::GetChain(const BossComponent& boss) { return boss.chain; }
 
 bool BossRules::IsPhaseShifting(const BossComponent& boss) { return boss.phaseShiftLeft > 0; }
 
-size_t BossRules::GetFluidDomainDemand(const BossComponent& boss) {
-    size_t live = boss.ringVfx.IsValid() ? 1 : 0;
-    for (const auto& effect : boss.slashEffects)
-        live += effect.handle.IsValid() ? 1 : 0;
-    // 剣を振っている間は、振り抜いた瞬間に出す斬撃の分を先に取っておく（出すフレームに枠が空いているように）。
-    // 回し蹴りも、炎の輪を出す前（前隙・攻撃中）から先に取っておく。
-    const BossMove* move = GetMove(boss, boss.move);
-    const bool kicking =
-        boss.state == BossState::Act && move != nullptr && move->type == BossMoveType::Kick && !boss.ringVfx.IsValid();
-    // 胴の煙は出し続ける域なので、斬撃の枠の上限とは別に数える。
-    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0)) +
-           (boss.bodyState.smokeVfx.IsValid() ? 1 : 0);
-}
-
 bool BossRules::IsBladeLit(const BossComponent& boss) {
     const bool acting = boss.state == BossState::Act;
-    return (boss.bladeLit && acting) || (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) &&
-                                         !boss.hidden && !boss.shiftState.lookPending);
+    return (boss.bladeLit && acting) ||
+           (boss.lastPhaseNumber >= 2 && (acting || boss.state == BossState::Idle) && !boss.phaseTwoLookPending);
 }
 
 float BossRules::GetStunThreshold(const BossComponent& boss) {

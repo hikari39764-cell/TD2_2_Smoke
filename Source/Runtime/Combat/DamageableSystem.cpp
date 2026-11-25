@@ -8,8 +8,8 @@
 #include "HIKARI/Project/ComponentViews.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "DamageableComponent.h"
-#include "Feedback.h"
-#include "FeedbackCamera.h"
+#include "../Player/Feedback.h"
+#include "../Player/FeedbackCamera.h"
 #include "../Common/GameSession.h"
 #include "../Common/VectorMath.h"
 

@@ -2,24 +2,21 @@
 
 #include <array>
 #include <string>
-#include <vector>
 
 #include "HIKARI/Project/GameComponent.h"
 #include "HIKARI/Project/VfxTypes.h"
-#include "BossIntroSettings.h"
 
 namespace Project_TD2_2 {
 
 // フェーズの変わり目の演出（c-8dd296）の拍：崩れる → 内から燃える → 火の輪が場を払う → 新しい構え → 済み。
-// 規則（BossPhaseShift）が固定 tick ごとに進め、見た目（BossPhaseShiftVisuals）とカメラ（BossIntroCamera）が読む。
+// 規則（BossPhaseShift）が固定 tick ごとに進め、見た目（BossPhaseShiftVisuals）が読む。
 enum class BossShiftBeat { None, Collapse, Ignite, Burst, Settle, Done };
 
-// フェーズの変わり目の演出（c-8dd296）：1 本目の条が空になった最後の当たりで時間が一瞬止まり、よろめいて膝をつき、刀を
-// 地面に突き立てる（登場の「刺さった刀」と対）。鎧の継ぎ目から黒い煙が漏れ、胸の煙の中に火の粉が灯って内から外へ火が
-// 回り、左手が刀身を根元から先へ拭って刀が灯る。立ち上がって刀を地面から斬り上げて抜くと、火の輪が場を払い（霧を
-// 押しのけ、プレイヤーを中距離まで押し出す）、その閃光の中で鎧が灼け、場の色が変わる。最後にフェーズ 2 の構えに
-// 収まり、HP の条が満ちる。位置は、変わり目に入った時のボスの足元から、プレイヤーのいる側を前にした局所
-// （+X が左、+Z が前）。体の大きさを掛ける値は「1 倍の体での値」と書く。
+// フェーズの変わり目の演出（c-8dd296）：1 本目の条が空になった最後の当たりで時間が一瞬止まる。鎧の継ぎ目から黒い煙が
+// 漏れ、胸の煙の中に火の粉が灯って内から外へ火が回り、刀身に根元から先へ火が灯る。閃光とともに火の輪が場を払い（霧を
+// 押しのけ、プレイヤーを中距離まで押し出す）、その閃光の中で鎧が灼け、場の色が変わる。最後に HP の条が満ちる。体は
+// 骨格の体が待機の姿で見せ、ここの値は効果の拍と置き場所を決める。位置は、変わり目に入った時のボスの足元から、
+// プレイヤーのいる側を前にした局所（+X が左、+Z が前）。体の大きさを掛ける値は「1 倍の体での値」と書く。
 struct BossPhaseShiftSettings {
     void Describe(HIKARI::PropertyFields& fields);
 
@@ -35,15 +32,9 @@ struct BossPhaseShiftSettings {
     // 飛ばす：演出の間にこの入力（行動 id）を押すと、フェーズ 2 の構えへ進む。飛ばせるか。
     bool skippable = true;
     std::string skipAction = "Gameplay.Menu";
-    // 演出のカメラ：出すか、カットの表（Data/ からの場所）、演出の間にゲームのカメラが向くボスの高さ (m)。既定は切る
-    // （オーナーの判断でいったん外す。仕組みと表は残す）。
-    bool cameraEnabled = false;
-    std::string cameraPath = "Boss/kasumi_bushi_phase_shift_camera.csv";
-    float cameraFocusHeight = 4.0f;
 
-    // 崩：最後の当たりで時間を止める長さ (F) と、その間の時間の速さ。よろめく（後ろへ反る）角度（度）・割合（崩の中で
-    // ここまで）。膝をつく：腰を落とす量（立った高さに対する割合）・前へ傾く角度（度）・刀の側へ捻る角度（度。負が右）。
-    // 刀が地面に刺さる割合（崩の中）。空中で 1 本目が空になった時、落ちる長さ（崩の中の割合）。
+    // 崩：最後の当たりで時間を止める長さ (F) と、その間の時間の速さ。2 つ目の揺れを出す割合（崩の中）。刀身の火が
+    // 届かない、剣先の側の長さ (m)。
     int hitStopFrames = 9;
     float hitStopScale = 0.05f;
     float plantShare = 0.62f;
@@ -62,7 +53,7 @@ struct BossPhaseShiftSettings {
     float bladeFuel = 80.0f;
     float bladeFuelRadius = 0.28f;
     float bladeFuelHeat = 3.0f;
-    // 爆（爆の中の割合）：立ち上がり、柄を握って力を込め終わる（ここで刀が地面を離れ、火の輪と閃光）・八相に構え切る。
+    // 爆（爆の中の割合）：力を込め終わる（ここで火の輪と閃光）・閃光の後に刀光を出し終える。
     float drawShare = 0.34f;
     float ripShare = 0.56f;
     // 火の輪：資産（流体の炎の輪。Boss の「炎の輪」と同じ）、広がり切る半径 (m)、広がる長さ (秒)、光を下げて消す長さ (秒)。
@@ -72,7 +63,7 @@ struct BossPhaseShiftSettings {
     // 火の輪：資産の細い輪（シェーダーの層 Ring Haze・Ring Glow・Ring Edge）の明るさ（0〜1）。細い輪は地面の予告に
     // 見えるので、既定は 0（出さない。太い炎の帯＝流体の炎だけ）。
     float ringThinGlow = 0.0f;
-    // 飛ばした時：演出の間に流体へ入れた火（突き立てた刀の刀身・柄とその上・膝をついた籠手と胸の所）を、この秒数だけ吸い消す
+    // 飛ばした時：演出の間に流体へ入れた火（刀身・柄とその上・籠手と胸の所）を、この秒数だけ吸い消す
     // （構え直した後に元の場所で燃え残らない）。吸い消す球の半径（1 倍の体での m）と、消す速さ（1/秒）。
     float skipQuenchSeconds = 0.3f;
     float skipQuenchRadius = 0.4f;
@@ -101,14 +92,12 @@ struct BossPhaseShiftState {
     BossShiftBeat beat = BossShiftBeat::None;
     // いまの拍に入ってからの F（規則）。
     int frame = 0;
-    // 演出の基準：変わり目に入った時の足元と、プレイヤーのいる側の向き（BossPoseKit の基準）。始めの体の向き。
+    // 演出の基準：変わり目に入った時の足元と、プレイヤーのいる側の向き。始めの体の向き。
     HIKARI::GameProjectFloat3 origin{};
     float yaw = 0.0f;
     float startYaw = 0.0f;
-    // 空中で 1 本目が空になった時の、体の高さ (m。崩の始めに、ここから落ちて膝をつく)。
+    // 空中で 1 本目が空になった時の、体の高さ (m。記録に書く)。
     float fallHeight = 0.0f;
-    // フェーズ 2 の見た目を待っている（閃光で切り替える。BossBodyMath::PhaseTwoLook）。
-    bool lookPending = false;
     // 閃光が出た（爆の、刀が地面を離れた tick）。プレイヤーを押す頼み（次の tick に PlayerRules へ渡す）。
     bool flashed = false;
     bool pushPending = false;
@@ -125,7 +114,7 @@ struct BossPhaseShiftState {
     // 火の輪のエフェクトと、出してからの秒。
     HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
     float ringAge = 0.0f;
-    // 飛ばした時に吸い消す所（演出の間、刀を突き立てている間の最後のフレームの刀身・柄とその上・籠手・胸。世界）と、吸い消す
+    // 飛ばした時に吸い消す所（演出の間、閃光の前の最後のフレームの刀身・柄とその上・籠手・胸。世界）と、吸い消す
     // 残りの秒。飛ばしたのを見たか・そのフレームか（そのフレームは火の舌を入れない。籠手の火が元の所から引かれない）。
     std::array<HIKARI::GameProjectFloat3, 10> quenchAt{};
     int quenchCount = 0;
@@ -133,10 +122,8 @@ struct BossPhaseShiftState {
     bool skipSeen = false;
     bool skipFrame = false;
     // 変わり目に入ってから、規則の刀の火（BossRules::IsBladeLit）が点いたのを見たか。最初に点く時（閃光・飛ばした時）は
-    // 剣先の火球（igniteFlashRadius）を出さない（刀身は拭う手が灯す。飛ばした時に火球が元の剣先の所で燃え残らない）。
+    // 剣先の火球（igniteFlashRadius）を出さない（刀身の火は演出が灯す。飛ばした時に火球が元の剣先の所で燃え残らない）。
     bool bladeLitSeen = false;
-    // 演出のカメラのカット（表を読んだもの。at は変わり目の始めからの F）。
-    std::vector<BossIntroCut> cuts;
 };
 
 } // namespace Project_TD2_2

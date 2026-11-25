@@ -16,8 +16,10 @@
 #include "Gourd/GourdShotSystem.h"
 #include "Gourd/GourdFeedbackSystem.h"
 #include "Boss/BossBehaviorNodes.h"
-#include "Boss/BossCloneComponent.h"
 #include "Boss/BossComponent.h"
+#include "Boss/BossIntroComponent.h"
+#include "Boss/BossPhaseShiftComponent.h"
+#include "BossBody/BossBodyComponent.h"
 #include "Common/SessionMemory.h"
 #include "Boss/BossSystem.h"
 #include "Burn/BurnFieldComponent.h"
@@ -123,11 +125,17 @@ public:
                context.BindComponentSystem(
                    {.componentType = kGourdShotType, .systemId = kGourdFeedbackSystem, .defaultExecutionOrder = 115}) &&
                context.RegisterComponent<BossComponent>({.typeName = kBossType, .displayName = "ボス 霞武士"}) &&
-               context.RegisterComponent<BossCloneComponent>(
-                   {.typeName = kBossCloneType, .displayName = "ボス 霞武士の分身"}) &&
                context.RegisterSystem<BossSystem>({.systemId = kBossSystem, .displayName = "ボス 霞武士"}) &&
                context.BindComponentSystem(
                    {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125}) &&
+               // 登場の部品（ボスと同じ物体に付ける）。進めるのはボスの System（ボスの tick の中で、同じ順に呼ぶ）。
+               context.RegisterComponent<BossIntroComponent>(
+                   {.typeName = kBossIntroType, .displayName = "ボスの登場"}) &&
+               context.RegisterComponent<BossPhaseShiftComponent>(
+                   {.typeName = kBossPhaseShiftType, .displayName = "ボスの変わり目の演出"}) &&
+               // 体の見た目の部品（ボスと同じ物体に付ける）。進めるのはボスの System（LateUpdate・PreRender）。
+               context.RegisterComponent<BossBodyComponent>(
+                   {.typeName = kBossBodyType, .displayName = "ボスの体の見た目"}) &&
                context.RegisterComponent<BurnFieldComponent>(
                    {.typeName = kBurnFieldType, .displayName = "燃える地面"}) &&
                context.RegisterSystem<BurnFieldSystem>({.systemId = kBurnFieldSystem, .displayName = "燃える地面"}) &&

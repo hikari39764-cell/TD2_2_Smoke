@@ -6,8 +6,6 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "../Common/FluidChannels.h"
-#include "../Common/VectorMath.h"
-#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -19,7 +17,8 @@ using Kind = HIKARI::GameProjectFluidInteractionKind;
 // 隣の升目との間まで掃かれて、火の無い所に燃料の線が入る）。
 constexpr uint64_t kFuelInstanceBase = 10000;
 constexpr uint64_t kFogInstanceBase = 20000;
-// 引爆で爆ぜた塊：燃料と、外へ押す衝撃。こちらは毎フレーム番号を替える（離れた 2 か所の間を掃かせない）。
+// 見た目だけの塊（当たった所・刀の点火・霞の塊）：燃料と、外へ押す衝撃。こちらは毎フレーム番号を替える
+// （離れた 2 か所の間を掃かせない）。
 constexpr uint64_t kBlastFuelBase = 160;
 constexpr uint64_t kBlastPushBase = 180;
 constexpr uint64_t kBlastSmokeBase = 200;
@@ -29,7 +28,7 @@ constexpr uint64_t kJetPushId = 221;
 constexpr uint64_t kBodyFuelBase = 222;
 constexpr uint64_t kBodyScatterId = 224;
 // 1 フレームに見せる塊の数。火の域が受け取れる注入は 32 個で、燃料の点（16）・吸い込みの力と分け合う。残りは次の
-// フレームへ回す（引爆の広がりを 30 m/秒にした時に、見た目が遅れないよう 3→6。c-e759cf）。
+// フレームへ回す（c-e759cf で 3→6）。
 constexpr uint32_t kBlastsPerFrame = 6;
 constexpr float kMaximumStrength = 10000.0f;
 // 燃料の点は、升目の中のかたまりの長い方へ毎フレーム行き来させる（エンジンが通った線に沿って燃料を広げるので、
@@ -37,8 +36,6 @@ constexpr float kMaximumStrength = 10000.0f;
 // （BurnField の fuelSweep）。
 constexpr float kMinimumRadius = 0.45f;
 constexpr float kMaximumRadius = 3.0f;
-
-using VectorMath::Lerp;
 
 // 升目（タイル）の大きさを決め、持ち越しと作業場所を、その数に合わせる（大きさが変わった時だけ確保し直す）。
 void LayoutTiles(BurnFieldComponent& field) {
@@ -156,46 +153,8 @@ void AssignPhases(BurnFieldComponent& field, int stride, int limit) {
     }
 }
 
-// 直近 window 秒の間に出した爆発のエフェクトの数（cap まで数えれば足りる）。
-uint32_t RecentBlastEffects(const BurnFieldComponent& field, uint32_t cap, float window) {
-    const uint32_t limit = std::min({field.blastEffectsPlayed, static_cast<uint32_t>(kBlastEffectCapMax), cap});
-    const float since = field.visualTime - window;
-    uint32_t recent = 0;
-    while (recent < limit &&
-           field.blastEffectTimes[(field.blastEffectsPlayed - recent - 1u) % kBlastEffectCapMax] > since)
-        ++recent;
-    return recent;
-}
-
-// 引爆の塊に爆発のエフェクトを出すか（間引いた・止めた数も数える）。重なった粒子のエフェクトが多すぎると描画が
-// 失敗して戻らないので、出す数を抑える。見込んだ塊の数が上限を超える引爆は、塊の番号を見込みに対して均等に間引く
-// （order 番目までに出す数 = ⌈order × 上限 ÷ 見込み⌉。最初の塊には必ず出る）。上限以下の引爆は今までどおり全部に出す。
-// どの場合も、直近の窓の間に出した数が上限に届いていれば出さない（見込みより塊が多かった時の歯止め）。
-bool TakeBlastEffect(BurnFieldComponent& field, const BurnBlast& blast) {
-    const uint32_t cap =
-        static_cast<uint32_t>(std::clamp(field.blastEffectCap, 1, static_cast<int>(kBlastEffectCapMax)));
-    const uint64_t plan = field.blastPlan;
-    if (plan > cap && blast.order > 0) {
-        const uint64_t before = ((blast.order - 1u) * uint64_t{cap} + plan - 1u) / plan;
-        const uint64_t through = (blast.order * uint64_t{cap} + plan - 1u) / plan;
-        if (through == before) {
-            ++field.blastEffectsThinned;
-            return false;
-        }
-    }
-    const uint32_t recent = RecentBlastEffects(field, cap, std::max(0.0f, field.blastEffectWindow));
-    if (recent >= cap) {
-        ++field.blastEffectsHeld;
-        return false;
-    }
-    field.blastEffectTimes[field.blastEffectsPlayed % kBlastEffectCapMax] = field.visualTime;
-    ++field.blastEffectsPlayed;
-    field.blastEffectPeak = std::max(field.blastEffectPeak, recent + 1u);
-    return true;
-}
-
-// 塊を、場の火の域の流体で見せる。引爆で爆ぜた火（規則の BurnFieldRules::Explode が積む）は火球と爆発のエフェクト、
-// 当たった所や刀の点火は小さな火球、煙の刃が当たった所や霞隠れの出入りは暗い煙の塊（ボスの演出が AddBlast で積む）。
+// 塊を、場の火の域の流体で見せる。当たった所や刀の点火は小さな火球、煙の刃が当たった所は霞の塊
+// （ボスの演出が AddBlast で積む）。
 void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field) {
     const uint32_t count = std::min<uint32_t>(field.blastCount, kBlastsPerFrame);
     if (count == 0)
@@ -204,22 +163,16 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
     field.blastFlip ^= 1u;
     for (uint32_t index = 0; index < count; ++index) {
         const BurnBlast& blast = field.blasts[index];
-        const bool detonation = blast.kind == BurnBlastKind::Detonation;
         const bool smoke = blast.kind == BurnBlastKind::Smoke;
-        const float radius = std::max(0.3f, blast.radius * (detonation ? field.blastRadiusScale : 1.0f));
-        // 引爆の塊は床の上の位置で来るので、火球の中心を少し浮かせる。ほかは渡された位置のまま。
-        const HIKARI::GameProjectFloat3 center{
-            blast.position.x, detonation ? field.map.FloorY() + radius * 0.4f : blast.position.y, blast.position.z};
+        const float radius = std::max(0.3f, blast.radius);
+        const HIKARI::GameProjectFloat3 center = blast.position;
         const uint64_t slot = static_cast<uint64_t>(index) * 2u + field.blastFlip;
-        const float fuelStrength = smoke ? field.smokeBlastStrength * field.smokeBlastFuelShare
-                                         : field.blastFuel * (detonation ? blast.power : field.hitFuelScale);
+        const float fuelStrength =
+            smoke ? field.smokeBlastStrength * field.smokeBlastFuelShare : field.blastFuel * field.hitFuelScale;
         HIKARI::GameProjectFluidInteraction fuel{};
         fuel.kind = Kind::Fuel;
         fuel.position = center;
-        const float blastTemperature =
-            detonation ? Lerp(field.fuelTemperature, field.blastTemperature, std::clamp(blast.power, 0.0f, 1.0f))
-                       : field.blastTemperature;
-        fuel.extents = {radius, std::max(0.0f, blastTemperature), 0.0f};
+        fuel.extents = {radius, std::max(0.0f, field.blastTemperature), 0.0f};
         fuel.direction = {0.0f, field.blastRise, 0.0f};
         fuel.strength = std::clamp(fuelStrength, 0.0f, kMaximumStrength);
         fuel.channels = FluidChannels::kFire;
@@ -238,24 +191,17 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastSmokeBase + slot, puff).Accepted() && field.fluidAccepted;
         }
-        // 向きの無い衝撃：火の域では塊を外へ膨らませ、引爆では場の霧も吹き飛ばす（当たった所の霧はボスの側が押す）。
-        const float pushSpeed = smoke ? field.smokeBlastPush : field.blastPush * (detonation ? blast.power : 0.6f);
+        // 向きの無い衝撃：火の域では塊を外へ膨らませ、霞の塊は場の霧を押す（当たった所の霧はボスの側が押す）。
+        const float pushSpeed = smoke ? field.smokeBlastPush : field.blastPush * 0.6f;
         if (pushSpeed > 0.0f) {
             HIKARI::GameProjectFluidInteraction push{};
             push.kind = Kind::Impulse;
             push.position = center;
             push.extents = {radius * 1.5f, 0.0f, 0.0f};
             push.strength = pushSpeed;
-            push.channels = detonation ? (FluidChannels::kFire | FluidChannels::kFog)
-                            : smoke    ? FluidChannels::kFog
-                                       : FluidChannels::kFire;
+            push.channels = smoke ? FluidChannels::kFog : FluidChannels::kFire;
             field.fluidAccepted =
                 fluid.Submit(object.GetHandle(), kBlastPushBase + slot, push).Accepted() && field.fluidAccepted;
-        }
-        if (detonation && !field.blastEffect.IsEmpty() && TakeBlastEffect(field, blast)) {
-            field.vfxAccepted =
-                VfxPlayback::PlayOneShot(world, field.blastEffect, center, radius * field.blastEffectScale) &&
-                field.vfxAccepted;
         }
     }
     // 見せた分を前から詰める。
@@ -376,10 +322,6 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     AssignPhases(field, stride, limit);
     const int turn = static_cast<int>(field.renderFrame % static_cast<uint32_t>(stride));
 
-    // 引爆の溜め：火そのものが熱く・細く・低くなる（白く締まって、内側へ縮んで見える）。地面や画面の予兆は出さない。
-    // 一か所だけの溜め（天降り斬りの着地の火）は、その円の中の升目だけを同じ見た目にする。
-    const float fieldCharge = std::clamp(field.charge, 0.0f, 1.0f);
-    const float hotspotCharge = std::clamp(field.hotspotCharge, 0.0f, 1.0f);
     const float sweepSpeed = std::clamp(field.fuelSweep, 0.0f, 55.0f);
     const HIKARI::FluidView fluid = world.GetFluid();
     for (size_t index = 0; index < field.tileSums.size(); ++index) {
@@ -402,24 +344,16 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
             field.traceAlong = shape.along;
             field.traceAcross = shape.across;
         }
-        // 一か所だけの溜めは、白く締めずに、炎を濃く・高く・少し熱くする（燃え盛ってから爆ぜる）。
-        const float hotX = shape.x - field.hotspotCenter.x, hotZ = shape.z - field.hotspotCenter.z;
-        const float hot = hotX * hotX + hotZ * hotZ <= field.hotspotRadius * field.hotspotRadius ? hotspotCharge : 0.0f;
-        const float shrink = Lerp(1.0f, field.chargeShrink, fieldCharge);
-        const float rate = std::max(0.0f, field.fuelRate) * Lerp(1.0f, field.chargeFuelScale, fieldCharge) *
-                           Lerp(1.0f, field.hotspotFuelScale, hot);
-        const float rise = field.fuelRise * Lerp(1.0f, field.chargeRiseScale, fieldCharge) + field.hotspotRise * hot;
-        const float charged =
-            Lerp(field.fuelTemperature, std::max(field.fuelTemperature, field.chargeTemperature), fieldCharge);
-        const float temperature = Lerp(charged, std::max(charged, field.hotspotTemperature), hot);
+        const float rate = std::max(0.0f, field.fuelRate);
+        const float rise = field.fuelRise;
+        const float temperature = field.fuelTemperature;
         // 燃えているセルの少ない升目（火の端、吸われた残り）と、消えかけの升目は、燃料を絞る。
         const float fade = std::clamp(sum.remaining / std::max(0.01f, field.fadeSeconds), 0.0f, 1.0f);
         const float share = std::clamp(static_cast<float>(sum.cells) / 6.0f, 0.35f, 1.0f);
         // 炎の幅は、かたまりの幅に合わせる。球の中心が床より下にある分、床の高さでの切り口がその幅になる半径にする。
         const float halfWidth = 0.5f * shape.across * field.fuelRadiusScale;
         const float radius = std::clamp(std::sqrt(halfWidth * halfWidth + field.fuelHeight * field.fuelHeight),
-                                        kMinimumRadius, kMaximumRadius) *
-                             shrink;
+                                        kMinimumRadius, kMaximumRadius);
         // 長い方へ行き来させる距離（片側）。毎フレーム入れている升目は、1 フレームに動ける距離（瞬間移動と見られない速さ）
         // より短ければ両端を交互に、長ければ端から端へ数フレームかけて往復する（エンジンが通った線に沿って燃料を広げる）。
         // 順番待ちの升目は、入れるたびに半径ぶん進めて往復する（線にはならないので、かたまりを端から端まで順に埋める）。

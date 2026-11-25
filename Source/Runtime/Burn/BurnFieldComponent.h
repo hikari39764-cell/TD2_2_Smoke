@@ -14,27 +14,18 @@ inline constexpr std::string_view kBurnFieldType = "Project_TD2_2.BurnField";
 inline constexpr std::string_view kBurnFieldSystem = "Project_TD2_2.BurnFieldSystem";
 // 場の火の域に出す、見た目だけの塊の種類。
 enum class BurnBlastKind : uint8_t {
-    // 引爆で爆ぜた火（床の上の位置。火球と爆発のエフェクト）。
-    Detonation,
     // 炎の刃が当たった所・刀の点火（小さな火球）。
     Hit,
-    // 煙の刃が当たった所・霞隠れや分身の出入り（暗い煙の塊に、少しだけ炎）。
+    // 煙の刃が当たった所（暗い煙の塊に、少しだけ炎）。
     Smoke,
 };
-// 爆発がプレイヤーに当たった輪。Core＝爆心（威力のまま・技の被弾）、Edge＝外の輪（威力を減らし・のけぞり）。
-enum class BurnBlastZone : uint8_t { None, Edge, Core };
-// 見た目のための 1 塊（位置と半径 m）。引爆では、1 tick に爆ぜたセルをまとめた物。
+// 見た目のための 1 塊（位置と半径 m）。
 struct BurnBlast {
     HIKARI::GameProjectFloat3 position{};
     float radius = 0.0f;
-    BurnBlastKind kind = BurnBlastKind::Detonation;
-    // 引爆の塊が、その引爆で何番目に出来たか（1 から。捨てた塊も数える）。引爆以外は 0。
-    uint32_t order = 0;
-    // 引爆の塊の強さ（場全体の引爆は 1。一か所だけの爆発は呼ぶ側が決める）：燃料と押す速さに掛け、1 より小さい分だけ
-    // 燃料の温度を地面の火の温度（fuelTemperature）へ寄せる（弱い爆発は、白く飛ばずに橙の火球になる）。
-    float power = 1.0f;
+    BurnBlastKind kind = BurnBlastKind::Hit;
 };
-// 火の刃が当たった所を突き抜ける炎（BurnFieldRules::AddJet が書き、BurnFieldVisuals が進めて消す）。
+// 火の刃が当たった所を突き抜ける炎（BurnField::AddJet が書き、BurnFieldVisuals が進めて消す）。
 struct BurnJet {
     // 燃料を入れている点（攻撃の向きへ進む）と、攻撃の向き（水平の単位ベクトル）。
     HIKARI::GameProjectFloat3 position{};
@@ -45,8 +36,6 @@ struct BurnJet {
 };
 // 描画フレームまでにためておける塊の数。あふれた塊は捨てる（規則は塊を読まないので、当たりは変わらない）。
 inline constexpr size_t kBurnBlastCapacity = 64;
-// 爆発のエフェクトの上限（BurnField の blastEffectCap）に選べる最大。出した時刻をこの数だけ覚えておく。
-inline constexpr size_t kBlastEffectCapMax = 256;
 
 // 燃える地面を決まった大きさの升目（タイル）に分け、燃えているセルのあるタイルごとに、場の火の域へ燃料を入れる
 // （BurnFieldVisuals が使う）。タイルは場所で決まるので、ほかの所の火が増えても減っても、そのタイルの炎の位置と太さは
@@ -74,13 +63,14 @@ struct BurnTileSum {
     float remaining = 0.0f;
     int cells = 0;
 };
-// 1 フレームに出す燃料の点の数の上限。火の域が受け取れる注入は 32 個で、障害物・吸い込みの力・爆ぜた塊と分け合う。
+// 1 フレームに出す燃料の点の数の上限。火の域が受け取れる注入は 32 個で、障害物・吸い込みの力・見た目の塊と分け合う。
 inline constexpr size_t kBurnEmitterCapacity = 20;
 // 一辺のタイルの数の上限（タイルの一辺を小さくしすぎても、これより細かくは分けない）。
 inline constexpr int kBurnTilesPerSideMax = 64;
 
 // 燃える地面。格子は持ち主の物体の世界位置（XZ）を中心に置き、その高さを床とする。
-// 塗る・消す・当てる規則は BurnFieldRules と BurnFieldSystem が持ち、ここは調整値と実行時の状態だけを持つ。
+// 塗る・消す・当てる規則は BurnField（ほかの機能の入口）・BurnFieldRules・BurnFieldSystem が持ち、
+// ここは調整値と実行時の状態だけを持つ。
 class BurnFieldComponent final : public HIKARI::IGameComponent {
 public:
     void DescribeProperties(HIKARI::PropertyFields& fields) override;
@@ -92,14 +82,11 @@ public:
     float arenaRadius = 40.0f;
     // 足元からこの半径の円に燃えているセルが掛かれば、火に触れている。
     float contactRadius = 0.3f;
-    // 体の中心が床からこれより高いと、地面の火に触れず、引爆・爆発も当たらない (m)。跳んでも届き、筋斗雲で飛べば届かない。
+    // 体の中心が床からこれより高いと、地面の火に触れない (m)。跳んでも届き、筋斗雲で飛べば届かない。
     float fireReachHeight = 4.0f;
     // 触れ続けて燃え移るまでの秒数と、火の中にいる間の炎上の減り方（/秒）。
     float damageDelay = 0.2f;
     float damagePerSecond = 14.0f;
-    // 爆発の当たり：爆心は当たりの半径 × blastCoreShare 以内（威力のまま）、その外の輪は威力 × blastEdgeDamageShare。
-    float blastCoreShare = 0.625f;
-    float blastEdgeDamageShare = 0.5f;
     float absorbRange = 5.0f;
     float absorbFanDegrees = 60.0f;
     float absorbNear = 1.5f;
@@ -119,19 +106,6 @@ public:
     float fogBurnAbsorption = 5.0f;
     float fogBurnRadiusScale = 1.8f;
     float fogUpdraft = 10.0f;
-    float chargeTemperature = 12.0f;
-    float chargeShrink = 0.55f;
-    float chargeFuelScale = 1.8f;
-    float chargeRiseScale = 0.3f;
-    float hotspotTemperature = 5.5f;
-    float hotspotFuelScale = 1.5f;
-    float hotspotRise = 3.0f;
-    HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
-                                                     "Assets/Vfx/BossSlashBurst.hvfx"};
-    float blastEffectScale = 0.9f;
-    int blastEffectCap = 60;
-    float blastEffectWindow = 1.4f;
-    float blastRadiusScale = 1.8f;
     float blastFuel = 550.0f;
     float blastTemperature = 10.0f;
     float blastRise = 2.0f;
@@ -140,7 +114,6 @@ public:
     float smokeBlastStrength = 150.0f;
     float smokeBlastFuelShare = 0.0f;
     float smokeBlastPush = 4.0f;
-    float blastBlockSize = 2.0f;
     float jetFuel = 800.0f;
     float jetSpeed = 13.0f;
     float jetRadius = 0.55f;
@@ -195,34 +168,14 @@ public:
     bool vfxAccepted = true;
     // 爆ぜた塊の注入の番号を、毎フレーム入れ替える（BurnFieldVisuals が使う）。
     uint8_t blastFlip = 0;
-    // 引爆から見た目への受け渡し。ボスの引爆（BurnFieldRules::SetCharge／Explode）が書くだけで、読むのと
-    // blastCount を 0 に戻すのは BurnFieldVisuals（描画フレーム）。規則はどちらも読まない。
-    // 溜めの進み（0〜1）。溜めていない間・崩された後・爆ぜ始めた後は 0。
-    float charge = 0.0f;
-    // 一か所だけの溜め（天降り斬りの着地の火。BurnFieldRules::SetHotspot）：真ん中・半径 (m)・進み（0〜1）。
-    // その円の中の火だけが、溜めの見た目になる。半径か進みが 0 なら無し。
-    HIKARI::GameProjectFloat3 hotspotCenter{};
-    float hotspotRadius = 0.0f;
-    float hotspotCharge = 0.0f;
     // 火の刃が当たった所を突き抜ける炎（プレイヤーは 1 人なので 1 つ。続けて当たれば新しい方で置き換える）。
     BurnJet jet;
     // 体の炎が消えた回数のうち、見た目が散らし終えた分（PlayerComponent::burnEndings と比べる）。
     uint32_t bodyEndingsSeen = 0;
-    // 爆ぜた塊。固定 tick ごとに後ろへ足す（いっぱいなら捨てる）。
+    // 見た目だけの塊（BurnField::AddBlast が固定 tick ごとに後ろへ足す。いっぱいなら捨てる）。読むのと
+    // blastCount を 0 に戻すのは BurnFieldVisuals（描画フレーム）。規則は読まない。
     std::array<BurnBlast, kBurnBlastCapacity> blasts{};
     uint32_t blastCount = 0;
-    // 今の引爆で出ると見込んだ塊の数と、ここまでに出来た塊の数（規則が前線の最初の輪で見込み、塊ごとに数える）。
-    uint32_t blastPlan = 0;
-    uint32_t blastOrder = 0;
-    // 見込みを数える作業場所（格子を作る時に一度だけ確保し、引爆のたびには確保しない）。
-    std::vector<uint64_t> blastPlanKeys;
-    // 爆発のエフェクトを出した時刻（visualTime。直近 kBlastEffectCapMax 個の輪）と、検証ログ用の累計：
-    // 出した数・見込みに対して均等に間引いた数・窓の上限で止めた数・窓の中に同時にあった数の最大。
-    std::array<float, kBlastEffectCapMax> blastEffectTimes{};
-    uint32_t blastEffectsPlayed = 0;
-    uint32_t blastEffectsThinned = 0;
-    uint32_t blastEffectsHeld = 0;
-    uint32_t blastEffectPeak = 0;
 };
 
 } // namespace Project_TD2_2

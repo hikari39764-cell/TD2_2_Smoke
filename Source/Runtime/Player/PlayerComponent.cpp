@@ -125,8 +125,7 @@ void PlayerComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("lockPitch", "見下ろし角度：遠い時 (度)", lockPitch, -80.0f, 80.0f);
         fields.Float("lockPitchFollow", "対象が高い時に見上げる割合 (0 で見上げない)", lockPitchFollow, 0.0f, 1.5f);
         fields.Float("lockPitchSeconds", "見上げ・見下ろしのならし (秒)", lockPitchSeconds, 0.0f, 2.0f);
-        fields.Float("lockMinPitch", "見上げの限度 (度、負で見上げ。跳躍・天降りで高い時)", lockMinPitch, -89.0f,
-                     89.0f);
+        fields.Float("lockMinPitch", "見上げの限度 (度、負で見上げ。跳躍で高い時)", lockMinPitch, -89.0f, 89.0f);
         fields.Float("lockAimHeightShare", "見る点の高さ（対象の中心から、体の高さの半分に対する割合。照準も同じ点）",
                      lockAimHeightShare, -1.0f, 1.0f);
     }

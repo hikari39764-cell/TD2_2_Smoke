@@ -63,4 +63,8 @@ HIKARI::GameProjectFloat3 GourdShotRules::GetAimOrigin(const GourdShotComponent&
 
 HIKARI::GameProjectFloat3 GourdShotRules::GetAimDirection(const GourdShotComponent& shot) { return shot.aimDirection; }
 
+float GourdShotRules::GetSmokeCost(const GourdShotComponent& shot) { return shot.smokeCost; }
+
+void GourdShotRules::ReserveFluidDomains(GourdShotComponent& shot, size_t count) { shot.reservedDomains = count; }
+
 } // namespace Project_TD2_2

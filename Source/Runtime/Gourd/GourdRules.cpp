@@ -200,9 +200,17 @@ void GourdRules::ReceiveRemovedSmoke(GourdComponent& gourd, double removedTotal)
         return;
     gourd.removedDelta = removedTotal >= gourd.lastRemovedTotal ? removedTotal - gourd.lastRemovedTotal : removedTotal;
     gourd.lastRemovedTotal = removedTotal;
-    const double income = gourd.removedDelta * static_cast<double>(std::max(0.0f, gourd.smokePerVolume));
-    gourd.storedSmoke = static_cast<float>(
-        std::clamp(static_cast<double>(GetSmoke(gourd)) + income, 0.0, static_cast<double>(GetCapacity(gourd))));
+    // 描画のフレームでは煙の量を変えず、次の固定 tick の始めに入れる（ApplyPendingSmoke。c-164cab）。
+    gourd.pendingSmoke += gourd.removedDelta * static_cast<double>(std::max(0.0f, gourd.smokePerVolume));
+}
+
+void GourdRules::ApplyPendingSmoke(GourdComponent& gourd) {
+    Initialize(gourd);
+    if (gourd.pendingSmoke <= 0.0)
+        return;
+    gourd.storedSmoke = static_cast<float>(std::clamp(static_cast<double>(GetSmoke(gourd)) + gourd.pendingSmoke, 0.0,
+                                                      static_cast<double>(GetCapacity(gourd))));
+    gourd.pendingSmoke = 0.0;
 }
 
 } // namespace Project_TD2_2

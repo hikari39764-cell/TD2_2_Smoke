@@ -31,6 +31,8 @@ public:
     // 構えの途中で変化する確率 (%)：表の「変化確率%」。punishSwitchEnabled なら、その技の後隙に当てられた回数
     // （punishSwitchMaxHits 回まで）× punishSwitchPerHit 倍だけ増やす（100 % まで）。
     static float SwitchChance(const BossComponent& boss, int row);
+    // 検査器の「技の選び方」の項目（行動ツリーの節が使う値）。
+    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

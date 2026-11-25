@@ -9,6 +9,9 @@
 
 namespace Project_TD2_2 {
 
+class BossIntroComponent;
+class BossPhaseShiftComponent;
+
 // 1 固定 tick ぶんの、ボスの処理に要るもの。参照はこの tick の中だけで使う。
 struct BossFrame {
     HIKARI::WorldView& world;
@@ -25,6 +28,10 @@ struct BossFrame {
     // ヒョウタンの口の位置（捕まえた斬撃・ナイフを引き込む先）。ヒョウタンが無ければ hasMouth が偽。
     HIKARI::GameProjectFloat3 mouth{};
     bool hasMouth = false;
+    // 同じ物体の登場の部品（無ければ nullptr：登場をしない。c-eb3b08）。
+    BossIntroComponent* intro = nullptr;
+    // 同じ物体のフェーズの変わり目の演出の部品（無ければ nullptr：演出をしない。c-3a0f87）。
+    BossPhaseShiftComponent* shift = nullptr;
 };
 
 // プレイヤーの真下の、ボスの地面の高さの点（ボスから見たプレイヤーの水平の向き・距離を測る）。
