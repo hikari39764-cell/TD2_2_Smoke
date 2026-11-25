@@ -262,7 +262,7 @@
           "castShadows": false,
           "cellColor": false,
           "combustion": true,
-          "densityDissipation": 2.8,
+          "densityDissipation": 6.0,
           "detailScale": 0.35,
           "detailStrength": 0.4,
           "domainSize": [
@@ -281,10 +281,10 @@
             1.0
           ],
           "emissionHotTemperature": 1.5,
-          "emissionIntensity": 90000.0,
+          "emissionIntensity": 45000.0,
           "emissionTemperature": 0.3,
           "expansionPerBurn": 0.3,
-          "extinction": 3.6,
+          "extinction": 1.6,
           "fuelPerBurn": 1.0,
           "heatPerBurn": 2.5,
           "id": "module.fluidDomain.cf4f708f5a599795ea1e229d5f227053",
@@ -1691,7 +1691,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 2600.0
+          "ratePerSecond": 25.0
         }
       },
       "name": "Ring Launch",
@@ -2535,7 +2535,7 @@
           "maximumParticles": 1024,
           "minimumImpactSpeed": 1.0,
           "particlesPerEvent": 4,
-          "ratePerSecond": 1300.0
+          "ratePerSecond": 8.0
         }
       },
       "name": "Ring Mist",
@@ -14300,7 +14300,7 @@
           "capacityMode": "Fixed",
           "id": "module.spawn.d1b292b7a12e6901d031bcb87eee7c4c",
           "maximumParticles": 120,
-          "ratePerSecond": 80.0
+          "ratePerSecond": 40.0
         }
       },
       "name": "Mist Motes",
