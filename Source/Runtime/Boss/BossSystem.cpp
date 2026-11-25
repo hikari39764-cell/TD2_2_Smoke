@@ -35,7 +35,7 @@
 #include "../BossBody/BossIntroCamera.h"
 #include "../BossBody/BossIntroEffects.h"
 #include "../BossBody/BossPhaseTwoField.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -96,7 +96,7 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     BossTableLoader::Load(world, boss);
 }
 
-void Trace(const BossComponent& boss, const DamageableComponent* health) {
+void Trace(const BossComponent& boss, const Damageable* health) {
     if (!TraceInterval::Due(boss.traceEveryFrames, boss.tick))
         return;
     // 規則の剣の構え（握り・向き）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
@@ -112,18 +112,18 @@ void Trace(const BossComponent& boss, const DamageableComponent* health) {
         boss.move, boss.stateFrame, static_cast<double>(boss.ground.x), static_cast<double>(boss.ground.y),
         static_cast<double>(boss.ground.z), static_cast<double>(boss.yaw), static_cast<double>(boss.height),
         static_cast<double>(boss.floatHeight), static_cast<double>(boss.stun), boss.stunCount,
-        health ? static_cast<double>(DamageableRules::GetHealth(*health)) : -1.0, static_cast<int>(boss.fluidAccepted),
+        health ? static_cast<double>(health->Health()) : -1.0, static_cast<int>(boss.fluidAccepted),
         static_cast<double>(sword.grip.x), static_cast<double>(sword.grip.y), static_cast<double>(sword.grip.z),
         static_cast<double>(sword.direction.x), static_cast<double>(sword.direction.y),
         static_cast<double>(sword.direction.z), boss.lastPhaseNumber, boss.phaseShiftLeft,
-        health ? static_cast<double>(DamageableRules::GetMaxHealth(*health)) : -1.0,
+        health ? static_cast<double>(health->maxHealth) : -1.0,
         health ? static_cast<int>(health->invulnerable) : -1);
     BossLog::Write(message);
 }
 
 // ボス 1 体の 1 tick：プレイヤーを見る → 登場・HP の条・変わり目を進める → 状態を進める → 受けた当たりを読む →
 // 通った跡の煙 → 斬撃 → 規則の剣の向き → 体の物体の置き場所。
-void StepBoss(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent* health, const BossGearSight& gear,
+void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, const BossGearSight& gear,
               IBossBrain& brain) {
     HIKARI::WorldView& world = frame.world;
     BossComponent& boss = frame.boss;
@@ -223,16 +223,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                                         sight.hasMouth};
                     bossFrame.intro = intro;
                     bossFrame.shift = shift;
-                    bool done = false;
-                    ForEachOnObject<DamageableComponent>(world, kDamageableType, object,
-                                                         [&](HIKARI::ObjectView, DamageableComponent& health) {
-                                                             if (done)
-                                                                 return;
-                                                             done = true;
-                                                             StepBoss(bossFrame, object, &health, sight.gear, brain);
-                                                         });
-                    if (!done)
-                        StepBoss(bossFrame, object, nullptr, sight.gear, brain);
+                    StepBoss(bossFrame, object, Damageable::Of(object.GetHandle().value), sight.gear, brain);
                 };
                 // プレイヤーは 1 人。いなくても体と斬撃は動く（当たる相手がいないだけ）。
                 bool ran = false;

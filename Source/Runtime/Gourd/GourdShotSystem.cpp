@@ -14,7 +14,7 @@
 #include "GourdRules.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
@@ -381,20 +381,18 @@ void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 positio
     residue.position = position;
 }
 
-bool ApplyHit(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdProjectile& projectile,
+bool ApplyHit(const GourdShotComponent& shot, const GourdProjectile& projectile,
               uint64_t target, float& health) {
-    bool accepted = false;
-    world.ForEachComponent<DamageableComponent>(
-        HIKARI::MakeComponentTypeId(kDamageableType), [&](HIKARI::ObjectView object, DamageableComponent& damageable) {
-            if (object.GetHandle().value == target) {
-                accepted = DamageableRules::ApplyDamage(
-                    damageable, GourdShotRules::GetProjectileDamage(shot, projectile), projectile.direction);
-                // 火弾は、この命中の手応えだけを強めてもらう。
-                if (accepted && projectile.fire)
-                    DamageableRules::BoostHitFeedback(damageable, shot.fireHitCameraScale, shot.fireHitStopFrames);
-                health = DamageableRules::GetHealth(damageable);
-            }
-        });
+    Damageable* damageable = Damageable::Of(target);
+    if (damageable == nullptr)
+        return false;
+    const auto& d = projectile.direction;
+    const bool accepted =
+        damageable->Apply(GourdShotRules::GetProjectileDamage(shot, projectile), HIKARI::Vec3{d.x, d.y, d.z});
+    // 火弾は、この命中の手応えだけを強めてもらう。
+    if (accepted && projectile.fire)
+        damageable->Boost(shot.fireHitCameraScale, shot.fireHitStopFrames);
+    health = damageable->Health();
     return accepted;
 }
 
@@ -444,7 +442,7 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
     projectile.densityScale = GourdShotRules::GetDensityAtDistance(shot, projectile.distance);
     if (didHit) {
         float health = 0.0f;
-        const bool accepted = ApplyHit(world, shot, projectile, hit.objectHandle, health);
+        const bool accepted = ApplyHit(shot, projectile, hit.objectHandle, health);
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;

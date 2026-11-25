@@ -5,24 +5,18 @@
 #include "HIKARI/Project/ComponentViews.h"
 #include "BossFrame.h"
 #include "BossWaves.h"
-#include "../Common/ComponentLookup.h"
-#include "../Combat/DamageableComponent.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 #include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 namespace {
 
-using ComponentLookup::ForEachOnObject;
-
 constexpr uint64_t kBreakHitStopSource = 0x5444324A01ull;
 constexpr uint64_t kBreakCameraSource = 0x5444324A02ull;
 
-void RequestBodyFlash(HIKARI::WorldView& world, HIKARI::ObjectView object, int frames) {
-    ForEachOnObject<DamageableComponent>(world, kDamageableType, object,
-                                         [&](HIKARI::ObjectView, DamageableComponent& health) {
-                                             DamageableRules::RequestFlash(health, frames);
-                                         });
+void RequestBodyFlash(HIKARI::ObjectView object, int frames) {
+    if (Damageable* health = Damageable::Of(object.GetHandle().value))
+        health->RequestFlash(frames);
 }
 
 void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss) {
@@ -37,7 +31,7 @@ void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent&
     shake.frequency = boss.breakCameraFrequency;
     Feedback::StartCameraShake(boss.breakShake, shake);
     const bool rumble = Feedback::Rumble(world, boss.breakRumbleLow, boss.breakRumbleHigh, boss.breakRumbleFrames);
-    RequestBodyFlash(world, object, boss.breakFlashFrames);
+    RequestBodyFlash(object, boss.breakFlashFrames);
     // 合図の塊：当たった所の爆発と同じ枠へ入れる（BossVisuals が場の流体の塊と光を出し、BossSmoke が場の霧を押す）。
     // 本体は色を読める材質が無いと光らないので、崩した合図はこの塊で見せる。
     bool blastAdded = false;

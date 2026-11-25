@@ -263,7 +263,7 @@
           "properties": {
             "maxHealth": 1800.0
           },
-          "type": "Project_TD2_2.Damageable"
+          "type": "TD2_2.Damageable"
         },
         {
           "id": 90,

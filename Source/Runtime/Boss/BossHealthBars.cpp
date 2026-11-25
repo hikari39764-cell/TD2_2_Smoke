@@ -6,7 +6,7 @@
 #include "BossMoveExecutor.h"
 #include "BossPhaseShift.h"
 #include "BossRules.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -25,13 +25,13 @@ float BarHealth(const BossComponent& boss, int phase) {
 
 } // namespace
 
-void BossHealthBars::Prepare(BossComponent& boss, const BossPhaseShiftComponent* shift, DamageableComponent& health) {
+void BossHealthBars::Prepare(BossComponent& boss, const BossPhaseShiftComponent* shift, Damageable& health) {
     if (boss.healthBarsReady)
         return;
     boss.healthBarsReady = true;
-    boss.authoredHealth = DamageableRules::GetMaxHealth(health);
+    boss.authoredHealth = health.maxHealth;
     // 先に初期化されていた（ボスより先に当たった）時も、1 本目の値を超えないようにする。
-    DamageableRules::SetMaxHealth(health, BarHealth(boss, 1));
+    health.SetMaxHealth(BarHealth(boss, 1));
     boss.lastPhaseNumber = 1;
     boss.phaseShiftLeft = 0;
     boss.phaseStartSeconds = boss.clockSeconds;
@@ -52,8 +52,8 @@ void BossHealthBars::Step(BossComponent& boss) {
 }
 
 bool BossHealthBars::CheckEmptied(BossComponent& boss, const BossPhaseShiftComponent* shift,
-                                  DamageableComponent& health, double rawDamage) {
-    if (boss.lastPhaseNumber >= 2 || DamageableRules::IsAlive(health) || boss.state == BossState::Dead)
+                                  Damageable& health, double rawDamage) {
+    if (boss.lastPhaseNumber >= 2 || health.IsAlive() || boss.state == BossState::Dead)
         return false;
     // いまの技を打ち切って待機へ（気絶の入り方と同じ打ち切り。跳躍の体はその場で地面へ戻る）。
     // 変わり目の間は待機のまま技を頼まない（StepState）。
@@ -73,31 +73,31 @@ bool BossHealthBars::CheckEmptied(BossComponent& boss, const BossPhaseShiftCompo
     boss.phaseShiftLeft = std::max(1, BossPhaseShift::TotalFrames(boss, shift));
     boss.phaseStartSeconds = boss.clockSeconds;
     // 2 本目を満たす。余ったダメージは持ち越さない（Damageable は 0 で止めているので、そのまま満たせばよい）。
-    DamageableRules::RefillTo(health, BarHealth(boss, 2));
+    health.Refill(BarHealth(boss, 2));
     char message[256]{};
     std::snprintf(message, sizeof(message),
                   "PhaseChange tick=%llu phase=2 before=%.3f damage=%.3f lastHit=%.3f health=%.3f max=%.3f "
                   "shiftFrames=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(before), rawDamage,
-                  static_cast<double>(DamageableRules::GetLastDamage(health)),
-                  static_cast<double>(DamageableRules::GetHealth(health)),
-                  static_cast<double>(DamageableRules::GetMaxHealth(health)), boss.phaseShiftLeft);
+                  static_cast<double>(health.LastDamage()),
+                  static_cast<double>(health.Health()),
+                  static_cast<double>(health.maxHealth), boss.phaseShiftLeft);
     BossLog::Write(message);
     return true;
 }
 
-double BossHealthBars::TotalPercent(const BossComponent& boss, const DamageableComponent& health) {
+double BossHealthBars::TotalPercent(const BossComponent& boss, const Damageable& health) {
     const double first = BarHealth(boss, 1);
     const double second = BarHealth(boss, 2);
     const double left =
-        static_cast<double>(DamageableRules::GetHealth(health)) + (boss.lastPhaseNumber >= 2 ? 0.0 : second);
+        static_cast<double>(health.Health()) + (boss.lastPhaseNumber >= 2 ? 0.0 : second);
     // 先に 100 を掛ける（既定の 4 : 6 なら 2 本目が満ちた時がちょうど 60 % になり、「HP60%以下」が 2 本目から成り立つ）。
     return left * 100.0 / (first + second);
 }
 
-void BossHealthBars::Publish(BossComponent& boss, const DamageableComponent& health) {
-    boss.shownHealth = DamageableRules::GetHealth(health);
-    boss.shownMaxHealth = DamageableRules::GetMaxHealth(health);
+void BossHealthBars::Publish(BossComponent& boss, const Damageable& health) {
+    boss.shownHealth = health.Health();
+    boss.shownMaxHealth = health.maxHealth;
     boss.shownPhase = boss.lastPhaseNumber;
     boss.shownPhaseSeconds = std::max(0.0f, boss.clockSeconds - boss.phaseStartSeconds);
 }
