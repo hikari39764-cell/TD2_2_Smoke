@@ -312,13 +312,13 @@
             },
             "kamaeFrames": 20,
             "knifeMistBullet": true,
-            "movesPath": "Boss/kasumi_bushi_moves_mocap.csv",
+            "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
             "raiseFrames": 12,
             "ringEffect": {
               "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
               "assetPath": "Assets/Vfx/BossMistRing.hvfx"
             },
-            "segmentsPath": "Boss/kasumi_bushi_segments_mocap.csv",
+            "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
             "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
             "swingPushForce": 40.0
           },
@@ -330,7 +330,7 @@
             "enabled": true,
             "interval": 0.0,
             "tree": {
-              "$hikari.assetGuid": "939fbcc60a243d750dfa4133eaaca3ea"
+              "$hikari.assetGuid": "f2529c5505bb568ddd4609bf02653f90"
             },
             "update": "GameCode",
             "values": ""

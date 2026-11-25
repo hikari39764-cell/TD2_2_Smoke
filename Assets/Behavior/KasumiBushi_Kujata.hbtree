@@ -6,9 +6,13 @@
     {
       "id": 1,
       "type": "Selector",
-      "name": "霞武士（12 パターン）",
-      "note": "SmokeArena_Kujata 専用の木（c-7b1a03・c-7b1a07）。最終版の 12 パターン（Data/Boss/kasumi_bushi_moves_kujata.csv）を、プレイヤーの射程に合わせた間合いの帯ごとに重みで選んで出し、技の後に待つ。剣の技は表の「滑って入る m」（10 m）で前隙に滑って詰めるので、中くらい・遠い帯からも出す。反応の枝はまだ無い。元の木は Assets/Behavior/KasumiBushi.hbtree。",
+      "name": "霞武士（動捕・SmokeArena）",
+      "note": "SmokeArena と SmokeArena_Kujata の木（どちらも動捕の技。表は Data/Boss/kasumi_bushi_moves_kujata.csv）。撃とうとしたら弾の線から横へ跳んでかわし、着地で受けの払いを返す枝（c-40f6c1）を一番上に足した。上の枝が先（reactive：撃とうとしたら、待ちや移動を切り上げてかわす）。元の注記：SmokeArena_Kujata 専用の木（c-7b1a03・c-7b1a07）。最終版の 12 パターン（Data/Boss/kasumi_bushi_moves_kujata.csv）を、プレイヤーの射程に合わせた間合いの帯ごとに重みで選んで出し、技の後に待つ。剣の技は表の「滑って入る m」（10 m）で前隙に滑って詰めるので、中くらい・遠い帯からも出す。反応の枝はまだ無い。元の木は Assets/Behavior/KasumiBushi.hbtree。",
+      "params": {
+        "reactive": true
+      },
       "children": [
+        90,
         2,
         89
       ]
@@ -918,6 +922,57 @@
       "params": {
         "maxFrames": 40,
         "minFrames": 20
+      }
+    },
+    {
+      "id": 90,
+      "type": "Sequence",
+      "name": "撃てばかわして返す",
+      "note": "撃とうとしたら弾の線から横へ跳び、着地で受けの払い（横の剣気）を返す（c-44fdc5 の散歩の枝。c-40f6c1 で SmokeArena に戻した）。",
+      "children": [
+        91,
+        92,
+        93,
+        94
+      ]
+    },
+    {
+      "id": 91,
+      "type": "Project_TD2_2.BossPlayerShooting",
+      "params": {
+        "withinFrames": 8,
+        "aimedOnly": true,
+        "minStreak": 1
+      }
+    },
+    {
+      "id": 92,
+      "type": "Project_TD2_2.BossStepReady"
+    },
+    {
+      "id": 93,
+      "type": "Project_TD2_2.BossReaction",
+      "name": "撃てばかわして返す",
+      "params": {
+        "label": "撃てばかわして返す",
+        "chance": 100.0,
+        "cooldown": 1.5,
+        "rerollSeconds": 0.5,
+        "cutRecovery": false,
+        "delayMinFrames": 2,
+        "delayMaxFrames": 6,
+        "duringWalk": true,
+        "hitSeconds": 0.0,
+        "hitScale": 0.3
+      }
+    },
+    {
+      "id": 94,
+      "type": "Project_TD2_2.BossMove",
+      "name": "霞歩でかわす",
+      "params": {
+        "move": "霞歩でかわす",
+        "pick": "always"
       }
     }
   ]

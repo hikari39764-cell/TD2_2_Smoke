@@ -269,6 +269,21 @@
           "id": 90,
           "properties": {
             "absorbCatchRange": 7.0,
+            "animBodyIdleClip": "Idle_Shoulder",
+            "animBodyLeftHandMist": 4.0,
+            "animBodyTwoHandMist": 24.0,
+            "bodyTrailGroundCut": 0.9,
+            "introMotionBlurMaxPixels": 24.0,
+            "introMotionBlurShutter": 180.0,
+            "introSequence": {
+              "$hikari.assetGuid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c"
+            },
+            "knifeMistBullet": true,
+            "ringEffect": {
+              "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
+              "assetPath": "Assets/Vfx/BossMistRing.hvfx"
+            },
+            "swingPushForce": 40.0,
             "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
             "stancePath": "Boss/kasumi_bushi_stance_kujata.csv",
             "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
