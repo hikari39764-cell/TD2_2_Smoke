@@ -133,7 +133,7 @@ bool LockPoint(HIKARI::WorldView& world, const PlayerComponent& player, Vec3& ou
     return true;
 }
 
-float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+using VectorMath::Lerp;
 
 // a 以下で 0、b 以上で 1、その間はなめらかに（a ≥ b なら a で切り替える）。
 float SmoothStep(float a, float b, float x) {

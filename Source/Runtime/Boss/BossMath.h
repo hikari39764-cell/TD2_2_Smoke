@@ -4,27 +4,33 @@
 #include <cmath>
 
 #include "HIKARI/Project/ValueTypes.h"
+#include "../Common/VectorMath.h"
 
 // ボスの計算に使う小さなベクトル演算。向き（yaw）は +Z が 0、+X が 90 度（試作と同じ。右は −X）。
+// 共通の演算（足す・内積・回転など）は Common/VectorMath.h のものを使い、ここにはボスだけが使うものを置く。
+// Sub・Mul・Smooth はボスのコードで使っている名前のまま、VectorMath の Difference・Scale・Smoothstep へ渡す。
 namespace Project_TD2_2::BossMath {
 
 using Vec3 = HIKARI::GameProjectFloat3;
 using Quat = HIKARI::GameProjectQuaternion;
 
-inline constexpr float kPi = 3.14159265358979323846f;
-inline constexpr float kRadiansPerDegree = kPi / 180.0f;
+using VectorMath::kPi;
+using VectorMath::kRadiansPerDegree;
+using VectorMath::kTau;
 
-inline Vec3 Add(Vec3 a, Vec3 b) { return {a.x + b.x, a.y + b.y, a.z + b.z}; }
-inline Vec3 Sub(Vec3 a, Vec3 b) { return {a.x - b.x, a.y - b.y, a.z - b.z}; }
-inline Vec3 Mul(Vec3 a, float s) { return {a.x * s, a.y * s, a.z * s}; }
-inline float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-inline Vec3 Cross(Vec3 a, Vec3 b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}; }
-inline float Length(Vec3 a) { return std::sqrt(Dot(a, a)); }
+using VectorMath::Add;
+using VectorMath::Conjugate;
+using VectorMath::Cross;
+using VectorMath::Dot;
+using VectorMath::Length;
+using VectorMath::Lerp;
+using VectorMath::Multiply;
+using VectorMath::Nlerp;
+using VectorMath::Rotate;
+using VectorMath::RotateY;
+inline Vec3 Sub(Vec3 a, Vec3 b) { return VectorMath::Difference(a, b); }
+inline Vec3 Mul(Vec3 a, float s) { return VectorMath::Scale(a, s); }
 inline float FlatLength(Vec3 a) { return std::sqrt(a.x * a.x + a.z * a.z); }
-inline Vec3 Lerp(Vec3 a, Vec3 b, float t) {
-    return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
-}
-inline float Lerp(float a, float b, float t) { return a + (b - a) * t; }
 inline Vec3 Normalize(Vec3 a, Vec3 fallback = {0.0f, 0.0f, 1.0f}) {
     const float length = Length(a);
     return length > 1e-6f ? Mul(a, 1.0f / length) : fallback;
@@ -38,15 +44,7 @@ inline float WrapPi(float angle) {
         angle += 2.0f * kPi;
     return angle - kPi;
 }
-// y 軸まわりの回転（試作の Euler 'YXZ' の Y と同じ向き）。
-inline Vec3 RotateY(Vec3 v, float angle) {
-    const float c = std::cos(angle), s = std::sin(angle);
-    return {v.x * c + v.z * s, v.y, -v.x * s + v.z * c};
-}
-inline float Smooth(float u) {
-    u = std::clamp(u, 0.0f, 1.0f);
-    return u * u * (3.0f - 2.0f * u);
-}
+inline float Smooth(float u) { return VectorMath::Smoothstep(u); }
 // 速く動き出して最後にゆっくり止まる（跳び上がり・後ろへ跳ぶ）。
 inline float EaseOut(float u) { return 1.0f - (1.0f - u) * (1.0f - u); }
 // frames F のうち frame F 目までの進み（0〜1）。frames が 0 以下でも割らない。
@@ -54,10 +52,6 @@ inline float Share(int frame, int frames) {
     return std::clamp(static_cast<float>(frame) / static_cast<float>(std::max(1, frames)), 0.0f, 1.0f);
 }
 
-inline Quat Multiply(Quat a, Quat b) {
-    return {a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-            a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w, a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z};
-}
 // 向き yaw、前後の傾き lean（正で前へ）、横の傾き sway の順に回す（Euler 'YXZ'）。
 inline Quat YawLeanSway(float yaw, float lean, float sway) {
     const Quat qy{0.0f, std::sin(yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f)};
@@ -86,11 +80,6 @@ inline Quat BasisRotation(Vec3 forward, Vec3 side) {
     }
     const float s = std::sqrt(1.0f + z.z - x.x - y.y) * 2.0f;
     return {(z.x + x.z) / s, (z.y + y.z) / s, 0.25f * s, (x.y - y.x) / s};
-}
-inline Vec3 Rotate(Quat q, Vec3 v) {
-    const Vec3 u{q.x, q.y, q.z};
-    const Vec3 t = Mul(Cross(u, v), 2.0f);
-    return Add(Add(v, Mul(t, q.w)), Cross(u, t));
 }
 
 // 2 本の線分の最短距離（斬撃の弧・刃とプレイヤーの体の軸）。ほぼ平行な長い線分（縦の斬撃と立った体）でも

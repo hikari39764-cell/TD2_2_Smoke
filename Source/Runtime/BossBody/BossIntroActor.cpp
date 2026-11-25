@@ -18,7 +18,6 @@ namespace {
 
 using namespace BossPoseKit;
 
-constexpr float kPi = 3.14159265f;
 // 役者の模型の節点：全部の親（隠す時はここを隠す）と、姿の層を掛ける骨の根。
 constexpr std::string_view kActorRoot = "Boss_Rig";
 // 役者の草摺の節点（戦いの体の草摺を外してある間は、これも隠す）。
@@ -56,8 +55,6 @@ struct SocketOffset {
 constexpr SocketOffset kHelmOffset{{0.0f, 0.45625f, 0.05063f}, {0.104528f, 0.0f, 0.0f, 0.994522f}};
 constexpr SocketOffset kSwordOffset{{0.0f, 0.0f, 0.0f}, {0.0f, 0.707107f, 0.707107f, 0.0f}};
 constexpr SocketOffset kTorsoOffset{{0.0f, -0.30125f, 0.0675f}, {0.0f, 0.0f, 0.0f, 1.0f}};
-
-Quat Conjugate(Quat q) { return {-q.x, -q.y, -q.z, q.w}; }
 
 // 事件段の名前（終端が無くても、入れ物の外は読まない）。
 std::string_view NameOf(const BossIntroCue& cue) {

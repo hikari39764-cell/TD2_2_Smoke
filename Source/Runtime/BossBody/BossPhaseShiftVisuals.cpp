@@ -21,7 +21,6 @@ using namespace BossPoseKit;
 
 // 固定 tick の数（1 秒あたり）。
 constexpr float kFramesPerSecond = 60.0f;
-constexpr float kTau = 2.0f * kPi;
 // 流体への提出 ID（持ち主はボスの物体。登場 1400〜1580・火の舌 1600〜 と重ねない）：継ぎ目の煙、胸の火の粉、刀身の火、
 // 火の輪が場の霧を押す力。
 constexpr uint64_t kLeakBase = 1700;

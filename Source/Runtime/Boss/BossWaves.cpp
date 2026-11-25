@@ -31,7 +31,6 @@ constexpr float kOwedSmokeShare = 0.25f;
 constexpr float kFramesPerSecond = 60.0f;
 // 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
 constexpr int kRingResiduePoints = 6;
-constexpr float kTau = 6.28318530718f;
 // 引き込みの前半のこの割合の間に、三日月の端（ナイフは刃先）を口へ向け終える。
 constexpr float kPullTurnShare = 0.5f;
 // 爆発の跡の煙の半径の下限 (m)。注入の量の換算（FluidEmit::EmitVolume）は 0 より大きい半径が要る。

@@ -19,6 +19,7 @@ using BossMath::YawLeanSway;
 
 namespace {
 
+using BossMath::Nlerp;
 using BossMath::Quat;
 using BossMath::Vec3;
 
@@ -58,20 +59,6 @@ void Show(HIKARI::ObjectView object, BossAnimBodyState& state) {
         return;
     (void)object.GetModel().ClearAllNodeVisibility();
     state.shown = 1;
-}
-
-Quat Conjugate(Quat q) { return {-q.x, -q.y, -q.z, q.w}; }
-
-// 2 つの回転の間（短い方の向きで混ぜて長さ 1 に戻す。隣り合う F の間なので十分）。
-Quat Nlerp(Quat a, Quat b, float t) {
-    const float dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
-    const float sign = dot < 0.0f ? -1.0f : 1.0f;
-    Quat q{a.x + (b.x * sign - a.x) * t, a.y + (b.y * sign - a.y) * t, a.z + (b.z * sign - a.z) * t,
-           a.w + (b.w * sign - a.w) * t};
-    const float length = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
-    if (length < 1e-6f)
-        return a;
-    return {q.x / length, q.y / length, q.z / length, q.w / length};
 }
 
 const BossClipSwordTrack* TrackOf(const BossComponent& boss, const std::string& clip) {

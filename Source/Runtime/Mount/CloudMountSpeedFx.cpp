@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "../Common/VectorMath.h"
+
 namespace Project_TD2_2 {
 namespace {
 
@@ -21,13 +23,9 @@ constexpr float kMinimumForward = 1.0e-3f;
 // 体を画面へ写す時の、カメラからの奥行きの下限 (m)。
 constexpr float kMinimumDepth = 0.05f;
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
-float Lerp(float from, float to, float amount) { return from + (to - from) * amount; }
-float SmoothStep(float value) {
-    const float t = Clamp01(value);
-    return t * t * (3.0f - 2.0f * t);
-}
-float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+using VectorMath::Clamp01;
+using VectorMath::Dot;
+using VectorMath::Lerp;
 
 // 目標へ seconds の時定数で近づく（0 以下で一瞬）。
 float Approach(float now, float target, float seconds, float dt) {
@@ -50,7 +48,7 @@ float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
     // speedFxBoost → 急降下の上限の速さで speedFxDive（間は線形）。
     float curve = 0.0f;
     if (speed <= cruise)
-        curve = mount.speedFxCruise * SmoothStep((speed - start) / std::max(cruise - start, kMinimumSpan));
+        curve = mount.speedFxCruise * VectorMath::Smoothstep((speed - start) / std::max(cruise - start, kMinimumSpan));
     else if (speed <= boost)
         curve = Lerp(mount.speedFxCruise, mount.speedFxBoost, (speed - cruise) / std::max(boost - cruise, kMinimumSpan));
     else

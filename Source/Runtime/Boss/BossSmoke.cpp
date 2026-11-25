@@ -26,7 +26,6 @@ constexpr uint64_t kBlastPushBase = 110;
 constexpr uint64_t kFireObstacleId = 5;
 constexpr int kBlastPushCount = 6;
 constexpr float kBlastPushHeight = 0.3f;
-constexpr float kTau = 6.28318530718f;
 // 回し蹴りの霞の輪が足元の霧を外へ押す力の提出 ID と、輪に並べる向きの数（爆発と同じ、向きのある押しを輪に並べる）。
 constexpr uint64_t kRingPushBase = 160;
 // 飛ぶ斬撃が、真下の場の霧を左右へ割る押しの提出 ID（斬撃 1 つにつき左右 2 つ）。
