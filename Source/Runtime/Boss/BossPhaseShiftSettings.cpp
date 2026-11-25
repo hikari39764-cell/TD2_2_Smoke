@@ -27,19 +27,8 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
 
     fields.Int("shiftHitStopFrames", "崩：最後の当たりで時間を止める長さ (F)", hitStopFrames, 0, 60);
     fields.Float("shiftHitStopScale", "崩：止める間の時間の速さ", hitStopScale, 0.0f, 1.0f);
-    fields.Float("shiftStaggerDegrees", "崩：よろめいて反る角度（度。負が後ろ）", staggerDegrees, -45.0f, 45.0f);
-    fields.Float("shiftStaggerShare", "崩：よろめき終える所（崩の中の割合）", staggerShare, 0.0f, 1.0f);
-    fields.Float("shiftKneelSink", "崩：膝をついて腰を落とす量（立った高さに対する割合）", kneelSink, 0.0f, 0.6f);
-    fields.Float("shiftKneelLeanDegrees", "崩：膝をついて前へ傾く角度（度）", kneelLeanDegrees, -30.0f, 60.0f);
-    fields.Float("shiftKneelTwistDegrees", "崩：膝をついて刀の側へ捻る角度（度。負が右）", kneelTwistDegrees, -60.0f,
-                 60.0f);
     fields.Float("shiftPlantShare", "崩：刀が地面に刺さる所（崩の中の割合）", plantShare, 0.1f, 1.0f);
-    fields.Float("shiftFallShare", "崩：空中で空になった時、地面へ落ちる長さ（崩の中の割合）", fallShare, 0.05f, 1.0f);
-    fields.Float3("shiftPlantGround", "突き立てた刀：剣先が刺さる地面の点（1 倍の体での局所 m）", plantGround);
-    fields.Float("shiftPlantLeanDegrees", "突き立てた刀：柄が体の側へ傾く角度（度）", plantLeanDegrees, -45.0f, 45.0f);
     fields.Float("shiftPlantBuried", "突き立てた刀：地面に埋まる長さ (m)", plantBuried, 0.0f, 4.0f);
-    fields.Float("shiftPlantEdgeYawDegrees", "突き立てた刀：刃が向く向き（局所の yaw。度。0 で前）",
-                 plantEdgeYawDegrees, -180.0f, 180.0f);
     fields.Float("shiftLeakDensity", "継ぎ目から漏れる黒い煙：濃さ（中心の毎秒の密度。0 で出さない）", leakDensity,
                  0.0f, 5000.0f);
     fields.Float("shiftLeakRadius", "継ぎ目から漏れる黒い煙：半径（1 倍の体での m）", leakRadius, 0.02f, 2.0f);
@@ -48,7 +37,6 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("shiftChestRadius", "燃：胸の火の粉の半径（1 倍の体での m）", chestRadius, 0.02f, 2.0f);
     fields.Float("shiftIgniteFire", "燃：胴の煙の火の強さを、燃の終わりにここまで上げる（0〜1）", igniteFire, 0.0f,
                  1.0f);
-    fields.Float("shiftWipeReachShare", "燃：左手が刀身の根元に届く所（燃の中の割合）", wipeReachShare, 0.0f, 1.0f);
     fields.Float("shiftWipeStartShare", "燃：拭い始める所（燃の中の割合）", wipeStartShare, 0.0f, 1.0f);
     fields.Float("shiftWipeEndShare", "燃：先へ拭い終わる所（燃の中の割合）", wipeEndShare, 0.0f, 1.0f);
     fields.Float("shiftBladeFuel", "燃：拭った刀身に灯る火（燃料）の強さ", bladeFuel, 0.0f, 1000.0f);

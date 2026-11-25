@@ -554,11 +554,6 @@ public:
     int swingSettleFrames = 10;
     // 引き絞る間の刀の震えの大きさ（度。構えの終わりでこの大きさ）。
     float swingCoilTremorDegrees = 1.2f;
-    // 技・気絶の終わりの構えを保ったまま待機へ入った時に下ろした構えへ戻る F と、技を打ち切られて気絶に入る時に
-    // 崩れた構えへ移る F（0 は最初の tick で切り替える）。
-    // 既定の 11 は、待機へ戻る時に規則の剣が 1 tick に 15 度以上動かない長さ（気絶に入る時は、振り上げた構えからだと
-    // 28 度ほどまで動く。15 度未満にするには 21 F ほど要る見込み）。
-    int poseRecoverFrames = 11;
     float damageBase = 6.0f;
     float damagePerFrame = 0.15f;
     float thickness = 0.5f;
@@ -670,9 +665,6 @@ public:
     // 半径の差を足すだけだと
     // プレイヤーが刀の根元に入り、横なぎの刀が頭上を通って当たらなかった（握りからプレイヤーまでの間を保つ）。
     float dashStopDistance = 4.266f;
-    // 突進横なぎ（c-2dd9a2）：前隙の始めに、刀を後ろ下へ引きずって体を沈める構えへ移る F と、前隙の終わりに低く滑って
-    // 詰める F（瞬間移動ではなく速い動き。速さは始めと終わりで 0、真ん中で最も速い）。溜めの揺らぎは滑り出す前に入る。
-    int dashRaiseFrames = 20;
     int dashSlideFrames = 20;
     float slashApproachSpeed = 1.2f;
     float stringApproachSpeed = 1.6f;
@@ -682,11 +674,6 @@ public:
     int slideInFrames = 16;
     float slideInStopDistance = 4.0f;
     float overheadLungeDistance = 2.43f;
-    // 上段溜め（c-b1824c）：前隙の始めの overheadRaiseFrames F で大上段へ振りかぶり、残りは溜める（溜めの揺らぎは跳ぶ前に
-    // 入る）。前隙の終わりの overheadLeapFrames F で、プレイヤーから overheadLeapStop m の所へ跳び込み（最長 overheadLeapMax m。
-    // 近すぎれば後ろへ最長 overheadLeapBack m 跳び退いてから斬る。弧の高さ overheadLeapHeight m）、着地と同時に斬り下ろす（大きい体の刀は、近すぎると
-    // 頭の上を通る。刀の当たる距離で着地する）。
-    int overheadRaiseFrames = 22;
     int overheadLeapFrames = 18;
     // 空中で終わった技（跳躍）から続いた斬りの技は、前隙の始めの comboLandFrames F で落ちて着地する（c-b1824c）。
     int comboLandFrames = 6;
@@ -694,8 +681,6 @@ public:
     float overheadLeapStop = 4.8f;
     float overheadLeapMax = 6.0f;
     float overheadLeapBack = 2.0f;
-    // 振りかぶった後の溜めで沈む深さ（構えの沈みに足す。跳ぶと戻る）。
-    float overheadCoilCrouch = 0.45f;
     float stepInClearance = 1.62f;
     float walkInStopDistance = 6.507f;
     float walkInSpeedScale = 1.25f;
@@ -1102,10 +1087,6 @@ public:
     float ringFadeSeconds = 0.35f;
     float ringHeight = 0.6f;
     float ringBurstScale = 0.6f;
-    // 回転斬り（回転→霞の輪の型。c-427df4）：前隙の始めの spinRaiseFrames F で刀を引き、spinCoilFrames F で体を
-    // spinCoilDegrees 度だけ逆へ捻り込んで溜め（溜めの揺らぎで間に長短）、攻撃中に振りの速さの曲線で捻りから
-    // spinTurns 回転ぶん一気に回る。回りの進みが spinRingShare を過ぎた所で霞の輪を出す。刀そのものも当たる。
-    int spinRaiseFrames = 10;
     int spinCoilFrames = 14;
     float spinCoilDegrees = 120.0f;
     float spinTurns = 1.0f;

@@ -145,36 +145,6 @@ struct BossSwingSettings {
                             1.0f,
                             0.35f,
                             0.0f};
-    // 散歩の構え（c-44fdc5）：散歩の姿勢で横へ歩く間、両手で刀を体の前に横たえる（剣先はボスの右へ、刃は前）。
-    // 横歩きの始めの strollGuardFrames F で、いまの構えから移る。
-    HIKARI::GameProjectFloat3 strollGuardGrip{0.25f, 3.1f, 1.7f};
-    HIKARI::GameProjectFloat3 strollGuardDirection{-0.93f, 0.08f, 0.36f};
-    float strollGuardCrouch = 0.3f;
-    float strollGuardLean = 4.0f;
-    float strollGuardTwist = 12.0f;
-    int strollGuardFrames = 14;
-    // 退き溜めの構え（c-95444e）：後ろへ跳ぶ間に刀を後ろへ引き、着地してから長く溜める間、両手の握りを右肩の後ろへ引いて
-    // 刀を右後ろの高い所へ大きく引き絞り（刃は上）、胴を右へ捻り込んで深く沈む（左手はプレイヤーを狙う）。溜めるにつれて
-    // さらに retreatChargeCoilDegrees 度だけ後ろへ倒し、沈みを retreatChargeCrouchTo まで深める。溜めの終わりの
-    // retreatHeaveFrames F で、引き絞った刀を頭上の構え（縦の型）へ担ぎ上げ、止まらずに縦に斬り下ろす。上段の構え
-    // （頭上に振りかぶる）と違い、手が肩の高さで後ろにあり、体が横を向くので、構えだけで見分けられる。刀は右の外へ斜めに
-    // 立てる（真後ろへ向けると、正面のゲームのカメラから体に隠れて見えなかった）。
-    HIKARI::GameProjectFloat3 retreatChargeGrip{-1.9f, 5.1f, -0.8f};
-    // 退く間に刀を引く道の真ん中の握り（下ろした構えから右の外を回して引く。直に混ぜると右の大袖を刀が通った）。
-    HIKARI::GameProjectFloat3 retreatDrawVia{-2.8f, 4.7f, 0.0f};
-    HIKARI::GameProjectFloat3 retreatChargeDirection{-0.82f, 0.45f, -0.35f};
-    float retreatChargeCrouch = 0.6f;
-    float retreatChargeCrouchTo = 1.0f;
-    float retreatChargeLean = -4.0f;
-    float retreatChargeTwist = -40.0f;
-    float retreatChargeCoilDegrees = 12.0f;
-    int retreatHeaveFrames = 12;
-    // 戻りの中段（c-999264）：振り終わりから構えへ戻る道が寄る所。両手で握り（体の足元から、局所 m）、剣先をプレイヤーの
-    // 胸へ向け（局所の向き）、腰を少し落として前へ傾く。「戻り始めた＝この連段は終わり」と読める形。
-    HIKARI::GameProjectFloat3 returnGrip{-0.3f, 3.5f, 2.0f};
-    HIKARI::GameProjectFloat3 returnDirection{0.08f, -0.32f, 0.94f};
-    float returnCrouch = 0.35f;
-    float returnLean = 4.0f;
     // 突進（c-2dd9a2。退き払いは左右に映す）：刀を後ろ下へ引きずり（手は右の腰の低い所、刀身は手よりずっと遅れて右後ろへ。
     // 真後ろだと正面のプレイヤーから体に隠れて見えないので、20 度ほど外へ出す。
     // 剣先は地面すれすれ）、体を深く沈めて胴を右へ捻った構えから、軸を後ろへ少し倒した面で、腰・胴・腕・刀の順に体ごと回し、
@@ -199,19 +169,6 @@ struct BossSwingSettings {
                         1.0f,
                         0.3f,
                         0.0f};
-    // 炎走りの斬り上げ：縦の型のこの角度（度）からこの角度まで逆に回す（胸の前の低い構え → 前の高い所）。
-    float riseFromDegrees = 15.0f;
-    float riseToDegrees = -45.0f;
-    // 連撃の斜めの斬り上げ ↗ ↖（c-7b1a04）：袈裟の型のこの角度（度）からこの角度まで逆に回す（腰の低い所 → 反対の肩の上）。
-    // 袈裟の振り終わり（32 度）・振りかぶり（-90 度）より内側にして、剣先が地面に入らず、頭の後ろへ回り込まないようにする。
-    float riseKesaFromDegrees = 25.0f;
-    float riseKesaToDegrees = -70.0f;
-    // 霞の大剣の間：薙ぐ・叩きつける間に腰を落とす量 (m)・前傾（度）、大剣の向き 1 度あたりの胴の捻り（度）と上限（度）。
-    // 大剣は左右へ大きく回るので、胴も大きく捻る（小さいと、回り切った大剣の柄から反対の肩が遠くなる）。
-    float greatswordCrouch = 0.928125f;
-    float greatswordLean = 8.0f;
-    float greatswordTwistShare = 0.75f;
-    float greatswordTwistMaxDegrees = 75.0f;
     // 両手の斬りの間に、動く速さで体を前・横へ傾ける上限（度。踏み込みながら振ると、傾いた胴と兜が手の通り道へ入る）。
     float speedLeanMaxDegrees = 6.0f;
 };

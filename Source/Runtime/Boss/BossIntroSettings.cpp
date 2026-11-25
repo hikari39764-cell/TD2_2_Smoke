@@ -155,11 +155,6 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("introSmokeLingerSeconds", "煙：演技の後、消し続けてから域を止めるまでの長さ (秒)", smokeLingerSeconds,
                  0.0f, 10.0f);
 
-    fields.Float3("introDrawRipGrip", "変わり目の抜刀：体の右の外へ振り出す所の握りの位置（1 倍の体での値）",
-                  drawRipGrip);
-    fields.Float3("introDrawRipTip", "変わり目の抜刀：体の右の外へ振り出す所の剣先の向き（局所）", drawRipTip);
-    fields.Float3("introHighGrip", "変わり目の八相：握りの位置（1 倍の体での値）", highGrip);
-    fields.Float3("introHighTip", "変わり目の八相：剣先の向き（局所）", highTip);
     fields.Float("introHighTwistDegrees", "変わり目の八相：体の捻り（度。正が左、負が右）", highTwistDegrees, -90.0f,
                  90.0f);
     fields.Float("introHighLeanDegrees", "変わり目の八相：体の前への傾き（度）", highLeanDegrees, -45.0f, 45.0f);

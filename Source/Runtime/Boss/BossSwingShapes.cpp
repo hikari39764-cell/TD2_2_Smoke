@@ -43,48 +43,6 @@ void BossSwingSettings::Describe(HIKARI::PropertyFields& fields) {
     vertical.Describe(fields, "swingVertical", "縦");
     dash.Describe(fields, "swingDash", "突進の払い（突進横なぎ。退き払いは左右に映す）");
     overhead.Describe(fields, "swingOverhead", "大上段（上段溜め）");
-    fields.Float3("swingStrollGuardGrip", "散歩の構え：握り（体の足元から、局所 m）", strollGuardGrip);
-    fields.Float3("swingStrollGuardDirection", "散歩の構え：刀の向き（局所。体の前に横たえる）", strollGuardDirection);
-    fields.Float("swingStrollGuardCrouch", "散歩の構え：腰を落とす量 (m)", strollGuardCrouch, 0.0f, 3.0f);
-    fields.Float("swingStrollGuardLean", "散歩の構え：前傾 (度)", strollGuardLean, -30.0f, 30.0f);
-    fields.Float("swingStrollGuardTwist", "散歩の構え：胴の捻り (度)", strollGuardTwist, -90.0f, 90.0f);
-    fields.Int("swingStrollGuardFrames", "散歩の構え：横歩きの始めに構えへ移る長さ (F)", strollGuardFrames, 1, 60);
-    fields.Float3("swingRetreatChargeGrip", "退き溜めの構え：握り（体の足元から、局所 m。右肩の後ろ）",
-                  retreatChargeGrip);
-    fields.Float3("swingRetreatDrawVia", "退き溜め：退く間に刀を引く道の真ん中の握り（局所 m。右の外を回す）",
-                  retreatDrawVia);
-    fields.Float3("swingRetreatChargeDirection", "退き溜めの構え：刀の向き（局所。右後ろの高い所へ引き絞る）",
-                  retreatChargeDirection);
-    fields.Float("swingRetreatChargeCrouch", "退き溜めの構え：溜め始めの腰の落とし (m。見た目だけ)",
-                 retreatChargeCrouch, 0.0f, 3.0f);
-    fields.Float("swingRetreatChargeCrouchTo", "退き溜めの構え：溜め切った時の腰の落とし (m。見た目だけ)",
-                 retreatChargeCrouchTo, 0.0f, 3.0f);
-    fields.Float("swingRetreatChargeLean", "退き溜めの構え：前傾 (度。負で反る。見た目だけ)", retreatChargeLean, -30.0f,
-                 30.0f);
-    fields.Float("swingRetreatChargeTwist", "退き溜めの構え：胴の捻り (度。負で右へ)", retreatChargeTwist, -90.0f,
-                 90.0f);
-    fields.Float("swingRetreatChargeCoilDegrees", "退き溜めの構え：溜めるにつれて刀をさらに後ろへ倒す角度 (度)",
-                 retreatChargeCoilDegrees, 0.0f, 60.0f);
-    fields.Int("swingRetreatHeaveFrames", "退き溜めの構え：溜めの終わりに頭上の構えへ担ぎ上げる長さ (F)",
-               retreatHeaveFrames, 1, 60);
-    fields.Float3("swingReturnGrip", "戻りの中段：握り（体の足元から、局所 m）", returnGrip);
-    fields.Float3("swingReturnDirection", "戻りの中段：刀の向き（局所。剣先をプレイヤーの胸へ）", returnDirection);
-    fields.Float("swingReturnCrouch", "戻りの中段：腰を落とす量 (m。見た目だけ)", returnCrouch, 0.0f, 3.0f);
-    fields.Float("swingReturnLean", "戻りの中段：前傾 (度。見た目だけ)", returnLean, -30.0f, 30.0f);
-    fields.Float("swingRiseFromDegrees", "炎走りの斬り上げ：縦の型のこの角度から（度）", riseFromDegrees, -180.0f,
-                 180.0f);
-    fields.Float("swingRiseToDegrees", "炎走りの斬り上げ：この角度まで逆に回す（度）", riseToDegrees, -180.0f, 180.0f);
-    fields.Float("swingRiseKesaFromDegrees", "連撃の斜めの斬り上げ ↗↖：袈裟の型のこの角度から（度）", riseKesaFromDegrees,
-                 -180.0f, 180.0f);
-    fields.Float("swingRiseKesaToDegrees", "連撃の斜めの斬り上げ ↗↖：この角度まで逆に回す（度）", riseKesaToDegrees,
-                 -180.0f, 180.0f);
-    fields.Float("swingGreatswordCrouch", "霞の大剣：薙ぐ間に腰を落とす量 (m。見た目だけ)", greatswordCrouch, 0.0f,
-                 3.0f);
-    fields.Float("swingGreatswordLean", "霞の大剣：薙ぐ間の前傾 (度。見た目だけ)", greatswordLean, -30.0f, 30.0f);
-    fields.Float("swingGreatswordTwistShare", "霞の大剣：大剣の向き 1 度あたりの胴の捻り (度)", greatswordTwistShare,
-                 0.0f, 1.0f);
-    fields.Float("swingGreatswordTwistMaxDegrees", "霞の大剣：胴の捻りの上限 (度)", greatswordTwistMaxDegrees, 0.0f,
-                 90.0f);
     fields.Float("swingSpeedLeanMaxDegrees", "両手の斬りの間、動く速さで体を傾ける上限 (度。見た目だけ)",
                  speedLeanMaxDegrees, 0.0f, 30.0f);
 }

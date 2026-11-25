@@ -46,19 +46,8 @@ struct BossPhaseShiftSettings {
     // 刀が地面に刺さる割合（崩の中）。空中で 1 本目が空になった時、落ちる長さ（崩の中の割合）。
     int hitStopFrames = 9;
     float hitStopScale = 0.05f;
-    float staggerDegrees = -9.0f;
-    float staggerShare = 0.22f;
-    float kneelSink = 0.34f;
-    float kneelLeanDegrees = 24.0f;
-    float kneelTwistDegrees = -10.0f;
     float plantShare = 0.62f;
-    float fallShare = 0.3f;
-    // 突き立てた刀：剣先が刺さる地面の点（1 倍の体での値）、柄が体の側へ傾く角度（度）、地面に埋まる長さ (m)、
-    // 刃が向く向き（局所の yaw。度。0 で前）。
-    HIKARI::GameProjectFloat3 plantGround{-0.5f, 0.0f, 1.45f};
-    float plantLeanDegrees = 16.0f;
     float plantBuried = 1.6f;
-    float plantEdgeYawDegrees = 0.0f;
     // 鎧の継ぎ目から漏れる黒い煙（胴の煙の域へ入れる）：中心の毎秒の密度、半径 (m。1 倍の体での値)、外へ吹く速さ (m/秒)。
     // 崩の始めから満ち、燃の終わりまでに火に替わって引く。
     float leakDensity = 90.0f;
@@ -68,9 +57,6 @@ struct BossPhaseShiftSettings {
     float chestFuel = 40.0f;
     float chestRadius = 0.2f;
     float igniteFire = 0.65f;
-    // 燃：左手が刀身を拭う（燃の中の割合）：根元に届く・拭い始める・先へ拭い終わる。拭った所から刀身に灯る火（燃料）の
-    // 強さ・半径 (m)・温度。
-    float wipeReachShare = 0.22f;
     float wipeStartShare = 0.30f;
     float wipeEndShare = 0.86f;
     float bladeFuel = 80.0f;

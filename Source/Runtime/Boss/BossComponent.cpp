@@ -50,9 +50,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("recoveryStunScale", "戻りに当てた弾の気絶値の倍率", recoveryStunScale, 0.0f, 5.0f);
         fields.Float("recoveryHitPushScale", "戻りに当てた時の、当たりの押しの倍率", recoveryHitPushScale, 0.0f, 5.0f);
         fields.Int("recoveryHitStopFrames", "戻りに当てた時の、当たりの止め (F)", recoveryHitStopFrames, 0, 30);
-        fields.Int("poseRecoverFrames",
-                   "技の終わりの構えから、待機の下ろした構え・気絶の崩れた構えへ移る (F。0 は一気に切り替える)",
-                   poseRecoverFrames, 0, 60);
         fields.Float("damageBase", "威力（空欄時）＝基本", damageBase, 0.0f, 1000.0f);
         fields.Float("damagePerFrame", "…＋隙 F × この係数", damagePerFrame, 0.0f, 10.0f, 0.01f);
         fields.Float("thickness", "斬撃の厚み (m)", thickness, 0.01f, 5.0f, 0.01f);
@@ -164,8 +161,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
     }
     if (fields.Section("動きの型ごとの体の動き")) {
         fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", dashStopDistance, 0.0f, 30.0f);
-        fields.Int("overheadRaiseFrames", "上段溜め：前隙の始めに大上段へ振りかぶる長さ (F)", overheadRaiseFrames, 1,
-                   120);
         fields.Int("overheadLeapFrames", "上段溜め：前隙の終わりに前へ跳び込む長さ (F。0 で跳ばない)",
                    overheadLeapFrames, 0, 120);
         fields.Float("overheadLeapHeight", "上段溜め：跳び込みの弧の高さ (m)", overheadLeapHeight, 0.0f, 10.0f);
@@ -175,10 +170,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      0.0f, 30.0f);
         fields.Float("overheadLeapMax", "上段溜め：跳び込みの最長 (m)", overheadLeapMax, 0.0f, 30.0f);
         fields.Float("overheadLeapBack", "上段溜め：近すぎる時に後ろへ跳び退く最長 (m)", overheadLeapBack, 0.0f, 30.0f);
-        fields.Float("overheadCoilCrouch", "上段溜め：溜めの間に沈む深さ (m。跳ぶと戻る)", overheadCoilCrouch, 0.0f,
-                     3.0f);
-        fields.Int("dashRaiseFrames", "突進横なぎ：前隙の始めに、刀を引きずる構えへ移る長さ (F)", dashRaiseFrames, 1,
-                   120);
         fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)",
                    dashSlideFrames, 1, 120);
         fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", slashApproachSpeed, 0.0f, 20.0f);
@@ -359,10 +350,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      0.0f, 10.0f);
         fields.Int("greatswordEruptionDamage", "…噴き上がりの威力", greatswordEruptionDamage, 0, 1000);
         fields.Bool("greatswordEruptionBlow", "…噴き上がりで吹っ飛ぶ（切はのけぞり）", greatswordEruptionBlow);
-        fields.Note(
-            "縦割りの刃は叩きつける間だけ、噴き上がりは前線がプレイヤーの所を通った tick だけ当たります（それぞれ 1 回。"
-            "片方をよけても、もう片方は当たり得る）。噴き上がりは刺さっている間・次の技の前隙の間も走り続けます。"
-            "連撃でつないだ技（表の役割「コンボ用」の行）は剣を作り出さず、前隙の全部で振りかぶる・構え直します。");
         fields.Int("flameRunCount", "炎走り：放つ前線の数（フェーズ 1）", flameRunCount, 1,
                    static_cast<int>(kBossFlameRunCapacity));
         fields.Int("flameRunCountPhase2", "…放つ前線の数（フェーズ 2 以上）", flameRunCountPhase2, 1,
@@ -392,12 +379,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("flameRunDragFuel", "…前隙に、地面を引きずる剣先から出す炎の燃料の強さ（0 は出さない）",
                      flameRunDragFuel, 0.0f, 10000.0f);
         fields.Float("flameRunDragRadius", "…引きずる剣先の炎の半径 (m)", flameRunDragRadius, 0.1f, 4.0f);
-        fields.Note(
-            "炎走りは、前隙の間はプレイヤーの方を向き続け、1 本目を放つ時の向きを真ん中に扇を決めます（その後は向き直り"
-            "ません）。攻撃中の長さは、表の攻撃中（最後の前線を放ってからの F）に（数−1）×間隔を足したものです。前線は"
-            "表の斬撃速度で走り、通った所に表の「線」の火を残します（刃の後ろへ遅れる距離は burnLineLag）。当たりは表の"
-            "判定サイズ（前線の線からの距離。プレイヤーの半径を足す）で、1 本につき 1 回。気絶・崩れで打ち切られても、"
-            "放った前線は走り切ります（まだ放っていない前線は放ちません）。");
         fields.Vfx("greatswordMistEffect", "霞の大剣：フェーズ 1 のエフェクト（大剣の模型へ霞を流し込む）", greatswordMistEffect);
         fields.Vfx("greatswordFireEffect", "霞の大剣：フェーズ 2 のエフェクト（炎の大剣）", greatswordFireEffect);
         fields.Float(
@@ -452,10 +433,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Int("greatswordFireRows", "…内側から外側へ並べる本数", greatswordFireRows, 1, 12);
         fields.Float("greatswordFireStepDegrees", "…薙いだ角度の何度ごとに塗るか (度)", greatswordFireStepDegrees, 1.0f,
                      90.0f);
-        fields.Note("霞の大剣の薙ぐ長さは技の表の攻撃中（全部が当たり）。当たるのは、その 1 tick に剣が通った角度の中で、"
-                    "ボスの中心から「懐」〜「柄の位置＋剣の長さ＋プレイヤーの体の半径」の距離にいる時です（高さは見ない）。"
-                    "薙ぐ向きは表の「追尾を止める F」の時のボスの向きで決まります。");
-        fields.Int("spinRaiseFrames", "回転斬り：前隙の始めに刀を引く長さ (F)", spinRaiseFrames, 1, 60);
         fields.Int("spinCoilFrames", "回転斬り：体を逆へ捻り込む長さ (F)", spinCoilFrames, 1, 60);
         fields.Float("spinCoilDegrees", "回転斬り：逆へ捻り込む角度 (度)", spinCoilDegrees, 0.0f, 270.0f);
         fields.Float("spinTurns", "回転斬り：攻撃中に回る回数（捻りを戻した後。1 で 1 回転）", spinTurns, 0.0f, 3.0f);
@@ -521,10 +498,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("absorbPullSqueeze", "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)",
                      absorbPullSqueeze, 0.0f, 5000.0f);
         fields.Float("absorbPullSqueezeRadius", "…その力の半径 (m)", absorbPullSqueezeRadius, 0.1f, 20.0f);
-        fields.Note("吸い込みの扇に入った斬撃・ナイフは、その tick に捕まり（もう当たらない・火も残り煙も置かない）、"
-                    "ヒョウタンの口へ弧を描いて引き込まれます。三日月は片方の端を口へ向け、細く縮みながら入ります。"
-                    "煙（waveAbsorbSmoke・knifeAbsorbSmoke）と吸い取りの手応えは、入りきった瞬間に出ます。"
-                    "途中で吸い込みをやめても、ローリングしても、引き込みは最後まで進みます。");
     }
     body.Describe(fields);
     intro.Describe(fields);
@@ -596,16 +569,6 @@ void BossComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      10000.0f);
         fields.Float("detonationFogMergeDistance", "引爆の跡：近くの跡へまとめる距離 (m)", detonationFogMergeDistance,
                      0.0f, 10.0f);
-        fields.Note(
-            "爆発（当たった所・外れて地面で爆ぜた所・着地・崩し・大剣の叩きつけ・引爆の突き立てなど）の後、"
-            "真下の地面の近く（残す煙の高さ）へ吸える煙を入れます。量は爆発の大きさに比例し、"
-            "半径は大きさの平方根に比例します（広がる面積あたりの濃さが、爆発の大きさによらず同じ）。"
-            "霞隠れ・分身の煙（puffResidue）と、引爆の爆発がプレイヤーに当たった所には足しません。"
-            "引爆（天降り斬りの着地の火が爆ぜるのも）は、爆ぜた火の面積に応じて、爆ぜた所（燃える地面の blastBlockSize の升ごと）へ"
-            "残します。1 回の合計は上限で止まります（上限に届くと、前線が後から通る外側には残りません。火の全体に"
-            "行き渡らせるなら 1 m² あたりを下げます）。半径・待つ長さ・出し切る長さは爆発（大きさ 1）と同じ値です。"
-            "残り煙の枠は 12 個なので、広い火を一度に引爆すると、遠い所の分は近くの跡へまとまります。"
-            "足した煙は消散でしか減らないので、長い対戦の後半で霧が画面を埋めないかを見て決めます。");
         fields.Float("bodySmokeRadius", "ボスの通った跡の煙の半径 (m)", bodySmokeRadius, 0.05f, 10.0f);
         fields.Float("fireObstacleRadius", "場の火が体をよける半径 (m。0 でよけない)", fireObstacleRadius, 0.0f, 10.0f);
         fields.Float("fireObstacleHeight", "場の火が体をよける高さ (m)", fireObstacleHeight, 0.0f, 20.0f);

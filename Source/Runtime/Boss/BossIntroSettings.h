@@ -100,12 +100,6 @@ struct BossIntroSettings {
     float accentRumble = 0.6f;
     int accentRumbleFrames = 12;
 
-    // フェーズの変わり目の抜刀（BossPhaseShiftVisuals）が使う、斬り上げの道と八相の構え。握りの位置（1 倍の体での値。
-    // 体の大きさを掛ける）と剣先の向き（局所。右が -X、前が +Z）。体の捻り（度。正が左）と前への傾き（度）。
-    HIKARI::GameProjectFloat3 drawRipGrip{-1.10f, 2.40f, 0.50f};
-    HIKARI::GameProjectFloat3 drawRipTip{-1.0f, 0.10f, 0.30f};
-    HIKARI::GameProjectFloat3 highGrip{-0.71f, 3.26f, 0.27f};
-    HIKARI::GameProjectFloat3 highTip{0.12f, 0.88f, -0.46f};
     float highTwistDegrees = -28.0f;
     float highLeanDegrees = -4.0f;
     // 登場の黒い煙（BossIntroSmoke）：コードからだけ煙を入れる流体の域（空なら煙を出さない）。量は「1 秒に入れる煙の総量」
