@@ -354,10 +354,11 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
     // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。骨格の体がクリップを流して
     // いる間も同じ（c-7b1a06）。登場の間は骨格の体を出さない。
-    const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body, alpha);
-    // 骨格の体が技のクリップを流している間は、刀光・刀の霞を見えているクリップの刀に付ける（c-7b1a09）。
+    const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body, alpha, seconds);
+    // 骨格の体が出ている間は、体に付く効果（刀光・刀の霞・手・胴・兜・変わり目の火と煙）を見えている骨格の骨に付ける
+    // （c-7b1a09・c-bc5908）。
     if (animated)
-        BossAnimBody::ApplyPose(world, boss, alpha, pose);
+        BossAnimBody::ApplyPose(world, boss, alpha, seconds, pose);
     if (BossIntroVisuals::Showing(boss))
         BossAnimBody::Stop(world, boss);
     if (!BossIntroVisuals::Showing(boss) && !animated)

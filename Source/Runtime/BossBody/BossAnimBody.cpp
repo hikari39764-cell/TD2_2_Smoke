@@ -25,6 +25,16 @@ using BossMath::Vec3;
 // 刀の骨の空間から、外形の刀の置き場所の約束（BossBodyRig.h：+Z が剣先）への、変わらない回転。登場の役者
 // （BossIntroActor.cpp の kSwordOffset）と同じ模型・同じ骨なので同じ値（骨格を作り直したら一緒に直す）。
 constexpr Quat kSwordAxes{0.0f, 0.707107f, 0.707107f, 0.0f};
+// 兜・胴の骨から、外形の兜・胴の置き場所の約束への変換（BossIntroActor.cpp の kHelmOffset・kTorsoOffset と同じ値。
+// 体に付く効果の置き場所を、見えている骨格の骨から出す。c-bc5908）。
+constexpr Vec3 kHelmOffset{0.0f, 0.45625f, 0.05063f};
+constexpr Quat kHelmTurn{0.104528f, 0.0f, 0.0f, 0.994522f};
+constexpr Vec3 kTorsoOffset{0.0f, -0.30125f, 0.0675f};
+// 袖口は、前腕の骨から手の骨へこの割合の所。
+constexpr float kCuffAlong = 0.75f;
+// 草摺の節点（模型の節点。登場の役者と同じ）。
+constexpr std::array<std::string_view, 7> kTassetNodes{"Kusazuri0", "Kusazuri1", "Kusazuri2", "Kusazuri3",
+                                                       "Kusazuri4", "Kusazuri5", "Kusazuri6"};
 // 規則の時計の 1 F（60 Hz）の秒。クリップは秒で読む。
 constexpr float kSecondsPerFrame = 1.0f / 60.0f;
 
@@ -109,6 +119,62 @@ Vec3 BladeDirection(Quat rotation) {
     return BossMath::Normalize(BossMath::Rotate(BossMath::Multiply(rotation, kSwordAxes), {0.0f, 0.0f, 1.0f}));
 }
 
+// 見えている骨格の骨（世界）。骨は模型の空間で読み（1 フレーム前に描いた姿）、いまの置き場所（足元・向き・大きさ）を
+// 掛ける：体が動く・回る時に 1 フレーム遅れて跳ばない（c-bc5908）。
+struct Bones {
+    HIKARI::GameProjectTransform chest, head, sword, rightArm, rightFore, rightHand, leftArm, leftFore, leftHand;
+    std::array<HIKARI::GameProjectTransform, kTassetNodes.size()> tassets{};
+    bool tassetsRead = false;
+};
+
+bool ReadBones(const HIKARI::AnimationView& animation, uint64_t handle, const BossAnimBodySettings& settings,
+               const HIKARI::GameProjectTransform& placed, Bones& out) {
+    const auto read = [&](std::string_view name, HIKARI::GameProjectTransform& bone) {
+        HIKARI::GameProjectTransform local{};
+        if (!animation.GetSocketTransform(handle, name, HIKARI::GameProjectAnimationSocketSpace::Local, local))
+            return false;
+        bone.position = BossMath::Add(placed.position,
+                                      BossMath::Rotate(placed.rotation, BossMath::Mul(local.position, placed.scale.x)));
+        bone.rotation = BossMath::Multiply(placed.rotation, local.rotation);
+        bone.scale = placed.scale;
+        return true;
+    };
+    if (!(read("Spine2", out.chest) && read("Head", out.head) && read(settings.swordNode, out.sword) &&
+          read("RightArm", out.rightArm) && read("RightForeArm", out.rightFore) && read("RightHand", out.rightHand) &&
+          read("LeftArm", out.leftArm) && read("LeftForeArm", out.leftFore) &&
+          read(settings.leftHandNode, out.leftHand)))
+        return false;
+    out.tassetsRead = true;
+    for (size_t k = 0; k < kTassetNodes.size(); ++k)
+        out.tassetsRead = read(kTassetNodes[k], out.tassets[k]) && out.tassetsRead;
+    return true;
+}
+
+void Put(BossBodyPlacement& placement, Vec3 position, Quat rotation) {
+    placement.position = position;
+    placement.rotation = rotation;
+}
+
+// 体に付く効果の置き場所を骨から（大きさは外形の体のまま。効果の大きさが変わらない）。
+void PoseFromBones(const Bones& b, BossBodyPose& pose) {
+    Put(pose.sword, b.sword.position, BossMath::Multiply(b.sword.rotation, kSwordAxes));
+    Put(pose.head, BossMath::Add(b.head.position, BossMath::Rotate(b.head.rotation, kHelmOffset)),
+        BossMath::Multiply(b.head.rotation, kHelmTurn));
+    Put(pose.torso, BossMath::Add(b.chest.position, BossMath::Rotate(b.chest.rotation, kTorsoOffset)),
+        b.chest.rotation);
+    Put(pose.rightHand, b.rightHand.position, b.rightHand.rotation);
+    Put(pose.leftHand, b.leftHand.position, b.leftHand.rotation);
+    Put(pose.rightCuff, BossMath::Lerp(b.rightFore.position, b.rightHand.position, kCuffAlong), b.rightFore.rotation);
+    Put(pose.leftCuff, BossMath::Lerp(b.leftFore.position, b.leftHand.position, kCuffAlong), b.leftFore.rotation);
+    Put(pose.sode[0], b.rightArm.position, b.rightArm.rotation);
+    Put(pose.sode[1], b.leftArm.position, b.leftArm.rotation);
+    if (b.tassetsRead) {
+        for (int k = 0; k < pose.tassetCount && static_cast<size_t>(k) < b.tassets.size(); ++k)
+            Put(pose.tassets[static_cast<size_t>(k)], b.tassets[static_cast<size_t>(k)].position,
+                b.tassets[static_cast<size_t>(k)].rotation);
+    }
+}
+
 void Hide(HIKARI::ObjectView object, BossAnimBodyState& state) {
     if (state.shown == 0)
         return;
@@ -150,7 +216,7 @@ void BossAnimBodySettings::Describe(HIKARI::PropertyFields& fields) {
 }
 
 bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body,
-                          float alpha) {
+                          float alpha, float seconds) {
     const BossAnimBodySettings& settings = boss.animBody;
     BossAnimBodyState& state = boss.animBodyState;
     state.active = false;
@@ -174,6 +240,11 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const H
     if (moveClip == nullptr && !state.layerClip.empty()) {
         (void)animation.ClearMaskedPoseLayer(handle, settings.blendSeconds);
         state.layerClip.clear();
+        state.layerOffSeconds = 0.0f;
+    }
+    if (moveClip == nullptr) {
+        state.layerWeight = 0.0f;
+        state.layerOffSeconds += std::max(0.0f, seconds);
     }
     if (moveClip == nullptr && !idle) {
         Hide(object, state);
@@ -213,9 +284,17 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, BossComponent& boss, const H
         const float length = static_cast<float>(move->clipFrames > 0 ? move->clipFrames : move->pre + move->act + move->post);
         const float elapsed = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);
         const float normalized = std::clamp(elapsed / std::max(1.0f, length), 0.0f, 1.0f);
+        // 待機の姿から重ね始める時（層を外し切った後）は、重みを混ぜる長さで 0 から上げる（技の始めの姿へ跳ばない）。
+        // 技から技へ続く時・外している途中で次の技が始まった時は 1 のまま（1 つの層しか無いので、混ぜる元が無い）。
+        if (state.layerClip != *moveClip)
+            state.layerFromIdle =
+                idle && state.layerClip.empty() && state.layerOffSeconds >= std::max(0.0f, settings.blendSeconds);
+        const float blendFrames = std::max(1.0f, settings.blendSeconds * 60.0f);
+        const float weight = state.layerFromIdle ? BossMath::Smooth(elapsed / blendFrames) : 1.0f;
+        state.layerWeight = weight;
         // 時刻を指定する層は毎フレーム置き直すので、混ぜる長さは 0（0 より大きいと置き直すたびに混ぜ始めから
-        // やり直し、重みが上がらず骨格の初期の姿＝T ポーズになる。登場の役者と同じ）。
-        if (!animation.SetMaskedPoseLayer(handle, *moveClip, kSkeletonRoot, normalized, 1.0f, 0.0f))
+        // やり直し、重みが上がらず骨格の初期の姿＝T ポーズになる。登場の役者と同じ）。重みは毎フレームここで決める。
+        if (!animation.SetMaskedPoseLayer(handle, *moveClip, kSkeletonRoot, normalized, weight, 0.0f))
             return fail(*moveClip);
         if (state.layerClip != *moveClip) {
             HIKARI::GameProjectAnimationState animator{};
@@ -367,6 +446,19 @@ float BossAnimBody::TwoHand(const BossComponent& boss) {
     return BossMath::Smooth(u);
 }
 
+bool BossAnimBody::BoneSwordPose(const BossComponent& boss, BossSwordPose& out) {
+    const BossAnimBodyState& state = boss.animBodyState;
+    const BossMove* move = CurrentMove(boss);
+    if (!state.active || !state.swordSeen || !IdleAllowed(boss, move) || (move != nullptr && ClipMove(boss, *move)))
+        return false;
+    const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
+    out = BossSwordPose{};
+    out.grip = BossMath::RotateY(BossMath::Sub(state.swordGripWorld, root), -boss.yaw);
+    out.direction = BossMath::RotateY(state.swordDirectionWorld, -boss.yaw);
+    out.twoHand = 0.0f;
+    return true;
+}
+
 bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectFloat3& out) {
     const BossMove* move = CurrentMove(boss);
     if (move == nullptr || !ClipMove(boss, *move))
@@ -377,28 +469,60 @@ bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectF
     return true;
 }
 
-void BossAnimBody::ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, BossBodyPose& pose) {
+void BossAnimBody::ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, float seconds,
+                             BossBodyPose& pose) {
     BossAnimBodyState& state = boss.animBodyState;
     const BossMove* move = CurrentMove(boss);
     state.tipSpeed = 0.0f;
     state.leftHandSeen = false;
-    if (!state.active)
+    state.swordSeen = false;
+    if (!state.active) {
+        state.lastTipValid = false;
         return;
-    // 左手の飾り（手の光・まとう霧）は、見えている左手の骨の所に付ける（待機の姿の間も。c-40f6c1）。
-    const HIKARI::ObjectView object = world.FindSceneObject(boss.animBody.object);
-    HIKARI::GameProjectTransform hand{};
-    if (object.IsValid() && world.GetAnimation().IsValid() &&
-        world.GetAnimation().GetSocketTransform(object.GetHandle().value, boss.animBody.leftHandNode,
-                                                HIKARI::GameProjectAnimationSocketSpace::World, hand)) {
-        pose.leftHand.position = hand.position;
-        state.leftHandWorld = hand.position;
-        state.leftHandSeen = true;
     }
-    if (move == nullptr || !ClipMove(boss, *move))
+    // 体に付く効果（刀光・刀の霞・手の光・まとう霧・胴の火と煙・目・変わり目の刀身の火）は、見えている骨格の骨の所に
+    // 付ける（待機の姿の間も。c-40f6c1・c-bc5908）。
+    const HIKARI::ObjectView object = world.FindSceneObject(boss.animBody.object);
+    Bones bones;
+    if (object.IsValid() && world.GetAnimation().IsValid() &&
+        ReadBones(world.GetAnimation(), object.GetHandle().value, boss.animBody, state.placed, bones)) {
+        PoseFromBones(bones, pose);
+        state.leftHandWorld = pose.leftHand.position;
+        state.leftHandSeen = true;
+        state.swordGripWorld = pose.sword.position;
+        state.swordDirectionWorld = BossMath::Rotate(pose.sword.rotation, {0.0f, 0.0f, 1.0f});
+        state.swordSeen = true;
+        if (!state.bonesLogged) {
+            state.bonesLogged = true;
+            HIKARI::GameProjectTransform seen{};
+            const bool read =
+                world.GetAnimation().GetSocketTransform(object.GetHandle().value, boss.animBody.swordNode,
+                                                        HIKARI::GameProjectAnimationSocketSpace::World, seen);
+            char message[200]{};
+            std::snprintf(message, sizeof(message),
+                          "[AnimBody] Bones tassets=%d sword=(%.2f,%.2f,%.2f) world=%d (%.2f,%.2f,%.2f)",
+                          static_cast<int>(bones.tassetsRead), static_cast<double>(pose.sword.position.x),
+                          static_cast<double>(pose.sword.position.y), static_cast<double>(pose.sword.position.z),
+                          static_cast<int>(read), static_cast<double>(seen.position.x),
+                          static_cast<double>(seen.position.y), static_cast<double>(seen.position.z));
+            BossLog::Write(message);
+        }
+    }
+    const float reach = BossBodyMath::VisibleSwordLength(boss);
+    // クリップの刀で当たる技（層が重なり切った後）：刀は規則の時計の時刻のクリップの刀（当たり・斬撃と同じ）。
+    if (move == nullptr || !ClipMove(boss, *move) || state.layerWeight < 0.999f) {
+        if (!state.swordSeen)
+            return;
+        const Vec3 tip = BossMath::Add(state.swordGripWorld, BossMath::Mul(state.swordDirectionWorld, reach));
+        pose.swordTipClearance = tip.y - boss.ground.y;
+        if (state.lastTipValid && seconds > 0.0f)
+            state.tipSpeed = BossMath::Length(BossMath::Sub(tip, state.lastTip)) / seconds;
+        state.lastTip = tip;
+        state.lastTipValid = true;
         return;
+    }
     const BossClipSwordTrack& track = *TrackOf(boss, move->clip);
     const float frame = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);
-    const float reach = BossBodyMath::VisibleSwordLength(boss);
     const Quat body = state.placed.rotation;
     const float scale = state.placed.scale.x;
     // 模型の空間の刀 → 見えている刀（骨格の体の足元・向き・大きさ）。剣先は刀の向き（+Z）へ見える刀の長さ。
@@ -413,6 +537,8 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, BossComponent& boss, floa
     const Vec3 tipLater = place(SampleTrack(track, frame + 1.0f), later);
     pose.swordTipClearance = tip.y - boss.ground.y;
     state.tipSpeed = BossMath::Length(BossMath::Sub(tipLater, tip)) / kSecondsPerFrame;
+    state.lastTip = tip;
+    state.lastTipValid = true;
 }
 
 } // namespace Project_TD2_2

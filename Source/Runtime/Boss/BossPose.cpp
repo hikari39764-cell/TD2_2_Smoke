@@ -678,8 +678,12 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
         return FromAngles(boss, kStunned);
     if (boss.state == BossState::Stunned)
         return StunPose(boss);
-    if (boss.state == BossState::Idle)
+    if (boss.state == BossState::Idle) {
+        // 骨格の体が待機の姿を見せている間は、見えている刀（c-bc5908）。
+        if (BossSwordPose bone; BossAnimBody::BoneSwordPose(boss, bone))
+            return bone;
         return IdlePose(boss);
+    }
     const auto& moves = boss.table.GetMoves();
     if (boss.state != BossState::Act || boss.move < 0 || static_cast<size_t>(boss.move) >= moves.size())
         return Rest(boss);
@@ -689,6 +693,9 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     // 技のクリップの刀（c-7b1a09）：クリップのある技は、見えているクリップの刀の骨の所で当てる。
     if (BossSwordPose clip; BossAnimBody::ClipSwordPose(boss, clip))
         return clip;
+    // 骨格の体が待機の姿のまま動く技（横歩き・寄る・下がる・霞歩）は、見えている刀（c-bc5908）。
+    if (BossSwordPose bone; BossAnimBody::BoneSwordPose(boss, bone))
+        return bone;
     switch (move.type) {
     case BossMoveType::Dash: return DashPose(boss, move);
     case BossMoveType::SlashR: return SingleStrikePose(boss, move, ShapeStrike(boss.swing.kesa, false));

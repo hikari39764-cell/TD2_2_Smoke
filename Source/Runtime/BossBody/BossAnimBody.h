@@ -89,6 +89,20 @@ struct BossAnimBodyState {
     // 見えている左手の骨の所（世界。描画のフレーム。1 フレーム前に描いた姿）と、それを読めたか。
     HIKARI::GameProjectFloat3 leftHandWorld{};
     bool leftHandSeen = false;
+    // 技のクリップの層の重み（0〜1。c-bc5908：待機の姿から重ね始める時は、混ぜる長さで 0 から上げる。いきなり 1 に
+    // すると待機の姿から技の始めの姿へ跳ぶ）、待機の姿から重ね始めたか、層を外してからの秒。
+    float layerWeight = 0.0f;
+    bool layerFromIdle = false;
+    float layerOffSeconds = 1000.0f;
+    // 見えている刀の骨（世界。描画のフレーム。待機・移動の間の刀光・刀の霞と規則の剣の構えが使う）と、それを読めたか。
+    HIKARI::GameProjectFloat3 swordGripWorld{};
+    HIKARI::GameProjectFloat3 swordDirectionWorld{};
+    bool swordSeen = false;
+    // 前のフレームの剣先（剣先の速さを出す）。
+    HIKARI::GameProjectFloat3 lastTip{};
+    bool lastTipValid = false;
+    // 骨の読み方を 1 度だけ記録に書いたか。
+    bool bonesLogged = false;
 };
 
 namespace BossAnimBody {
@@ -96,7 +110,8 @@ namespace BossAnimBody {
 // 描画のフレームごと：流すクリップを決め、骨格の体をボスの足元 body（体の中心の変換）と向きに置いて流す。alpha は
 // 固定 tick の間の補間の割合（技のクリップの時刻を tick の間でも滑らかにする）。
 // 骨格の体が体を演じる時（流すクリップがある）は true（呼ぶ側は戦いの体の外形を出さない）。
-bool Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body, float alpha);
+bool Update(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform& body, float alpha,
+            float seconds);
 // 骨格の体を隠して止める（ボスが消える・Play が止まる）。
 void Stop(HIKARI::WorldView& world, BossComponent& boss);
 // いま骨格の体が体を演じているか。
@@ -112,9 +127,13 @@ bool ClipSwordPose(const BossComponent& boss, BossSwordPose& out);
 bool LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectFloat3& out);
 // 両手で握っている度合い（0〜1。規則の tick のいまの時刻。クリップの刀で当たる技の間だけ。c-40f6c1）。
 float TwoHand(const BossComponent& boss);
-// 描画のフレーム（Update の後）：骨格の体が技のクリップを流している間、見た目の刀の置き場所（刀光・刀の霞）を、見えている
-// クリップの刀にし、剣先の速さ（tipSpeed）を求める（alpha は tick の間の補間）。
-void ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, BossBodyPose& pose);
+// 骨格の体が待機の姿（クリップの刀で当たる技でない間）を見せている時、見えている刀の骨を規則の剣の構え（足元が原点・
+// 体の向きの局所）にして true（BossPose::Target が使う。待機・移動の間の刀の煙・剣先の霞が見える刀に付く。c-bc5908）。
+bool BoneSwordPose(const BossComponent& boss, BossSwordPose& out);
+// 描画のフレーム（Update の後）：骨格の体が出ている間、体に付く効果の置き場所（刀・両手・袖口・肩・胴・兜・草摺）を、
+// 見えている骨格の骨にする（c-bc5908。外形の体の置き場所に効果が残らない）。クリップの刀で当たる技の間は、刀を
+// 規則の時計の時刻のクリップの刀にする（alpha は tick の間の補間）。剣先の速さ（tipSpeed）も求める。
+void ApplyPose(HIKARI::WorldView& world, BossComponent& boss, float alpha, float seconds, BossBodyPose& pose);
 
 } // namespace BossAnimBody
 
