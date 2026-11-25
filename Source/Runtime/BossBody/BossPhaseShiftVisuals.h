@@ -14,8 +14,8 @@ public:
     static void Advance(BossComponent& boss, float seconds);
     // 胴の煙の火の強さの下限（0〜1。燃の間に内から火が回る。BossBodyVisuals の StepFire が使う）。
     static float FireFloor(const BossComponent& boss);
-    // 待機の姿に解いた外形（pose）を、変わり目の姿へ直す（演出の間だけ。ほかは何もしない）。
-    static void ApplyPose(BossComponent& boss, const HIKARI::GameProjectTransform& body, BossBodyPose& pose);
+    // 演出の間の、刀身の灼け・刃口の光・気配（体は骨格の体が待機の姿で演じる。ほかは何もしない）。
+    static void ApplyPose(BossComponent& boss, BossBodyPose& pose);
     // 煙と火の注入（胴の煙の域）、火の輪、閃光の手応えの頼み（演出の後も、火の輪が消えるまで進める）。
     static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
                        const BossBodyPose& pose, float seconds);

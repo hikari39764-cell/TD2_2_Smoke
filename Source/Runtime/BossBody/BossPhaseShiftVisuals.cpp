@@ -91,154 +91,11 @@ float Progress(const BossComponent& boss) {
 Vec3 Point(const BossPhaseShiftState& state, Vec3 local) { return Add(state.origin, RotateY(local, state.yaw)); }
 Vec3 Direction(const BossPhaseShiftState& state, Vec3 local) { return RotateY(local, state.yaw); }
 
-// 地面に突き立てた刀。
-Held Planted(const BossComponent& boss) {
-    const BossPhaseShiftSettings& s = boss.shift;
-    const BossPhaseShiftState& state = boss.shiftState;
-    const float lean = s.plantLeanDegrees * kRadiansPerDegree;
-    const Vec3 enter = Point(state, Mul(s.plantGround, boss.body.bodyScale));
-    // 柄は体の側（後ろ）へ傾く。
-    const Vec3 toward = Direction(state, {0.0f, 0.0f, -1.0f});
-    const Vec3 up = Normalize(Add(Vec3{0.0f, std::cos(lean), 0.0f}, Mul(toward, std::sin(lean))));
-    Held held;
-    held.grip = Add(enter, Mul(up, VisibleBladeReach(boss) - s.plantBuried));
-    held.tip = Mul(up, -1.0f);
-    held.spine = Mul(Direction(state, Forward(s.plantEdgeYawDegrees * kRadiansPerDegree)), -1.0f);
-    return held;
-}
-
 Held Local(const BossComponent& boss, Vec3 grip, Vec3 tip) {
     Held held;
     held.grip = Point(boss.shiftState, Mul(grip, boss.body.bodyScale));
     held.tip = Normalize(Direction(boss.shiftState, tip));
     return held;
-}
-
-// 膝をついた体。
-Motion Kneel(const BossComponent& boss) {
-    const BossPhaseShiftSettings& s = boss.shift;
-    return {s.kneelTwistDegrees * kRadiansPerDegree, s.kneelLeanDegrees * kRadiansPerDegree, s.kneelSink, 0.0f};
-}
-
-// 拍ごとの体の動き。
-Motion MotionOf(const BossComponent& boss) {
-    const BossPhaseShiftSettings& s = boss.shift;
-    const BossPhaseShiftState& state = boss.shiftState;
-    const float u = Progress(boss);
-    const float deg = kRadiansPerDegree;
-    const Motion kneel = Kneel(boss);
-    const float heave = kHeave * std::sin(kTau * kHeaveRate * state.beatSeconds);
-    const Motion high{boss.intro.highTwistDegrees * deg, boss.intro.highLeanDegrees * deg, 0.0f, 1.0f};
-    switch (state.beat) {
-    case BossShiftBeat::Collapse: {
-        // よろめいて反り、前へ崩れ落ちて膝をつく（刀が刺さる所で膝が着く）。
-        const float stagger = Unit(s.staggerShare);
-        const float plant = std::max(stagger + kTiny, s.plantShare);
-        if (u < stagger) {
-            Motion m;
-            m.lean = s.staggerDegrees * deg * std::sin(kPi * 0.5f * Smooth(u / std::max(kTiny, stagger)));
-            m.twist = 0.3f * s.kneelTwistDegrees * deg * Smooth(u / std::max(kTiny, stagger));
-            return m;
-        }
-        const float t = (u - stagger) / (plant - stagger);
-        Motion start;
-        start.lean = s.staggerDegrees * deg;
-        start.twist = 0.3f * s.kneelTwistDegrees * deg;
-        // 崩れ落ちる：出だしは遅く、膝が着く所で速い（重さ）。
-        Motion m = MixMotion(start, kneel, Unit(t * t * (1.6f - 0.6f * t)));
-        if (u >= plant)
-            m.lean += heave * Smooth((u - plant) / 0.2f);
-        return m;
-    }
-    case BossShiftBeat::Ignite: {
-        // 膝をついたまま肩で息をし、火が回るにつれて胸を起こす。
-        Motion m = kneel;
-        m.lean = kneel.lean * (1.0f - kIgniteRaise * Smooth((u - 0.5f) / 0.5f)) + heave;
-        m.twoHand = Smooth((u - s.wipeEndShare) / std::max(kTiny, 1.0f - s.wipeEndShare));
-        return m;
-    }
-    case BossShiftBeat::Burst: {
-        // 立ち上がりながら柄を両手で握って力を込め、刀が地面を離れると斬り上げて八相に収まる。
-        Motion raised = kneel;
-        raised.lean = kneel.lean * (1.0f - kIgniteRaise);
-        raised.twoHand = 1.0f;
-        const Motion strain{kStrainTwist * deg, kStrainLean * deg, kStrainSink, 1.0f};
-        const float draw = Unit(s.drawShare);
-        const float rip = std::max(draw + kTiny, s.ripShare);
-        if (u < draw)
-            return MixMotion(raised, strain, Smooth(u / std::max(kTiny, draw)));
-        return MixMotion(strain, high, Smooth((u - draw) / (rip - draw)));
-    }
-    case BossShiftBeat::Settle: {
-        Motion m = MixMotion(high, {}, Smooth(u / kSettleBlend));
-        m.twoHand = 1.0f - Smooth(u / kSettleRelease);
-        return m;
-    }
-    default: return {};
-    }
-}
-
-// 刀と右手（世界）。
-Held SwordOf(const BossComponent& boss, const BossBodyPose& solved) {
-    const BossPhaseShiftSettings& s = boss.shift;
-    const BossPhaseShiftState& state = boss.shiftState;
-    const float u = Progress(boss);
-    const Held idle = HeldOf(solved.sword);
-    const Held planted = Planted(boss);
-    switch (state.beat) {
-    case BossShiftBeat::Collapse: {
-        const float stagger = Unit(s.staggerShare);
-        const float plant = std::max(stagger + kTiny, s.plantShare);
-        if (u < stagger) {
-            // よろめき：握りが後ろ・上へ弾かれる。
-            Held held = idle;
-            const float kick = std::sin(kPi * Smooth(u / std::max(kTiny, stagger)) * 0.5f);
-            held.grip = Add(held.grip, Mul(Direction(state, Mul(kStaggerKick, boss.body.bodyScale)), kick));
-            return held;
-        }
-        if (u >= plant)
-            return planted;
-        // 倒れ込みながら突き下ろす（終わりで速い）。
-        const float t = (u - stagger) / (plant - stagger);
-        Held start = idle;
-        start.grip = Add(start.grip, Mul(Direction(state, Mul(kStaggerKick, boss.body.bodyScale)), 1.0f));
-        const Held mid = Local(boss, kPlantMidGrip, kPlantMidTip);
-        Held held = Sweep(start, mid, planted, t * t);
-        held.spine = Normalize(Lerp(start.spine, planted.spine, Smooth(t)), planted.spine);
-        return held;
-    }
-    case BossShiftBeat::Ignite: return planted;
-    case BossShiftBeat::Burst: {
-        const float draw = Unit(s.drawShare);
-        const float rip = std::max(draw + kTiny, s.ripShare);
-        if (u < draw) {
-            // 両手で握って力を込める：刀の震えが強まる。
-            Held held = planted;
-            const float strain = kStrain * Smooth(u / std::max(kTiny, draw));
-            const float t = state.beatSeconds * kTau * kStrainRate;
-            held.grip.x += strain * std::sin(t);
-            held.grip.z += strain * std::sin(t * 1.31f + 1.0f);
-            return held;
-        }
-        // 斬り上げ：地面を裂いて一気に抜き、体の右の外を通って八相へ（刃が先。登場の抜刀と同じ道）。
-        const BossIntroSettings& intro = boss.intro;
-        const Held ripMid = Local(boss, intro.drawRipGrip, intro.drawRipTip);
-        const Held high = Local(boss, intro.highGrip, intro.highTip);
-        const float t = (u - draw) / (rip - draw);
-        Held held =
-            SweepEdged(planted, ripMid, high, RipAlong(t, kRipOvershoot), -1.0f, kPathStep, VisibleBladeReach(boss));
-        held.spine = Normalize(Lerp(planted.spine, held.spine, Smooth(t / 0.3f)), held.spine);
-        return held;
-    }
-    case BossShiftBeat::Settle: {
-        const BossIntroSettings& intro = boss.intro;
-        const Held ripMid = Local(boss, intro.drawRipGrip, intro.drawRipTip);
-        const Held high = Local(boss, intro.highGrip, intro.highTip);
-        const Held top = SweepEdged(planted, ripMid, high, 1.0f, -1.0f, kPathStep, VisibleBladeReach(boss));
-        return Mix(top, idle, Smooth(u / kSettleBlend));
-    }
-    default: return idle;
-    }
 }
 
 // 左手が刀身を拭う所（握りから剣先へ m）。拭っていない間は負。
@@ -264,15 +121,6 @@ float LitAlong(const BossComponent& boss) {
     if (state.beat == BossShiftBeat::Burst && !state.flashed)
         return std::max(kRootAlong, VisibleBladeReach(boss) - s.plantBuried - kWipeStopAbove);
     return -1.0f;
-}
-
-// 刀身を拭う左手：刀身のその所を、両手持ちと同じ向きの拳で握って滑らせる。
-BossBodyPlacement WipeHand(const BossComponent& boss, const BossBodyPlacement& sword, float along, Vec3 shoulder) {
-    BossBodyPlacement at = sword;
-    const Vec3 z = Rotate(sword.rotation, {0.0f, 0.0f, 1.0f});
-    // TwoHandLeft は握りから twoHandBehind だけ柄頭の側へ置くので、その分を前へずらして、刀身の along の所に置く。
-    at.position = Add(sword.position, Mul(z, along + boss.body.leftHand.twoHandBehind));
-    return TwoHandLeft(boss, at, shoulder);
 }
 
 void Inject(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, uint64_t id,
@@ -455,93 +303,15 @@ float BossPhaseShiftVisuals::FireFloor(const BossComponent& boss) {
     return 0.0f;
 }
 
-void BossPhaseShiftVisuals::ApplyPose(BossComponent& boss, const HIKARI::GameProjectTransform& body,
-                                      BossBodyPose& pose) {
+void BossPhaseShiftVisuals::ApplyPose(BossComponent& boss, BossBodyPose& pose) {
     if (!BossPhaseShift::Cinematic(boss))
         return;
     const BossPhaseShiftSettings& s = boss.shift;
     const BossPhaseShiftState& state = boss.shiftState;
-    const BossBodySettings& b = boss.body;
-    const BossBodyPose solved = pose;
-    const Motion motion = MotionOf(boss);
     const float u = Progress(boss);
-
-    // 刀と右手。
-    const Held sword = SwordOf(boss, solved);
-    pose.sword = Place(sword, SwordScale(boss));
-    pose.rightHand = Place(sword, HandScale(boss));
-    pose.showHands = true;
-    // 刀身は、拭い終わった所から灼けた刀身（その前は、拭った所まで流体の火が灯る）。
+    // 体は骨格の体が待機の姿で演じる（c-db1a15）。ここは刀身の灼けと刃口の光・気配だけ：拭い終わった所から灼けた刀身。
     pose.bladeHot = BossBodyMath::PhaseTwoLook(boss) || (state.beat == BossShiftBeat::Ignite && u >= s.wipeEndShare) ||
                     state.beat == BossShiftBeat::Burst;
-    const float pivot = BodyPoint(b, {0.0f, kLeanPivot, 0.0f}).y;
-    const Vec3 rightShoulder =
-        BendPoint(state, motion, pivot, BodyToWorld(boss, body, BodyPoint(b, b.shoulder)), 1.0f, 1.0f);
-    const float handScale = HandScale(boss);
-    const Vec3 rightWrist = Add(pose.rightHand.position, Rotate(pose.rightHand.rotation, Mul(b.gripWrist, handScale)));
-    const Vec3 gripElbow = Normalize(Rotate(pose.rightHand.rotation, b.gripElbow));
-    const Vec3 rightElbow = Lerp(Normalize(Sub(rightShoulder, rightWrist), gripElbow), gripElbow, b.cuffGripBlend);
-    pose.rightCuff =
-        Cuff(rightWrist, rightElbow, Rotate(pose.rightHand.rotation, b.gripBack), handScale, b, rightShoulder);
-
-    // 鎧：膝をつく・起き上がる体の動き（胴・大袖・左手は丸ごと、兜と草摺は少なめに付く）。
-    const auto bend = [&](BossBodyPlacement& placement, float twistShare, float leanShare) {
-        placement.position = BendPoint(state, motion, pivot, placement.position, twistShare, leanShare);
-        placement.rotation = Multiply(BendTurn(state, motion, twistShare, leanShare), placement.rotation);
-    };
-    bend(pose.torso, 1.0f, 1.0f);
-    bend(pose.sode[0], 1.0f, 1.0f);
-    bend(pose.sode[1], 1.0f, 1.0f);
-    bend(pose.leftCuff, 1.0f, 1.0f);
-    bend(pose.leftHand, 1.0f, 1.0f);
-    bend(pose.head, kHeadTwistShare, 1.0f);
-    for (int k = 0; k < pose.tassetCount; ++k)
-        bend(pose.tassets[static_cast<size_t>(k)], kTassetTwistShare, kTassetLeanShare);
-
-    // 左手：燃の間は刀身の根元へ伸ばして先へ拭い、柄へ戻って両手で握る。爆・構えは両手持ち（構えで離す）。
-    const Vec3 right = BodyPoint(b, b.shoulder);
-    const Vec3 leftShoulder =
-        BendPoint(state, motion, pivot, BodyToWorld(boss, body, {-right.x, right.y, right.z}), 1.0f, 1.0f);
-    BossBodyPlacement left = pose.leftHand;
-    float leftWeight = 0.0f;
-    if (state.beat == BossShiftBeat::Ignite) {
-        const float wipe = WipeAlong(boss);
-        const BossBodyPlacement onBlade = WipeHand(boss, pose.sword, wipe, leftShoulder);
-        const BossBodyPlacement onHilt = TwoHandLeft(boss, pose.sword, leftShoulder);
-        if (u < s.wipeEndShare) {
-            left = onBlade;
-            leftWeight = Smooth(u / std::max(kTiny, s.wipeReachShare));
-        } else {
-            const float back = Smooth((u - s.wipeEndShare) / std::max(kTiny, 1.0f - s.wipeEndShare));
-            left = onBlade;
-            left.position = Lerp(onBlade.position, onHilt.position, back);
-            left.rotation = Blend(onBlade.rotation, onHilt.rotation, back);
-            leftWeight = 1.0f;
-        }
-    } else if (motion.twoHand > 0.0f) {
-        left = TwoHandLeft(boss, pose.sword, leftShoulder);
-        leftWeight = Smooth(motion.twoHand);
-    }
-    if (leftWeight > 0.0f) {
-        pose.leftHand.position = Lerp(pose.leftHand.position, left.position, leftWeight);
-        pose.leftHand.rotation = Blend(pose.leftHand.rotation, left.rotation, leftWeight);
-        if (leftWeight > 0.5f)
-            pose.leftShape = BossBodyHandShape::Fist;
-        const Vec3 back = Rotate(pose.leftHand.rotation, {0.0f, 1.0f, 0.0f});
-        pose.leftCuff =
-            Cuff(pose.leftHand.position, Sub(leftShoulder, pose.leftHand.position), back, handScale, b, leftShoulder);
-    }
-
-    // 空中で 1 本目が空になった時：崩の始めに、元の高さから落ちて来る（体の物体は地面にあるので、外形だけを上げる）。
-    if (state.beat == BossShiftBeat::Collapse && state.fallHeight > 0.0f) {
-        const float t = Unit(u / std::max(kTiny, s.fallShare));
-        const Vec3 lift{0.0f, state.fallHeight * (1.0f - t * t), 0.0f};
-        for (BossBodyPlacement* placement : {&pose.sword, &pose.rightHand, &pose.rightCuff, &pose.leftHand,
-                                             &pose.leftCuff, &pose.torso, &pose.head, &pose.sode[0], &pose.sode[1]})
-            placement->position = Add(placement->position, lift);
-        for (int k = 0; k < pose.tassetCount; ++k)
-            pose.tassets[static_cast<size_t>(k)].position = Add(pose.tassets[static_cast<size_t>(k)].position, lift);
-    }
 
     // 刃口の光・体を包む気配：力を込める間に強まり、斬り上げで刀光を引く。
     BossIntroState& look = boss.introState;

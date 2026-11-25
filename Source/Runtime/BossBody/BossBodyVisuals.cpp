@@ -5,16 +5,14 @@
 #include <string_view>
 
 #include "HIKARI/Project/FluidView.h"
-#include "HIKARI/Project/PresentationViews.h"
 #include "BossAnimBody.h"
 #include "BossBodyAccents.h"
 #include "BossBodyMath.h"
 #include "BossBodyRig.h"
-#include "BossBodySword.h"
 #include "BossIntroVisuals.h"
 #include "BossPhaseShiftVisuals.h"
-#include "../Boss/BossCloneComponent.h"
 #include "../Boss/BossFrame.h"
+#include "../Boss/BossRules.h"
 #include "../Boss/BossMath.h"
 #include "../Boss/BossVfx.h"
 #include "../Common/FluidChannels.h"
@@ -23,54 +21,8 @@
 namespace Project_TD2_2 {
 namespace {
 
-// 模型のノードの名前（模型側の契約。作るスクリプト Tools/BossBody と同じ名前にする）と、表示専用の模型の番号（持ち主の物体ごと）。
-struct BossBodyPart {
-    std::string_view node;
-    uint64_t instance;
-};
-constexpr BossBodyPart kHilt{"KatanaHilt", 1u};
-constexpr BossBodyPart kBlade{"KatanaBlade", 2u};
-// 灼けた刀身は、ふつうの刀身と同じ番号で出す（差し替え。同じフレームに両方は出ない）。
-constexpr BossBodyPart kBladeHot{"KatanaBladeHot", 2u};
-constexpr BossBodyPart kRightHand{"HandR", 3u};
-constexpr BossBodyPart kRightCuff{"Cuff", 4u};
-constexpr BossBodyPart kLeftCuff{"Cuff", 5u};
-constexpr uint64_t kLeftHandInstance = 6u;
-// 胸当ては騎士の胸当て（首当て付き・写実の貼図。c-584825。模型を作るスクリプト Tools/BossBody/bb_knight_armor.py）。
-constexpr BossBodyPart kTorso{"KnightBody", 7u};
-// 兜は騎士の兜（角付き・写実の貼図。c-08863a。模型を作るスクリプト Tools/BossBody/bb_knight_helm.py）。
-constexpr BossBodyPart kHead{"KnightHelm", 8u};
-// 灼けた鎧（フェーズ 2）は、ふだんの鎧と同じ番号でノードだけ差し替える（同じフレームに両方は出ない。c-857ae3）。
-constexpr BossBodyPart kTorsoHot{"KnightBodyHot", 7u};
-constexpr BossBodyPart kHeadHot{"KnightHelmHot", 8u};
-// 面頬の隙間の中の光（模型に足した自発光の面。Tools/BossBody/add_helm_glow.py）。目が灯っている時だけ、兜と同じ所へ出す。
-// フェーズ 2 は火の色の方へ差し替える。
-constexpr BossBodyPart kHeadGlow{"HelmGlow", 9u};
-constexpr BossBodyPart kHeadGlowHot{"HelmGlowHot", 9u};
-constexpr std::string_view kTassetHotNode = "KusazuriPanelHot";
-// 兜の中の光（面頬の 5 本の隙間から透ける一筋の光と尾）は模型に入れず、目のエフェクト（BossBodyAccents の
-// eyesEffect）が受け持つ。
-// 肩当て（右・左。c-584825）：左右は鏡の形で、模型の置き方は鏡にできない（拡大は一様）ので、ノードを分けてある。
-constexpr std::array<std::string_view, 2> kSodeNodes{"KnightPauldronR", "KnightPauldronL"};
-constexpr std::array<std::string_view, 2> kSodeHotNodes{"KnightPauldronRHot", "KnightPauldronLHot"};
-constexpr uint64_t kSodeInstance = 10u;
-// 草摺は、同じノードを枚数ぶん、この番号から続けて出す。
-constexpr std::string_view kTassetNode = "KusazuriPanel";
-constexpr uint64_t kTassetInstance = 20u;
 // 胴の煙のエフェクトの入力（資産側の契約）：出す量の倍率と、源の温度の倍率。
 constexpr const char* kSmokeHeatInput = "input.heat";
-// 刀身に掛ける材質の効果（エンジンに組み込みの溶かす効果。溶かす量は 0 のまま、輪郭の発光だけを使う）と、その項目の名前。
-constexpr std::string_view kBladeFxProfile = "HIKARI_Dissolve";
-constexpr std::string_view kRimStrength = "rimStrength";
-constexpr std::string_view kRimPower = "rimPower";
-constexpr std::string_view kPulseSpeed = "pulseSpeed";
-// 溶かす量（0〜1）。霞の大剣の間、太刀を霞にほどく（c-9143b5）。
-constexpr std::string_view kDissolveAmount = "amount";
-// 太刀がこれ以上ほどけたら、柄も刀身も描かない（大剣だけを持つ）。
-constexpr float kTachiHiddenAmount = 0.98f;
-// 輪郭の光がこれより弱ければ、強さ 0 を送る。
-constexpr float kBladeRimMinimum = 0.01f;
-
 // 胴の煙の入力：火の粉・熱のゆがみの粒・裾と首の熾火の源の量（フェーズ 1 は 0）。
 constexpr const char* kSmokeBurnInput = "input.burn";
 // 火の舌の注入の番号（ボスの物体ごと）：襟の右 2 本・左 2 本、右・左の袖口。
@@ -119,118 +71,6 @@ void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::Ga
                             BossMath::Lerp(stunned ? 1.0f : accents.smokeHeat, boss.body.smokeHeatPhaseTwo, fire));
     VfxParameters::SetFloat(parameters, kSmokeBurnInput, boss.body.fireBurn * fire);
     StartOrSend(world, boss, boss.bodyState.smokeVfx, boss.body.smokeEffect, transform, parameters);
-}
-
-std::string_view LeftHandNode(BossBodyHandShape shape) {
-    switch (shape) {
-    case BossBodyHandShape::Fist: return "HandL_Fist";
-    case BossBodyHandShape::Seal: return "HandL_Seal";
-    default: return "HandL_Open";
-    }
-}
-
-void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyPart& part,
-            const BossBodyPlacement& placement) {
-    HIKARI::GameProjectPresentationModelRequest request{};
-    request.ownerObjectHandle = object.GetHandle().value;
-    request.instanceId = part.instance;
-    const std::string& guid = boss.body.model;
-    std::copy_n(guid.data(), std::min(guid.size(), sizeof(request.model.assetGuid) - 1), request.model.assetGuid);
-    request.castShadow = boss.body.castShadow ? 1u : 0u;
-    request.worldTransform.position = placement.position;
-    request.worldTransform.rotation = placement.rotation;
-    request.worldTransform.scale = {placement.scale, placement.scale, placement.scale * placement.lengthScale};
-    if (world.GetPresentationModels().SubmitExclusiveNode(request, part.node) || boss.bodyState.submitWarned)
-        return;
-    boss.bodyState.submitWarned = true;
-    BossLog::Warn("[BossBody] 外形の模型を出せませんでした（Boss の「外形の模型」とノードの名前を確かめてください）");
-}
-
-// 太刀のほどけ（0〜1。c-9143b5）：霞の大剣が満ちるのに合わせて太刀が霞にほどけ、大剣がほどける間に戻る。
-float TachiDissolve(const BossComponent& boss) {
-    const BossGreatswordState& sword = boss.greatsword;
-    switch (sword.phase) {
-    case BossGreatswordPhase::None: return 0.0f;
-    case BossGreatswordPhase::Conjure: return std::clamp(sword.fill * boss.body.accents.tachiDissolveSpeed, 0.0f, 1.0f);
-    case BossGreatswordPhase::Dissolve: return std::clamp(1.0f - sword.dissolve, 0.0f, 1.0f);
-    default: return 1.0f;
-    }
-}
-
-// 刀身の輪郭の光の目標：両手の斬りの構え・溜め（前隙と、連撃の振りの間）で灯り、大きな溜めで増し、振る間は強い。
-float BladeRimTarget(const BossComponent& boss, bool hot) {
-    const BossBodyAccentSettings& a = boss.body.accents;
-    if (boss.state != BossState::Act || boss.swordPose.twoHand < 0.5f)
-        return 0.0f;
-    float rim = 0.0f;
-    if (boss.swordSmoke)
-        rim = a.bladeRimSwing;
-    else if (boss.phase != BossActPhase::Post)
-        rim = a.bladeRimKamae + a.bladeRimCharge * std::max(0.0f, boss.chargeVisual);
-    // 実体の刀だけで当てる技の間は、刀身を光らせない（霞の技と見分ける。c-ecd963）。刀を振る技でない時（散歩の構え・
-    // 霞の大剣）も光らせない（散歩の構えで光ると、剣気の技が来ると読めてしまう。c-44fdc5）。
-    const BossBodyAccents::BladeKind kind = BossBodyAccents::Kind(boss);
-    if (kind == BossBodyAccents::BladeKind::Real)
-        rim *= a.realRimShare;
-    else if (kind == BossBodyAccents::BladeKind::None)
-        rim = 0.0f;
-    return rim * (hot ? a.bladeRimHotShare : 1.0f);
-}
-
-// 刀身（模型の刀身の番号）に材質の効果を掛け、輪郭の光を時間で寄せて送る。効果を掛ける前に同じフレームで刀身を頼んで
-// あること（頼まれていない番号には掛けられない）。効果（プロファイル）は掛かっていない時だけ掛け、外さない：掛け外しや
-// 掛け直しは描画の場面の作り直し（光の追跡の場面を含む）を毎フレーム起こして重い。光らない時は強さ 0 を送る。
-void UpdateBladeShader(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, bool hot,
-                       float seconds) {
-    const BossBodyAccentSettings& a = boss.body.accents;
-    float& rim = boss.bodyState.accents.bladeRim;
-    const float target = BladeRimTarget(boss, hot);
-    const float time = target > rim ? a.bladeRimRiseSeconds : a.bladeRimFallSeconds;
-    rim += (target - rim) * (1.0f - std::exp(-std::max(0.0f, seconds) / std::max(1e-3f, time)));
-    // 構えも振りも 0 なら効果を掛けない（材質のまま描く）。
-    if (a.bladeRimKamae <= 0.0f && a.bladeRimSwing <= 0.0f)
-        return;
-    const HIKARI::MaterialFxView fx =
-        world.GetPresentationModels().GetMaterialFx(object.GetHandle().value, kBlade.instance);
-    if (!fx.IsValid())
-        return;
-    char current[64]{};
-    if (fx.GetProfileIdSize() != kBladeFxProfile.size() || !fx.CopyProfileId(current, sizeof(current)) ||
-        kBladeFxProfile != current) {
-        if (!fx.SetProfileId(kBladeFxProfile))
-            return;
-        fx.SetFloat(kRimPower, a.bladeRimPower);
-        fx.SetFloat(kPulseSpeed, a.bladeRimPulse);
-    }
-    fx.SetFloat(kRimStrength, rim < kBladeRimMinimum ? 0.0f : rim);
-    fx.SetFloat(kDissolveAmount, TachiDissolve(boss));
-}
-
-// 置き場所の一式を、持ち主の物体（本体・分身）の表示専用の模型として頼む。番号は持ち主ごとなので、本体と分身で
-// 同じ番号を使っても重ならない。
-void SubmitPose(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyPose& pose) {
-    // 霞の大剣の間は、ほどけきった太刀を描かない（両手は大剣の柄を握る。c-9143b5）。
-    if (TachiDissolve(boss) < kTachiHiddenAmount) {
-        Submit(world, object, boss, kHilt, pose.sword);
-        Submit(world, object, boss, pose.bladeHot ? kBladeHot : kBlade, pose.sword);
-    }
-    if (pose.showHands) {
-        Submit(world, object, boss, kRightHand, pose.rightHand);
-        Submit(world, object, boss, {LeftHandNode(pose.leftShape), kLeftHandInstance}, pose.leftHand);
-    }
-    Submit(world, object, boss, kRightCuff, pose.rightCuff);
-    Submit(world, object, boss, kLeftCuff, pose.leftCuff);
-    Submit(world, object, boss, pose.armorHot ? kTorsoHot : kTorso, pose.torso);
-    Submit(world, object, boss, pose.armorHot ? kHeadHot : kHead, pose.head);
-    if (pose.eyesLit)
-        Submit(world, object, boss, pose.eyesFire ? kHeadGlowHot : kHeadGlow, pose.head);
-    for (size_t side = 0; side < pose.sode.size(); ++side)
-        Submit(world, object, boss, {(pose.armorHot ? kSodeHotNodes : kSodeNodes)[side], kSodeInstance + side},
-               pose.sode[side]);
-    for (int k = 0; k < pose.tassetCount; ++k)
-        Submit(world, object, boss,
-               {pose.armorHot ? kTassetHotNode : kTassetNode, kTassetInstance + static_cast<uint64_t>(k)},
-               pose.tassets[static_cast<size_t>(k)]);
 }
 
 // 火の舌を 1 つ入れる：胴の煙の域だけに届く燃料（燃え始める温度より熱くして入れるので、すぐ燃える）。燃料は昇りながら
@@ -286,24 +126,27 @@ void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
                s.fireCuffShare);
 }
 
-// 待機の構えの全身（霞分身・編集器のプレビュー）。入力は物体の変換と時計だけ：振れは持たず、大袖・草摺は揺らぎだけ。
-// 胴の捻りは本体の待機と同じく刀の横の向きから。
-BossBodyPose IdlePose(const BossComponent& boss, const HIKARI::GameProjectTransform& body, float clock) {
-    HIKARI::GameProjectFloat3 blade{}, grip{};
-    BossBodyMath::IdleKamae(boss.body.motion, BossBodyMath::PhaseTwoLook(boss), clock, blade, grip);
-    grip = BossBodyMath::Mul(grip, boss.body.bodyScale);
-    const BossBodyRigInput input{boss.body,
-                                 body,
-                                 boss.bodyHalfHeight,
-                                 clock,
-                                 {},
-                                 BossBodyMath::TwistTarget(boss.body.motion, blade),
-                                 0.0f,
-                                 boss.lastPhaseNumber >= 2,
-                                 true,
-                                 BossBodyMath::SwordScale(boss),
-                                 BossBodyMath::HandScale(boss)};
-    return BossBodyRig::SolveIdle(input);
+// 左手の所作（手の光の演出 BossBodyAccents が読む）：いまの技の型から決める。手の形はいつも開いた手。
+void StepLeftGesture(BossComponent& boss) {
+    struct Row {
+        BossMoveType type;
+        BossBodyLeftGesture gesture;
+    };
+    constexpr Row kGestures[] = {
+        {BossMoveType::Detonate, BossBodyLeftGesture::Detonate},  {BossMoveType::Knife, BossBodyLeftGesture::Knife},
+        {BossMoveType::Clone, BossBodyLeftGesture::Seal},         {BossMoveType::Ambush, BossBodyLeftGesture::Seal},
+        {BossMoveType::FlameRun, BossBodyLeftGesture::FlameWipe}, {BossMoveType::Retreat, BossBodyLeftGesture::Aim},
+    };
+    BossBodyMotionState& m = boss.bodyState.motion;
+    m.leftGesture = BossBodyLeftGesture::Balance;
+    m.leftShape = BossBodyHandShape::Open;
+    const BossMove* move = boss.state == BossState::Act ? BossRules::GetMove(boss, boss.move) : nullptr;
+    if (move == nullptr)
+        return;
+    for (const Row& row : kGestures) {
+        if (row.type == move->type)
+            m.leftGesture = row.gesture;
+    }
 }
 
 } // namespace
@@ -342,41 +185,22 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     BossBodyAccents::StepSmoke(boss, seconds);
     StepFire(boss, seconds);
     UpdateSmoke(world, boss, shown);
-    if (boss.body.model.empty())
-        return;
-    BossBodyRig::StepSway(boss, body, seconds);
-    BossBodySword::Step(boss, seconds);
-    BossBodyPose pose = BossBodyRig::Solve(boss, body);
-    BossBodySword::Trace(boss, body, pose);
+    StepLeftGesture(boss);
+    // 体は骨格の体（戦いの間）か登場の役者が描く。ここは体に付く効果の置き場所を、その骨から受け取る（c-db1a15）。
+    BossBodyPose pose = BossBodyRig::Base(boss, body);
     // 登場の間は、体に付く効果の置き場所（兜・刀・胴）を、演じている役者の骨のものに直す。
     BossIntroVisuals::ApplyPose(boss, pose, seconds);
-    // フェーズの変わり目の演出の間は、膝をついて刀を突き立て、刀身を拭い、斬り上げて抜く姿に直す。
-    BossPhaseShiftVisuals::ApplyPose(boss, body, pose);
-    // 登場の役者が出ている間は、戦いの体の外形を出さない（役者が体を演じる。c-e0c500）。骨格の体がクリップを流して
-    // いる間も同じ（c-7b1a06）。登場の間は骨格の体を出さない。
+    // フェーズの変わり目の演出の間の、刀身の灼け・刃口の光・気配。
+    BossPhaseShiftVisuals::ApplyPose(boss, pose);
+    // 登場の役者が出ている間は、骨格の体を出さない（役者が体を演じる）。
     const bool animated = !BossIntroVisuals::Showing(boss) && BossAnimBody::Update(world, boss, body, alpha, seconds);
-    // 骨格の体が出ている間は、体に付く効果（刀光・刀の霞・手・胴・兜・変わり目の火と煙）を見えている骨格の骨に付ける
-    // （c-7b1a09・c-bc5908）。
     if (animated)
         BossAnimBody::ApplyPose(world, boss, alpha, seconds, pose);
     if (BossIntroVisuals::Showing(boss))
         BossAnimBody::Stop(world, boss);
-    if (!BossIntroVisuals::Showing(boss) && !animated)
-        SubmitPose(world, object, boss, pose);
     BossPhaseShiftVisuals::Render(world, object, boss, pose, seconds);
     UpdateFireTongues(world, object, boss, pose);
-    UpdateBladeShader(world, object, boss, pose.bladeHot, seconds);
     BossBodyAccents::Update(world, boss, shown, pose, seconds);
-}
-
-void BossBodyVisuals::UpdateClone(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                                  BossCloneComponent& clone, float seconds) {
-    // 出ていない分身は地面の下にしまってあり、何も頼まない（頼まなかったフレームは消える）。
-    HIKARI::GameProjectTransform body{};
-    if (!clone.active || !boss.body.visible || boss.body.model.empty() || !object.GetWorldTransform(body))
-        return;
-    clone.bodyClock += std::max(0.0f, seconds);
-    SubmitPose(world, object, boss, IdlePose(boss, body, clone.bodyClock));
 }
 
 void BossBodyVisuals::UpdatePreviews(HIKARI::WorldView& world) {

@@ -38,37 +38,6 @@ inline Quat AimZ(Vec3 direction, Vec3 spine) {
     return BasisRotation(side, Cross(direction, side));
 }
 
-// 手首に付く籠手の筒：筒は手首から肘の向き（局所 -Z）へ伸び、腕の甲（局所 +Y）は手の甲の側を向く。
-// 筒の先が肩（shoulder）から cuffShoulderClearance より近くなる時は、筒の長さだけを詰める（太さはそのまま）。
-inline BossBodyPlacement Cuff(Vec3 wrist, Vec3 elbow, Vec3 back, float scale, const BossBodySettings& s,
-                              Vec3 shoulder) {
-    BossBodyPlacement cuff;
-    cuff.position = wrist;
-    cuff.rotation = AimZ(Mul(Normalize(elbow), -1.0f), back);
-    cuff.scale = scale;
-    const float full = s.cuffModelLength * scale;
-    if (s.cuffShoulderClearance > 0.0f && full > 0.0f) {
-        const float room = Length(Sub(shoulder, wrist)) - s.cuffShoulderClearance * s.bodyScale;
-        cuff.lengthScale = std::clamp(room / full, std::clamp(s.cuffMinLength, 0.0f, 1.0f), 1.0f);
-    }
-    return cuff;
-}
-
-// 体の局所の位置（1 倍の体で書いた値）を、外形の体の大きさ（Boss.bodyScale）へ。
-inline Vec3 BodyPoint(const BossBodySettings& s, Vec3 v) { return Mul(v, s.bodyScale); }
-
-// 位置のばね（StepSway と同じ形）。短い刻みに分けて進める。
-inline void SpringPoint(Vec3& position, Vec3& velocity, Vec3 target, float frequency, float damping, float dt) {
-    const float omega = 2.0f * kPi * frequency;
-    const int steps = std::clamp(static_cast<int>(std::ceil(dt * omega / kMaxSpringStep)), 1, kMaxSubsteps);
-    const float h = dt / static_cast<float>(steps);
-    for (int i = 0; i < steps; ++i) {
-        const Vec3 pull = Sub(Mul(Sub(target, position), omega * omega), Mul(velocity, 2.0f * damping * omega));
-        velocity = Add(velocity, Mul(pull, h));
-        position = Add(position, Mul(velocity, h));
-    }
-}
-
 inline const BossMove* CurrentMove(const BossComponent& boss) {
     const auto& moves = boss.table.GetMoves();
     if (boss.state != BossState::Act || boss.move < 0 || static_cast<size_t>(boss.move) >= moves.size())
@@ -90,29 +59,6 @@ struct KamaeShape {
     Vec3 direction;
     Vec3 edge;
 };
-inline KamaeShape IdleShape(const BossBodyMotionSettings& s, bool phaseTwo) {
-    if (phaseTwo && s.phaseTwoKamae == 1)
-        return {s.shoulderKamaeGrip, s.shoulderKamaeDirection, s.shoulderKamaeEdge};
-    if (phaseTwo && s.phaseTwoKamae == 2)
-        return {s.wakiKamaeGrip, s.wakiKamaeDirection, s.wakiKamaeEdge};
-    return {s.idleGrip, s.idleDirection, s.idleEdge};
-}
-
-// 待機の構え：息に合わせて握りと剣先が少し上下する。局所（体の向きの枠。足元が原点）。
-inline void IdleKamae(const BossBodyMotionSettings& s, bool phaseTwo, float clock, Vec3& direction, Vec3& grip) {
-    const KamaeShape shape = IdleShape(s, phaseTwo);
-    const float breath = std::sin(2.0f * kPi * s.breathFrequency * clock);
-    const Vec3 base = Normalize(shape.direction);
-    const Vec3 up = Perpendicular({0.0f, 1.0f, 0.0f}, base);
-    direction = ExpMap(base, Mul(up, s.breathDegrees * kRadiansPerDegree * breath));
-    grip = Add(shape.grip, Vec3{0.0f, s.breathMeters * breath, 0.0f});
-}
-
-// 胴の捻りの目標：刀の横の向き（局所 x）に比例し、上限で止める。
-inline float TwistTarget(const BossBodyMotionSettings& s, Vec3 direction) {
-    const float limit = s.twistMaxDegrees * kRadiansPerDegree;
-    return std::clamp(direction.x * s.twistDegrees * kRadiansPerDegree, -limit, limit);
-}
 
 // 見える刀の、剣の付け根から剣先までの長さ。当たりの線（剣の長さ＋剣先の霞）より先へは伸ばさない。
 inline float VisibleSwordLength(const BossComponent& boss) {
@@ -123,17 +69,6 @@ inline float VisibleSwordLength(const BossComponent& boss) {
 // 見える刀の、握りの中央から剣先までの長さ。
 inline float VisibleBladeReach(const BossComponent& boss) {
     return std::max(0.01f, VisibleSwordLength(boss) - boss.body.swordGripAlong);
-}
-
-// 握り grip から direction へ reach 伸びた剣先が、高さ floor より下へ入る時は、水平の向きを保ったまま剣先が floor に
-// 乗る所まで向きを起こす。真下を向いていて水平の向きが決まらない時は forward を使う。
-inline Vec3 KeepTipAbove(Vec3 grip, Vec3 direction, float reach, float floor, Vec3 forward) {
-    if (reach <= kTiny || grip.y + direction.y * reach >= floor)
-        return direction;
-    const float y = std::clamp((floor - grip.y) / reach, -1.0f, 1.0f);
-    const Vec3 flat = Normalize(Vec3{direction.x, 0.0f, direction.z}, Normalize(Vec3{forward.x, 0.0f, forward.z}));
-    const float horizontal = std::sqrt(std::max(0.0f, 1.0f - y * y));
-    return {flat.x * horizontal, y, flat.z * horizontal};
 }
 
 // 刀の模型の拡大（見える刀の長さに合わせる）と、手の模型の拡大。

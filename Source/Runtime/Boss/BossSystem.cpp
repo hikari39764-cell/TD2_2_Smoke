@@ -829,13 +829,6 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                                                       frame.fixedInterpolationAlpha);
                                               // フェーズ 2 の場の色・火の粉・焦げた輪（外形を出さないフレームも進める。c-857ae3）。
                                               BossPhaseTwoField::Update(world, boss, frame.gameDt);
-                                              // 霞分身の外形（分身の物体は BossClones と同じく部品の型で回る）。
-                                              world.ForEachComponent<BossCloneComponent>(
-                                                  HIKARI::MakeComponentTypeId(kBossCloneType),
-                                                  [&](HIKARI::ObjectView cloneObject, BossCloneComponent& clone) {
-                                                      BossBodyVisuals::UpdateClone(world, cloneObject, boss, clone,
-                                                                                   frame.gameDt);
-                                                  });
                                               BossFeedback::Update(world, object, boss, frame);
                                               BossIntroEffects::Feedback(world, object, boss, frame.unscaledDt);
                                               // 登場の演出：飛ばす入力と、演出のカメラ（プレイヤーのカメラへ渡す）。

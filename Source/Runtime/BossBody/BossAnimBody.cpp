@@ -74,14 +74,9 @@ const BossMove* CurrentMove(const BossComponent& boss) {
     return boss.state == BossState::Act ? BossRules::GetMove(boss, boss.move) : nullptr;
 }
 
-// 待機のクリップ（刀を肩に担ぐ姿）を出してよい間（c-40f6c1）：待機、移動の技（横歩き・寄る・下がる）、霞歩（回避の
-// 横っ飛び・怯み跳び）、クリップのある技。気絶・撃破・コードで姿を作るほかの技の間は、骨格の体を隠して今までの外形で動く。
-bool IdleAllowed(const BossComponent& boss, const BossMove* move) {
-    if (boss.state == BossState::Idle)
-        return true;
-    return move != nullptr &&
-           (BossMoveTable::IsMoveType(move->type) || move->type == BossMoveType::KasumiStep || !move->clip.empty());
-}
+// 待機のクリップ（刀を肩に担ぐ姿）を出す間：どの状態でも（c-db1a15。体は骨格の体だけ。気絶・撃破・変わり目の
+// 演出・クリップの無い技の間も、待機の姿で効果だけを出す）。
+bool IdleAllowed(const BossComponent&, const BossMove*) { return true; }
 
 // クリップの刀の骨（模型の空間）の、規則の時計の frame F の所（F の間は補間）。
 struct ClipSword {
