@@ -384,9 +384,10 @@ public:
     float stringGapTurnRate = 200.0f;
     // 狙いのずれ（c-884095）：剣の技の当たりの区間が始まる aimTwistLeadFrames F 前から、表の角度へ体を
     // aimTwistTurnRate 度/秒でねじる。
-    // 角度が aimTwistMax 度を超える斬りはねじらない（横や背中を向いて振ることになるので）。
+    // 角度が aimTwistMax 度を超える斬りはねじらない（横や背中を向いて振ることになるので）。80 度は避けながら攻撃2
+    // （刀がボスの左 72〜77 度に落ちる）を回せるように上げた値（c-e44b91）。
     float aimTwistTurnRate = 360.0f;
-    float aimTwistMax = 60.0f;
+    float aimTwistMax = 80.0f;
     int aimTwistLeadFrames = 20;
     // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
     int deadVanishDelayFrames = 60;

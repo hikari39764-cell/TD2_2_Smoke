@@ -16,9 +16,9 @@
   python -I -X utf8 Tools/Verify/verify.py reach [close=2.5] [reachProbeDistanceStep=0.25] [reachProbeAngleStep=10]
                                                                      剣の技が当たる間合い（距離 × 角度）を測り、
                                                                      Library/Verify/runs/reach/reach.md に表を書く（c-c010ef）
-  python -I -X utf8 Tools/Verify/verify.py sync build aim sync       狙いのずれの表 Data/Boss/boss_aim_offsets.csv を作り直す
-                                                                     （c-884095。モーション・区間の表を変えたら流す。後ろの sync で
-                                                                     写しにも入れる）
+  python -I -X utf8 Tools/Verify/verify.py sync build aim            狙いのずれの表 Data/Boss/boss_aim_offsets.csv を作り直す
+                                                                     （c-884095。モーション・区間の表を変えたら流す。写しにも入れる
+                                                                     ので、続けて run・reach・aimcheck を流せる）
   python -I -X utf8 Tools/Verify/verify.py aimcheck [moves=a,b] [distances=2,3,4]
                                                                      技 × 距離 × ねじりの有無で当たるかを数え、
                                                                      Library/Verify/runs/aimcheck.md に表を書く（c-884095）
@@ -454,6 +454,8 @@ def aim(opts):
                        f"{s['fingerprint']},{note}")
         print(f"  {key[0]} {key[1] + 1}: " + " ".join(f"{d:g}m:{a if a is not None else '-'}" for d, a in found))
     AIM_CSV.write_text("\n".join(out) + "\n", encoding="utf-8")
+    # 写し（Probe）にも入れる：続けて run・reach・aimcheck を流した時に、作り直した表で動くように。
+    put(PROBE / AIM_CSV.relative_to(ROOT), AIM_CSV.read_bytes())
     print("AIM ->", AIM_CSV, "rows", len(out) - 1)
     return 0
 
@@ -525,7 +527,7 @@ def reach(opts):
         print("REACH 記録が無い（ReachStrike が出ていない）。engine.log を見る:", folder)
         return 1
     aim_table = read_aim()
-    aim_max = float(opts.get("aimTwistMax", 60))
+    aim_max = float(opts.get("aimTwistMax", 80))
     step = int(opts.get("reachProbeAngleStep", 10))
     close = float(opts.get("close", 2.5))
     md = ["# ボスの剣の技が当たる間合い（c-c010ef）", "",
