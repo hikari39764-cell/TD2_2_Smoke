@@ -25,7 +25,7 @@ constexpr float kBobRate = 2.1f;
 void BossTransform::Apply(HIKARI::ObjectView object, BossComponent& boss, const BossIntroComponent* intro) {
     const float bob = std::sin(boss.floatClock * kBobRate) * boss.floatBob;
     HIKARI::GameProjectTransform transform{};
-    transform.rotation = YawRotation(boss.yaw + boss.spin);
+    transform.rotation = YawRotation(BossPose::BodyYaw(boss));
     transform.position = {boss.ground.x, boss.ground.y + BossPose::RootHeight(boss) + bob + boss.bodyHalfHeight,
                           boss.ground.z};
     // 撃破の後は、待ってから体を縮めて見えなくする（撃破の演出は別に作る）。

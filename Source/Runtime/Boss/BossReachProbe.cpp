@@ -27,8 +27,9 @@ struct SavedState {
     explicit SavedState(BossComponent& boss)
         : boss_(boss), move_(boss.move), stateFrame_(boss.stateFrame), state_(boss.state), phase_(boss.phase),
           ground_(boss.ground), yaw_(boss.yaw), height_(boss.height), floatHeight_(boss.floatHeight),
-          spin_(boss.spin) {}
+          spin_(boss.spin), aimTwist_(boss.aimTwist) {}
     ~SavedState() {
+        boss_.aimTwist = aimTwist_;
         boss_.move = move_;
         boss_.stateFrame = stateFrame_;
         boss_.state = state_;
@@ -53,6 +54,7 @@ private:
     float height_;
     float floatHeight_;
     float spin_;
+    float aimTwist_;
 };
 
 struct SwordSample {
@@ -96,6 +98,8 @@ std::vector<SwordSample> SampleStrike(BossComponent& boss, const BossMove& move,
     boss.height = 0.0f;
     // 攻撃中は一番低く降りる（BossMoveExecutor::StepFloat）。
     boss.floatHeight = boss.floatMin;
+    // 狙いのずれは入れない（クリップの刀そのものが落ちる向きを測る。狙いのずれの表はこの値から作る）。
+    boss.aimTwist = 0.0f;
     std::vector<SwordSample> samples;
     for (int t = 1; t <= length; ++t) {
         boss.stateFrame = start + t;
@@ -117,13 +121,15 @@ void ProbeStrike(const BossComponent& boss, const BossMove& move, int hitIndex, 
         lowest = std::min({lowest, s.base.y, s.outer.y});
         highest = std::max({highest, s.base.y, s.outer.y});
     }
-    char message[512]{};
+    char message[640]{};
+    // hitStart・hitEnd は区間の表の当たりの始め・終わり F、clip〜fingerprint は狙いのずれの表（verify.py aim）に写す。
     std::snprintf(message, sizeof(message),
                   "ReachStrike move=%s strike=%d window=%d-%d frames=%zu bladeLow=%.2f bladeHigh=%.2f radius=%.3f "
-                  "playerCenter=%.2f",
+                  "playerCenter=%.2f clip=%s clipFrames=%d fingerprint=%08x hitStart=%d hitEnd=%d",
                   move.name.c_str(), hitIndex, move.pre + start + 1, move.pre + start + length, samples.size(),
                   static_cast<double>(lowest), static_cast<double>(highest), static_cast<double>(radius),
-                  static_cast<double>(centerHeight));
+                  static_cast<double>(centerHeight), move.clip.c_str(), move.clipFrames,
+                  BossAnimBody::SwordFingerprint(boss, move.clip), move.pre + start, move.pre + start + length);
     BossLog::Write(message);
     for (float d = boss.reachProbeDistanceMin; d <= boss.reachProbeDistanceMax + 1e-4f; d += step) {
         std::vector<int> hit, tall;

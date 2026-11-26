@@ -554,6 +554,88 @@ void BossMoveExecutor::StepFloat(BossComponent& boss) {
     boss.floatHeight = std::clamp(boss.floatHeight, boss.floatMin, std::max(boss.floatMin, boss.floatMax));
 }
 
+namespace {
+
+// 狙いのずれで、いま狙う斬り（c-884095）。
+struct AimPlan {
+    // 次に放つ（または振っている）斬り。-1 はねじらない（技の外・剣を振らない技・当たりの区間がまだ遠い・最後の当たりの後）。
+    int strike = -1;
+    // その斬りの角度を動かさない間か（振っている間と、向きを止めている間＝避けるための見せ場）。strike が -1 なら偽。
+    bool hold = false;
+};
+
+AimPlan PlanAim(const BossComponent& boss) {
+    if (boss.state != BossState::Act || boss.phase == BossActPhase::Post || boss.move < 0 ||
+        static_cast<size_t>(boss.move) >= boss.table.GetMoves().size())
+        return {};
+    const BossMove& move = CurrentMove(boss);
+    if (!BossMoveTable::IsSwingType(move.type) || move.segments.empty())
+        return {};
+    // 次の当たりの区間（クリップの技は当たりの窓）が始まるまでの F。放つ F（FramesToRelease）では数えない：クリップの
+    // 技は窓の終わりに放つので、そこから数えると窓の始めにねじり終わらない。
+    AimPlan plan;
+    int toHit = 0;
+    bool swinging = false;
+    if (boss.phase == BossActPhase::Pre) {
+        plan.strike = 0;
+        toHit = move.pre - boss.stateFrame + (boss.stateFrame <= boss.windupHoldAt ? boss.windupHold : 0);
+    } else {
+        // 当たりの区間ならその斬り、間の区間なら次の斬り（Progress の hitIndex は通り過ぎた当たりの数）。
+        const BossSegmentProgress g = BossPose::Progress(boss, move);
+        if (g.hitIndex >= static_cast<int>(move.strikes.size()))
+            return {};
+        plan.strike = g.hitIndex;
+        swinging = g.hit;
+        toHit = swinging ? 0 : move.segments[static_cast<size_t>(g.segment)].length - g.tIn;
+    }
+    if (toHit > boss.aimTwistLeadFrames)
+        return {};
+    plan.hold = swinging || boss.aimFrozen;
+    return plan;
+}
+
+// 表から引いた、斬り strike をプレイヤーが distance m にいる時に当てるねじり（rad）。
+// 表の角度 θ（正がボスの右）は、刀が一番当たる「ボスから見た向き」。体の向きを yaw + θ にすると、ボスから見たプレイヤーの
+// 向きがちょうど θ になる（右は −X、yaw は +X へ増えるので、右に落ちる斬りは体を左へ回すことになる）。上限を超える角度は
+// ねじらない。
+float AimTarget(const BossComponent& boss, int strike, float distance) {
+    const float degrees = BossMoveTable::AimDegrees(BossMoveTable::Strike(CurrentMove(boss), strike), distance);
+    return std::abs(degrees) <= boss.aimTwistMax ? degrees * kRadiansPerDegree : 0.0f;
+}
+
+// 狙いのずれの記録（調整と確かめ用。verify.py aimcheck が読む）。
+void LogAim(const BossComponent& boss, const char* event, int strike, float target, float distance) {
+    char extra[128]{};
+    std::snprintf(extra, sizeof(extra), "strike=%d used=%.1f distance=%.2f", strike,
+                  static_cast<double>(target / kRadiansPerDegree), static_cast<double>(distance));
+    Log(boss, event, extra);
+}
+
+} // namespace
+
+void BossMoveExecutor::StepAimTwist(BossFrame& frame) {
+    BossComponent& boss = frame.boss;
+    const AimPlan plan = PlanAim(boss);
+    const float distance = FlatLength(Sub(PlayerGround(frame), boss.ground));
+    const bool sameStrike = plan.strike == boss.aimTwistStrike;
+    // 狙う斬りが無い・プレイヤーがいない間は 0 へ戻す。狙う斬りがあれば、止めている間はその角度のまま、それ以外は距離で
+    // 引き直す。
+    float target = 0.0f;
+    if (plan.strike >= 0 && frame.player != nullptr) {
+        target = plan.hold && sameStrike ? boss.aimTwistTarget : AimTarget(boss, plan.strike, distance);
+        if (!sameStrike)
+            LogAim(boss, "AimTwist", plan.strike, target, distance);
+    }
+    // 角度を止めた時（振り始め・向きを止めた時）：その斬りを振った距離と角度。
+    if (plan.hold && !boss.aimTwistHeld)
+        LogAim(boss, "AimHold", plan.strike, target, distance);
+    boss.aimTwistHeld = plan.hold;
+    boss.aimTwistStrike = plan.strike;
+    boss.aimTwistTarget = target;
+    const float limit = boss.aimTwistTurnRate * kRadiansPerDegree * frame.dt;
+    boss.aimTwist += std::clamp(target - boss.aimTwist, -limit, limit);
+}
+
 void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
     BossComponent& boss = frame.boss;
     const BossMove& move = boss.table.GetMoves()[static_cast<size_t>(moveIndex)];
@@ -837,6 +919,12 @@ void BossMoveExecutor::DescribeMovement(HIKARI::PropertyFields& fields, BossComp
         fields.Float("overheadTurnRate", "上段の前隙に振り向く速さ (度/秒)", boss.overheadTurnRate, 0.0f, 3600.0f);
         fields.Float("stringGapTurnRate", "連撃の構えの間に振り向く速さ (度/秒)", boss.stringGapTurnRate, 0.0f,
                      3600.0f);
+        fields.Float("aimTwistTurnRate", "狙いのずれ：剣の技の前に体をねじる速さ (度/秒)", boss.aimTwistTurnRate, 0.0f,
+                     3600.0f);
+        fields.Float("aimTwistMax", "狙いのずれ：これより大きくねじる斬りはねじらない (度)", boss.aimTwistMax, 0.0f,
+                     180.0f);
+        fields.Int("aimTwistLeadFrames", "狙いのずれ：当たりの区間の何 F 前からねじり始めるか (F)",
+                   boss.aimTwistLeadFrames, 0, 240);
     }
 }
 

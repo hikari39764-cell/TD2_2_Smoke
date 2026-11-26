@@ -1,5 +1,7 @@
 #include "BossTableLoader.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -79,16 +81,35 @@ void LogMoves(const BossComponent& boss) {
     }
 }
 
+// 上限（aimTwistMax）を超える角度がある斬りは、ねじらない（BossMoveExecutor::StepAimTwist）。どの斬りかを知らせる。
+void WarnAimOverLimit(const BossComponent& boss, const BossMoveTable& table, std::vector<std::string>& warnings) {
+    for (const BossMove& move : table.GetMoves()) {
+        for (size_t k = 0; k < move.strikes.size(); ++k) {
+            float widest = 0.0f;
+            for (const BossAimSample& sample : move.strikes[k].aim.samples)
+                widest = std::max(widest, std::abs(sample.degrees));
+            if (widest > boss.aimTwistMax) {
+                char text[64]{};
+                std::snprintf(text, sizeof(text), "%.0f 度", static_cast<double>(widest));
+                warnings.push_back("狙いのずれ：技「" + move.name + "」の " + std::to_string(k + 1) + " 刀目は " + text +
+                                   " ねじる所があり、上限（aimTwistMax）を超える距離ではねじりません");
+            }
+        }
+    }
+}
+
 } // namespace
 
 void BossTableLoader::Load(HIKARI::WorldView& world, BossComponent& boss) {
-    TextSink types, moves, clips, segments;
+    TextSink types, moves, clips, segments, aim;
     world.GetProjectData().ReadText(boss.typesPath, types);
     world.GetProjectData().ReadText(boss.movesPath, moves);
     if (!boss.clipsPath.empty())
         world.GetProjectData().ReadText(boss.clipsPath, clips);
     if (!boss.segmentsPath.empty())
         world.GetProjectData().ReadText(boss.segmentsPath, segments);
+    if (!boss.aimOffsetsPath.empty())
+        world.GetProjectData().ReadText(boss.aimOffsetsPath, aim);
     if (!types.ok || !moves.ok) {
         if (!boss.tableLoaded) {
             char message[256]{};
@@ -100,7 +121,8 @@ void BossTableLoader::Load(HIKARI::WorldView& world, BossComponent& boss) {
         return;
     }
     if (types.text == boss.loadedTypesText && moves.text == boss.loadedMovesText &&
-        (!clips.ok || clips.text == boss.loadedClipsText) && (!segments.ok || segments.text == boss.loadedSegmentsText))
+        (!clips.ok || clips.text == boss.loadedClipsText) &&
+        (!segments.ok || segments.text == boss.loadedSegmentsText) && (!aim.ok || aim.text == boss.loadedAimText))
         return;
     std::vector<std::string> warnings;
     BossMoveTable table;
@@ -109,11 +131,18 @@ void BossTableLoader::Load(HIKARI::WorldView& world, BossComponent& boss) {
     // モーションの技の区切り（c-7b1a08）：アニメーションの列がある技の長さを、クリップの長さと区間の表で決め直す。
     table.ApplyClips(clips.ok ? std::string_view(clips.text) : std::string_view{},
                      segments.ok ? std::string_view(segments.text) : std::string_view{}, warnings);
+    // 狙いのずれ（c-884095）：区間の表で決め直した一撃に、斬り × 距離の角度を入れる。
+    if (aim.ok)
+        table.ApplyAim(aim.text, warnings);
+    WarnAimOverLimit(boss, table, warnings);
     boss.table = std::move(table);
     boss.loadedTypesText = types.text;
     boss.loadedMovesText = moves.text;
     boss.loadedClipsText = clips.ok ? clips.text : std::string{};
     boss.loadedSegmentsText = segments.ok ? segments.text : std::string{};
+    boss.loadedAimText = aim.ok ? aim.text : std::string{};
+    // 刀の動きの指紋は、クリップの刀を読んだ後に表と比べ直す（BossAnimBody::CheckAimFingerprints）。
+    boss.clipSwords.aimChecked = false;
     boss.tableLoaded = true;
     // 行が変わったので、行動ツリーの節と表の突き合わせ（節の無い始動技・表に無い名前）をやり直す。
     boss.brain.scoredRows = 0;
@@ -138,6 +167,9 @@ void BossTableLoader::Describe(HIKARI::PropertyFields& fields, BossComponent& bo
                     boss.clipsPath);
         fields.Text("segmentsPath", "区間の表（Data/ からの場所。モーションの技の当たりの窓。空なら使わない）",
                     boss.segmentsPath);
+        fields.Text("aimOffsetsPath",
+                    "狙いのずれの表（Data/ からの場所。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）",
+                    boss.aimOffsetsPath);
         fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", boss.typesPath);
         fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
                     "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。");

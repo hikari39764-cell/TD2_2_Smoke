@@ -12,6 +12,7 @@
 #include "../Boss/BossComponent.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossMath.h"
+#include "../Boss/BossPose.h"
 #include "../Boss/BossRules.h"
 
 namespace Project_TD2_2 {
@@ -39,6 +40,11 @@ constexpr std::array<std::string_view, 7> kTassetNodes{"Kusazuri0", "Kusazuri1",
                                                        "Kusazuri4", "Kusazuri5", "Kusazuri6"};
 // 規則の時計の 1 F（60 Hz）の秒。クリップは秒で読む。
 constexpr float kSecondsPerFrame = 1.0f / 60.0f;
+// 刀の動きの指紋（c-884095）：FNV-1a の初めの値と掛ける数、丸める細かさ（位置は mm、回転は 1/10000）。
+constexpr uint32_t kFingerprintBasis = 2166136261u;
+constexpr uint32_t kFingerprintPrime = 16777619u;
+constexpr float kFingerprintPositionScale = 1000.0f;
+constexpr float kFingerprintRotationScale = 10000.0f;
 
 // 骨格の体の模型の根の節点（Assets/Models/BossIntroActor。登場の役者と同じ模型）。隠す時はこの節点ごと隠す。
 constexpr std::string_view kRootNode = "Boss_Rig";
@@ -325,7 +331,7 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
     // ボスの足元（体の中心から体の高さの半分だけ下）と向きに置く。傾き・揺れは骨格の動画が受け持つ。
     HIKARI::GameProjectTransform placed{};
     placed.position = {body.position.x, body.position.y - boss.bodyHalfHeight * body.scale.y, body.position.z};
-    placed.rotation = YawRotation(boss.yaw);
+    placed.rotation = YawRotation(BossPose::BodyYaw(boss));
     placed.scale = {settings.scale, settings.scale, settings.scale};
     (void)object.SetWorldTransform(placed);
     state.placed = placed;
@@ -405,6 +411,7 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
             BossLog::Warn(message);
             continue;
         }
+        track.fingerprint = SwordFingerprint(track);
         const Vec3 tip0 = BossMath::Add(track.swordPosition.front(),
                                         BossMath::Mul(BladeDirection(track.swordRotation.front()), boss.swordLength));
         std::snprintf(message, sizeof(message),
@@ -421,6 +428,58 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
 bool BossAnimBody::ClipMove(const BossComponent& boss, const BossMove& move) {
     return boss.animBody.clipSword && boss.animBody.object != 0u && !move.clip.empty() && move.clipFrames > 0 &&
            TrackOf(boss, move.clip) != nullptr;
+}
+
+uint32_t BossAnimBody::SwordFingerprint(const BossClipSwordTrack& track) {
+    // FNV-1a（32 bit）。
+    uint32_t hash = kFingerprintBasis;
+    const auto mix = [&](float value, float scale) {
+        const int64_t rounded = std::llround(static_cast<double>(value) * scale);
+        for (int b = 0; b < 8; ++b) {
+            hash ^= static_cast<uint32_t>((static_cast<uint64_t>(rounded) >> (b * 8)) & 0xFFu);
+            hash *= kFingerprintPrime;
+        }
+    };
+    for (size_t f = 0; f < track.swordPosition.size(); ++f) {
+        const Vec3 p = track.swordPosition[f];
+        const Quat q = track.swordRotation[f];
+        mix(p.x, kFingerprintPositionScale);
+        mix(p.y, kFingerprintPositionScale);
+        mix(p.z, kFingerprintPositionScale);
+        mix(q.x, kFingerprintRotationScale);
+        mix(q.y, kFingerprintRotationScale);
+        mix(q.z, kFingerprintRotationScale);
+        mix(q.w, kFingerprintRotationScale);
+    }
+    return hash;
+}
+
+uint32_t BossAnimBody::SwordFingerprint(const BossComponent& boss, const std::string& clip) {
+    const BossClipSwordTrack* track = TrackOf(boss, clip);
+    return track != nullptr ? track->fingerprint : 0u;
+}
+
+void BossAnimBody::CheckAimFingerprints(BossComponent& boss) {
+    BossClipSwords& state = boss.clipSwords;
+    if (state.aimChecked || state.tracks.empty())
+        return;
+    state.aimChecked = true;
+    for (const BossMove& move : boss.table.GetMoves()) {
+        const BossClipSwordTrack* track = TrackOf(boss, move.clip);
+        if (track == nullptr)
+            continue;
+        for (size_t k = 0; k < move.strikes.size(); ++k) {
+            const BossStrikeAim& aim = move.strikes[k].aim;
+            if (aim.samples.empty() || aim.fingerprint == track->fingerprint)
+                continue;
+            char message[384]{};
+            std::snprintf(message, sizeof(message),
+                          "狙いのずれの表が古い：技「%s」の %zu 刀目のクリップ「%s」の刀の動きが、計算した時と違います"
+                          "（指紋 %08x → %08x。Tools/Verify/verify.py aim を流す。それまでは古い角度のまま狙う）",
+                          move.name.c_str(), k + 1, move.clip.c_str(), aim.fingerprint, track->fingerprint);
+            BossLog::Warn(message);
+        }
+    }
 }
 
 bool BossAnimBody::ClipSwordPose(const BossComponent& boss, BossSwordPose& out) {
@@ -474,7 +533,8 @@ bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectF
         return false;
     const ClipSword now = SampleTrack(*TrackOf(boss, move->clip), MoveElapsed(boss, *move));
     const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
-    out = BossMath::Add(root, BossMath::RotateY(BossMath::Mul(now.leftHand, boss.animBody.scale), boss.yaw));
+    out = BossMath::Add(root,
+                        BossMath::RotateY(BossMath::Mul(now.leftHand, boss.animBody.scale), BossPose::BodyYaw(boss)));
     return true;
 }
 

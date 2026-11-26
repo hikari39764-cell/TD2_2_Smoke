@@ -268,6 +268,8 @@ public:
     // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
     std::string clipsPath = "Boss/boss_anim_clips.csv";
     std::string segmentsPath;
+    // 狙いのずれの表（c-884095。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）。
+    std::string aimOffsetsPath = "Boss/boss_aim_offsets.csv";
     // ヒョウタンの読み（c-14392d。横の剣気を転がる癖の側へ寄せる）。
     BossGourdReadSettings gourdRead;
     // 斬撃の共通の値（試作の共通パラメータ）
@@ -380,6 +382,12 @@ public:
     float preTurnRate = 360.0f;
     float overheadTurnRate = 220.0f;
     float stringGapTurnRate = 200.0f;
+    // 狙いのずれ（c-884095）：剣の技の当たりの区間が始まる aimTwistLeadFrames F 前から、表の角度へ体を
+    // aimTwistTurnRate 度/秒でねじる。
+    // 角度が aimTwistMax 度を超える斬りはねじらない（横や背中を向いて振ることになるので）。
+    float aimTwistTurnRate = 360.0f;
+    float aimTwistMax = 60.0f;
+    int aimTwistLeadFrames = 20;
     // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
     int deadVanishDelayFrames = 60;
     int deadVanishFrames = 30;
@@ -634,6 +642,7 @@ public:
     BossMoveTable table;
     std::string loadedClipsText;
     std::string loadedSegmentsText;
+    std::string loadedAimText;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
     unsigned playerHitCount = 0;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。
@@ -682,6 +691,12 @@ public:
     int glintFrames = 0;
     // 回し蹴りの回転（見た目の向きに足す rad）。
     float spin = 0.0f;
+    // 狙いのずれのねじり（c-884095。見た目の向きと刀の当たりに足す rad。yaw はプレイヤーの方のまま）。いまの角度・目標・
+    // 目標を決めた斬り（-1 は無し。振っている間・向きを止めている間は、その斬りの目標を変えない）。
+    float aimTwist = 0.0f;
+    float aimTwistTarget = 0.0f;
+    int aimTwistStrike = -1;
+    bool aimTwistHeld = false;
     // Damageable の無敵を、霞歩の跳び始め・登場・変わり目の間だけ立てたか（シーンで最初から無敵にしてある時に戻しすぎない）。
     bool shieldApplied = false;
     BossKasumiStepState kasumiStepState;

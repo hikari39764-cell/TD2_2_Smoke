@@ -165,6 +165,8 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     // この tick に読む命中は、前の tick の終わり（＝この tick の始め）の状態の間に当たったもの。後隙だったなら
     // その技が咎められた（体を動かすと後隙が終わって待機へ戻ることがあるので、先に覚える）。
     const int recoveryRow = boss.state == BossState::Act && boss.phase == BossActPhase::Post ? boss.move : -1;
+    // 狙いのずれのねじりは、状態を進める（刀の当たりを見る）前に決める（この tick の当たりと見た目を同じ向きにする）。
+    BossMoveExecutor::StepAimTwist(frame);
     BossStateMachine::Step(frame, brain, context);
     // 受けたダメージ（気絶値・フェーズ・撃破）は体を動かした後に読む（試作と同じ順で、気絶の長さが 1 F ずれない）。
     if (health != nullptr)
@@ -211,6 +213,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                     Initialize(world, object, boss, intro);
                 // 技のクリップの刀の骨（c-7b1a09）を、技の規則が使う前に読んでおく（クリップごとに初めての時だけ）。
                 BossAnimBody::PrepareSword(world, boss);
+                BossAnimBody::CheckAimFingerprints(boss);
                 ++boss.tick;
                 boss.clockSeconds += frame.fixedDt;
                 boss.floatClock += frame.fixedDt;

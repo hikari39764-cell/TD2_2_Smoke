@@ -107,10 +107,12 @@ BossSwordLine BossPose::SwordLine(const BossComponent& boss, const BossSwordPose
 
 BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSwordPose& pose) {
     BossSwordLine line = SwordLine(boss, pose);
-    if (boss.spin != 0.0f) {
+    // SwordLine は yaw だけで回すので、体の向きとの差（体の回転・狙いのずれのねじり）を足元のまわりに回す。
+    const float turn = BodyYaw(boss) - boss.yaw;
+    if (turn != 0.0f) {
         const Vec3 center{boss.ground.x, line.root.y, boss.ground.z};
-        line.root = Add(center, RotateY(Sub(line.root, center), boss.spin));
-        line.direction = RotateY(line.direction, boss.spin);
+        line.root = Add(center, RotateY(Sub(line.root, center), turn));
+        line.direction = RotateY(line.direction, turn);
     }
     BossSwordPoints points;
     points.base = Add(line.root, Mul(line.direction, boss.swordLength * kSwordBaseShare));
@@ -118,6 +120,8 @@ BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSword
     points.outer = Add(line.root, Mul(line.direction, boss.swordLength + boss.swordHazeLength + pose.reach));
     return points;
 }
+
+float BossPose::BodyYaw(const BossComponent& boss) { return boss.yaw + boss.spin + boss.aimTwist; }
 
 float BossPose::SwingShare(const BossComponent& boss, int tIn, int length) {
     return std::clamp(SwingProgress(boss, std::clamp(tIn, 0, std::max(1, length)), length), 0.0f, 1.0f);
