@@ -9,6 +9,7 @@
 #include "../Player/FeedbackCamera.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
+#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -24,13 +25,13 @@ constexpr int kCameraPriority = 305;
 // 吸い込み中の振動は毎フレーム延長する。入力が切れた後に残る長さ。
 constexpr float kRumbleRefreshSeconds = 0.1f;
 
-void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, bool absorbing,
+void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, bool absorbing,
                   const HIKARI::FrameContext& frame) {
     // 口の域は使う間だけ出す。同時に描ける流体の域には上限があり、弾と爆発の枠を空けておく。
     gourd.mouthIdleSeconds = absorbing ? 0.0f : gourd.mouthIdleSeconds + std::max(0.0f, frame.gameDt);
     const bool retired =
         gourd.mouthIdleSeconds >= static_cast<float>(gourd.absorbRetireFrames) / kFramesPerSecond;
-    if (!gourd.enabled || !gourd.poseInitialized || gourd.absorbEffect.IsEmpty() || gourd.absorbEffectScale <= 0.0f ||
+    if (!gourd.enabled || !gourd.poseInitialized || !gourd.absorbEffect.IsSet() || gourd.absorbEffectScale <= 0.0f ||
         (!absorbing && (retired || !gourd.absorbVfx.IsValid()))) {
         GourdAbsorbVisuals::Stop(world, gourd);
         return;
@@ -56,7 +57,7 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
         gourd.absorbVfx = {};
     if (!gourd.absorbVfx.IsValid()) {
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = gourd.absorbEffect;
+        play.asset = VfxPlayback::Reference(gourd.absorbEffect);
         play.ownerObjectHandle = object.GetHandle().value;
         play.transform = transform;
         play.loopMode = HIKARI::GameProjectVfxLoopMode::Loop;
@@ -73,7 +74,7 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     gourd.vfxAccepted = vfx.Update(gourd.absorbVfx, update);
 }
 
-void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, bool absorbing,
+void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, bool absorbing,
                   const HIKARI::FrameContext& frame) {
     const float step = std::max(0.0f, frame.unscaledDt) * kFramesPerSecond /
                        static_cast<float>(std::max(1, gourd.absorbFovEaseFrames));
@@ -82,7 +83,7 @@ void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     if (gourd.absorbBlend <= 0.0f || (gourd.absorbFovDegrees <= 0.0f && gourd.absorbShakeAmplitude <= 0.0f))
         return;
     HIKARI::GameProjectCameraModifier modifier{};
-    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, gourd.cameraId);
+    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, gourd.camera);
     if (modifier.cameraObjectHandle == 0)
         return;
     modifier.sourceId = kCameraSource ^ object.GetHandle().value;
@@ -98,7 +99,7 @@ void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComp
     world.GetCamera().SubmitModifier(modifier);
 }
 
-void UpdateRumble(HIKARI::WorldView& world, GourdComponent& gourd, bool absorbing) {
+void UpdateRumble(HIKARI::WorldView& world, Gourd& gourd, bool absorbing) {
     const bool full = GourdRules::IsFull(gourd);
     // 満杯で吸えない「入らない」になった（吸い込みを始めた時か、吸っている間に満杯になった時）。
     const bool blockedNow = gourd.blockedObserved != gourd.blockedCount;
@@ -116,7 +117,7 @@ void UpdateRumble(HIKARI::WorldView& world, GourdComponent& gourd, bool absorbin
 
 } // namespace
 
-void GourdAbsorbVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
+void GourdAbsorbVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd,
                                 const HIKARI::FrameContext& frame) {
     const bool absorbing = gourd.enabled && gourd.absorbing && gourd.poseInitialized;
     // 捕まえた斬撃を飲み込んでいる間は、吸い込みをやめていても口のエフェクトを保つ（カメラの寄りと振動は保たない）。
@@ -128,7 +129,7 @@ void GourdAbsorbVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView obj
     UpdateRumble(world, gourd, absorbing);
 }
 
-void GourdAbsorbVisuals::Stop(HIKARI::WorldView& world, GourdComponent& gourd) {
+void GourdAbsorbVisuals::Stop(HIKARI::WorldView& world, Gourd& gourd) {
     if (!gourd.absorbVfx.IsValid())
         return;
     const auto vfx = world.GetVfx();

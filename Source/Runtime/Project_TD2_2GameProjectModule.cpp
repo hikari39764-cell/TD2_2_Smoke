@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "Player/PlayerComponent.h"
+#include "Player/Player.h"
 #include "Player/PlayerSystem.h"
 #include "Player/PlayerDebugComponent.h"
 #include "Player/PlayerDebugSystem.h"
@@ -87,28 +87,21 @@ public:
     }
     bool Register(HIKARI::RuntimeFeatureContext& context) override {
         return context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
-               context.RegisterComponent<PlayerComponent>({.typeName = kPlayerType, .displayName = "プレイヤー"}) &&
                context.RegisterSystem<PlayerSystem>({.systemId = kPlayerSystem, .displayName = "プレイヤー"}) &&
                context.BindComponentSystem(
                    {.componentType = kPlayerType, .systemId = kPlayerSystem, .defaultExecutionOrder = 100}) &&
-               context.RegisterComponent<PlayerDebugComponent>(
-                   {.typeName = kPlayerDebugType, .displayName = "プレイヤー検証（通常は無効）"}) &&
                context.RegisterSystem<PlayerDebugSystem>(
                    {.systemId = kPlayerDebugSystem, .displayName = "プレイヤー検証"}) &&
                context.BindComponentSystem(
                    {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90}) &&
-               context.RegisterComponent<CloudMountComponent>({.typeName = kCloudMountType, .displayName = "筋斗雲"}) &&
                context.RegisterSystem<CloudMountSystem>({.systemId = kCloudMountSystem, .displayName = "筋斗雲"}) &&
                // 乗る・降りるを、同じ tick のプレイヤー（100）の状態の進みの後、移動の前に決めるので、プレイヤーの後・
                // ヒョウタン砲撃（105）の前に動かす。
                context.BindComponentSystem(
                    {.componentType = kCloudMountType, .systemId = kCloudMountSystem, .defaultExecutionOrder = 102}) &&
-               context.RegisterComponent<GourdComponent>({.typeName = kGourdType, .displayName = "ヒョウタン"}) &&
                context.RegisterSystem<GourdSystem>({.systemId = kGourdSystem, .displayName = "ヒョウタン"}) &&
                context.BindComponentSystem(
                    {.componentType = kGourdType, .systemId = kGourdSystem, .defaultExecutionOrder = 110}) &&
-               context.RegisterComponent<GourdShotComponent>(
-                   {.typeName = kGourdShotType, .displayName = "ヒョウタン砲撃"}) &&
                context.RegisterSystem<GourdShotSystem>(
                    {.systemId = kGourdShotSystem, .displayName = "ヒョウタン砲撃"}) &&
                context.BindComponentSystem(

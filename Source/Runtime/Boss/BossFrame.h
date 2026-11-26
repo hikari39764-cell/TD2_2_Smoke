@@ -5,7 +5,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/WorldView.h"
 #include "BossComponent.h"
-#include "../Player/PlayerComponent.h"
+#include "../Player/Player.h"
 
 namespace Project_TD2_2 {
 
@@ -17,7 +17,7 @@ struct BossFrame {
     HIKARI::WorldView& world;
     BossComponent& boss;
     // 同じ tick に見つかったプレイヤー（いなければ nullptr）。
-    PlayerComponent* player = nullptr;
+    Player* player = nullptr;
     HIKARI::GameProjectFloat3 playerCenter{};
     float dt = 1.0f / 60.0f;
     // ヒョウタンが吸い込み中（満杯かどうかは問わない。捕まえられるかは catchRoom も見る）。

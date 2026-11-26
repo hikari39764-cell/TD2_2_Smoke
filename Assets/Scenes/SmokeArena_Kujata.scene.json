@@ -173,7 +173,7 @@
             "sprintSpeed": 5.2,
             "sprintStaminaPerSecond": 0.0
           },
-          "type": "Project_TD2_2.Player"
+          "type": "TD2_2.Player"
         }
       ],
       "editorLocked": false,
@@ -549,7 +549,7 @@
               "id": 2
             }
           },
-          "type": "Project_TD2_2.Gourd"
+          "type": "TD2_2.Gourd"
         },
         {
           "id": 4,
@@ -563,12 +563,11 @@
             "smokeCost": 10.0,
             "staminaCost": 12.0,
             "trailEffect": {
-              "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
-              "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
+              "$hikari.assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b"
             },
             "windupFrames": 12
           },
-          "type": "Project_TD2_2.GourdShot"
+          "type": "TD2_2.GourdShot"
         }
       ],
       "editorLocked": false,

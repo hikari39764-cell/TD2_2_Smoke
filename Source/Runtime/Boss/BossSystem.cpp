@@ -128,7 +128,7 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     HIKARI::WorldView& world = frame.world;
     BossComponent& boss = frame.boss;
     BossIntroComponent* intro = frame.intro;
-    PlayerComponent* player = frame.player;
+    Player* player = frame.player;
     const Vec3 playerCenter = frame.playerCenter;
     BossObserver::Observe(world, boss, player, playerCenter, gear, frame.dt);
     // プレイヤーの位置（見た目だけが読む：近い時は胴の煙を薄くする。規則は使わない）。
@@ -217,7 +217,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 boss.glintFrames = std::max(0, boss.glintFrames - 1);
                 IBossBrain& brain = BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(testBrain_) : treeBrain_;
                 // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
-                auto withHealth = [&](PlayerComponent* player, Vec3 playerCenter) {
+                auto withHealth = [&](Player* player, Vec3 playerCenter) {
                     BossFrame bossFrame{world,         boss,           player,           playerCenter,
                                         frame.fixedDt, sight.inhaling, &sight.catchRoom, sight.mouth,
                                         sight.hasMouth};
@@ -227,15 +227,14 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 };
                 // プレイヤーは 1 人。いなくても体と斬撃は動く（当たる相手がいないだけ）。
                 bool ran = false;
-                world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                        [&](HIKARI::ObjectView playerObject, PlayerComponent& player) {
-                                                            HIKARI::GameProjectTransform transform{};
-                                                            if (ran || !playerObject.GetWorldTransform(transform))
-                                                                return;
-                                                            ran = true;
-                                                            withHealth(&player, transform.position);
-                                                            BossLockTarget::Step(object, boss, player);
-                                                        });
+                ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView playerObject, Player& player) {
+                    HIKARI::GameProjectTransform transform{};
+                    if (ran || !playerObject.GetWorldTransform(transform))
+                        return;
+                    ran = true;
+                    withHealth(&player, transform.position);
+                    BossLockTarget::Step(object, boss, player);
+                });
                 if (!ran)
                     withHealth(nullptr, {});
                 // 吸い取った斬撃・ナイフの渡し分を、ボスごとに集めて空にする（渡すのは下でまとめて 1 回）。
@@ -305,10 +304,8 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                 BossCinematicFx::Feedback(world, object, boss, frame.unscaledDt);
                 // 登場の演出のカメラ（プレイヤーのカメラへ渡す）。
                 if (parts.intro != nullptr)
-                    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                                            [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                                BossIntroCamera::Update(*parts.intro, player);
-                                                            });
+                    ComponentLookup::ForEachGame<Player>(
+                        [&](HIKARI::ObjectView, Player& player) { BossIntroCamera::Update(*parts.intro, player); });
                 demand += BossVisuals::GetFluidDomainDemand(boss, parts.body);
             });
         });

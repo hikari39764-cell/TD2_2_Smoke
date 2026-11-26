@@ -7,7 +7,6 @@
 
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Common/ObjectVariables.h"
 #include "../Common/TraceInterval.h"
 #include "PlayerDebugComponent.h"
 #include "PlayerRules.h"
@@ -15,7 +14,6 @@
 namespace Project_TD2_2 {
 namespace {
 
-using ComponentLookup::ForEachOnObject;
 
 const char* StateName(PlayerState state) {
     switch (state) {
@@ -41,11 +39,13 @@ const char* StateName(PlayerState state) {
     return "Unknown";
 }
 
+HIKARI::GameProjectFloat3 ToFloat3(HIKARI::Vec3 value) { return {value.x, value.y, value.z}; }
+
 bool AtTick(uint64_t tick, int scheduledTick) {
     return scheduledTick >= 0 && tick == static_cast<uint64_t>(scheduledTick);
 }
 
-bool IsDamageScheduled(const PlayerDebugComponent& debug) {
+bool IsDamageScheduled(const PlayerDebug& debug) {
     if (debug.damageAtTick < 0 || debug.damageAttempts >= debug.damageRepeatCount ||
         (debug.damageAttempts > 0 && debug.damageRepeatInterval <= 0)) {
         return false;
@@ -56,12 +56,12 @@ bool IsDamageScheduled(const PlayerDebugComponent& debug) {
     return debug.elapsedTicks == nextTick;
 }
 
-void ApplyScheduledActions(PlayerComponent& player, PlayerDebugComponent& debug) {
+void ApplyScheduledActions(Player& player, PlayerDebug& debug) {
     PlayerRules::Initialize(player);
     char message[256]{};
     if (IsDamageScheduled(debug)) {
-        const bool hit = PlayerRules::ApplyDamage(player, debug.damageAmount, debug.damageDirection, debug.damageKind,
-                                                  PlayerDamageType::Slash);
+        const bool hit = PlayerRules::ApplyDamage(player, debug.damageAmount, ToFloat3(debug.damageDirection),
+                                                  debug.damageKind, PlayerDamageType::Slash);
         ++debug.damageAttempts;
         std::snprintf(message, sizeof(message), "Damage tick=%llu amount=%.3f kind=%s accepted=%d health=%.3f",
                       static_cast<unsigned long long>(debug.elapsedTicks), static_cast<double>(debug.damageAmount),
@@ -82,35 +82,26 @@ void ApplyScheduledActions(PlayerComponent& player, PlayerDebugComponent& debug)
         PlayerRules::LockActions(player, debug.lockFrames);
     }
     if (AtTick(debug.elapsedTicks, debug.recoilAtTick)) {
-        PlayerRules::AddRecoil(player, debug.recoilDirection, debug.recoilDistance, debug.recoilFrames);
+        PlayerRules::AddRecoil(player, ToFloat3(debug.recoilDirection), debug.recoilDistance, debug.recoilFrames);
     }
 }
 
-void TracePlayer(const HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
-                 const PlayerDebugComponent& debug) {
+void TracePlayer(HIKARI::ObjectView object, const Player& player, const PlayerDebug& debug) {
     HIKARI::GameProjectTransform transform{};
     const bool positionValid = object.GetWorldTransform(transform);
-    // 物体変数の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
-    const HIKARI::GameProjectObjectHandle handle = object.GetHandle();
-    float varHealth = 0.0f;
-    float varMaxHealth = 0.0f;
-    float varStamina = 0.0f;
-    float varMaxStamina = 0.0f;
-    int64_t varHealCharges = 0;
-    int64_t varState = 0;
-    bool varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerHealthVariable, varHealth);
-    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerMaxHealthVariable, varMaxHealth) && varsRead;
-    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerStaminaVariable, varStamina) && varsRead;
-    varsRead = ObjectVariables::ReadFloat(world, handle, kPlayerMaxStaminaVariable, varMaxStamina) && varsRead;
-    varsRead = ObjectVariables::ReadInt(world, handle, kPlayerHealChargesVariable, varHealCharges) && varsRead;
-    varsRead = ObjectVariables::ReadInt(world, handle, kPlayerStateVariable, varState) && varsRead;
+    // ゲーム全体の値（Params）の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
+    const float varHealth = HIKARI::Params::GetFloat(kPlayerHealthVariable, -1.0f);
+    const float varStamina = HIKARI::Params::GetFloat(kPlayerStaminaVariable, -1.0f);
+    const int varHealCharges = HIKARI::Params::GetInt(kPlayerHealChargesVariable, -1);
+    const int varState = HIKARI::Params::GetInt(kPlayerStateVariable, -1);
+    const bool varsRead = varHealth >= 0.0f && varStamina >= 0.0f && varHealCharges >= 0 && varState >= 0;
     char message[1024]{};
     std::snprintf(
         message, sizeof(message),
         "Trace tick=%llu object=%llu state=%s stateFrame=%d health=%.3f stamina=%.3f healCharges=%d invulnerable=%d "
         "positionValid=%d position=(%.6f,%.6f,%.6f) motionAccepted=%d cameraAccepted=%d "
         "fluidAccepted=%d hitStopAccepted=%d actionLockFrames=%d recoilFramesLeft=%d facing=(%.4f,%.4f) "
-        "varsRead=%d varHealth=%.3f varStamina=%.3f varHealCharges=%lld varState=%lld",
+        "varsRead=%d varHealth=%.3f varStamina=%.3f varHealCharges=%d varState=%d",
         static_cast<unsigned long long>(debug.processedTick),
         static_cast<unsigned long long>(object.GetSceneObjectId()), StateName(player.state), player.stateFrame,
         static_cast<double>(player.health), static_cast<double>(player.stamina), player.healCharges,
@@ -120,8 +111,7 @@ void TracePlayer(const HIKARI::WorldView& world, HIKARI::ObjectView object, cons
         static_cast<int>(player.cameraAccepted), static_cast<int>(player.fluidAccepted),
         static_cast<int>(player.hitStopAccepted), player.actionLockFrames, player.recoilFramesLeft,
         static_cast<double>(player.facing.x), static_cast<double>(player.facing.z), static_cast<int>(varsRead),
-        static_cast<double>(varHealth), static_cast<double>(varStamina), static_cast<long long>(varHealCharges),
-        static_cast<long long>(varState));
+        static_cast<double>(varHealth), static_cast<double>(varStamina), varHealCharges, varState);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerDebug", message);
 }
 
@@ -131,34 +121,28 @@ void PlayerDebugSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Fram
     if (!GameSession::IsPlaying(world, frame)) {
         return;
     }
-    world.ForEachComponent<PlayerDebugComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerDebugType), [&](HIKARI::ObjectView owner, PlayerDebugComponent& debug) {
-            if (!debug.enabled) {
-                return;
-            }
-            ForEachOnObject<PlayerComponent>(world, kPlayerType, owner,
-                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                 ApplyScheduledActions(player, debug);
-                                             });
-            debug.processedTick = debug.elapsedTicks;
-            ++debug.elapsedTicks;
-        });
+    ComponentLookup::ForEachGame<PlayerDebug>([&](HIKARI::ObjectView owner, PlayerDebug& debug) {
+        if (!debug.enabled) {
+            return;
+        }
+        if (Player* player = ComponentLookup::GameOnObject<Player>(owner))
+            ApplyScheduledActions(*player, debug);
+        debug.processedTick = debug.elapsedTicks;
+        ++debug.elapsedTicks;
+    });
 }
 
 void PlayerDebugSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!GameSession::IsPlaying(world, frame)) {
         return;
     }
-    world.ForEachComponent<PlayerDebugComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerDebugType), [&](HIKARI::ObjectView owner, PlayerDebugComponent& debug) {
-            if (!debug.enabled || !TraceInterval::Due(debug.traceEveryFrames, debug.processedTick)) {
-                return;
-            }
-            ForEachOnObject<PlayerComponent>(world, kPlayerType, owner,
-                                             [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                 TracePlayer(world, object, player, debug);
-                                             });
-        });
+    ComponentLookup::ForEachGame<PlayerDebug>([&](HIKARI::ObjectView owner, PlayerDebug& debug) {
+        if (!debug.enabled || !TraceInterval::Due(debug.traceEveryFrames, debug.processedTick)) {
+            return;
+        }
+        if (const Player* player = ComponentLookup::GameOnObject<Player>(owner))
+            TracePlayer(owner, *player, debug);
+    });
 }
 
 } // namespace Project_TD2_2

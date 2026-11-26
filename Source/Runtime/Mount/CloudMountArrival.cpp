@@ -24,8 +24,7 @@ constexpr float kMinimumHorizontal = 1e-4f;
 
 } // namespace
 
-void CloudMountArrival::Begin(const CloudMountComponent& mount, CloudMountArrivalState& state, Vec3 facing,
-                              bool catching) {
+void CloudMountArrival::Begin(const CloudMount& mount, CloudMountArrivalState& state, Vec3 facing, bool catching) {
     const Vec3 forward = Normalize({facing.x, 0.0f, facing.z}, {0.0f, 0.0f, 1.0f});
     // 右（体の右＝局所 −X）。真後ろから右へ side 度回した向きが、飛び始めの水平の向き。
     const Vec3 right{-forward.z, 0.0f, forward.x};
@@ -60,7 +59,7 @@ void CloudMountArrival::Begin(const CloudMountComponent& mount, CloudMountArriva
     state.pitch = PitchOf(direction, mount.cloudPitchMaxDegrees);
 }
 
-float CloudMountArrival::Progress(const CloudMountComponent& mount, const CloudMountArrivalState& state) {
+float CloudMountArrival::Progress(const CloudMount& mount, const CloudMountArrivalState& state) {
     const float x = std::clamp(state.age / std::max(state.flySeconds, kMinimumFlySeconds), 0.0f, 1.0f);
     return 1.0f - std::pow(1.0f - x, std::max(1.0f, mount.summonFlyEasePower));
 }
@@ -75,21 +74,21 @@ Vec3 CloudMountArrival::PathDirection(const CloudMountArrivalState& state, float
     return Add(Scale(Difference(state.bend, state.from), 2.0f * (1.0f - u)), Scale(state.bend, -2.0f * u));
 }
 
-float CloudMountArrival::Sink(const CloudMountComponent& mount, const CloudMountArrivalState& state) {
+float CloudMountArrival::Sink(const CloudMount& mount, const CloudMountArrivalState& state) {
     if (state.landedAge < 0.0f || mount.summonSinkSeconds <= 0.0f || state.landedAge >= mount.summonSinkSeconds)
         return 0.0f;
     // 平方根で時間を縮め、沈みを速く（0.25 の所で一番深い）、戻りをゆっくりにする。
     return state.sinkDepth * std::sin(kPi * std::sqrt(state.landedAge / mount.summonSinkSeconds));
 }
 
-float CloudMountArrival::Afterglow(const CloudMountComponent& mount, const CloudMountArrivalState& state) {
+float CloudMountArrival::Afterglow(const CloudMount& mount, const CloudMountArrivalState& state) {
     if (state.landedAge < 0.0f || mount.summonPuffSeconds <= 0.0f || state.landedAge >= mount.summonPuffSeconds)
         return 0.0f;
     const float rest = 1.0f - state.landedAge / mount.summonPuffSeconds;
     return rest * rest;
 }
 
-float CloudMountArrival::Settle(const CloudMountComponent& mount, const CloudMountArrivalState& state) {
+float CloudMountArrival::Settle(const CloudMount& mount, const CloudMountArrivalState& state) {
     if (state.landedAge < 0.0f || mount.summonSettleSeconds <= 0.0f)
         return 1.0f;
     return Smoothstep(state.landedAge / mount.summonSettleSeconds);

@@ -32,7 +32,7 @@ using VectorMath::Approach;
 
 } // namespace
 
-float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
+float CloudMountSpeedFx::TargetStrength(const CloudMount& mount) {
     if (mount.state == CloudMountState::None)
         return 0.0f;
     const float speed = std::max(mount.flight.speed, 0.0f);
@@ -56,7 +56,7 @@ float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
     return std::max({curve, boosting, diving, 0.0f});
 }
 
-float CloudMountSpeedFx::StepStrength(CloudMountComponent& mount, float dt) {
+float CloudMountSpeedFx::StepStrength(CloudMount& mount, float dt) {
     const float target = TargetStrength(mount);
     const float seconds = target > mount.speedFxStrength ? mount.speedFxRiseSeconds : mount.speedFxFallSeconds;
     mount.speedFxStrength = std::max(0.0f, Approach(mount.speedFxStrength, target, seconds, dt));
@@ -66,8 +66,8 @@ float CloudMountSpeedFx::StepStrength(CloudMountComponent& mount, float dt) {
     return strength < kOffStrength ? 0.0f : strength;
 }
 
-float CloudMountSpeedFx::HeadingOnScreen(const CloudMountComponent& mount, const CloudMountSpeedFxView& view,
-                                         Vec3 direction, float& outU, float& outV) {
+float CloudMountSpeedFx::HeadingOnScreen(const CloudMount& mount, const CloudMountSpeedFxView& view, Vec3 direction,
+                                         float& outU, float& outV) {
     const float x = Dot(direction, view.right) / std::max(view.tanHalfFov * view.aspect, kMinimumSpan);
     const float y = Dot(direction, view.up) / std::max(view.tanHalfFov, kMinimumSpan);
     const float z = Dot(direction, view.forward);
@@ -88,7 +88,7 @@ float CloudMountSpeedFx::HeadingOnScreen(const CloudMountComponent& mount, const
     return Clamp01((z + kBackwardFadeCos) / kBackwardFadeCos);
 }
 
-void CloudMountSpeedFx::StepCenter(CloudMountComponent& mount, float u, float v, bool first, float dt) {
+void CloudMountSpeedFx::StepCenter(CloudMount& mount, float u, float v, bool first, float dt) {
     if (first) {
         mount.speedFxCenterU = u;
         mount.speedFxCenterV = v;

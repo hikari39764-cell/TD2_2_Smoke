@@ -4,6 +4,7 @@
 #include <cstdio>
 
 #include "HIKARI/Runtime/ComponentTypeId.h"
+#include "../Common/ComponentLookup.h"
 #include "BossFrame.h"
 #include "BossWaves.h"
 #include "../Gourd/GourdRules.h"
@@ -17,20 +18,19 @@ namespace {
 constexpr float kFallbackSmokePerVolume = 4.0f;
 
 // プレイヤーの砲撃（最初の 1 つ）を、砲撃の規則の読むだけの関数から見る。
-void SeeShot(HIKARI::WorldView& world, BossGearSight& gear) {
+void SeeShot(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/, BossGearSight& gear) {
     bool seen = false;
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
-                                                   if (seen)
-                                                       return;
-                                                   seen = true;
-                                                   gear.shotWindup = GourdShotRules::IsWindingUp(shot);
-                                                   gear.shotChaining = GourdShotRules::IsChaining(shot);
-                                                   gear.shotsFired = GourdShotRules::GetShotsFired(shot);
-                                                   gear.shotCost = GourdShotRules::GetSmokeCost(shot);
-                                                   gear.aimOrigin = GourdShotRules::GetAimOrigin(shot);
-                                                   gear.aimDirection = GourdShotRules::GetAimDirection(shot);
-                                               });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView, GourdShot& shot) {
+        if (seen)
+            return;
+        seen = true;
+        gear.shotWindup = GourdShotRules::IsWindingUp(shot);
+        gear.shotChaining = GourdShotRules::IsChaining(shot);
+        gear.shotsFired = GourdShotRules::GetShotsFired(shot);
+        gear.shotCost = GourdShotRules::GetSmokeCost(shot);
+        gear.aimOrigin = GourdShotRules::GetAimOrigin(shot);
+        gear.aimDirection = GourdShotRules::GetAimDirection(shot);
+    });
 }
 
 } // namespace
@@ -42,22 +42,21 @@ BossGourdSight BossGourdLink::Sense(HIKARI::WorldView& world) {
     // 満杯でも吸える設定（Gourd.absorbWhenFull）なら、煙は増えないが斬撃は吸い取れる（前の扱い）。
     // ボスがプレイヤーの様子として見るのは、煙が入るかどうかに関わらず吸い込みの構えをしているか。
     BossGourdSight sight;
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
-            if (!sight.hasMouth) {
-                sight.mouth = GourdRules::GetMouthPosition(gourd);
-                sight.hasMouth = true;
-                const float capacity = GourdRules::GetCapacity(gourd);
-                sight.gear.hasGourd = true;
-                sight.gear.smokePercent = capacity > 0.0f ? GourdRules::GetSmoke(gourd) / capacity * 100.0f : 0.0f;
-                sight.gear.capacity = capacity;
-                sight.gear.gourdFull = !GourdRules::HasRoomToAbsorb(gourd);
-            }
-            if (!GourdRules::IsAbsorbing(gourd))
-                return;
-            sight.inhaling = true;
-            sight.catchRoom = std::max(sight.catchRoom, GourdRules::GetCatchRoom(gourd));
-        });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView, Gourd& gourd) {
+        if (!sight.hasMouth) {
+            sight.mouth = GourdRules::GetMouthPosition(gourd);
+            sight.hasMouth = true;
+            const float capacity = GourdRules::GetCapacity(gourd);
+            sight.gear.hasGourd = true;
+            sight.gear.smokePercent = capacity > 0.0f ? GourdRules::GetSmoke(gourd) / capacity * 100.0f : 0.0f;
+            sight.gear.capacity = capacity;
+            sight.gear.gourdFull = !GourdRules::HasRoomToAbsorb(gourd);
+        }
+        if (!GourdRules::IsAbsorbing(gourd))
+            return;
+        sight.inhaling = true;
+        sight.catchRoom = std::max(sight.catchRoom, GourdRules::GetCatchRoom(gourd));
+    });
     sight.gear.absorbing = sight.inhaling;
     SeeShot(world, sight.gear);
     world.ForEachComponent<BossComponent>(
@@ -66,11 +65,12 @@ BossGourdSight BossGourdLink::Sense(HIKARI::WorldView& world) {
     return sight;
 }
 
-void BossGourdLink::HandOff(HIKARI::WorldView& world, BossCatchHandoff& caught, int pulling) {
+void BossGourdLink::HandOff(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
+                            BossCatchHandoff& caught, int pulling) {
     if (caught.smoke <= 0.0f && caught.count == 0 && pulling == 0)
         return;
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+    ComponentLookup::ForEachGame<Gourd>(
+        [&](HIKARI::ObjectView, Gourd& gourd) {
             // 引き込みの間と、入りきった直後は、吸い込みをやめていても口が飲み込み続ける。
             GourdRules::NotifySwallowing(gourd);
             if (caught.smoke <= 0.0f && caught.count == 0)
@@ -89,24 +89,23 @@ void BossGourdLink::HandOff(HIKARI::WorldView& world, BossCatchHandoff& caught, 
         });
 }
 
-void BossGourdLink::ReserveFluidDomains(HIKARI::WorldView& world, size_t demand) {
+void BossGourdLink::ReserveFluidDomains(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
+                                        size_t demand) {
     if (demand == 0)
         return;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType),
-        [&](HIKARI::ObjectView, GourdShotComponent& shot) { GourdShotRules::ReserveFluidDomains(shot, demand); });
+    ComponentLookup::ForEachGame<GourdShot>(
+        [&](HIKARI::ObjectView, GourdShot& shot) { GourdShotRules::ReserveFluidDomains(shot, demand); });
 }
 
-float BossGourdLink::SmokePerVolume(HIKARI::WorldView& world) {
+float BossGourdLink::SmokePerVolume(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/) {
     float smokePerVolume = kFallbackSmokePerVolume;
     bool found = false;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView, GourdComponent& gourd) {
-                                               if (!found) {
-                                                   smokePerVolume = GourdRules::GetSmokePerVolume(gourd);
-                                                   found = true;
-                                               }
-                                           });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView, Gourd& gourd) {
+        if (!found) {
+            smokePerVolume = GourdRules::GetSmokePerVolume(gourd);
+            found = true;
+        }
+    });
     return smokePerVolume;
 }
 

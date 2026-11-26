@@ -11,6 +11,7 @@
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
+#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -29,7 +30,7 @@ using VectorMath::kTau;
 constexpr uint64_t kWakeInstanceBase = 700;
 constexpr float kWakeForwardShare = 0.6f;
 
-void StopHandle(HIKARI::WorldView& world, GourdShotComponent& shot, HIKARI::GameProjectVfxPlaybackHandle& handle) {
+void StopHandle(HIKARI::WorldView& world, GourdShot& shot, HIKARI::GameProjectVfxPlaybackHandle& handle) {
     if (handle.IsValid()) {
         const auto vfx = world.GetVfx();
         if (vfx.IsActive(handle))
@@ -44,7 +45,7 @@ bool IsLive(HIKARI::WorldView& world, const HIKARI::GameProjectVfxPlaybackHandle
 
 // 砲撃の域の数を枠の中へ収める（incoming はこれから出す数）。命中の爆発（古い方）→ 冷却中の弾 → 砲口の順に止める。
 // 飛んでいる弾の域は止めない。枠は、他の表現（ボスの斬撃）が使う数だけ減る。
-void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot, size_t incoming) {
+void MakeRoom(HIKARI::WorldView& world, GourdShot& shot, size_t incoming) {
     const size_t budget = kGourdShotDomainBudget - std::min(shot.reservedDomains, kGourdShotDomainBudget - 1);
     for (;;) {
         size_t live = 0;
@@ -95,19 +96,19 @@ void MakeRoom(HIKARI::WorldView& world, GourdShotComponent& shot, size_t incomin
 
 // 再生する資産と、その倍率（源の大きさ）。
 struct EffectChoice {
-    const HIKARI::GameProjectVfxAssetReference* asset = nullptr;
+    const HIKARI::VfxAsset* asset = nullptr;
     float scale = 0.0f;
 };
 
 // 火弾は火弾用の資産と倍率で出す。火弾用の資産が空なら、ふだんの資産と倍率で出す（見た目が消えないように）。
-EffectChoice Choose(bool fire, const HIKARI::GameProjectVfxAssetReference& normal, float normalScale,
-                    const HIKARI::GameProjectVfxAssetReference& fireAsset, float fireScale) {
-    if (fire && !fireAsset.IsEmpty())
+EffectChoice Choose(bool fire, const HIKARI::VfxAsset& normal, float normalScale, const HIKARI::VfxAsset& fireAsset,
+                    float fireScale) {
+    if (fire && fireAsset.IsSet())
         return {&fireAsset, fireScale};
     return {&normal, normalScale};
 }
 
-EffectChoice ChooseBurst(const GourdShotComponent& shot, const GourdShotBurst& burst) {
+EffectChoice ChooseBurst(const GourdShot& shot, const GourdShotBurst& burst) {
     switch (burst.kind) {
     case GourdBurstKind::Muzzle:
         return Choose(burst.fire, shot.muzzleEffect, shot.muzzleScale, shot.fireMuzzleEffect, shot.fireMuzzleScale);
@@ -118,13 +119,15 @@ EffectChoice ChooseBurst(const GourdShotComponent& shot, const GourdShotBurst& b
     return {&shot.fireStartEffect, shot.fireStartScale};
 }
 
+Vec3 Rgb(HIKARI::Color color) { return {color.r, color.g, color.b}; }
+
 void SmokeParameters(HIKARI::GameProjectVfxParameterOverrides& parameters, float amount, Vec3 color) {
     VfxParameters::SetFloat(parameters, "input.amount", amount);
     VfxParameters::SetColor(parameters, "input.color", color);
 }
 
-void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                  HIKARI::GameProjectVfxPlaybackHandle& handle, const HIKARI::GameProjectVfxAssetReference& asset,
+void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot,
+                  HIKARI::GameProjectVfxPlaybackHandle& handle, const HIKARI::VfxAsset& asset,
                   const HIKARI::GameProjectTransform& transform,
                   const HIKARI::GameProjectVfxParameterOverrides& parameters) {
     const auto vfx = world.GetVfx();
@@ -132,7 +135,7 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
         handle = {};
     if (!handle.IsValid()) {
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = asset;
+        play.asset = VfxPlayback::Reference(asset);
         play.ownerObjectHandle = object.GetHandle().value;
         play.transform = transform;
         play.loopMode = HIKARI::GameProjectVfxLoopMode::Loop;
@@ -153,9 +156,9 @@ void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
     }
 }
 
-void UpdateTrail(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                 GourdProjectile& projectile, uint32_t& sourceCount) {
-    if ((!projectile.active && !projectile.finishTrailPending) || shot.trailEffect.IsEmpty() ||
+void UpdateTrail(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, GourdProjectile& projectile,
+                 uint32_t& sourceCount) {
+    if ((!projectile.active && !projectile.finishTrailPending) || !shot.trailEffect.IsSet() ||
         shot.trailSmokeScale <= 0.0f || sourceCount >= kSourceBudget) {
         StopHandle(world, shot, projectile.trail);
         projectile.finishTrailPending = false;
@@ -167,21 +170,20 @@ void UpdateTrail(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotC
     transform.position = projectile.position;
     transform.scale = {scale, scale, scale};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
-    SmokeParameters(parameters, projectile.densityScale * shot.trailSmokeScale, shot.smokeColor);
+    SmokeParameters(parameters, projectile.densityScale * shot.trailSmokeScale, Rgb(shot.smokeColor));
     UpdateEffect(world, object, shot, projectile.trail, shot.trailEffect, transform, parameters);
     // 終点の区間を VFX 更新へ渡した次のフレームで停止する。
     if (!projectile.active)
         projectile.finishTrailPending = false;
 }
 
-void UpdateShell(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                 GourdProjectile& projectile) {
+void UpdateShell(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, GourdProjectile& projectile) {
     StopHandle(world, shot, projectile.staleShell);
     const bool lingering = !projectile.active && projectile.fadeFramesLeft > 0;
     // 火弾は、同じ入力（input.fly・input.flash）を持つ火弾用の資産で出す。弾 1 発に域 1 つなのは変わらない。
     const EffectChoice effect =
         Choose(projectile.fire, shot.shellEffect, shot.shellScale, shot.fireShellEffect, shot.fireShellScale);
-    if ((!projectile.active && !lingering) || effect.asset->IsEmpty() || effect.scale <= 0.0f) {
+    if ((!projectile.active && !lingering) || !effect.asset->IsSet() || effect.scale <= 0.0f) {
         StopHandle(world, shot, projectile.shell);
         return;
     }
@@ -200,15 +202,14 @@ void UpdateShell(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotC
     UpdateEffect(world, object, shot, projectile.shell, *effect.asset, transform, parameters);
 }
 
-void PlayBurst(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-               const GourdShotBurst& burst) {
+void PlayBurst(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, const GourdShotBurst& burst) {
     const EffectChoice effect = ChooseBurst(shot, burst);
     const float scale = effect.scale * burst.scale;
-    if (effect.asset->IsEmpty() || scale <= 0.0f)
+    if (!effect.asset->IsSet() || scale <= 0.0f)
         return;
     const bool impact = burst.kind == GourdBurstKind::Impact;
     HIKARI::GameProjectVfxPlayRequest play{};
-    play.asset = *effect.asset;
+    play.asset = VfxPlayback::Reference(*effect.asset);
     play.ownerObjectHandle = object.GetHandle().value;
     play.transform.position = burst.position;
     // 砲口の火の輪と、火弾の始まりの合図は口の向く先（資産の +X）。爆発は世界の向きのまま（炎と煤が上へ昇る）。
@@ -228,9 +229,9 @@ void PlayBurst(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotCom
     ++shot.burstsPlayed;
 }
 
-void UpdateResidue(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                   GourdShotResidue& residue, uint32_t& sourceCount) {
-    if (!residue.active || residue.framesLeft <= 0 || shot.residueSmokeRate <= 0.0f || shot.trailEffect.IsEmpty() ||
+void UpdateResidue(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, GourdShotResidue& residue,
+                   uint32_t& sourceCount) {
+    if (!residue.active || residue.framesLeft <= 0 || shot.residueSmokeRate <= 0.0f || !shot.trailEffect.IsSet() ||
         sourceCount >= kSourceBudget) {
         StopHandle(world, shot, residue.smoke);
         return;
@@ -242,12 +243,12 @@ void UpdateResidue(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdSho
     transform.scale = {scale, scale, scale};
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     const float fade = static_cast<float>(residue.framesLeft) / static_cast<float>(std::max(1, shot.residueFrames));
-    SmokeParameters(parameters, shot.residueSmokeRate / kSmokeSourceRate * fade, shot.smokeColor);
+    SmokeParameters(parameters, shot.residueSmokeRate / kSmokeSourceRate * fade, Rgb(shot.smokeColor));
     UpdateEffect(world, object, shot, residue.smoke, shot.trailEffect, transform, parameters);
 }
 
-void SubmitFluid(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot, uint32_t& total,
-                 uint64_t id, HIKARI::GameProjectFluidInteractionKind kind, Vec3 position, float radius, float strength,
+void SubmitFluid(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, uint32_t& total, uint64_t id,
+                 HIKARI::GameProjectFluidInteractionKind kind, Vec3 position, float radius, float strength,
                  Vec3 direction = {}) {
     if (strength <= 0.0f)
         return;
@@ -268,8 +269,8 @@ void SubmitFluid(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotC
 
 } // namespace
 
-void GourdShotVisuals::QueueBurst(GourdShotComponent& shot, GourdBurstKind kind, bool fire, Vec3 position,
-                                  Vec3 direction, float scale) {
+void GourdShotVisuals::QueueBurst(GourdShot& shot, GourdBurstKind kind, bool fire, Vec3 position, Vec3 direction,
+                                  float scale) {
     // 予約は輪で持つ。あふれたら一番古い予約を捨てる（同時 8 弾の命中まで収まる）。
     auto& burst = shot.bursts[shot.burstCursor % kGourdBurstCapacity];
     ++shot.burstCursor;
@@ -283,7 +284,7 @@ void GourdShotVisuals::QueueBurst(GourdShotComponent& shot, GourdBurstKind kind,
     burst.scale = scale;
 }
 
-void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
+void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot,
                               uint32_t& sourceCount) {
     // 他の表現が流体域を使い始めたら、新しく撃たなくても枠の中へ収める。予約は毎フレーム入れ直してもらう。
     if (shot.reservedDomains > 0)
@@ -310,8 +311,7 @@ void GourdShotVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView objec
     }
 }
 
-void GourdShotVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
-                              uint32_t& total) {
+void GourdShotVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot, uint32_t& total) {
     using Kind = HIKARI::GameProjectFluidInteractionKind;
     shot.fluidSubmissions = 0;
     if (shot.muzzlePending) {
@@ -379,7 +379,7 @@ void GourdShotVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     }
 }
 
-void GourdShotVisuals::Stop(HIKARI::WorldView& world, GourdShotComponent& shot) {
+void GourdShotVisuals::Stop(HIKARI::WorldView& world, GourdShot& shot) {
     for (auto& projectile : shot.projectiles) {
         StopHandle(world, shot, projectile.trail);
         StopHandle(world, shot, projectile.shell);

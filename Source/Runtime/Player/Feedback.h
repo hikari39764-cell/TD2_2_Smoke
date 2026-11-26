@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include "HIKARI/Project/ActionTypes.h"
-#include "HIKARI/Project/WorldView.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 
@@ -51,7 +51,7 @@ void StartCameraShake(CameraShake& shake, const CameraShakeParams& params);
 
 // 揺れが続いている間、このフレームの分をカメラへ出して時間を進める。
 // 出した変化量（ローカルの位置のずれ）を offsetOut へ返す（検証の記録用。null 可）。出せたら true。
-bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, uint64_t preferredCameraId, float unscaledDt,
+bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, HIKARI::Entity preferredCamera, float unscaledDt,
                        HIKARI::GameProjectFloat3* offsetOut = nullptr);
 
 // カメラの位置と注視点を、カメラの局所の向きへ一緒にずらす（このフレームだけ）。続けて出す揺れは、呼ぶ側が位相を進めて

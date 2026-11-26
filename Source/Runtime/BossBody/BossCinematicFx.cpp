@@ -197,7 +197,7 @@ void BossCinematicFx::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obje
              amplitude * (0.7f * std::sin(p * 1.31f + 0.7f) + 0.3f * std::sin(p * 2.9f)), 0.0f});
         state.rumblePending = 0.0f;
     }
-    Project_TD2_2::Feedback::SubmitCameraShake(world, state.shake, 0, unscaledSeconds);
+    Project_TD2_2::Feedback::SubmitCameraShake(world, state.shake, {}, unscaledSeconds);
 }
 
 void BossCinematicFx::MonoFlash(BossComponent& boss, float strength, float seconds) {

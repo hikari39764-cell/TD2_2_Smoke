@@ -140,7 +140,7 @@ public:
     // 吸い込みで消せる面積の持ち越し (m²)。セルは丸ごと消すので、1 tick の量が 1 セルに満たない分をためる。
     float absorbBudget = 0.0f;
     uint64_t tick = 0;
-    // 検証ログ用の累計。fireDamageTotal はプレイヤーの炎上で減った HP の累計（PlayerComponent::burnDamageTotal の写し）。
+    // 検証ログ用の累計。fireDamageTotal はプレイヤーの炎上で減った HP の累計（Player::burnDamageTotal の写し）。
     double fireDamageTotal = 0.0;
     double absorbedAreaTotal = 0.0;
     double smokeGivenTotal = 0.0;
@@ -170,7 +170,7 @@ public:
     uint8_t blastFlip = 0;
     // 火の刃が当たった所を突き抜ける炎（プレイヤーは 1 人なので 1 つ。続けて当たれば新しい方で置き換える）。
     BurnJet jet;
-    // 体の炎が消えた回数のうち、見た目が散らし終えた分（PlayerComponent::burnEndings と比べる）。
+    // 体の炎が消えた回数のうち、見た目が散らし終えた分（Player::burnEndings と比べる）。
     uint32_t bodyEndingsSeen = 0;
     // 見た目だけの塊（BurnField::AddBlast が固定 tick ごとに後ろへ足す。いっぱいなら捨てる）。読むのと
     // blastCount を 0 に戻すのは BurnFieldVisuals（描画フレーム）。規則は読まない。

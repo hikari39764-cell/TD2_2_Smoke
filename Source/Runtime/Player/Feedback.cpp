@@ -43,7 +43,7 @@ void StartCameraShake(CameraShake& shake, const CameraShakeParams& params) {
     shake.active = true;
 }
 
-bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, uint64_t preferredCameraId, float unscaledDt,
+bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, HIKARI::Entity preferredCamera, float unscaledDt,
                        HIKARI::GameProjectFloat3* offsetOut) {
     if (!shake.active)
         return false;
@@ -63,7 +63,7 @@ bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, uint64_t pr
                                     params.kickDirection.z * kick};
     modifier.worldTargetOffset = modifier.worldPositionOffset;
     modifier.verticalFovOffsetRadians = params.fovDegrees * kRadiansPerDegree * falloff;
-    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, preferredCameraId);
+    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, preferredCamera);
     if (offsetOut != nullptr)
         *offsetOut = modifier.localPositionOffset;
     // 停止中も実時間で戻し、停止そのものが揺れを延ばさないようにする。
@@ -80,7 +80,7 @@ bool SubmitCameraOffset(HIKARI::WorldView& world, uint64_t sourceId, int priorit
     modifier.priority = priority;
     modifier.localPositionOffset = localOffset;
     modifier.localTargetOffset = localOffset;
-    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, 0);
+    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world);
     return modifier.cameraObjectHandle != 0 && world.GetCamera().SubmitModifier(modifier);
 }
 

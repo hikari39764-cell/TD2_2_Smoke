@@ -175,12 +175,12 @@
             "rollInvincibleFrames": 15,
             "rollStamina": 15.0
           },
-          "type": "Project_TD2_2.Player"
+          "type": "TD2_2.Player"
         },
         {
           "id": 9,
           "properties": {},
-          "type": "Project_TD2_2.CloudMount"
+          "type": "TD2_2.CloudMount"
         }
       ],
       "editorLocked": false,
@@ -371,7 +371,7 @@
               "id": 2
             }
           },
-          "type": "Project_TD2_2.Gourd"
+          "type": "TD2_2.Gourd"
         },
         {
           "id": 4,
@@ -381,11 +381,10 @@
             "smokeCost": 15.0,
             "staminaCost": 18.0,
             "trailEffect": {
-              "assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b",
-              "assetPath": "Assets/Vfx/GourdShotTrail.hvfx"
+              "$hikari.assetGuid": "281dcd4c8fd928f86c5454b9d5f63a0b"
             }
           },
-          "type": "Project_TD2_2.GourdShot"
+          "type": "TD2_2.GourdShot"
         }
       ],
       "editorLocked": false,

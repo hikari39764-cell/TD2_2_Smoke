@@ -63,7 +63,7 @@ void BossFeedback::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, B
     }
     HIKARI::GameProjectFloat3 offset{};
     const bool wasActive = boss.breakShake.active;
-    const bool accepted = Feedback::SubmitCameraShake(world, boss.breakShake, 0, frame.unscaledDt, &offset);
+    const bool accepted = Feedback::SubmitCameraShake(world, boss.breakShake, {}, frame.unscaledDt, &offset);
     if (wasActive) {
         char message[128]{};
         std::snprintf(message, sizeof(message), "BreakShake tick=%llu offset=(%.6f,%.6f) accepted=%d",

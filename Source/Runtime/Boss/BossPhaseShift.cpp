@@ -7,7 +7,7 @@
 #include "BossFrame.h"
 #include "BossMath.h"
 #include "BossPose.h"
-#include "../Player/PlayerComponent.h"
+#include "../Player/Player.h"
 #include "../Player/PlayerRules.h"
 
 namespace Project_TD2_2 {
@@ -160,7 +160,7 @@ void BossPhaseShift::Step(BossComponent& boss, BossPhaseShiftComponent* shift) {
         Enter(boss, *shift, static_cast<BossShiftBeat>(static_cast<int>(state.beat) + 1));
 }
 
-void BossPhaseShift::Push(BossComponent& boss, BossPhaseShiftComponent* shift, PlayerComponent& player,
+void BossPhaseShift::Push(BossComponent& boss, BossPhaseShiftComponent* shift, Player& player,
                           HIKARI::GameProjectFloat3 playerCenter) {
     if (shift == nullptr)
         return;

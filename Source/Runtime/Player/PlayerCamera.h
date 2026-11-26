@@ -4,7 +4,7 @@
 
 namespace Project_TD2_2 {
 
-class PlayerComponent;
+struct Player;
 
 // プレイヤーの後ろから見るカメラ。姿勢（視点と注視点）をゲーム側で作り、毎フレーム Gameplay Camera へ渡す。
 // ねらい：酔わないこと。距離は変えない・上下はほとんど追わない・回る時は出だしも止まり際もなめらかにする。
@@ -15,7 +15,7 @@ namespace PlayerCamera {
 
 // 描画フレームごとに 1 回呼ぶ。dt はヒットストップで止まらない時間（秒）、alpha は FrameContext::fixedInterpolationAlpha
 // （体を、エンジンが描く補間の位置で追う：PlayerRules::PresentedPosition）。
-void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt, float alpha);
+void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player, float dt, float alpha);
 
 } // namespace PlayerCamera
 
