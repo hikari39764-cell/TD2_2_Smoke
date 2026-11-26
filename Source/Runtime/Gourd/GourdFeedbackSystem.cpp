@@ -12,8 +12,8 @@
 #include "GourdShotVisuals.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Combat/Feedback.h"
-#include "../Combat/FeedbackCamera.h"
+#include "../Player/Feedback.h"
+#include "../Player/FeedbackCamera.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxPlayback.h"
 
@@ -33,7 +33,7 @@ constexpr uint64_t kCatchCameraSource = 0x5444324704ull;
 constexpr uint64_t kChromaSource = 0x5444324702ull;
 constexpr int kChromaPriority = 310;
 
-void LogStart(const GourdShotComponent& shot) {
+void LogStart(const GourdShot& shot) {
     if (shot.traceEveryFrames <= 0)
         return;
     const auto& feedback = shot.feedback;
@@ -64,10 +64,9 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     modifier.localPositionOffset = {std::sin(phase) * shake, std::cos(phase) * shake, 0.0f};
     modifier.localTargetOffset = modifier.localPositionOffset;
     modifier.verticalFovOffsetRadians = feedback.cameraFovDegrees * feedback.cameraScale * kRadiansPerDegree * strength;
-    uint64_t cameraId = 0;
-    ForEachOnObject<GourdComponent>(world, kGourdType, object,
-                                    [&](HIKARI::ObjectView, GourdComponent& gourd) { cameraId = gourd.cameraId; });
-    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, cameraId);
+    HIKARI::Entity camera{};
+    ForEachOnObject<Gourd>(world, kGourdType, object, [&](HIKARI::ObjectView, Gourd& gourd) { camera = gourd.camera; });
+    modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, camera);
     if (modifier.cameraObjectHandle == 0)
         return false;
     return world.GetCamera().SubmitModifier(modifier);
@@ -75,13 +74,14 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
 
 // 火弾の状態が始まった瞬間に、ヒョウタンの口から短く炎を噴く合図を 1 回だけ出す（残りを延ばしただけの時は出さない）。
 // 合図は砲撃の一度きりのエフェクトの枠（砲口の枠）で出すので、流体域の数は増えない。
-void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot) {
+void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot) {
     bool fire = false;
     HIKARI::GameProjectFloat3 mouth{}, aim{0.0f, 0.0f, 1.0f};
-    ForEachOnObject<GourdComponent>(world, kGourdType, object, [&](HIKARI::ObjectView, GourdComponent& gourd) {
+    ForEachOnObject<Gourd>(world, kGourdType, object, [&](HIKARI::ObjectView, Gourd& gourd) {
         fire = GourdRules::IsFireShot(gourd);
-        mouth = GourdRules::GetMouthPosition(gourd);
-        aim = GourdRules::GetAimDirection(gourd);
+        // 合図は見えている口から（描画のヒョウタン）。
+        mouth = gourd.drawMouthPosition;
+        aim = gourd.drawAimDirection;
     });
     const bool started = fire && !shot.feedback.observedFireShot;
     shot.feedback.observedFireShot = fire;
@@ -93,12 +93,12 @@ void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdSho
         std::snprintf(message, sizeof(message), "FireShotStart tick=%llu mouth=(%.3f,%.3f,%.3f) effect=%d",
                       static_cast<unsigned long long>(shot.processedTick), static_cast<double>(mouth.x),
                       static_cast<double>(mouth.y), static_cast<double>(mouth.z),
-                      static_cast<int>(!shot.fireStartEffect.IsEmpty() && shot.fireStartScale > 0.0f));
+                      static_cast<int>(shot.fireStartEffect.IsSet() && shot.fireStartScale > 0.0f));
         HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
     }
 }
 
-void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
+void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot,
                   const HIKARI::FrameContext& frame) {
     auto& feedback = shot.feedback;
     const bool hasCameraMotion = feedback.cameraKickDistance > 0.0f || feedback.cameraShakeAmplitude > 0.0f ||
@@ -158,8 +158,7 @@ void StepFeedback(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot
 }
 
 // ボスの斬撃・ナイフを吸い取った瞬間の手応え。視野角だけを引き、揺れと押しは出さない（吸い込みの寄りと喧嘩しない）。
-void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
-               const HIKARI::FrameContext& frame) {
+void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, const HIKARI::FrameContext& frame) {
     gourd.catchStopCooldown = std::max(0.0f, gourd.catchStopCooldown - std::max(0.0f, frame.unscaledDt));
     if (gourd.catchObservedCount != gourd.catchCount) {
         gourd.catchObservedCount = gourd.catchCount;
@@ -179,11 +178,11 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
         shake.frames = gourd.catchFovFrames;
         shake.fovDegrees = gourd.catchFovDegrees;
         Feedback::StartCameraShake(gourd.catchShake, shake);
-        const bool fovAccepted = Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.cameraId, frame.unscaledDt);
+        const bool fovAccepted = Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.camera, frame.unscaledDt);
         // 合図のエフェクトは口の位置で一度だけ。空なら何も出さない。
         bool effectPlayed = false;
-        if (!gourd.catchEffect.IsEmpty()) {
-            effectPlayed = VfxPlayback::PlayOneShot(world, gourd.catchEffect, GourdRules::GetMouthPosition(gourd));
+        if (gourd.catchEffect.IsSet()) {
+            effectPlayed = VfxPlayback::PlayOneShot(world, gourd.catchEffect, gourd.drawMouthPosition);
             gourd.vfxAccepted = effectPlayed && gourd.vfxAccepted;
         }
         char message[192]{};
@@ -198,7 +197,7 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
         HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
         return;
     }
-    Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.cameraId, frame.unscaledDt);
+    Feedback::SubmitCameraShake(world, gourd.catchShake, gourd.camera, frame.unscaledDt);
 }
 
 } // namespace
@@ -206,21 +205,19 @@ void StepCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdCompone
 void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!GameSession::IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
-                                                   StepFireStart(world, object, shot);
-                                                   StepFeedback(world, object, shot, frame);
-                                               });
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType),
-        [&](HIKARI::ObjectView object, GourdComponent& gourd) { StepCatch(world, object, gourd, frame); });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
+        StepFireStart(world, object, shot);
+        StepFeedback(world, object, shot, frame);
+    });
+    ComponentLookup::ForEachGame<Gourd>(
+        [&](HIKARI::ObjectView object, Gourd& gourd) { StepCatch(world, object, gourd, frame); });
 }
 
 void GourdFeedbackSystem::PostRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!GameSession::IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView, GourdShotComponent& shot) {
+    ComponentLookup::ForEachGame<GourdShot>(
+        [&](HIKARI::ObjectView, GourdShot& shot) {
             if (shot.traceEveryFrames <= 0 || !shot.feedback.active)
                 return;
             HIKARI::GameProjectCameraPose control{}, rendered{};

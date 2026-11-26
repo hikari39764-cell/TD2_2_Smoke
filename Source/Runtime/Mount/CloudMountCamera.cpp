@@ -29,15 +29,11 @@ float StageValue(float stage, float stop, float cruise, float boost) {
 }
 
 // 目標へ seconds の時定数で近づく（0 以下で一瞬）。
-float Approach(float now, float target, float seconds, float dt) {
-    if (seconds <= 0.0f)
-        return target;
-    return now + (target - now) * (1.0f - std::exp(-std::max(dt, 0.0f) / seconds));
-}
+using VectorMath::Approach;
 
 // 水平に追うならし：速さが増えている間は伸ばし（体が先に画面の奥へ出る）、減っている間は縮める。伸ばす時はすぐ、
 // 戻す時は cameraFollowRecoverSeconds でならす（伸びたまま速さが一定になると、カメラが追いついて元の構図へ戻る）。
-void StepFollow(CloudMountComponent& mount, float dt) {
+void StepFollow(CloudMount& mount, float dt) {
     const float base = std::max(0.0f, mount.cameraFollowSeconds);
     const float full = std::max(mount.cameraFollowFullAccel, kMinimumSpan);
     const float acceleration = mount.flight.acceleration;
@@ -53,7 +49,7 @@ void StepFollow(CloudMountComponent& mount, float dt) {
 }
 
 // 傾き（度、右へ旋回すると正）。巡航より遅い時は速さに比例して小さくする（ゆっくり回る時に大きく傾けない）。
-float RollDegrees(const CloudMountComponent& mount, float stage) {
+float RollDegrees(const CloudMount& mount, float stage) {
     if (!mount.cameraRollEnabled)
         return 0.0f;
     const float limit = stage <= 1.0f ? mount.cameraRollCruise * std::max(stage, 0.0f)
@@ -63,7 +59,7 @@ float RollDegrees(const CloudMountComponent& mount, float stage) {
 
 } // namespace
 
-PlayerCameraRequest CloudMountCamera::BuildRequest(CloudMountComponent& mount, float dt) {
+PlayerCameraRequest CloudMountCamera::BuildRequest(CloudMount& mount, float dt) {
     StepFollow(mount, dt);
     const float stage = SpeedStage(mount);
     // 上下のならしを水平へ寄せる割合は、水平の速さで決める（上昇・下降だけの時は上下を素早く追ったまま）。
@@ -101,7 +97,7 @@ PlayerCameraRequest CloudMountCamera::BuildRequest(CloudMountComponent& mount, f
     return request;
 }
 
-PlayerCameraRequest CloudMountCamera::BuildFallRequest(const CloudMountComponent& mount) {
+PlayerCameraRequest CloudMountCamera::BuildFallRequest(const CloudMount& mount) {
     PlayerCameraRequest request{};
     request.verticalSeconds = std::max(0.0f, mount.cameraVerticalSeconds);
     request.verticalDeadZone = mount.cameraVerticalDeadZone;
@@ -115,13 +111,13 @@ PlayerCameraRequest CloudMountCamera::BuildFallRequest(const CloudMountComponent
     return request;
 }
 
-void CloudMountCamera::Reset(CloudMountComponent& mount) {
+void CloudMountCamera::Reset(CloudMount& mount) {
     mount.cameraFollowNow = -1.0f;
     mount.cameraKickAge = -1.0f;
     mount.cameraWasBoosting = false;
 }
 
-float CloudMountCamera::StepBlur(CloudMountComponent& mount, float dt) {
+float CloudMountCamera::StepBlur(CloudMount& mount, float dt) {
     const float target = std::max(mount.flight.boosting ? 1.0f : 0.0f, Clamp01(mount.flight.dive));
     mount.cameraBlurWeight = Clamp01(Approach(mount.cameraBlurWeight, target, mount.cameraBlurSeconds, dt));
     if (target <= 0.0f && mount.cameraBlurWeight < kBlurOffWeight)
@@ -129,7 +125,7 @@ float CloudMountCamera::StepBlur(CloudMountComponent& mount, float dt) {
     return mount.cameraBlurWeight;
 }
 
-float CloudMountCamera::SpeedStage(const CloudMountComponent& mount) {
+float CloudMountCamera::SpeedStage(const CloudMount& mount) {
     if (mount.flight.boosting)
         return 2.0f;
     const float cruise = std::max(mount.cruiseSpeed, kMinimumSpan);
@@ -139,7 +135,7 @@ float CloudMountCamera::SpeedStage(const CloudMountComponent& mount) {
     return 1.0f + Clamp01((speed - cruise) / std::max(mount.boostSpeed - cruise, kMinimumSpan));
 }
 
-float CloudMountCamera::FovKick(const CloudMountComponent& mount, float age) {
+float CloudMountCamera::FovKick(const CloudMount& mount, float age) {
     const float duration = mount.cameraBoostFovKickSeconds;
     if (duration <= 0.0f || age < 0.0f || age >= duration)
         return 0.0f;

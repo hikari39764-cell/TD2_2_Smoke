@@ -10,7 +10,7 @@
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossWaves.h"
-#include "../Burn/BurnFieldRules.h"
+#include "../Burn/BurnField.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -21,8 +21,6 @@ using namespace BossMath;
 constexpr float kShotCenterBand = 0.25f;
 // 燃えている地面を確かめる、行き先の周りの点の数（行き先そのものと道の真ん中も見る）。
 constexpr int kFireProbePoints = 4;
-// 跳ぶ間に、前隙の屈みを戻す割合（1 tick あたり）。
-constexpr float kTakeoffRelease = 0.35f;
 // 確かめる行き先の数の上限（表の向き 8 ＋ 基本の 6 向き、弾の側は 4 通り）。
 constexpr size_t kCandidateCapacity = 24;
 
@@ -122,11 +120,11 @@ const char* Blocked(BossFrame& frame, Vec3 from, Vec3 to) {
         return "edge";
     if (frame.player != nullptr && FlatLength(Sub(to, PlayerGround(frame))) < s.playerGap)
         return "player";
-    if (BurnFieldRules::IsBurning(frame.world, to) || BurnFieldRules::IsBurning(frame.world, Lerp(from, to, 0.5f)))
+    if (BurnField::IsBurning(frame.world, to) || BurnField::IsBurning(frame.world, Lerp(from, to, 0.5f)))
         return "fire";
     for (int k = 0; k < kFireProbePoints && s.fireClearance > 0.0f; ++k) {
         const float angle = 2.0f * kPi * static_cast<float>(k) / static_cast<float>(kFireProbePoints);
-        if (BurnFieldRules::IsBurning(frame.world, Add(to, Mul(Forward(angle), s.fireClearance))))
+        if (BurnField::IsBurning(frame.world, Add(to, Mul(Forward(angle), s.fireClearance))))
             return "fire";
     }
     return nullptr;
@@ -298,10 +296,6 @@ void BossKasumiStep::Begin(BossFrame& frame, const BossMove& move) {
     Log(boss, "KasumiStep", extra);
 }
 
-void BossKasumiStep::Pre(BossComponent& boss, float progress) {
-    boss.crouch = boss.kasumiStep.takeoffCrouch * std::clamp(progress, 0.0f, 1.0f);
-}
-
 void BossKasumiStep::Act(BossFrame& frame, float progress) {
     BossComponent& boss = frame.boss;
     const BossKasumiStepState& state = boss.kasumiStepState;
@@ -309,34 +303,16 @@ void BossKasumiStep::Act(BossFrame& frame, float progress) {
     const float eased = 1.0f - std::pow(1.0f - u, std::max(1.0f, boss.kasumiStep.easePower));
     boss.ground = Lerp(state.from, state.to, eased);
     boss.height = state.height * std::sin(u * kPi);
-    boss.crouch = Lerp(boss.crouch, 0.0f, kTakeoffRelease);
     BossMoveExecutor::FaceRate(frame, boss.kasumiStep.turnRate);
     if (u >= 1.0f && !state.landed)
         Land(boss);
 }
 
-void BossKasumiStep::Post(BossComponent& boss, float progress) {
-    // 着地で沈む：後隙の始めの 1/4 で沈みきり、残りで起きる。
-    boss.height = 0.0f;
-    boss.crouch = boss.kasumiStep.landCrouch * std::sin(kPi * std::sqrt(std::clamp(progress, 0.0f, 1.0f)));
-}
+void BossKasumiStep::Post(BossComponent& boss) { boss.height = 0.0f; }
 
 bool BossKasumiStep::Guarding(const BossComponent& boss) {
     return boss.kasumiStep.guardFrames > 0 && Stepping(boss) && boss.kasumiStepState.dodge &&
            boss.phase == BossActPhase::Act && boss.stateFrame <= boss.kasumiStep.guardFrames;
-}
-
-void BossKasumiStep::AddLean(const BossComponent& boss, float& lean, float& sway) {
-    if (!Stepping(boss) || boss.phase != BossActPhase::Act)
-        return;
-    const BossKasumiStepState& state = boss.kasumiStepState;
-    const float u = Share(boss.stateFrame, boss.actFrames);
-    const float amount = boss.kasumiStep.leanDegrees * kRadiansPerDegree * std::sin(u * kPi);
-    const Vec3 direction = FlatNormalize(Sub(state.to, state.from), Forward(boss.yaw));
-    const Vec3 left{std::cos(boss.yaw), 0.0f, -std::sin(boss.yaw)};
-    lean += amount * Dot(direction, Forward(boss.yaw));
-    // 体の傾きの規則：横の傾きが負なら左（局所 +X）へ傾く。
-    sway -= amount * Dot(direction, left);
 }
 
 bool BossKasumiStep::CanDodge(const BossComponent& boss) {

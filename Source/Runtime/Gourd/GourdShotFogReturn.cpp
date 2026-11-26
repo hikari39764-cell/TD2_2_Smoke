@@ -41,7 +41,7 @@ float FlatDistance(Vec3 a, Vec3 b) {
 
 using FluidEmit::EmitVolume;
 
-bool NearFire(const GourdShotComponent& shot, Vec3 point) {
+bool NearFire(const GourdShot& shot, Vec3 point) {
     for (const auto& zone : shot.fireZones) {
         if (zone.framesLeft > 0 && FlatDistance(zone.position, point) < shot.fogReturnClearance)
             return true;
@@ -54,7 +54,7 @@ bool NearFire(const GourdShotComponent& shot, Vec3 point) {
     return false;
 }
 
-void AddDeposit(GourdShotComponent& shot, Vec3 ground, float dropHeight, float smoke) {
+void AddDeposit(GourdShot& shot, Vec3 ground, float dropHeight, float smoke) {
     if (smoke <= kSmokeEpsilon)
         return;
     const float perFrame = smoke / static_cast<float>(std::max(1, shot.fogReturnFrames));
@@ -114,7 +114,7 @@ bool GourdShotFogReturn::FindGround(HIKARI::WorldView& world, Vec3 from, float r
     return true;
 }
 
-void GourdShotFogReturn::MarkFire(GourdShotComponent& shot, Vec3 position, int frames) {
+void GourdShotFogReturn::MarkFire(GourdShot& shot, Vec3 position, int frames) {
     if (frames <= 0)
         return;
     auto& zone = shot.fireZones[shot.fireZoneCursor % kGourdFireZoneCapacity];
@@ -123,7 +123,7 @@ void GourdShotFogReturn::MarkFire(GourdShotComponent& shot, Vec3 position, int f
     zone.position = position;
 }
 
-void GourdShotFogReturn::Queue(HIKARI::WorldView& world, GourdShotComponent& shot, const GourdProjectile& projectile,
+void GourdShotFogReturn::Queue(HIKARI::WorldView& world, GourdShot& shot, const GourdProjectile& projectile,
                                uint64_t ignoredObject) {
     if (shot.fogReturnSmoke <= 0.0f)
         return;
@@ -152,7 +152,7 @@ void GourdShotFogReturn::Queue(HIKARI::WorldView& world, GourdShotComponent& sho
         AddDeposit(shot, ground, projectile.position.y - ground.y, shot.fogReturnSmoke - placedSmoke);
 }
 
-void GourdShotFogReturn::Step(GourdShotComponent& shot) {
+void GourdShotFogReturn::Step(GourdShot& shot) {
     for (auto& zone : shot.fireZones)
         zone.framesLeft = std::max(0, zone.framesLeft - 1);
     for (auto& deposit : shot.fogDeposits) {
@@ -178,7 +178,7 @@ void GourdShotFogReturn::Step(GourdShotComponent& shot) {
     }
 }
 
-void GourdShotFogReturn::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShotComponent& shot,
+void GourdShotFogReturn::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot,
                                 uint32_t& fluidCount, float smokePerVolume) {
     uint32_t emitted = 0, waiting = 0;
     for (size_t i = 0; i < shot.fogDeposits.size(); ++i) {
@@ -225,7 +225,7 @@ void GourdShotFogReturn::Render(HIKARI::WorldView& world, HIKARI::ObjectView obj
     }
 }
 
-void GourdShotFogReturn::Clear(GourdShotComponent& shot) {
+void GourdShotFogReturn::Clear(GourdShot& shot) {
     for (auto& deposit : shot.fogDeposits)
         deposit = {};
     for (auto& zone : shot.fireZones)

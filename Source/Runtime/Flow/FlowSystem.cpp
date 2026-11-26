@@ -7,12 +7,14 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Boss/BossRules.h"
 #include "../Common/ObjectVariables.h"
 #include "../Gourd/GourdComponent.h"
 #include "../Gourd/GourdRules.h"
-#include "../Player/PlayerComponent.h"
+#include "../Player/Player.h"
+#include "../Player/PlayerRules.h"
 #include "FlowComponent.h"
 #include "FlowHud.h"
 #include "FlowRules.h"
@@ -48,18 +50,16 @@ struct Actors {
 
 Actors FindActors(HIKARI::WorldView& world) {
     Actors actors;
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView object, PlayerComponent&) {
-                                                if (actors.player.value == 0)
-                                                    actors.player = object.GetHandle();
-                                            });
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView object, GourdComponent& gourd) {
-                                               if (actors.gourd.value != 0)
-                                                   return;
-                                               actors.gourd = object.GetHandle();
-                                               actors.fireShotDuration = GourdRules::GetFireShotDuration(gourd);
-                                           });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player&) {
+        if (actors.player.value == 0)
+            actors.player = object.GetHandle();
+    });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView object, Gourd& gourd) {
+        if (actors.gourd.value != 0)
+            return;
+        actors.gourd = object.GetHandle();
+        actors.fireShotDuration = GourdRules::GetFireShotDuration(gourd);
+    });
     world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType),
                                           [&](HIKARI::ObjectView object, BossComponent&) {
                                               if (actors.boss.value == 0)
@@ -77,22 +77,29 @@ bool GetPosition(const HIKARI::WorldView& world, HIKARI::GameProjectObjectHandle
     return true;
 }
 
-FlowObservation Observe(const HIKARI::WorldView& world, const Actors& actors) {
+// 勝ち負けは固定 tick の中で、プレイヤーとボスの規則の値（Rules）から読む（c-164cab。部品が描画のフレームごとに出す
+// 物体変数は HUD だけが読む）。
+FlowObservation Observe(HIKARI::WorldView& world, const Actors& actors) {
     FlowObservation observation;
     HIKARI::GameProjectFloat3 playerPosition{};
     if (GetPosition(world, actors.player, playerPosition)) {
         observation.playerPresent = true;
         observation.playerHeight = playerPosition.y;
-        int64_t state = 0;
-        const bool known = ObjectVariables::ReadInt(world, actors.player, kPlayerStateVariable, state);
-        observation.playerDead = known && state == static_cast<int64_t>(PlayerState::Dead);
-        observation.playerRiding = known && state == static_cast<int64_t>(PlayerState::Ride);
+        ComponentLookup::ForEachOnObject<Player>(world, kPlayerType, world.FindObject(actors.player),
+                                                 [&](HIKARI::ObjectView, Player& player) {
+                                                     const PlayerState state = PlayerRules::GetState(player);
+                                                     observation.playerDead = state == PlayerState::Dead;
+                                                     observation.playerRiding = state == PlayerState::Ride;
+                                                 });
     }
     HIKARI::GameProjectFloat3 bossPosition{};
     if (GetPosition(world, actors.boss, bossPosition)) {
-        observation.bossPresent =
-            ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, observation.bossHealth) &&
-            ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, observation.bossMaxHealth);
+        ComponentLookup::ForEachOnObject<BossComponent>(
+            world, kBossType, world.FindObject(actors.boss), [&](HIKARI::ObjectView, BossComponent& boss) {
+                observation.bossPresent = true;
+                observation.bossHealth = BossRules::GetShownHealth(boss);
+                observation.bossMaxHealth = BossRules::GetShownMaxHealth(boss);
+            });
         if (observation.playerPresent)
             observation.distanceToBoss =
                 std::hypot(playerPosition.x - bossPosition.x, playerPosition.z - bossPosition.z);
@@ -150,18 +157,17 @@ void RequestRestart(HIKARI::WorldView& world, FlowComponent& flow) {
 
 FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors) {
     FlowHudValues values;
-    ObjectVariables::ReadFloat(world, actors.player, kPlayerHealthVariable, values.playerHealth);
-    ObjectVariables::ReadFloat(world, actors.player, kPlayerMaxHealthVariable, values.playerMaxHealth);
-    ObjectVariables::ReadFloat(world, actors.player, kPlayerStaminaVariable, values.playerStamina);
-    ObjectVariables::ReadFloat(world, actors.player, kPlayerMaxStaminaVariable, values.playerMaxStamina);
-    int64_t charges = 0;
-    if (ObjectVariables::ReadInt(world, actors.player, kPlayerHealChargesVariable, charges))
-        values.healCharges = static_cast<int>(charges);
-    ObjectVariables::ReadFloat(world, actors.player, kPlayerBurnVariable, values.playerBurn);
-    ObjectVariables::ReadFloat(world, actors.gourd, kGourdSmokeVariable, values.gourdSmoke);
-    ObjectVariables::ReadFloat(world, actors.gourd, kGourdCapacityVariable, values.gourdCapacity);
-    ObjectVariables::ReadFloat(world, actors.gourd, kGourdFireShotVariable, values.fireShotSeconds);
-    ObjectVariables::ReadFloat(world, actors.gourd, kGourdBlockedVariable, values.gourdBlocked);
+    // プレイヤーとヒョウタンの値は新しいゲーム層の部品がゲーム全体の値（Params）へ書く。ボスは物体変数のまま。
+    values.playerHealth = HIKARI::Params::GetFloat(kPlayerHealthVariable, values.playerHealth);
+    values.playerMaxHealth = HIKARI::Params::GetFloat(kPlayerMaxHealthVariable, values.playerMaxHealth);
+    values.playerStamina = HIKARI::Params::GetFloat(kPlayerStaminaVariable, values.playerStamina);
+    values.playerMaxStamina = HIKARI::Params::GetFloat(kPlayerMaxStaminaVariable, values.playerMaxStamina);
+    values.healCharges = HIKARI::Params::GetInt(kPlayerHealChargesVariable, values.healCharges);
+    values.playerBurn = HIKARI::Params::GetFloat(kPlayerBurnVariable, values.playerBurn);
+    values.gourdSmoke = HIKARI::Params::GetFloat(kGourdSmokeVariable, values.gourdSmoke);
+    values.gourdCapacity = HIKARI::Params::GetFloat(kGourdCapacityVariable, values.gourdCapacity);
+    values.fireShotSeconds = HIKARI::Params::GetFloat(kGourdFireShotVariable, values.fireShotSeconds);
+    values.gourdBlocked = HIKARI::Params::GetFloat(kGourdBlockedVariable, values.gourdBlocked);
     values.fireShotDuration = actors.fireShotDuration;
     ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);
     ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, values.bossMaxHealth);

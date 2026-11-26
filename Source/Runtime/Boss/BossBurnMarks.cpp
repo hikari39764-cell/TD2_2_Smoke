@@ -8,9 +8,8 @@
 
 #include "BossCsv.h"
 #include "BossMath.h"
-#include "BossSkyfall.h"
 #include "BossWaves.h"
-#include "../Burn/BurnFieldRules.h"
+#include "../Burn/BurnField.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -25,14 +24,17 @@ constexpr std::string_view kWideAt = "\xEF\xBC\xA0";
 constexpr std::string_view kWideColon = "\xEF\xBC\x9A";
 constexpr std::string_view kPhaseWord = "フェーズ";
 constexpr const char* kSyntaxHint =
-    "（線／跡／交差／池／輪／弧。一撃だけは「交差:2」、フェーズ 2 以上だけは「輪@フェーズ2」）";
+    "（線／跡／交差／池／輪。一撃だけは「交差:2」、フェーズ 2 以上だけは「輪@フェーズ2」）";
 
 struct Shape {
     std::string_view text;
     BossBurnShape shape;
 };
-constexpr Shape kShapes[] = {{"線", BossBurnShape::Line}, {"跡", BossBurnShape::Trail}, {"交差", BossBurnShape::Cross},
-                             {"池", BossBurnShape::Pool}, {"輪", BossBurnShape::Ring},  {"弧", BossBurnShape::Arc}};
+constexpr Shape kShapes[] = {{"線", BossBurnShape::Line},
+                             {"跡", BossBurnShape::Trail},
+                             {"交差", BossBurnShape::Cross},
+                             {"池", BossBurnShape::Pool},
+                             {"輪", BossBurnShape::Ring}};
 
 // text の中で最初に出てくる narrow か wide の位置と、その長さ。
 size_t FindMark(std::string_view text, char narrow, std::string_view wide, size_t& length) {
@@ -90,14 +92,9 @@ std::optional<BossBurnMark> ReadMark(std::string_view token) {
 // その形を塗る動きがある型か。無い型に書いた火は塗られないまま剣だけ燃えるので、読む時に断る。
 const char* ShapeProblem(BossBurnShape shape, BossMoveType type) {
     switch (shape) {
-    case BossBurnShape::Line:
-        return BossMoveTable::IsSwingType(type) || type == BossMoveType::GreatswordCleave ||
-                       type == BossMoveType::FlameRun
-                   ? nullptr
-                   : "線は斬撃を飛ばす型と縦割り・炎走りの型だけが残します";
+    case BossBurnShape::Line: return BossMoveTable::IsSwingType(type) ? nullptr : "線は斬撃を飛ばす型だけが残します";
     case BossBurnShape::Trail: return type == BossMoveType::Dash ? nullptr : "跡は瞬間突進の型だけが残します";
     case BossBurnShape::Ring: return type == BossMoveType::Kick ? nullptr : "輪は回し蹴り（霞の輪）の型だけが残します";
-    case BossBurnShape::Arc: return type == BossMoveType::Greatsword ? nullptr : "弧は霞の大剣の型だけが残します";
     default: return BossMoveTable::IsMoveType(type) ? "移動の型には一撃が無いので火を残せません" : nullptr;
     }
 }
@@ -144,7 +141,7 @@ void LogPaint(const BossComponent& boss, const BossMove& move, int strike, const
 
 void PaintPool(BossFrame& frame, const BossMove& move, int strike, const BossBurnMark& mark, Vec3 center) {
     const float radius = mark.width * 0.5f;
-    BurnFieldRules::PaintDisc(frame.world, center, radius, mark.seconds);
+    BurnField::PaintDisc(frame.world, center, radius, mark.seconds);
     char geometry[128]{};
     std::snprintf(geometry, sizeof(geometry), "center=(%.3f,%.3f) radius=%.3f", static_cast<double>(center.x),
                   static_cast<double>(center.z), static_cast<double>(radius));
@@ -158,7 +155,7 @@ void PaintCross(BossFrame& frame, const BossMove& move, int strike, const BossBu
     const float half = boss.burnCrossLength * 0.5f;
     for (const float sign : {1.0f, -1.0f}) {
         const Vec3 along = Mul(RotateY(toward, sign * kCrossDegrees * kRadiansPerDegree), half);
-        BurnFieldRules::PaintSegment(frame.world, Sub(center, along), Add(center, along), mark.width, mark.seconds);
+        BurnField::PaintSegment(frame.world, Sub(center, along), Add(center, along), mark.width, mark.seconds);
     }
     char geometry[160]{};
     std::snprintf(geometry, sizeof(geometry), "center=(%.3f,%.3f) length=%.3f yaw=%.4f", static_cast<double>(center.x),
@@ -290,26 +287,13 @@ void BossBurnMarks::Released(BossFrame& frame, const BossMove& move, int strike)
         }
     }
     const BossBurnMark* pool = Find(move, BossBurnShape::Pool, strike, boss.lastPhaseNumber);
-    if (pool == nullptr || move.type == BossMoveType::Ambush)
-        return;
-    // 天降り斬りの着地の火が後で爆ぜる設定なら、池は爆ぜた後に塗る（SkyfallBurst）。
-    if (move.type == BossMoveType::Skyfall && BossSkyfall::Bursts(boss))
+    if (pool == nullptr)
         return;
     // 上段溜めは、振り下ろした剣が地面を打つ所（ボスの前）。ほかの型はボスの足元。
     const Vec3 center = move.type == BossMoveType::Overhead
                             ? Add(boss.ground, Mul(Forward(boss.yaw), boss.burnPoolForward))
                             : boss.ground;
     PaintPool(frame, move, strike, *pool, center);
-}
-
-void BossBurnMarks::SkyfallBurst(BossFrame& frame, const BossMove& move, Vec3 center) {
-    if (const BossBurnMark* pool = Find(move, BossBurnShape::Pool, 0, frame.boss.lastPhaseNumber))
-        PaintPool(frame, move, 0, *pool, center);
-}
-
-void BossBurnMarks::Appeared(BossFrame& frame, const BossMove& move, int strike) {
-    if (const BossBurnMark* pool = Find(move, BossBurnShape::Pool, strike, frame.boss.lastPhaseNumber))
-        PaintPool(frame, move, strike, *pool, frame.boss.ground);
 }
 
 void BossBurnMarks::DashLanded(BossFrame& frame, const BossMove& move) {
@@ -319,7 +303,7 @@ void BossBurnMarks::DashLanded(BossFrame& frame, const BossMove& move) {
     if (mark == nullptr)
         return;
     const Vec3 from = Floor(boss, boss.dashFrom), to = Floor(boss, boss.dashTo);
-    BurnFieldRules::PaintSegment(frame.world, from, to, mark->width, mark->seconds);
+    BurnField::PaintSegment(frame.world, from, to, mark->width, mark->seconds);
     char geometry[192]{};
     std::snprintf(geometry, sizeof(geometry), "from=(%.3f,%.3f) to=(%.3f,%.3f) length=%.3f",
                   static_cast<double>(from.x), static_cast<double>(from.z), static_cast<double>(to.x),
@@ -349,52 +333,10 @@ void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave&
     PaintCross(frame, move, wave.strike, mark, center, wave.crossToward);
 }
 
-void BossBurnMarks::SweptArc(BossFrame& frame, const BossMove& move, Vec3 center, float yaw, float startDegrees,
-                             float toDegrees, int& painted) {
-    const BossComponent& boss = frame.boss;
-    const BossBurnMark* mark = Find(move, BossBurnShape::Arc, 0, boss.lastPhaseNumber);
-    const float step = boss.greatswordFireStepDegrees;
-    if (mark == nullptr || !(step > 0.0f))
-        return;
-    const int rows = std::max(1, boss.greatswordFireRows);
-    const int before = painted;
-    // 薙ぎ始めの角度から step 度ごとの所を、剣が通り過ぎた順に 1 回ずつ塗る（rows 本の半径に 1 つずつ小さな円）。
-    while (startDegrees + step * static_cast<float>(painted) <= toDegrees) {
-        const float angle = yaw + (startDegrees + step * static_cast<float>(painted)) * kRadiansPerDegree;
-        for (int row = 0; row < rows; ++row) {
-            const float share = rows > 1 ? static_cast<float>(row) / static_cast<float>(rows - 1) : 0.0f;
-            const float radius = Lerp(boss.greatswordFireNear, boss.greatswordFireFar, share);
-            const Vec3 spot = Add(Floor(boss, center), Mul(Forward(angle), radius));
-            BurnFieldRules::PaintDisc(frame.world, spot, mark->width * 0.5f, mark->seconds);
-        }
-        ++painted;
-    }
-    if (painted == before)
-        return;
-    char geometry[160]{};
-    std::snprintf(geometry, sizeof(geometry), "center=(%.3f,%.3f) to=%.1f spots=%d rows=%d",
-                  static_cast<double>(center.x), static_cast<double>(center.z), static_cast<double>(toDegrees),
-                  painted - before, rows);
-    LogPaint(boss, move, 0, *mark, geometry);
-}
-
-void BossBurnMarks::PaintCleaveLine(BossFrame& frame, const BossMove& move, Vec3 from, Vec3 to,
-                                    const BossBurnMark& mark, const Vec3* loggedFrom) {
-    const BossComponent& boss = frame.boss;
-    BurnFieldRules::PaintSegment(frame.world, Floor(boss, from), Floor(boss, to), mark.width, mark.seconds);
-    if (loggedFrom == nullptr)
-        return;
-    char geometry[192]{};
-    std::snprintf(geometry, sizeof(geometry), "from=(%.3f,%.3f) to=(%.3f,%.3f) length=%.3f",
-                  static_cast<double>(loggedFrom->x), static_cast<double>(loggedFrom->z), static_cast<double>(to.x),
-                  static_cast<double>(to.z), static_cast<double>(FlatLength(Sub(to, *loggedFrom))));
-    LogPaint(boss, move, 0, mark, geometry);
-}
-
 void BossBurnMarks::RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave) {
     if (!(wave.burnWidth > 0.0f))
         return;
-    BurnFieldRules::PaintRing(frame.world, wave.position, wave.maxRadius, wave.burnWidth, wave.burnSeconds);
+    BurnField::PaintRing(frame.world, wave.position, wave.maxRadius, wave.burnWidth, wave.burnSeconds);
     BossBurnMark mark;
     mark.shape = BossBurnShape::Ring;
     mark.width = wave.burnWidth;

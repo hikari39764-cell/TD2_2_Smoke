@@ -1,23 +1,24 @@
 #include "HIKARI/Project/GameFlowViews.h"
+#include "HIKARI/Game.h"
 #include "HIKARI/Project/GameProjectModule.h"
 #include <array>
 #include <cstdint>
 #include <memory>
 
-#include "Player/PlayerComponent.h"
+#include "Player/Player.h"
 #include "Player/PlayerSystem.h"
 #include "Player/PlayerDebugComponent.h"
 #include "Player/PlayerDebugSystem.h"
 #include "Gourd/GourdComponent.h"
 #include "Gourd/GourdSystem.h"
-#include "Combat/DamageableComponent.h"
-#include "Combat/DamageableSystem.h"
 #include "Gourd/GourdShotComponent.h"
 #include "Gourd/GourdShotSystem.h"
 #include "Gourd/GourdFeedbackSystem.h"
 #include "Boss/BossBehaviorNodes.h"
-#include "Boss/BossCloneComponent.h"
 #include "Boss/BossComponent.h"
+#include "Boss/BossIntroComponent.h"
+#include "Boss/BossPhaseShiftComponent.h"
+#include "BossBody/BossBodyComponent.h"
 #include "Common/SessionMemory.h"
 #include "Boss/BossSystem.h"
 #include "Burn/BurnFieldComponent.h"
@@ -85,35 +86,22 @@ public:
         return systems;
     }
     bool Register(HIKARI::RuntimeFeatureContext& context) override {
-        return context.RegisterComponent<DamageableComponent>(
-                   {.typeName = kDamageableType, .displayName = "被弾と HP"}) &&
-               context.RegisterSystem<DamageableSystem>(
-                   {.systemId = kDamageableSystem, .displayName = "共通の被弾反応"}) &&
-               context.BindComponentSystem(
-                   {.componentType = kDamageableType, .systemId = kDamageableSystem, .defaultExecutionOrder = 120}) &&
-               context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
-               context.RegisterComponent<PlayerComponent>({.typeName = kPlayerType, .displayName = "プレイヤー"}) &&
+        return context.RegisterSystem<Game>({.systemId = "Project_TD2_2.Game", .displayName = "Game"}) &&
                context.RegisterSystem<PlayerSystem>({.systemId = kPlayerSystem, .displayName = "プレイヤー"}) &&
                context.BindComponentSystem(
                    {.componentType = kPlayerType, .systemId = kPlayerSystem, .defaultExecutionOrder = 100}) &&
-               context.RegisterComponent<PlayerDebugComponent>(
-                   {.typeName = kPlayerDebugType, .displayName = "プレイヤー検証（通常は無効）"}) &&
                context.RegisterSystem<PlayerDebugSystem>(
                    {.systemId = kPlayerDebugSystem, .displayName = "プレイヤー検証"}) &&
                context.BindComponentSystem(
                    {.componentType = kPlayerDebugType, .systemId = kPlayerDebugSystem, .defaultExecutionOrder = 90}) &&
-               context.RegisterComponent<CloudMountComponent>({.typeName = kCloudMountType, .displayName = "筋斗雲"}) &&
                context.RegisterSystem<CloudMountSystem>({.systemId = kCloudMountSystem, .displayName = "筋斗雲"}) &&
                // 乗る・降りるを、同じ tick のプレイヤー（100）の状態の進みの後、移動の前に決めるので、プレイヤーの後・
                // ヒョウタン砲撃（105）の前に動かす。
                context.BindComponentSystem(
                    {.componentType = kCloudMountType, .systemId = kCloudMountSystem, .defaultExecutionOrder = 102}) &&
-               context.RegisterComponent<GourdComponent>({.typeName = kGourdType, .displayName = "ヒョウタン"}) &&
                context.RegisterSystem<GourdSystem>({.systemId = kGourdSystem, .displayName = "ヒョウタン"}) &&
                context.BindComponentSystem(
                    {.componentType = kGourdType, .systemId = kGourdSystem, .defaultExecutionOrder = 110}) &&
-               context.RegisterComponent<GourdShotComponent>(
-                   {.typeName = kGourdShotType, .displayName = "ヒョウタン砲撃"}) &&
                context.RegisterSystem<GourdShotSystem>(
                    {.systemId = kGourdShotSystem, .displayName = "ヒョウタン砲撃"}) &&
                context.BindComponentSystem(
@@ -123,11 +111,17 @@ public:
                context.BindComponentSystem(
                    {.componentType = kGourdShotType, .systemId = kGourdFeedbackSystem, .defaultExecutionOrder = 115}) &&
                context.RegisterComponent<BossComponent>({.typeName = kBossType, .displayName = "ボス 霞武士"}) &&
-               context.RegisterComponent<BossCloneComponent>(
-                   {.typeName = kBossCloneType, .displayName = "ボス 霞武士の分身"}) &&
                context.RegisterSystem<BossSystem>({.systemId = kBossSystem, .displayName = "ボス 霞武士"}) &&
                context.BindComponentSystem(
                    {.componentType = kBossType, .systemId = kBossSystem, .defaultExecutionOrder = 125}) &&
+               // 登場の部品（ボスと同じ物体に付ける）。進めるのはボスの System（ボスの tick の中で、同じ順に呼ぶ）。
+               context.RegisterComponent<BossIntroComponent>(
+                   {.typeName = kBossIntroType, .displayName = "ボスの登場"}) &&
+               context.RegisterComponent<BossPhaseShiftComponent>(
+                   {.typeName = kBossPhaseShiftType, .displayName = "ボスの変わり目の演出"}) &&
+               // 体の見た目の部品（ボスと同じ物体に付ける）。進めるのはボスの System（LateUpdate・PreRender）。
+               context.RegisterComponent<BossBodyComponent>(
+                   {.typeName = kBossBodyType, .displayName = "ボスの体の見た目"}) &&
                context.RegisterComponent<BurnFieldComponent>(
                    {.typeName = kBurnFieldType, .displayName = "燃える地面"}) &&
                context.RegisterSystem<BurnFieldSystem>({.systemId = kBurnFieldSystem, .displayName = "燃える地面"}) &&
@@ -148,8 +142,11 @@ public:
 class GameProjectModule final : public HIKARI::RUNTIME::IGameProjectModule {
 public:
     std::string_view GetModuleId() const noexcept override { return "Project_TD2_2"; }
+    // 新しいゲーム層（HIKARI/Game.h の HIKARI_COMPONENT / HIKARI_SYSTEM。型名 TD2_2.*、機能 TD2_2.Game）も同じ DLL で
+    // 登録する（移行用の公開の入口 RegisterGameLayer）。古い登録が無くなったら、このモジュールごと
+    // HIKARI_GAME("TD2_2") の一行に替える。
     bool RegisterRuntimeFeatures(HIKARI::RuntimeFeatureCatalog& catalog) override {
-        return HIKARI::RegisterRuntimeFeature<GameplayFeature>(catalog);
+        return HIKARI::RegisterRuntimeFeature<GameplayFeature>(catalog) && HIKARI::RegisterGameLayer(catalog, "TD2_2");
     }
     std::unique_ptr<HIKARI::IGameProjectSession> CreateGameSession() override {
         return std::make_unique<GameSession>();

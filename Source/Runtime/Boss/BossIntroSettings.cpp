@@ -30,41 +30,21 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("introSettleLightFadeSeconds",
                  "演技が済んでから、演出の灯を消し切るまでの秒（役者を替える時には必ず 0。0 で替える時にすぐ消す）",
                  settleLightFadeSeconds, 0.0f, 10.0f);
+    fields.Float("introMotionBlurShutter",
+                 "演出の動きのぼかし：シャッター角（度。180 で映画の標準、大きいほど長く流れる。0 で掛けない）",
+                 motionBlurShutterDegrees, 0.0f, 360.0f);
+    fields.Float("introMotionBlurMaxPixels", "演出の動きのぼかし：ぼかしの長さの上限（1080p の画素）",
+                 motionBlurMaxPixels, 0.0f, 64.0f);
     fields.Float("introGauntletFlyPower", "手甲が吸われる道：最後の速さ（大きいほど、初めゆっくりで最後に速い）",
                  gauntletFlyPower, 1.0f, 6.0f);
     fields.Float("introGauntletFlyLift", "手甲が吸われる道：途中で浮く高さ (m)", gauntletFlyLift, 0.0f, 5.0f);
     fields.Float("introHelmFlyBulge", "兜が持ち上がる道：途中で外へふくらむ幅 (m)", helmFlyBulge, 0.0f, 3.0f);
-    fields.Bool("introCameraEnabled", "演出のカメラの表：出す（切るとゲームのカメラのまま）", cameraEnabled);
-    fields.Text("introCameraPath", "演出のカメラの表：カットの表（Data/ からの場所）", cameraPath);
-    fields.Float("introCameraFocusHeight", "演出のカメラの表：演出の間、ゲームのカメラが向くボスの高さ (m)",
+    fields.Float("introCameraFocusHeight", "演出の後、ゲームのカメラへ渡す間にカメラが向くボスの高さ (m)",
                  cameraFocusHeight, 0.0f, 20.0f);
     fields.Text("introSkipAction", "飛ばす：登場の間にこの入力（行動 id）を押すと、構えへ進む（空なら飛ばせない）",
                 skipAction);
     fields.Int("introTestStartFrames", "確かめ用：この tick に登場を始める（-1 で使わない。戦いの流れに従う）",
                testStartFrames, -1, 100000);
-
-    fields.Float("introDrawSlowScale", "効果：スローの間の時間の倍率（変わり目の閃光も使う）", drawSlowScale, 0.05f,
-                 1.0f);
-    fields.Float("introEyesFlare", "効果：目の閃きの強さ（0 で出さない）", eyesFlare, 0.0f, 8.0f);
-    fields.Vfx("introSlashFlashEffect", "効果：刀身の上で弾ける閃光のエフェクト（空なら出さない）", slashFlashEffect);
-    fields.Float("introSlashFlashScale", "効果：閃光の大きさ（0 で出さない）", slashFlashScale, 0.0f, 10.0f);
-    fields.Asset("introSlashMonoProfile", "効果：白黒の閃きの効果のプロファイル（BossImpactMono。空なら出さない）",
-                 HIKARI::GameProjectAssetKind::PostProfile, slashMonoProfile);
-    fields.Float("introSlashMonoInvertSeconds", "白黒の閃き：反転した白黒を出す長さ（実時間の秒）",
-                 slashMonoInvertSeconds, 0.0f, 1.0f);
-    fields.Float("introSlashMonoHoldSeconds", "白黒の閃き：反転しない白黒を出す長さ（実時間の秒）",
-                 slashMonoHoldSeconds, 0.0f, 1.0f);
-    fields.Float("introSlashMonoFadeSeconds", "白黒の閃き：色へ戻る長さ（実時間の秒）", slashMonoFadeSeconds, 0.0f,
-                 2.0f);
-    fields.Float("introSlashMonoStrength", "白黒の閃き：強さ（0 で出さない）", slashMonoStrength, 0.0f, 1.0f);
-    fields.Float("introAccentShake", "手応え：強い拍のカメラの揺れ幅 (m。0 で揺らさない)", accentShake, 0.0f, 1.0f);
-    fields.Int("introAccentShakeFrames", "手応え：揺れの長さ (F)", accentShakeFrames, 0, 120);
-    fields.Float("introAccentShakeFrequency", "手応え：揺れの速さ", accentShakeFrequency, 1.0f, 60.0f);
-    fields.Float("introAccentFovDegrees", "手応え：強い拍で画角を一瞬広げる量（度。0 で動かさない）", accentFovDegrees,
-                 0.0f, 20.0f);
-    fields.Float("introHitStopScale", "手応え：時間を止めている間の時間の速さ", hitStopScale, 0.0f, 1.0f);
-    fields.Float("introAccentRumble", "手応え：振動の強さ（0 で出さない）", accentRumble, 0.0f, 1.0f);
-    fields.Int("introAccentRumbleFrames", "手応え：振動の長さ (F)", accentRumbleFrames, 0, 120);
 
     fields.Vfx("introSmokeEffect", "煙：黒い煙の流体の域（BossIntroSmoke。空なら煙を出さない）", smokeEffect);
     fields.Vfx("introStreakEffect", "煙：地を走って鎧を起こす煙のエフェクト（BossIntroStreak。空なら出さない）",
@@ -113,16 +93,12 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("introOmenTension", "前触れ：画の縁が締まる強さ（0 で出さない）", omenTension, 0.0f, 1.0f);
     fields.Float("introOmenRumble", "前触れ：低く続く画面の揺れの強さ（拍の終わり。0 で揺らさない）", omenRumble, 0.0f,
                  3.0f);
-    fields.Float("introRumbleFrequency", "続けて出す画面の揺れ（前触れ・刀を握る間）の速さ（1 秒の回数）",
-                 rumbleFrequency, 0.5f, 30.0f);
     fields.Float("introHelmGlint", "序幕：落ちている兜の隙間の瞬きの明るさ（画面基準。0 で出さない）", helmGlint, 0.0f,
                  64.0f);
     fields.Float("introGatherAmount", "刀を握っている間：根元へ集まって来る黒い霧の量", gatherAmount, 0.0f, 5000.0f);
     fields.Float("introBackdropAmount", "見得：主役の後ろに立つ黒い霧と、前へ這い出す霧の量", backdropAmount, 0.0f,
                  5000.0f);
     fields.Float("introFinaleTension", "見得：画の縁が締まる強さ（0 で出さない）", finaleTension, 0.0f, 1.0f);
-    fields.Float("introBladeEdgeGlow", "刀身の光（登場だけ）：刃口の細い線の明るさ（画面基準）", bladeEdgeGlow, 0.0f,
-                 64.0f);
     fields.Float("introBladeStar", "刀身の光（登場だけ）：振り上げの頂点で剣先に出る星の明るさ（0 で出さない）",
                  bladeStar, 0.0f, 8.0f);
     fields.Vfx("introEyeFireEffect", "目の炎：兜の前に付く細かい流体の域（BossEyeFire。空なら出さない）",
@@ -149,15 +125,6 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
                  100.0f);
     fields.Float("introSmokeLingerSeconds", "煙：演技の後、消し続けてから域を止めるまでの長さ (秒)", smokeLingerSeconds,
                  0.0f, 10.0f);
-
-    fields.Float3("introDrawRipGrip", "変わり目の抜刀：体の右の外へ振り出す所の握りの位置（1 倍の体での値）",
-                  drawRipGrip);
-    fields.Float3("introDrawRipTip", "変わり目の抜刀：体の右の外へ振り出す所の剣先の向き（局所）", drawRipTip);
-    fields.Float3("introHighGrip", "変わり目の八相：握りの位置（1 倍の体での値）", highGrip);
-    fields.Float3("introHighTip", "変わり目の八相：剣先の向き（局所）", highTip);
-    fields.Float("introHighTwistDegrees", "変わり目の八相：体の捻り（度。正が左、負が右）", highTwistDegrees, -90.0f,
-                 90.0f);
-    fields.Float("introHighLeanDegrees", "変わり目の八相：体の前への傾き（度）", highLeanDegrees, -45.0f, 45.0f);
 }
 
 } // namespace Project_TD2_2

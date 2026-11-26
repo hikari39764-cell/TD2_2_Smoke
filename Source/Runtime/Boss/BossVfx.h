@@ -7,7 +7,7 @@
 #include "BossComponent.h"
 #include "../Common/VfxParameters.h"
 
-// ボスの見た目（BossVisuals・BossSkyfallVisuals・BossGreatswordVisuals）が共通に使う、エフェクトを出す・送る・止める
+// ボスの見た目（BossVisuals・体の BossBody*）が共通に使う、エフェクトを出す・送る・止める
 // 小さな関数と、エフェクト資産の入力の名前。出す・送る関数は、受け付けられたかを boss.vfxAccepted へ合わせる。
 namespace Project_TD2_2::BossVfx {
 
@@ -25,8 +25,6 @@ inline constexpr const char* kImpactInput = "input.impact";
 inline constexpr const char* kGlowInput = "input.glow";
 // 炎の輪のシェーダーの層の明るさ（Color。輪が消える時に 0 へ下げる）。
 inline constexpr const char* kFadeInput = "input.fade";
-// 霞の大剣のエフェクトの入力：柄から剣先へ満たす割合（0〜1）。出す量は amount。
-inline constexpr const char* kFillInput = "input.fill";
 
 // 位置・一様な大きさ・向き（既定は回さない）の変換。
 inline HIKARI::GameProjectTransform Placed(HIKARI::GameProjectFloat3 position, float scale,

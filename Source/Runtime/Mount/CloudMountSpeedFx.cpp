@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "../Common/VectorMath.h"
+
 namespace Project_TD2_2 {
 namespace {
 
@@ -21,24 +23,16 @@ constexpr float kMinimumForward = 1.0e-3f;
 // 体を画面へ写す時の、カメラからの奥行きの下限 (m)。
 constexpr float kMinimumDepth = 0.05f;
 
-float Clamp01(float value) { return std::clamp(value, 0.0f, 1.0f); }
-float Lerp(float from, float to, float amount) { return from + (to - from) * amount; }
-float SmoothStep(float value) {
-    const float t = Clamp01(value);
-    return t * t * (3.0f - 2.0f * t);
-}
-float Dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+using VectorMath::Clamp01;
+using VectorMath::Dot;
+using VectorMath::Lerp;
 
 // 目標へ seconds の時定数で近づく（0 以下で一瞬）。
-float Approach(float now, float target, float seconds, float dt) {
-    if (seconds <= 0.0f)
-        return target;
-    return now + (target - now) * (1.0f - std::exp(-std::max(dt, 0.0f) / seconds));
-}
+using VectorMath::Approach;
 
 } // namespace
 
-float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
+float CloudMountSpeedFx::TargetStrength(const CloudMount& mount) {
     if (mount.state == CloudMountState::None)
         return 0.0f;
     const float speed = std::max(mount.flight.speed, 0.0f);
@@ -50,7 +44,7 @@ float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
     // speedFxBoost → 急降下の上限の速さで speedFxDive（間は線形）。
     float curve = 0.0f;
     if (speed <= cruise)
-        curve = mount.speedFxCruise * SmoothStep((speed - start) / std::max(cruise - start, kMinimumSpan));
+        curve = mount.speedFxCruise * VectorMath::Smoothstep((speed - start) / std::max(cruise - start, kMinimumSpan));
     else if (speed <= boost)
         curve = Lerp(mount.speedFxCruise, mount.speedFxBoost, (speed - cruise) / std::max(boost - cruise, kMinimumSpan));
     else
@@ -62,7 +56,7 @@ float CloudMountSpeedFx::TargetStrength(const CloudMountComponent& mount) {
     return std::max({curve, boosting, diving, 0.0f});
 }
 
-float CloudMountSpeedFx::StepStrength(CloudMountComponent& mount, float dt) {
+float CloudMountSpeedFx::StepStrength(CloudMount& mount, float dt) {
     const float target = TargetStrength(mount);
     const float seconds = target > mount.speedFxStrength ? mount.speedFxRiseSeconds : mount.speedFxFallSeconds;
     mount.speedFxStrength = std::max(0.0f, Approach(mount.speedFxStrength, target, seconds, dt));
@@ -72,8 +66,8 @@ float CloudMountSpeedFx::StepStrength(CloudMountComponent& mount, float dt) {
     return strength < kOffStrength ? 0.0f : strength;
 }
 
-float CloudMountSpeedFx::HeadingOnScreen(const CloudMountComponent& mount, const CloudMountSpeedFxView& view,
-                                         Vec3 direction, float& outU, float& outV) {
+float CloudMountSpeedFx::HeadingOnScreen(const CloudMount& mount, const CloudMountSpeedFxView& view, Vec3 direction,
+                                         float& outU, float& outV) {
     const float x = Dot(direction, view.right) / std::max(view.tanHalfFov * view.aspect, kMinimumSpan);
     const float y = Dot(direction, view.up) / std::max(view.tanHalfFov, kMinimumSpan);
     const float z = Dot(direction, view.forward);
@@ -94,7 +88,7 @@ float CloudMountSpeedFx::HeadingOnScreen(const CloudMountComponent& mount, const
     return Clamp01((z + kBackwardFadeCos) / kBackwardFadeCos);
 }
 
-void CloudMountSpeedFx::StepCenter(CloudMountComponent& mount, float u, float v, bool first, float dt) {
+void CloudMountSpeedFx::StepCenter(CloudMount& mount, float u, float v, bool first, float dt) {
     if (first) {
         mount.speedFxCenterU = u;
         mount.speedFxCenterV = v;

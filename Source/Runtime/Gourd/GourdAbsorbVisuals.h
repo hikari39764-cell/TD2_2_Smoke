@@ -10,9 +10,9 @@ namespace Project_TD2_2 {
 class GourdAbsorbVisuals final {
   public:
     // 追従で口の位置と向きが確定した後（LateUpdate）に、毎フレーム呼ぶ。
-    static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
-                       const HIKARI::FrameContext& frame);
-    static void Stop(HIKARI::WorldView& world, GourdComponent& gourd);
+      static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd,
+                         const HIKARI::FrameContext& frame);
+      static void Stop(HIKARI::WorldView& world, Gourd& gourd);
 };
 
 } // namespace Project_TD2_2

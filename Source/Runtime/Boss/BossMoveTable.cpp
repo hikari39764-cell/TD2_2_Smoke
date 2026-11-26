@@ -15,10 +15,9 @@ namespace {
 
 constexpr int kTypeCount = static_cast<int>(BossMoveType::Count);
 // 型の名前（表の「動きの型」列に表示名の代わりに書いてもよい）。試作の TYPES のキーと同じ。
-constexpr const char* kTypeKeys[kTypeCount] = {
-    "dash",    "jump",    "slashR",     "slashL",           "overhead", "kick",       "knife",    "string",
-    "ambush",  "clone",   "slashH",     "slashV",           "walkSide", "walkIn",     "backstep", "detonate",
-    "skyfall", "retreat", "greatsword", "greatswordCleave", "flameRun", "kasumiStep", "slashHR",  "retreatSweep"};
+constexpr const char* kTypeKeys[kTypeCount] = {"dash",     "jump",   "slashR",   "slashL",     "overhead",
+                                               "kick",     "knife",  "string",   "slashH",     "slashV",
+                                               "walkSide", "walkIn", "backstep", "kasumiStep", "slashHR"};
 
 // 表の見出し。左から順に「見出しがこれで始まる」→「これを含む」で列を決める（試作の HEADER_MAP と同じ）。
 enum class Column {
@@ -47,8 +46,6 @@ enum class Column {
     WindupJitter,
     WindupJitterPhase2,
     BreakHits,
-    BlastDamage,
-    BlastSize,
     KnockDistance,
     SwitchTo,
     SwitchChance,
@@ -87,8 +84,6 @@ constexpr HeaderKey kHeaders[] = {
     {"変化の前隙", Column::SwitchPre},
     {"変化確率", Column::SwitchChance},
     {"変化先", Column::SwitchTo},
-    {"爆発の威力", Column::BlastDamage},
-    {"爆発の判定", Column::BlastSize},
     {"吹っ飛びの距離", Column::KnockDistance},
     {"追尾を止める", Column::TrackStop},
     {"フェーズ2の溜めの揺らぎ", Column::WindupJitterPhase2},
@@ -186,19 +181,10 @@ BossMoveType GuessType(std::string_view name) {
         return BossMoveType::WalkIn;
     if (Contains(name, "歩"))
         return BossMoveType::WalkSide;
-    if (Contains(name, "分身"))
-        return BossMoveType::Clone;
     if (Contains(name, "蹴"))
         return BossMoveType::Kick;
     if (Contains(name, "ナイフ") || Contains(name, "投げ"))
         return BossMoveType::Knife;
-    if (Contains(name, "隠れ"))
-        return BossMoveType::Ambush;
-    // 「天降り」は「跳」より先に見る（跳んで落ちる技を、跳躍→X字と取り違えないように）。
-    if (Contains(name, "天降"))
-        return BossMoveType::Skyfall;
-    if (Contains(name, "炎走"))
-        return BossMoveType::FlameRun;
     int strokes = 0;
     for (size_t at = 0; at + 3 <= name.size(); at += 1) {
         const std::string_view piece = name.substr(at, 3);
@@ -224,12 +210,9 @@ std::optional<BossStrikeDirection> DefaultDirection(BossMoveType type) {
     switch (type) {
     case BossMoveType::SlashH:
     case BossMoveType::SlashHR:
-    case BossMoveType::RetreatSweep:
-    case BossMoveType::Dash:
-    case BossMoveType::Ambush: return BossStrikeDirection::Horizontal;
+    case BossMoveType::Dash: return BossStrikeDirection::Horizontal;
     case BossMoveType::SlashV:
-    case BossMoveType::Overhead:
-    case BossMoveType::Retreat: return BossStrikeDirection::Vertical;
+    case BossMoveType::Overhead: return BossStrikeDirection::Vertical;
     case BossMoveType::SlashR:
     case BossMoveType::Jump: return BossStrikeDirection::Kesa;
     case BossMoveType::SlashL: return BossStrikeDirection::ReverseKesa;
@@ -286,20 +269,6 @@ void ReadWindup(const RawMove& raw, BossMove& move) {
     move.breakHits = breakHits && *breakHits >= 1.0 ? RoundHalfUp(*breakHits) : 0;
 }
 
-// 「爆発の威力」「爆発の判定 m」。列が無い・空欄は 0（添えて起きる爆発は当たらない）。
-void ReadBlast(const RawMove& raw, BossMove& move) {
-    const std::string& damageText = raw[Column::BlastDamage];
-    const auto damage = NumberOf(damageText);
-    if (!damageText.empty() && (!damage || *damage < 0.0))
-        move.warnings.push_back("爆発の威力「" + damageText + "」が読めないので 0 にしました（0 以上の数）");
-    move.blastDamage = damage && *damage > 0.0 ? RoundHalfUp(*damage) : 0;
-    const std::string& sizeText = raw[Column::BlastSize];
-    const auto size = NumberOf(sizeText);
-    if (!sizeText.empty() && (!size || *size < 0.0))
-        move.warnings.push_back("爆発の判定「" + sizeText + "」が読めないので 0 にしました（0 以上の m）");
-    move.blastSize = size && *size > 0.0 ? static_cast<float>(*size) : 0.0f;
-}
-
 // 「吹っ飛びの距離 m」。空欄・読めない値は 0（プレイヤーの knockbackDistance を使う）。
 void ReadKnockDistance(const RawMove& raw, BossMove& move) {
     const std::string& text = raw[Column::KnockDistance];
@@ -342,7 +311,6 @@ const char* BossMoveTable::BurnKey(BossBurnShape shape) {
     case BossBurnShape::Cross: return "cross";
     case BossBurnShape::Pool: return "pool";
     case BossBurnShape::Ring: return "ring";
-    case BossBurnShape::Arc: return "arc";
     default: return "none";
     }
 }
@@ -361,10 +329,7 @@ bool BossMoveTable::IsSwingType(BossMoveType type) {
     case BossMoveType::SlashV:
     case BossMoveType::Overhead:
     case BossMoveType::String:
-    case BossMoveType::Ambush:
-    case BossMoveType::Retreat:
-    case BossMoveType::SlashHR:
-    case BossMoveType::RetreatSweep: return true;
+    case BossMoveType::SlashHR: return true;
     default: return false;
     }
 }
@@ -623,51 +588,6 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                 high = low;
             const int a = std::min(low, high), b = std::max(low, high);
             move.segments.push_back({std::max(1, RoundHalfUp((a + b) / 2.0)), false, 0, false, a, b});
-        } else if (move.type == BossMoveType::Ambush) {
-            // 霞隠れ：試作どおり「隠れF/現れF/斬りF×回数」。数が 1 つだけなら 1 回の長さとして 4:3:3 で割る。
-            int count = 3;
-            const size_t times = actText.find("×");
-            if (times != std::string::npos)
-                count = std::max(1, static_cast<int>(NumberOf(std::string_view(actText).substr(times)).value_or(3)));
-            std::vector<double> numbers;
-            for (const auto& part : Split(actText.substr(0, times), false)) {
-                const auto value = NumberOf(part);
-                if (value && *value > 0)
-                    numbers.push_back(*value);
-            }
-            int hide = 0, appear = 0, hit = 0;
-            if (numbers.size() >= 3) {
-                hide = static_cast<int>(numbers[0]);
-                appear = static_cast<int>(numbers[1]);
-                hit = static_cast<int>(numbers[2]);
-            } else {
-                const int cycle = static_cast<int>(std::max(24.0, numbers.empty() ? 64.0 : numbers[0]));
-                hide = RoundHalfUp(cycle * 0.4);
-                appear = RoundHalfUp(cycle * 0.3);
-                hit = cycle - hide - appear;
-            }
-            hit = std::max(hit, timing.swingInFrames + timing.swingFrames + 2);
-            for (int k = 0; k < count; ++k) {
-                move.segments.push_back({hide, false, k, false, 0, 0, BossSegmentKind::Hide});
-                move.segments.push_back({appear, false, k, false, 0, 0, BossSegmentKind::Appear});
-                move.segments.push_back({hit, true, k, false, 0, 0});
-            }
-            if (Contains(actText, "遅") && move.segments.size() >= 2) {
-                move.segments[move.segments.size() - 2].length += timing.feintFrames;
-                move.segments[move.segments.size() - 2].feint = true;
-            }
-        } else if (move.type == BossMoveType::Skyfall) {
-            // 天降り斬り：攻撃中の全体を表に書き、そのうち落ちる F はボスの項目で分ける（前隙を屈む・跳ぶ・溜めに分けるのと
-            // 同じ）。落ちる区間は当たらず、残りの区間が着地の当たり（着地した tick から）。
-            int total = static_cast<int>(NumberOf(actText).value_or(0.0));
-            if (total < 2) {
-                move.warnings.push_back("攻撃中「" + actText +
-                                        "」が読めないので型の既定値にしました（落ちる F ＋着地の当たりの F。2F 以上）");
-                total = std::max(2, static_cast<int>(NumberOf(T.act).value_or(0.0)));
-            }
-            const int dive = std::clamp(timing.skyfallDiveFrames, 1, total - 1);
-            move.segments.push_back({dive, false, 0, false, 0, 0});
-            move.segments.push_back({total - dive, true, 0, false, 0, 0});
         } else if (move.type == BossMoveType::KasumiStep) {
             // 霞歩：攻撃中は跳ぶ F の 1 区間だけ（当たりの区間は無い）。
             const int frames = static_cast<int>(NumberOf(actText).value_or(NumberOf(T.act).value_or(1.0)));
@@ -695,7 +615,6 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
         case BossMoveType::SlashH:
         case BossMoveType::SlashV:
         case BossMoveType::Overhead:
-        case BossMoveType::Retreat:
             // 前隙は最低「振り上げ＋構え」。
             pre = std::max(pre, static_cast<double>(timing.kamaeFrames + timing.raiseFrames));
             break;
@@ -714,10 +633,9 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                                     "」が読めないので「常に」にしました（読める例：フェーズ2以上 / HP60%以下 / "
                                     "距離8m以内 / 連続攻撃）");
         // 出し方：連続攻撃が条件で距離重みが空欄＝割り込み専用、距離重みも書いてあれば始動＋割り込み。
-        move.use = move.type == BossMoveType::Clone || move.type == BossMoveType::Detonate ? BossMoveUse::Special
-                   : move.when.pressure && move.distanceWeight < 0.0f                      ? BossMoveUse::Interrupt
-                   : move.comboOnly                                                        ? BossMoveUse::Combo
-                                                                                           : BossMoveUse::Start;
+        move.use = move.when.pressure && move.distanceWeight < 0.0f ? BossMoveUse::Interrupt
+                   : move.comboOnly                                 ? BossMoveUse::Combo
+                                                                    : BossMoveUse::Start;
         move.pre = static_cast<int>(pre);
         move.post = static_cast<int>(post);
         // 威力が空欄なら「隙が小さいほど低い」：基本＋（前隙＋後隙）×係数。連撃は一撃ごとに前の構え、ナイフは 1 本あたり。
@@ -730,9 +648,7 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
             move.damage = autoDamage(pre + post / static_cast<double>(strikeCount));
         } else if (move.type == BossMoveType::Knife) {
             move.damage = std::max(1, RoundHalfUp(autoDamage(pre + post) / 2.0));
-        } else if (move.type == BossMoveType::Ambush) {
-            move.damage = autoDamage((pre + post) / 2.0);
-        } else if (IsMoveType(move.type) || move.type == BossMoveType::Clone || move.type == BossMoveType::KasumiStep) {
+        } else if (IsMoveType(move.type) || move.type == BossMoveType::KasumiStep) {
             move.damage = 0;
         } else {
             move.damage = autoDamage(pre + post);
@@ -769,7 +685,6 @@ bool BossMoveTable::LoadMoves(std::string_view csv, const BossTiming& timing, st
                 move.warnings.push_back("当て方「" + text + "」が読めないので実＋霞にしました（実・霞・実＋霞）");
         }
         ReadWindup(raw, move);
-        ReadBlast(raw, move);
         ReadKnockDistance(raw, move);
         if (move.type == BossMoveType::KasumiStep)
             BossKasumiStep::Read(raw[Column::StepDirections], raw[Column::StepDistance], raw[Column::StepHeight], move);

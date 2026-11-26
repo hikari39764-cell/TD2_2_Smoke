@@ -24,13 +24,19 @@ public:
     static void StepFloat(BossComponent& boss);
     // プレイヤーの方へ毎秒 degreesPerSecond まで向く。
     static void FaceRate(BossFrame& frame, float degreesPerSecond);
-    // 後ろへ跳ぶ（後ろへ下がる・退き溜めの退く所）。progress は跳ぶ間の進み（0〜1）。boss.stepFrom から、
+    // 後ろへ跳ぶ（後ろへ下がる）。progress は跳ぶ間の進み（0〜1）。boss.stepFrom から、
     // プレイヤーと反対へ backstepDistance、高さ backstepHeight の弧で跳ぶ。
     static void StepBack(BossFrame& frame, float progress);
     // 動ける範囲（戦場の円）に収める。
     static void ClampToArena(const BossComponent& boss, HIKARI::GameProjectFloat3& point);
     // 歩きの技（横歩き・間合いを詰める）の攻撃中か。木は、この間も歩きを切り上げる反応だけを試す。
     static bool IsWalking(const BossComponent& boss);
+    // 検査器の「斬撃の共通の値」の項目（振りの拍子・体勢・戻りの当たり・威力）。
+    static void DescribeSwing(HIKARI::PropertyFields& fields, BossComponent& boss);
+    // 検査器の「体と浮遊」の項目（体の大きさ・動ける範囲・歩き・浮遊・振り向き）。
+    static void DescribeMovement(HIKARI::PropertyFields& fields, BossComponent& boss);
+    // 検査器の「動きの型ごとの体の動き」の項目（突進・跳躍・回し蹴り・残す火の形）。
+    static void DescribeMoveTypes(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

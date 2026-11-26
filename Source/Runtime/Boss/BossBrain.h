@@ -42,6 +42,8 @@ public:
     void OnActFinished(BossBrainContext& context) override;
     void OnRecovery(BossBrainContext& context) override;
     void OnWalking(BossBrainContext& context) override;
+    // 検査器の「確かめ用」の項目（試す技・確かめのダメージ・記録）。
+    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

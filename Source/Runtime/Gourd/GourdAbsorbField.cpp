@@ -54,7 +54,7 @@ constexpr float kGlowHeatDrop = 0.26f;
 struct Field {
     HIKARI::WorldView& world;
     HIKARI::ObjectView object;
-    GourdComponent& gourd;
+    Gourd& gourd;
     uint32_t channels = FluidChannels::kFog;
     uint64_t instance = kGatherInstanceBase;
     // 火の域にも届ける力に足す通り道（0 なら火には届けない）。
@@ -83,7 +83,7 @@ struct Field {
 
 } // namespace
 
-bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
+bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd,
                                    double& outTotal) {
     const HIKARI::FluidView fluid = world.GetFluid();
     outTotal = gourd.removedSum;
@@ -106,13 +106,13 @@ bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView 
     return true;
 }
 
-void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd) {
     if (!(gourd.swallowRadius > 0.0f))
         return;
     // 向きの無い負の力＝吸い口：半径の面から strength m/s で吸い込み、外の霧も口へ流れる。斬撃のエフェクトの域だけに届く。
     HIKARI::GameProjectFluidInteraction swallow{};
     swallow.kind = Kind::Force;
-    swallow.position = gourd.mouthPosition;
+    swallow.position = gourd.drawMouthPosition;
     swallow.extents = {gourd.swallowRadius, 0.0f, 0.0f};
     swallow.strength = -std::max(0.0f, gourd.swallowStrength);
     swallow.absorption = std::max(0.0f, gourd.swallowAbsorption);
@@ -122,7 +122,7 @@ void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectVie
     ++gourd.fluidSubmissions;
 }
 
-void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd) {
     const int frames = std::max(1, gourd.blockedPuffFrames);
     const float strength =
         gourd.blockedPuffStrength * static_cast<float>(gourd.blockedPuffLeft) / static_cast<float>(frames);
@@ -131,9 +131,9 @@ void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectVi
     // 向きのある力＝加速度：口の少し先を中心に、口の向く先へ押す。場の霧と、口のエフェクトの域（どちらも Default）に届く。
     HIKARI::GameProjectFluidInteraction push{};
     push.kind = Kind::Force;
-    push.position = Add(gourd.mouthPosition, Scale(gourd.aimDirection, gourd.blockedPuffReach));
+    push.position = Add(gourd.drawMouthPosition, Scale(gourd.drawAimDirection, gourd.blockedPuffReach));
     push.extents = {gourd.blockedPuffRadius, 0.0f, 0.0f};
-    push.direction = gourd.aimDirection;
+    push.direction = gourd.drawAimDirection;
     push.strength = strength;
     push.channels = FluidChannels::kFog;
     gourd.fluidAccepted =
@@ -141,8 +141,7 @@ void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectVi
     ++gourd.fluidSubmissions;
 }
 
-void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
-                              float seconds) {
+void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, float seconds) {
     // 満杯で吸えない時は霧を消さない（吸っても増えない煙を場から減らさない）。流れもそよ風まで弱める。
     const bool blocked = GourdRules::IsBlocked(gourd);
     const float flow = blocked ? kFullFlowScale : 1.0f;
@@ -155,11 +154,11 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     Field field{world, object, gourd, channels};
     field.fire = blocked ? 0u : FluidChannels::kFire;
     if (gourd.gatherStrength > 0.0f) {
-        const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
+        const Vec3 forward = PlayerRules::FlatNormalize(gourd.drawAimDirection, {0.0f, 0.0f, 1.0f});
         const Vec3 right{forward.z, 0.0f, -forward.x};
         // 霧の集まる点（口の前の足元）と、ヒョウタンの真下の同じ高さの点。扇はこの点を中心に広げる。
-        const Vec3 foot = gourd.sinkPosition;
-        const Vec3 base{gourd.position.x, foot.y, gourd.position.z};
+        const Vec3 foot = gourd.drawSinkPosition;
+        const Vec3 base{gourd.drawPosition.x, foot.y, gourd.drawPosition.z};
         const float fan = gourd.gatherFanDegrees * kRadiansPerDegree;
         const float start = gourd.absorbForwardDistance;
         const float range = std::max(start, gourd.gatherRange);
@@ -194,20 +193,20 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
                        gourd.gatherStrength * kNearStrengthShare * flow, fade);
         }
         // 集まった霧を、足元から口へ持ち上げる。
-        field.Push(foot, gourd.gatherRadius, Normalize(Difference(gourd.mouthPosition, foot), {0.0f, 1.0f, 0.0f}),
+        field.Push(foot, gourd.gatherRadius, Normalize(Difference(gourd.drawMouthPosition, foot), {0.0f, 1.0f, 0.0f}),
                    gourd.gatherStrength * gourd.gatherLift * flow, 0.0f, true);
     }
     // 吸われていく霧を温める。場の霧（ArenaGroundFog）と口のエフェクトの域は、温度が上がった煙が青緑に光るので、
     // 本物の霧が口へ近づくほど明るく光って見える。注入の強さ（足す煙）は 0 にして、温度だけを使う。
     if (gourd.absorbGlowHeat > 0.0f && !blocked) {
-        const Vec3 forward = PlayerRules::FlatNormalize(gourd.aimDirection, {0.0f, 0.0f, 1.0f});
-        const Vec3 base{gourd.position.x, gourd.sinkPosition.y, gourd.position.z};
+        const Vec3 forward = PlayerRules::FlatNormalize(gourd.drawAimDirection, {0.0f, 0.0f, 1.0f});
+        const Vec3 base{gourd.drawPosition.x, gourd.drawSinkPosition.y, gourd.drawPosition.z};
         for (int i = 0; i <= kGlowGroundSpots; ++i) {
             // 0 は口元。1 以降は地面に沿って、absorbGlowReach ごとに奥へ置く。
             const float step = static_cast<float>(i);
             HIKARI::GameProjectFluidInteraction heat{};
             heat.kind = Kind::Emit;
-            heat.position = i == 0 ? gourd.mouthPosition : Add(base, Scale(forward, gourd.absorbGlowReach * step));
+            heat.position = i == 0 ? gourd.drawMouthPosition : Add(base, Scale(forward, gourd.absorbGlowReach * step));
             heat.extents = {gourd.absorbGlowRadius * (1.0f + kGlowRadiusGrowth * step),
                             gourd.absorbGlowHeat * std::max(0.0f, 1.0f - kGlowHeatDrop * step), 0.0f};
             gourd.fluidAccepted = world.GetFluid()
@@ -221,8 +220,8 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     if (gourd.absorbCatchRadius > 0.0f && gourd.absorbCatchRate > 0.0f && !blocked) {
         HIKARI::GameProjectFluidInteraction above{};
         above.kind = Kind::Force;
-        above.position = {gourd.mouthPosition.x, gourd.mouthPosition.y + gourd.absorbCatchHeight,
-                          gourd.mouthPosition.z};
+        above.position = {gourd.drawMouthPosition.x, gourd.drawMouthPosition.y + gourd.absorbCatchHeight,
+                          gourd.drawMouthPosition.z};
         above.extents = {gourd.absorbCatchRadius, 0.0f, 0.0f};
         above.absorption = gourd.absorbCatchRate;
         above.channels = channels;
@@ -232,7 +231,7 @@ void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView objec
     }
     HIKARI::GameProjectFluidInteraction sink{};
     sink.kind = Kind::Force;
-    sink.position = gourd.mouthPosition;
+    sink.position = gourd.drawMouthPosition;
     sink.extents = {gourd.absorbRadius, 0.0f, 0.0f};
     sink.strength = blocked ? 0.0f : -gourd.absorbStrength;
     sink.absorption = blocked ? 0.0f : gourd.absorption;

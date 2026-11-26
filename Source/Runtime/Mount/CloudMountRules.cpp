@@ -57,20 +57,18 @@ Vec3 RotateToward(Vec3 from, Vec3 to, float maxAngle) {
 }
 
 // 急降下の度合い（0〜1）：下向きの角度が diveStartDegrees で 0、diveFullDegrees で 1。
-float DiveAmount(const CloudMountComponent& mount, Vec3 direction) {
+float DiveAmount(const CloudMount& mount, Vec3 direction) {
     const float down = std::asin(std::clamp(-direction.y, -1.0f, 1.0f)) / kRadiansPerDegree;
     const float start = std::clamp(mount.diveStartDegrees, 0.0f, kMaximumFlightPitch);
     return std::clamp((down - start) / std::max(mount.diveFullDegrees - start, 1.0f), 0.0f, 1.0f);
 }
 
 // 前後左右の最高速（ブースト中は boostSpeed）。
-float BaseSpeed(const CloudMountComponent& mount) {
-    return mount.flight.boosting ? mount.boostSpeed : mount.cruiseSpeed;
-}
+float BaseSpeed(const CloudMount& mount) { return mount.flight.boosting ? mount.boostSpeed : mount.cruiseSpeed; }
 
 // 前後左右の入力が無い（または解除中）：② の止まり方のまま、速度を 3 次元のまま wanted へ寄せる。
 // 寄せる速さは「最高速に届くまでの時間」（accelSeconds、遅くする時は brakeSeconds）で決める。
-void BrakeVelocity(CloudMountComponent& mount, Vec3 wanted, float dt) {
+void BrakeVelocity(CloudMount& mount, Vec3 wanted, float dt) {
     mount.boostKickLeft = 0.0f;
     mount.overspeedDecayRate = 0.0f;
     mount.flight.turn = 0.0f;
@@ -92,7 +90,7 @@ void BrakeVelocity(CloudMountComponent& mount, Vec3 wanted, float dt) {
 
 // 速さの 1 tick：弾き出し → 欲しい速さへ寄せる（速い分は overspeedDecaySeconds で戻す）→ 急降下の伸び →
 // 当たって止められた分は持ち越さない。
-float StepSpeed(CloudMountComponent& mount, float speed, float wantedSpeed, float dive, float dt) {
+float StepSpeed(CloudMount& mount, float speed, float wantedSpeed, float dive, float dt) {
     bool kicked = false;
     if (mount.boostKickLeft > 0.0f) {
         // 残りの時間で boostKickSpeed に届くよう、一定の速さで上げる（その間は accelSeconds の加速を重ねない）。
@@ -132,7 +130,7 @@ float StepSpeed(CloudMountComponent& mount, float speed, float wantedSpeed, floa
 }
 
 // 前後左右の入力がある：速度の向きを入力の向きへ旋回の速さで回し（速いほど大回り）、速さを寄せる。
-void SteerVelocity(CloudMountComponent& mount, Vec3 wanted, float dt) {
+void SteerVelocity(CloudMount& mount, Vec3 wanted, float dt) {
     const float wantedSpeed = Length(wanted);
     const Vec3 wantedDirection = Scale(wanted, 1.0f / wantedSpeed);
     const float speed = Length(mount.velocity);
@@ -157,7 +155,7 @@ void SteerVelocity(CloudMountComponent& mount, Vec3 wanted, float dt) {
 }
 
 // 召喚の持ち上げの輪郭：frame F たった時の高さ。出だしが速く、終わりで速さが 0 になる。
-float SummonHeightAt(const CloudMountComponent& mount, int frame) {
+float SummonHeightAt(const CloudMount& mount, int frame) {
     const int frames = std::max(1, mount.summonFrames);
     const float progress = std::clamp(static_cast<float>(frame) / static_cast<float>(frames), 0.0f, 1.0f);
     const float share = 1.0f - std::pow(1.0f - progress, std::max(mount.summonEasePower, 0.01f));
@@ -166,7 +164,7 @@ float SummonHeightAt(const CloudMountComponent& mount, int frame) {
 
 } // namespace
 
-void CloudMountRules::Enter(CloudMountComponent& mount, CloudMountState state) {
+void CloudMountRules::Enter(CloudMount& mount, CloudMountState state) {
     mount.state = state;
     mount.stateFrame = 0;
     mount.catching = false;
@@ -182,7 +180,7 @@ CloudMountState CloudMountRules::NextOnToggle(CloudMountState state) {
     return CloudMountState::None;
 }
 
-CloudMountState CloudMountRules::TimedNext(const CloudMountComponent& mount) {
+CloudMountState CloudMountRules::TimedNext(const CloudMount& mount) {
     if (mount.state == CloudMountState::Summoning && mount.stateFrame >= std::max(1, mount.summonFrames))
         return CloudMountState::Riding;
     if (mount.state == CloudMountState::Dismissing && mount.stateFrame >= std::max(0, mount.dismissFrames))
@@ -190,12 +188,12 @@ CloudMountState CloudMountRules::TimedNext(const CloudMountComponent& mount) {
     return mount.state;
 }
 
-void CloudMountRules::AdvanceFrame(CloudMountComponent& mount) {
+void CloudMountRules::AdvanceFrame(CloudMount& mount) {
     if (mount.state != CloudMountState::None)
         ++mount.stateFrame;
 }
 
-void CloudMountRules::BeginSummon(CloudMountComponent& mount, float startY, bool hasGround, float groundY) {
+void CloudMountRules::BeginSummon(CloudMount& mount, float startY, bool hasGround, float groundY) {
     mount.summonStartY = startY;
     mount.summonTargetY =
         hasGround ? std::max(startY, groundY + mount.standOffset + std::max(0.0f, mount.rideHeight)) : startY;
@@ -204,13 +202,13 @@ void CloudMountRules::BeginSummon(CloudMountComponent& mount, float startY, bool
     Enter(mount, CloudMountState::Summoning);
 }
 
-float CloudMountRules::SummonVerticalSpeed(const CloudMountComponent& mount, float dt) {
+float CloudMountRules::SummonVerticalSpeed(const CloudMount& mount, float dt) {
     if (dt <= 0.0f)
         return 0.0f;
     return (SummonHeightAt(mount, mount.stateFrame + 1) - SummonHeightAt(mount, mount.stateFrame)) / dt;
 }
 
-Vec3 CloudMountRules::WantedVelocity(const CloudMountComponent& mount, Vec3 cameraLook) {
+Vec3 CloudMountRules::WantedVelocity(const CloudMount& mount, Vec3 cameraLook) {
     if (mount.state == CloudMountState::Dismissing || mount.state == CloudMountState::None)
         return {};
     const float lookLength = Length(cameraLook);
@@ -240,7 +238,7 @@ Vec3 CloudMountRules::WantedVelocity(const CloudMountComponent& mount, Vec3 came
     return {direction.x * speed, direction.y * speed + lift * mount.verticalSpeed, direction.z * speed};
 }
 
-bool CloudMountRules::StepBoost(CloudMountComponent& mount, bool hasStamina) {
+bool CloudMountRules::StepBoost(CloudMount& mount, bool hasStamina) {
     if (!mount.input.boost)
         mount.boostExhausted = false;
     const bool wasBoosting = mount.flight.boosting;
@@ -253,9 +251,9 @@ bool CloudMountRules::StepBoost(CloudMountComponent& mount, bool hasStamina) {
     return mount.flight.boosting != wasBoosting;
 }
 
-void CloudMountRules::ExhaustBoost(CloudMountComponent& mount) { mount.boostExhausted = true; }
+void CloudMountRules::ExhaustBoost(CloudMount& mount) { mount.boostExhausted = true; }
 
-void CloudMountRules::StepFlight(CloudMountComponent& mount, Vec3 cameraLook, Vec3 position, float dt) {
+void CloudMountRules::StepFlight(CloudMount& mount, Vec3 cameraLook, Vec3 position, float dt) {
     const bool catching = mount.catchBrakeLeft > 0.0f;
     // 受け止めのならしの間、縦は下のならしで決める。横の速さは、縦を除いて寄せる。
     if (catching)
@@ -284,7 +282,7 @@ void CloudMountRules::StepFlight(CloudMountComponent& mount, Vec3 cameraLook, Ve
     mount.flight.boostKick = mount.boostKickSeconds > 0.0f ? mount.boostKickLeft / mount.boostKickSeconds : 0.0f;
 }
 
-void CloudMountRules::ApplyBounds(CloudMountComponent& mount, Vec3 position) {
+void CloudMountRules::ApplyBounds(CloudMount& mount, Vec3 position) {
     const float soft = std::max(mount.boundsSoftMeters, 1.0f);
     const float edgeSpeed = std::max(mount.maxFlightSpeed, 0.0f);
     // 境界までの距離 distance で許す外向きの速さ。弱め始める所で上限の速さ、境界の上で 0、外では内向き（上限の速さ
@@ -304,14 +302,14 @@ void CloudMountRules::ApplyBounds(CloudMountComponent& mount, Vec3 position) {
     mount.velocity.y = std::max(mount.velocity.y, -allowed(position.y - mount.boundsMinY));
 }
 
-float CloudMountRules::TurnRate(const CloudMountComponent& mount, float speed) {
+float CloudMountRules::TurnRate(const CloudMount& mount, float speed) {
     const float span = mount.boostSpeed - mount.cruiseSpeed;
     const float share = span > 0.0f ? std::clamp((speed - mount.cruiseSpeed) / span, 0.0f, 1.0f)
                                     : (speed > mount.cruiseSpeed ? 1.0f : 0.0f);
     return std::max(0.0f, mount.turnRateCruise + (mount.turnRateBoost - mount.turnRateCruise) * share);
 }
 
-void CloudMountRules::RecordPosition(CloudMountComponent& mount, Vec3 position, float dt) {
+void CloudMountRules::RecordPosition(CloudMount& mount, Vec3 position, float dt) {
     if (mount.hasLastPosition && dt > 0.0f) {
         const Vec3 moved{position.x - mount.lastPosition.x, position.y - mount.lastPosition.y,
                          position.z - mount.lastPosition.z};
@@ -321,7 +319,7 @@ void CloudMountRules::RecordPosition(CloudMountComponent& mount, Vec3 position, 
     mount.hasLastPosition = true;
 }
 
-void CloudMountRules::TrackFall(CloudMountComponent& mount, bool grounded, float y) {
+void CloudMountRules::TrackFall(CloudMount& mount, bool grounded, float y) {
     if (grounded) {
         mount.fallPeakY = y;
         mount.fallPeakKnown = true;
@@ -333,12 +331,12 @@ void CloudMountRules::TrackFall(CloudMountComponent& mount, bool grounded, float
     mount.fallPeakKnown = true;
 }
 
-bool CloudMountRules::ShouldCatch(const CloudMountComponent& mount, float y) {
+bool CloudMountRules::ShouldCatch(const CloudMount& mount, float y) {
     return mount.autoCatch && mount.state == CloudMountState::None && mount.catchArmed && mount.fallPeakKnown &&
            mount.fallPeakY - y >= std::max(0.0f, mount.catchFallMeters);
 }
 
-void CloudMountRules::BeginCatch(CloudMountComponent& mount, float y, float fallSpeed, Vec3 drift) {
+void CloudMountRules::BeginCatch(CloudMount& mount, float y, float fallSpeed, Vec3 drift) {
     mount.summonStartY = y;
     mount.summonTargetY = y;
     mount.velocity = {drift.x, 0.0f, drift.z};
@@ -351,7 +349,7 @@ void CloudMountRules::BeginCatch(CloudMountComponent& mount, float y, float fall
         mount.catchFallSpeed = 0.0f;
 }
 
-void CloudMountRules::OnDismounted(CloudMountComponent& mount, float y, bool deliberate) {
+void CloudMountRules::OnDismounted(CloudMount& mount, float y, bool deliberate) {
     mount.velocity = {};
     mount.flight = {};
     mount.boostKickLeft = 0.0f;
@@ -366,7 +364,7 @@ void CloudMountRules::OnDismounted(CloudMountComponent& mount, float y, bool del
     mount.fallingFromMount = true;
 }
 
-float CloudMountRules::VerticalSpeed(const CloudMountComponent& mount, float dt) {
+float CloudMountRules::VerticalSpeed(const CloudMount& mount, float dt) {
     return mount.state == CloudMountState::Summoning && !mount.catching ? SummonVerticalSpeed(mount, dt)
                                                                         : mount.velocity.y;
 }
@@ -385,7 +383,7 @@ Vec3 CloudMountRules::TurnFacing(Vec3 facing, Vec3 velocity, float degreesPerSec
     return {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
-float CloudMountRules::ApplyGroundSkim(CloudMountComponent& mount, float vertical, bool grounded, float dt) {
+float CloudMountRules::ApplyGroundSkim(CloudMount& mount, float vertical, bool grounded, float dt) {
     const bool riding = mount.state == CloudMountState::Riding && mount.groundSkimSpeed > 0.0f;
     mount.flight.groundSkim =
         riding && grounded &&
@@ -402,7 +400,7 @@ float CloudMountRules::ApplyGroundSkim(CloudMountComponent& mount, float vertica
     return std::max(vertical, 0.0f) + (mount.flight.groundSkim ? mount.groundSkimSpeed : 0.0f);
 }
 
-bool CloudMountRules::IsMounted(const CloudMountComponent& mount) { return mount.state != CloudMountState::None; }
+bool CloudMountRules::IsMounted(const CloudMount& mount) { return mount.state != CloudMountState::None; }
 
 const char* CloudMountRules::StateName(CloudMountState state) {
     switch (state) {

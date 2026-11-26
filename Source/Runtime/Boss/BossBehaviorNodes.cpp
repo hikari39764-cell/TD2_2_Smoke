@@ -12,7 +12,6 @@
 #include "BossReactionNodes.h"
 #include "BossRules.h"
 #include "BossSelection.h"
-#include "BossStance.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -117,28 +116,6 @@ Status TickSituation(INodeContext& context, void*, void* user) noexcept {
                    thought->situation.healthPercent <= static_cast<double>(context.ParamFloat(kSituationHealth))
                ? Status::Success
                : Status::Failure;
-}
-
-// ---- 分身を出せる：霞分身の再使用の時間が過ぎていて、分身が 1 体も出ていない。 ----
-
-Status TickCloneReady(INodeContext&, void*, void* user) noexcept {
-    const BossThought* thought = ThoughtOf(user);
-    if (thought == nullptr)
-        return Status::Failure;
-    const BossComponent& boss = thought->boss;
-    return boss.clockSeconds >= boss.brain.cloneReadySeconds && boss.activeClones == 0 && !boss.cloneSpawnPending
-               ? Status::Success
-               : Status::Failure;
-}
-
-// ---- 分身を撃たれた：プレイヤーが分身を撃った後、本体がまだ突進で来ていない（待機中か後隙の間だけ成り立つ）。 ----
-
-Status TickCloneStruck(INodeContext&, void*, void* user) noexcept {
-    const BossThought* thought = ThoughtOf(user);
-    if (thought == nullptr ||
-        (thought->moment != BossBrainMoment::Idle && thought->moment != BossBrainMoment::Recovery))
-        return Status::Failure;
-    return thought->boss.brain.cloneStruck ? Status::Success : Status::Failure;
 }
 
 // ---- 技を実行：表の 1 行を出し、終わるまで走る。コンボは表（コンボ先・コンボ確率）のとおりにこの節がつなぐ。 ----
@@ -327,130 +304,6 @@ bool MoveProgress(INodeContext&, const void* state, void*, NodeProgress& out) no
     return true;
 }
 
-// ---- 姿勢で技を選ぶ（c-19e3b0）：攻勢・散歩・離脱の姿勢と間合いの帯で、次の技を決めて出す。 ----
-
-struct StanceState {
-    int32_t row;
-    int32_t kind;
-    int32_t chain;
-    bool attack;
-    bool requested;
-};
-
-Status TickStance(INodeContext& context, void* state, void* user) noexcept {
-    BossThought* thought = ThoughtOf(user);
-    if (thought == nullptr)
-        return Status::Failure;
-    BossComponent& boss = thought->boss;
-    auto& run = *static_cast<StanceState*>(state);
-    if (!run.requested) {
-        // 決めるのは待機の時だけ（後隙・歩きの間に新しく始まった時は、次の待機まで待つ）。
-        if (thought->moment != BossBrainMoment::Idle)
-            return Status::Failure;
-        const float r0 = context.Random();
-        const float r1 = context.Random();
-        const BossStanceChoice choice =
-            BossStance::Decide(boss, thought->situation.phase, thought->situation.distance, r0, r1);
-        if (choice.row < 0 || !BossRules::RequestMove(boss, choice.row, false)) {
-            BossReactionNodes::NoteFailed(*thought);
-            return Status::Failure;
-        }
-        run.row = choice.row;
-        run.kind = static_cast<int32_t>(choice.kind);
-        run.attack = choice.attack;
-        run.chain = 0;
-        run.requested = true;
-        const BossMove* move = BossRules::GetMove(boss, choice.row);
-        char message[256]{};
-        std::snprintf(message, sizeof(message), "Pick tick=%llu move=%s why=stance stance=%s dist=%.3f phase=%d",
-                      static_cast<unsigned long long>(boss.tick), move != nullptr ? move->name.c_str() : "?",
-                      BossStance::StanceName(boss.stanceMemory.stance),
-                      static_cast<double>(thought->situation.distance), thought->situation.phase);
-        BossLog::Write(message);
-        return Status::Running;
-    }
-    // 散歩・見るの歩きの間：プレイヤーの動きで攻勢へ移ったら、歩きを切り上げて攻勢の技を頼む（待機を待たない）。
-    if (!run.attack && thought->moment == BossBrainMoment::Walking &&
-        BossStance::Engage(boss, thought->situation.distance)) {
-        const float r0 = context.Random();
-        const float r1 = context.Random();
-        const BossStanceChoice choice =
-            BossStance::Decide(boss, thought->situation.phase, thought->situation.distance, r0, r1);
-        if (choice.row >= 0 && BossRules::RequestMove(boss, choice.row, false)) {
-            run.row = choice.row;
-            run.kind = static_cast<int32_t>(choice.kind);
-            run.attack = choice.attack;
-            run.chain = 0;
-            const BossMove* move = BossRules::GetMove(boss, choice.row);
-            char message[256]{};
-            std::snprintf(message, sizeof(message), "Pick tick=%llu move=%s why=engage stance=%s dist=%.3f phase=%d",
-                          static_cast<unsigned long long>(boss.tick), move != nullptr ? move->name.c_str() : "?",
-                          BossStance::StanceName(boss.stanceMemory.stance),
-                          static_cast<double>(thought->situation.distance), thought->situation.phase);
-            BossLog::Write(message);
-        }
-        return Status::Running;
-    }
-    if (BossRules::GetState(boss) != BossState::Act) {
-        BossStanceChoice done;
-        done.row = run.row;
-        done.attack = run.attack;
-        done.kind = static_cast<BossMoveClass>(run.kind);
-        BossStance::Finished(boss, done, context.Random());
-        return Status::Success;
-    }
-    // 攻撃中が終わった tick：コンボ（技の表のコンボ先。届く所にいる時だけ）を決める。
-    if (thought->moment == BossBrainMoment::ActFinished) {
-        const float roll = context.Random();
-        const int next = BossSelection::PickCombo(boss, thought->situation, roll, context.Random());
-        if (next >= 0 && BossRules::RequestMove(boss, next, true)) {
-            ++run.chain;
-            const BossMove* move = BossRules::GetMove(boss, next);
-            char message[224]{};
-            std::snprintf(message, sizeof(message), "Combo tick=%llu to=%s chain=%d roll=%.3f",
-                          static_cast<unsigned long long>(boss.tick), move != nullptr ? move->name.c_str() : "?",
-                          run.chain, static_cast<double>(roll));
-            BossLog::Write(message);
-        }
-    }
-    return Status::Running;
-}
-
-constexpr ParamDesc kStanceParams[] = {
-    {"stance", ValueType::Text, "姿勢", 0.0, "stroll", false, "aggro|stroll|withdraw",
-     "aggro：攻勢（連段を出す）。stroll：散歩（射程の中で横へ歩く）。withdraw：離脱（圏外へ下がって見る）。"},
-};
-
-// 姿勢の条件：いまの姿勢が項目の姿勢なら成功する。
-Status TickStanceIs(INodeContext& context, void*, void* user) noexcept {
-    const BossThought* thought = ThoughtOf(user);
-    BossStanceKind want{};
-    if (thought == nullptr || !BossStance::Read(context.ParamText(0), want))
-        return Status::Failure;
-    return thought->boss.stanceMemory.started && thought->boss.stanceMemory.stance == want ? Status::Success
-                                                                                           : Status::Failure;
-}
-
-// 姿勢を変える：項目の姿勢へ移して成功する（同じなら何もしない）。
-Status TickStanceSet(INodeContext& context, void*, void* user) noexcept {
-    BossThought* thought = ThoughtOf(user);
-    BossStanceKind want{};
-    if (thought == nullptr || !BossStance::Read(context.ParamText(0), want))
-        return Status::Failure;
-    BossStance::Force(thought->boss, want, "tree");
-    return Status::Success;
-}
-
-bool StanceProgress(INodeContext&, const void* state, void* user, NodeProgress& out) noexcept {
-    const BossThought* thought = ThoughtOf(user);
-    (void)state;
-    if (thought == nullptr)
-        return false;
-    std::snprintf(out.text, sizeof(out.text), "%s", BossStance::StanceName(thought->boss.stanceMemory.stance));
-    out.fraction = 0.0f;
-    return true;
-}
-
 } // namespace
 
 void BossBehaviorNodes::CopyText(char* target, size_t capacity, std::string_view text) {
@@ -534,70 +387,8 @@ bool BossBehaviorNodes::Register() {
     situation.tick = &TickSituation;
     situation.user = this;
 
-    NodeTypeDesc cloneReady{};
-    cloneReady.kind = NodeKind::Condition;
-    cloneReady.typeName = "Project_TD2_2.BossCloneReady";
-    cloneReady.displayName = "分身を出せる";
-    cloneReady.category = kCategory;
-    cloneReady.description =
-        "霞分身の再使用（ボスの「分身の再使用」秒）が過ぎていて、分身が 1 体も出ていなければ成功する。"
-        "この後ろに「技を実行（霞分身、選び方 always）」を置く。HP の条件は技の表の発生条件。";
-    cloneReady.tick = &TickCloneReady;
-    cloneReady.user = this;
-
-    NodeTypeDesc cloneStruck{};
-    cloneStruck.kind = NodeKind::Condition;
-    cloneStruck.typeName = "Project_TD2_2.BossCloneStruck";
-    cloneStruck.displayName = "分身を撃たれた";
-    cloneStruck.category = kCategory;
-    cloneStruck.description = "プレイヤーが分身を撃った後、本体がまだ突進（瞬間突進の型）を出していなければ成功する"
-                              "（待機中と後隙の間だけ）。この後ろに「技を実行（突進横なぎ、選び方 always）」を置く。";
-    cloneStruck.tick = &TickCloneStruck;
-    cloneStruck.user = this;
-
-    NodeTypeDesc stance{};
-    stance.kind = NodeKind::Action;
-    stance.typeName = "Project_TD2_2.BossStance";
-    stance.displayName = "姿勢で技を選ぶ";
-    stance.category = kCategory;
-    stance.description =
-        "攻勢・散歩・離脱の姿勢と、間合いの帯（密着・中・遠・圏外。境はボスの「姿勢と間合い」）で次の技を決めて出し、"
-        "技（とコンボ）が終わったら成功する。攻勢は Data/Boss/kasumi_bushi_stance.csv の重み（冷却・遠距離と接近の交互・"
-        "最近の技を下げる）で連段を出し、決めた組の数を出したら離脱か散歩へ。散歩は横へ歩き、時間が来たら攻勢へ。"
-        "離脱は後ろへ跳んで圏外で見てから攻勢へ（圏外のプレイヤーへは歩いて入るか突進。突進は続けない）。";
-    stance.stateSize = sizeof(StanceState);
-    stance.tick = &TickStance;
-    stance.progress = &StanceProgress;
-    stance.user = this;
-
-    NodeTypeDesc stanceIs{};
-    stanceIs.kind = NodeKind::Condition;
-    stanceIs.typeName = "Project_TD2_2.BossStanceIs";
-    stanceIs.displayName = "姿勢が～なら";
-    stanceIs.category = kCategory;
-    stanceIs.description = "いまの姿勢（攻勢・散歩・離脱）が項目の姿勢なら成功する。反応の枝を姿勢で分ける時に使う"
-                           "（例：散歩の間だけ高い確率で受け返す）。";
-    stanceIs.params = kStanceParams;
-    stanceIs.paramCount = static_cast<uint32_t>(std::size(kStanceParams));
-    stanceIs.tick = &TickStanceIs;
-    stanceIs.user = this;
-
-    NodeTypeDesc stanceSet{};
-    stanceSet.kind = NodeKind::Action;
-    stanceSet.typeName = "Project_TD2_2.BossStanceSet";
-    stanceSet.displayName = "姿勢を変える";
-    stanceSet.category = kCategory;
-    stanceSet.description =
-        "姿勢を項目の姿勢へ移して成功する（同じ姿勢なら何もしない）。反応の後に離脱させる時などに使う。";
-    stanceSet.params = kStanceParams;
-    stanceSet.paramCount = static_cast<uint32_t>(std::size(kStanceParams));
-    stanceSet.tick = &TickStanceSet;
-    stanceSet.user = this;
-
     return registration_.Register(wait) && registration_.Register(move) && registration_.Register(pressured) &&
-           registration_.Register(stance) && registration_.Register(stanceIs) && registration_.Register(stanceSet) &&
-           registration_.Register(situation) && registration_.Register(cloneReady) &&
-           registration_.Register(cloneStruck) && BossReactionNodes::Register(registration_, this);
+           registration_.Register(situation) && BossReactionNodes::Register(registration_, this);
 }
 
 TickOutcome BossBehaviorNodes::Think(BossThought& thought, HIKARI::GameProjectObjectHandle object, float deltaSeconds) {

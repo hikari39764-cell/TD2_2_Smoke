@@ -15,14 +15,11 @@ public:
     static void Read(std::string_view directions, std::string_view distance, std::string_view height, BossMove& move);
     // 技を始めた tick：向きと行き先を決める。弾をかわす霞歩なら、続けてかわした回数に数える。
     static void Begin(BossFrame& frame, const BossMove& move);
-    // 前隙・攻撃中・後隙の 1 tick（progress はそれぞれの進み 0〜1）。
-    static void Pre(BossComponent& boss, float progress);
+    // 攻撃中の 1 tick（progress は攻撃中の進み 0〜1）と、後隙（着地した高さに戻す）。
     static void Act(BossFrame& frame, float progress);
-    static void Post(BossComponent& boss, float progress);
+    static void Post(BossComponent& boss);
     // いま弾が当たらない（弾をかわす霞歩の跳び始めの kasumiStepGuardFrames F）。
     static bool Guarding(const BossComponent& boss);
-    // 跳ぶ向きへの体の傾き（rad）を lean（前後。正で前）・sway（横。体の傾きの規則と同じ向き）へ足す。霞歩の外は足さない。
-    static void AddLean(const BossComponent& boss, float& lean, float& sway);
     // 弾をかわせる（続けてかわせる回数を使い切った後の、かわさない間でない）。
     static bool CanDodge(const BossComponent& boss);
     // かわさない間（息が切れている。胴の煙が薄くなる）。

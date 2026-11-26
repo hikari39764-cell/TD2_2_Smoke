@@ -2,7 +2,9 @@
 
 #include "HIKARI/Project/WorldView.h"
 #include "BossBodyRig.h"
+#include "BossBodySettings.h"
 #include "../Boss/BossComponent.h"
+#include "../Boss/BossIntroComponent.h"
 
 namespace Project_TD2_2 {
 
@@ -18,32 +20,34 @@ namespace Project_TD2_2 {
 namespace BossIntroActor {
 
 // 役者と部品の物体を探し、流せるか確かめる（Initialize と、編集器のプレビューの始め）。役者がいなければ false。
-bool Find(HIKARI::WorldView& world, BossComponent& boss);
+bool Find(HIKARI::WorldView& world, BossIntroComponent& intro);
 // 事件段を読み直した後に 1 回：役者が使う段（Anim・Part）を見分ける。
-void ReadCues(BossComponent& boss);
+void ReadCues(BossIntroComponent& intro);
 // 描画のフレームごと（演技の前・演技の間・プレビュー）：役者を舞台 stage（足元と向き。nullptr なら置き直さない）に置き、
-// 演出の時計 t (秒) の姿にする。started が false なら、最初の片段の最初の姿で、部品は落ちたまま。
-void Drive(HIKARI::WorldView& world, BossComponent& boss, const HIKARI::GameProjectTransform* stage, float t,
-           bool started);
+// 演出の時計 t (秒) の姿にする。started が false なら、最初の片段の最初の姿で、部品は落ちたまま。body は体の見た目の
+// 設定（草摺の枚数）。
+void Drive(HIKARI::WorldView& world, const BossBodySettings& body, BossIntroComponent& intro,
+           const HIKARI::GameProjectTransform* stage, float t, bool started);
 // 演出の灯を、演技の間に置かれていた所へ置き直す（演技の後、役者がまだ出ている間に毎フレーム呼ぶ）。
-void HoldKeyLight(HIKARI::WorldView& world, BossComponent& boss);
+void HoldKeyLight(HIKARI::WorldView& world, BossIntroComponent& intro);
 // 役者と部品を隠す（演技が済んだ・飛ばした）。
-void Hide(HIKARI::WorldView& world, BossComponent& boss);
+void Hide(HIKARI::WorldView& world, BossIntroComponent& intro);
 // 編集器のプレビューをやめた：見せ方・偏移・姿の層を元へ戻す。
-void Restore(HIKARI::WorldView& world, BossComponent& boss);
+void Restore(HIKARI::WorldView& world, BossIntroComponent& intro);
 // 効果のための置き場所（兜・刀・胴。BossBodyPose の約束）を、役者の骨から入れる。骨が読めていなければ false。
-bool Pose(const BossComponent& boss, BossBodyPose& pose);
+bool Pose(const BossIntroComponent& intro, BossBodyPose& pose);
 // 面頬の隙間の中の光（役者の模型の中の自発光の面）：色と明るさ（画面基準。0 以下か、兜がまだ付いていなければ隠す）。
-void SetHelmGlow(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProjectFloat3 color, float strength);
+void SetHelmGlow(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::GameProjectFloat3 color, float strength);
 // 落ちている兜（体に付く前の部品の物体）の、面頬の隙間の瞬き：色と明るさ（画面基準。0 以下か、兜がもう付いていれば
 // 材質のまま＝黒）。
-void SetHelmPartGlint(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProjectFloat3 color, float strength);
+void SetHelmPartGlint(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::GameProjectFloat3 color,
+                      float strength);
 // 役者の刀の刃口の光（材質 BladeEdge の発光）：色と明るさ（画面基準。0 以下なら材質のまま）。
-void SetBladeEdge(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProjectFloat3 color, float strength);
+void SetBladeEdge(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::GameProjectFloat3 color, float strength);
 // 体に付く効果のための体の変換（原点は体の中心：腰の真下の足元から体の高さの半分だけ上。向きは腰の前）。
-bool BodyTransform(const BossComponent& boss, HIKARI::GameProjectTransform& body);
+bool BodyTransform(const BossComponent& boss, const BossIntroComponent& intro, HIKARI::GameProjectTransform& body);
 // 地に立つ刀が地面に入る所（世界）。演技の始めの刀の骨から。
-HIKARI::GameProjectFloat3 SwordEntry(const BossComponent& boss);
+HIKARI::GameProjectFloat3 SwordEntry(const BossIntroComponent& intro);
 
 } // namespace BossIntroActor
 } // namespace Project_TD2_2

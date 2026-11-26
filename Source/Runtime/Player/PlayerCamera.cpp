@@ -9,7 +9,7 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/ProjectLog.h"
 #include "HIKARI/Project/UiView.h"
-#include "PlayerComponent.h"
+#include "Player.h"
 #include "PlayerRules.h"
 #include "../Common/VectorMath.h"
 
@@ -54,12 +54,12 @@ struct CameraLimits {
 float RequestedOr(float requested, float fallback) { return requested >= 0.0f ? requested : fallback; }
 
 // 見せ方の、Player の値（要求が無い時）。画角の 0 は「カメラの画角」（始める前は分からないので StepShape で決める）。
-PlayerCameraShape DefaultShape(const PlayerComponent& player) {
+PlayerCameraShape DefaultShape(const Player& player) {
     return {player.cameraDistance, 0.0f, player.cameraEyeFloor, 0.0f, 0.0f};
 }
 
 // 要求はこのフレームだけ使い、消す（要求した側が消えても次のフレームへ残さない）。
-CameraLimits TakeLimits(PlayerComponent& player) {
+CameraLimits TakeLimits(Player& player) {
     CameraLimits limits{player.cameraFollowSeconds, player.cameraVerticalSeconds, player.cameraVerticalDeadZone,
                         player.cameraMinPitch, player.cameraMaxPitch};
     limits.shape = DefaultShape(player);
@@ -122,10 +122,10 @@ float SmoothDampAngle(float current, float target, float& velocity, float smooth
 }
 
 // ロックオン中に見る点（PlayerRules::LockAimPoint。照準と同じ点）。ロックしていない・対象が無い時は false。
-bool LockPoint(HIKARI::WorldView& world, const PlayerComponent& player, Vec3& outPoint) {
+bool LockPoint(HIKARI::WorldView& world, const Player& player, Vec3& outPoint) {
     if (!player.lockedOn)
         return false;
-    const auto target = world.FindObject(player.lockTarget);
+    const auto target = world.FindObject(player.lockTargetHandle);
     HIKARI::GameProjectTransform transform{};
     if (!target.IsValid() || !target.GetWorldTransform(transform))
         return false;
@@ -133,7 +133,7 @@ bool LockPoint(HIKARI::WorldView& world, const PlayerComponent& player, Vec3& ou
     return true;
 }
 
-float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+using VectorMath::Lerp;
 
 // a 以下で 0、b 以上で 1、その間はなめらかに（a ≥ b なら a で切り替える）。
 float SmoothStep(float a, float b, float x) {
@@ -151,7 +151,7 @@ struct LockFraming {
 };
 
 // 対象との水平の距離から、近さとロックの重みをならす。ロックしていない・外部の要求（騎乗）の間は重みを 0 へ戻す。
-LockFraming StepLockFraming(PlayerComponent& player, bool locked, float flatDistance, float dt) {
+LockFraming StepLockFraming(Player& player, bool locked, float flatDistance, float dt) {
     const bool active = locked;
     if (active) {
         const float nearness = 1.0f - SmoothStep(player.lockNearDistance, player.lockFarDistance, flatDistance);
@@ -171,21 +171,21 @@ LockFraming StepLockFraming(PlayerComponent& player, bool locked, float flatDist
 }
 
 // 対象が跳んだ（隠れた・一瞬で離れた所へ現れた・切り替わった）かを見て、向き直しの間かを決める。
-void NoteLockJump(PlayerComponent& player, Vec3 targetPoint) {
-    const bool switched = player.lockTargetLast.value != player.lockTarget.value;
+void NoteLockJump(Player& player, Vec3 targetPoint) {
+    const bool switched = player.lockTargetLast.value != player.lockTargetHandle.value;
     const bool jumped = player.lockPointKnown &&
                         std::hypot(targetPoint.x - player.lockPointLast.x, targetPoint.z - player.lockPointLast.z) >
                             player.lockJumpDistance;
-    if (player.lockReacquireEnabled && (player.lockTargetHidden || (player.lockPointKnown && (switched || jumped))))
+    if (player.lockReacquireEnabled && player.lockPointKnown && (switched || jumped))
         player.lockReacquiring = true;
     if (!player.lockReacquireEnabled)
         player.lockReacquiring = false;
     player.lockPointLast = targetPoint;
     player.lockPointKnown = true;
-    player.lockTargetLast = player.lockTarget;
+    player.lockTargetLast = player.lockTargetHandle;
 }
 
-void Start(HIKARI::WorldView& world, HIKARI::ObjectView camera, PlayerComponent& player, Vec3 goal) {
+void Start(HIKARI::WorldView& world, HIKARI::ObjectView camera, Player& player, Vec3 goal) {
     player.cameraReady = true;
     player.cameraYaw = std::atan2(player.facing.x, player.facing.z);
     player.cameraPitchNow = player.cameraPitch * kRadiansPerDegree;
@@ -200,7 +200,7 @@ void Start(HIKARI::WorldView& world, HIKARI::ObjectView camera, PlayerComponent&
 
 // 軸（プレイヤーの少し上）を追う。水平は速く追い、上下は遊びの幅を超えた分だけゆっくり追う。
 // 吹っ飛びの放物線は追わない（跳ね上がって落ちるだけなので、追うと画面が上下に揺れる）。
-void FollowPivot(PlayerComponent& player, const CameraLimits& limits, Vec3 goal, float dt) {
+void FollowPivot(Player& player, const CameraLimits& limits, Vec3 goal, float dt) {
     Vec3& pivot = player.cameraPivot;
     Vec3& velocity = player.cameraPivotVelocity;
     pivot.x = SmoothDamp(pivot.x, goal.x, velocity.x, limits.followSeconds, kNoSpeedLimit, dt);
@@ -219,7 +219,7 @@ void FollowPivot(PlayerComponent& player, const CameraLimits& limits, Vec3 goal,
 // 対象が高い所にいる時（ボスの跳躍）は、その分だけ見上げる。lockFraming が true の時（ロックオン。演出の向く点を
 // 追う時は false で前のまま）は、c-880340 の規則：近いほど追うならしを長く・回る速さの上限を低くし、見下ろしを
 // 近さで混ぜ、隠れている間は向きを保ち、現れた・切り替えた後はゆっくり向き直す。
-void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targetPoint, float dt, bool lockFraming) {
+void TrackTarget(Player& player, const CameraLimits& limits, Vec3 targetPoint, float dt, bool lockFraming) {
     const Vec3& pivot = player.cameraPivot;
     const float offsetX = targetPoint.x - pivot.x;
     const float offsetZ = targetPoint.z - pivot.z;
@@ -228,7 +228,6 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
     float yawMaxSpeed = player.lockYawMaxSpeed;
     float basePitch = player.lockPitch;
     float minPitch = limits.minPitch;
-    bool hold = false;
     if (lockFraming) {
         const float closeness =
             1.0f - SmoothStep(player.lockTurnNearDistance, player.lockTurnFarDistance, flatDistance);
@@ -236,8 +235,7 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
         yawMaxSpeed = Lerp(player.lockYawMaxSpeed, player.lockYawMaxSpeedNear, closeness);
         basePitch = Lerp(player.lockPitch, player.lockPitchNear, player.lockNearness);
         minPitch = std::max(minPitch, player.lockMinPitch);
-        hold = player.lockReacquireEnabled && player.lockTargetHidden;
-        if (player.lockReacquiring && !hold) {
+        if (player.lockReacquiring) {
             // 向き直しの間は、遅い方を使う。向きがそろったら普段の追いへ戻す。
             yawSeconds = std::max(yawSeconds, player.lockReacquireSeconds);
             yawMaxSpeed = std::min(yawMaxSpeed, player.lockReacquireMaxSpeed);
@@ -245,12 +243,6 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
             if (flatDistance > kMinimumAimDistance && error < 3.0f * kRadiansPerDegree)
                 player.lockReacquiring = false;
         }
-    }
-    if (hold) {
-        // 隠れている間は向きも見上げも保つ（地面の下・消えた所を追わない）。
-        player.cameraYawVelocity = 0.0f;
-        player.cameraPitchVelocity = 0.0f;
-        return;
     }
     if (flatDistance > kMinimumAimDistance)
         player.cameraYaw = SmoothDampAngle(player.cameraYaw, std::atan2(offsetX, offsetZ), player.cameraYawVelocity,
@@ -266,7 +258,7 @@ void TrackTarget(PlayerComponent& player, const CameraLimits& limits, Vec3 targe
 // 自由視点：視点の入力をそのまま角度に足す（ならさない。マウスに遅れると酔う）。
 // 見上げ・見下ろしが限度の外にある間（騎乗の要求が終わって限度が狭まった直後）は、一度に戻さず releaseSeconds で
 // 限度へ寄せる。入力で外へ広げることはしない。限度の内では今までどおり。
-void FreeLook(HIKARI::WorldView& world, PlayerComponent& player, const CameraLimits& limits, float dt) {
+void FreeLook(HIKARI::WorldView& world, Player& player, const CameraLimits& limits, float dt) {
     const float minPitch = limits.minPitch * kRadiansPerDegree;
     const float maxPitch = limits.maxPitch * kRadiansPerDegree;
     const float pitch = player.cameraPitchNow;
@@ -322,7 +314,7 @@ bool Settled(float now, float target) { return std::abs(now - target) <= kShapeS
 
 // 見せ方（距離・画角・視点の下限・傾き・見下ろし）を目標へならす。要求が一度も無い間と、戻り切った後は Player の値
 // そのまま（ならさない。エディタで Player の値を変えるとすぐ効く）。
-void StepShape(PlayerComponent& player, const CameraLimits& limits, float dt) {
+void StepShape(Player& player, const CameraLimits& limits, float dt) {
     PlayerCameraShape target = limits.shape;
     if (target.fovRadians <= 0.0f)
         target.fovRadians = player.cameraFovRadians;
@@ -351,7 +343,7 @@ void StepShape(PlayerComponent& player, const CameraLimits& limits, float dt) {
     }
 }
 
-void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool locked, Vec3 submittedEye, float distance,
+void Trace(HIKARI::WorldView& world, Player& player, Vec3 body, bool locked, Vec3 submittedEye, float distance,
            float fovRadians, float followSeconds, float dt) {
     HIKARI::GameProjectCameraPose pose{};
     if (!world.GetCamera().GetControlPose(pose))
@@ -365,7 +357,7 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         message, sizeof(message),
         "CameraTrace eye=(%.4f,%.4f,%.4f) target=(%.4f,%.4f,%.4f) player=(%.4f,%.4f,%.4f) locked=%d "
         "distance=%.4f fov=%.4f roll=%.4f lookDown=%.4f follow=%.4f pitch=%.4f yaw=%.4f dt=%.5f modifier=%.5f "
-        "lockNear=%.3f lockAmount=%.3f reacquire=%d hidden=%d lockTarget=%llu marker=(%.1f,%.1f)",
+        "lockNear=%.3f lockAmount=%.3f reacquire=%d lockTarget=%llu marker=(%.1f,%.1f)",
         static_cast<double>(pose.eye.x), static_cast<double>(pose.eye.y), static_cast<double>(pose.eye.z),
         static_cast<double>(pose.target.x), static_cast<double>(pose.target.y), static_cast<double>(pose.target.z),
         static_cast<double>(body.x), static_cast<double>(body.y), static_cast<double>(body.z), static_cast<int>(locked),
@@ -377,9 +369,8 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
         static_cast<double>(std::hypot(pose.eye.x - player.cameraTraceEye.x, pose.eye.y - player.cameraTraceEye.y,
                                        pose.eye.z - player.cameraTraceEye.z)),
         static_cast<double>(player.lockNearness), static_cast<double>(player.lockAmount),
-        static_cast<int>(player.lockReacquiring), static_cast<int>(player.lockTargetHidden),
-        static_cast<unsigned long long>(player.lockTarget.value), static_cast<double>(player.lockMarkerX),
-        static_cast<double>(player.lockMarkerY));
+        static_cast<int>(player.lockReacquiring), static_cast<unsigned long long>(player.lockTargetHandle.value),
+        static_cast<double>(player.lockMarkerX), static_cast<double>(player.lockMarkerY));
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "PlayerCamera", message);
     player.cameraTraceEye = submittedEye;
 }
@@ -388,8 +379,8 @@ void Trace(HIKARI::WorldView& world, PlayerComponent& player, Vec3 body, bool lo
 // 写し（TryGetViewSnapshot）から、姿勢と画角はこのフレームに出した値を使う（写しの姿勢は 1 フレーム遅れるので、
 // 回っている間に印が対象からずれないように）。写しが無い時は 1920×1080 とみなす。
 // 出した印の位置（1920×1080 の画面の画素）は player.lockMarkerX・Y（出していない時は負。確かめの記録用）。
-void DrawLockMarker(HIKARI::WorldView& world, PlayerComponent& player, const HIKARI::GameProjectCameraPose& pose,
-                    bool show, Vec3 point) {
+void DrawLockMarker(HIKARI::WorldView& world, Player& player, const HIKARI::GameProjectCameraPose& pose, bool show,
+                    Vec3 point) {
     constexpr uint64_t kMarkerEdgeId = 0x5444325010ull;
     constexpr uint64_t kMarkerId = 0x5444325011ull;
     constexpr int kMarkerOrder = 50;
@@ -442,15 +433,15 @@ void DrawLockMarker(HIKARI::WorldView& world, PlayerComponent& player, const HIK
     };
     const float size = player.lockMarkerSize;
     diamond(kMarkerEdgeId, kMarkerOrder, size + kEdgePixels, {0.05f, 0.04f, 0.04f}, player.lockMarkerOpacity * 0.6f);
-    diamond(kMarkerId, kMarkerOrder + 1, size, player.lockMarkerColor, player.lockMarkerOpacity);
+    const HIKARI::Color color = player.lockMarkerColor;
+    diamond(kMarkerId, kMarkerOrder + 1, size, {color.r, color.g, color.b}, player.lockMarkerOpacity);
 }
 
 } // namespace
 
-void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt,
-                          float alpha) {
+void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player, float dt, float alpha) {
     const CameraLimits limits = TakeLimits(player);
-    const auto camera = world.FindSceneObject(player.cameraId);
+    const auto camera = HIKARI::Extend::ObjectOf(player.camera);
     HIKARI::GameProjectTransform body{};
     if (!camera.IsValid() || !object.GetWorldTransform(body)) {
         player.cameraAccepted = false;
@@ -540,7 +531,7 @@ void PlayerCamera::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, P
         player.cinematicPending = false;
     }
     player.cameraAccepted = world.GetCamera().SubmitPose(request);
-    DrawLockMarker(world, player, request.pose, locked && !player.lockTargetHidden && !cinematic, targetPoint);
+    DrawLockMarker(world, player, request.pose, locked && !cinematic, targetPoint);
     if (player.cameraTrace)
         Trace(world, player, body.position, locked, eye, distance, request.pose.verticalFovRadians,
               limits.followSeconds, dt);

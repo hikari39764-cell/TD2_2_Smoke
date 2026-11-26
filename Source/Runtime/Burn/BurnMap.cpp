@@ -251,35 +251,9 @@ float BurnMap::ClearAll() {
     return area;
 }
 
-float BurnMap::FarthestFrom(HIKARI::GameProjectFloat3 origin) const {
-    float farthestSquared = -1.0f;
-    ForEachBurning([&](int ix, int iz, float) {
-        const HIKARI::GameProjectFloat3 c = CellCenter(ix, iz);
-        farthestSquared =
-            std::max(farthestSquared, (c.x - origin.x) * (c.x - origin.x) + (c.z - origin.z) * (c.z - origin.z));
-    });
-    return farthestSquared < 0.0f ? -1.0f : std::sqrt(farthestSquared);
-}
-
-float BurnMap::NearestTo(HIKARI::GameProjectFloat3 point) const {
-    float nearestSquared = -1.0f;
-    ForEachBurning([&](int ix, int iz, float) {
-        const HIKARI::GameProjectFloat3 c = CellCenter(ix, iz);
-        const float d2 = (c.x - point.x) * (c.x - point.x) + (c.z - point.z) * (c.z - point.z);
-        nearestSquared = nearestSquared < 0.0f ? d2 : std::min(nearestSquared, d2);
-    });
-    return nearestSquared < 0.0f ? -1.0f : std::sqrt(nearestSquared);
-}
-
 HIKARI::GameProjectFloat3 BurnMap::CellCenter(int ix, int iz) const {
     return {originX_ + (static_cast<float>(ix) + 0.5f) * cellSize_, floorY_,
             originZ_ + (static_cast<float>(iz) + 0.5f) * cellSize_};
-}
-
-float BurnMap::Remaining(int ix, int iz) const {
-    if (ix < 0 || iz < 0 || ix >= width_ || iz >= height_)
-        return 0.0f;
-    return cells_[Index(ix, iz)];
 }
 
 } // namespace Project_TD2_2

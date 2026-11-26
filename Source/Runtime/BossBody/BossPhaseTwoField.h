@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HIKARI/Project/WorldView.h"
+#include "BossBodyComponent.h"
 #include "../Boss/BossComponent.h"
 
 namespace Project_TD2_2 {
@@ -12,10 +13,10 @@ namespace Project_TD2_2 {
 // 取り合う。色調整は別の段（トーンマップの後の LUT）で、場面の環境の色調整（LUT・色味）を土台にして掛け合わせる。
 class BossPhaseTwoField final {
 public:
-    // 毎フレーム呼ぶ（外形を出さないフレームも。撃破で戻すため）。seconds はゲームの時間。
-    static void Update(HIKARI::WorldView& world, BossComponent& boss, float seconds);
+    // 毎フレーム呼ぶ（体を出さないフレームも。撃破で戻すため）。look は同じ物体の体の見た目の部品。seconds はゲームの時間。
+    static void Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look, float seconds);
     // 出し続けているエフェクトを止め、場の色を元へ戻す。
-    static void Stop(HIKARI::WorldView& world, BossComponent& boss);
+    static void Stop(HIKARI::WorldView& world, BossBodyComponent& look);
 };
 
 } // namespace Project_TD2_2

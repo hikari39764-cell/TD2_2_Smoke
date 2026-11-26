@@ -10,6 +10,7 @@
 #include "BurnFieldComponent.h"
 #include "BurnFieldRules.h"
 #include "BurnFieldVisuals.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
@@ -28,15 +29,16 @@ struct PlayerOnField {
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 facing{0.0f, 0.0f, 1.0f};
     // この FixedUpdate の中だけ使う（次の tick へ持ち越さない）。
-    PlayerComponent* component = nullptr;
+    Player* component = nullptr;
 };
 
 // 体（足元から contactRadius）が火に触れ続けて damageDelay 秒たつと、プレイヤーを炎上させ、火の中にいる間は
 // その tick の炎上の減り方を damagePerSecond にする（減らすのは PlayerSystem の炎上）。プレイヤーは 1 人（ボスと同じ探し方）。
-PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, float dt, uint64_t tick) {
+PlayerOnField StepFire(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
+                       BurnFieldComponent& field, float dt, uint64_t tick) {
     PlayerOnField seen;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
+    ComponentLookup::ForEachGame<Player>(
+        [&](HIKARI::ObjectView object, Player& player) {
             HIKARI::GameProjectTransform transform{};
             if (seen.found || !object.GetWorldTransform(transform))
                 return;
@@ -44,7 +46,7 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             seen.position = transform.position;
             seen.facing = PlayerRules::GetFacing(player);
             seen.component = &player;
-            field.fireDamageTotal = player.burnDamageTotal;
+            field.fireDamageTotal = PlayerRules::GetBurnDamageTotal(player);
             // 無敵の間（ローリングの無敵・吹っ飛び・ダウン）は触れている時間を数えず 0 に戻す：転がって火を抜ければ燃え移らない。
             // 床から fireReachHeight より高い所（筋斗雲で飛んでいる時など）は触れていない。
             if (!PlayerRules::IsAlive(player) || PlayerRules::IsInvulnerable(player) ||
@@ -57,8 +59,7 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
             if (field.contactSeconds + kContactSlack < field.damageDelay)
                 return;
             PlayerRules::Ignite(player, PlayerBurnCause::Ground, tick);
-            player.burnInGroundFire = true;
-            player.burnGroundDamagePerSecond = field.damagePerSecond;
+            PlayerRules::SetGroundFire(player, field.damagePerSecond);
         });
     if (!seen.found)
         field.contactSeconds = 0.0f;
@@ -69,11 +70,11 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
 // 元として数える。満杯で吸えない間は火を消さない（火弾にもならない）。空きが少しでもあれば 1 tick の量を消し、
 // 入りきらない煙は捨てる。ヒョウタンの「満杯でも吸える」（Gourd.absorbWhenFull）を入にすると、満杯でも消せる。
 // 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
-void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt,
-                uint64_t tick) {
+void StepAbsorb(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/, BurnFieldComponent& field,
+                const PlayerOnField& player, float dt, uint64_t tick) {
     bool handled = false;
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+    ComponentLookup::ForEachGame<Gourd>(
+        [&](HIKARI::ObjectView, Gourd& gourd) {
             if (handled)
                 return;
             handled = true;
@@ -107,37 +108,33 @@ void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const Playe
 void Trace(const BurnFieldComponent& field) {
     if (!TraceInterval::Due(field.traceEveryFrames, field.tick))
         return;
-    // 爆発のエフェクトは累計（出した・均等に間引いた・窓の上限で止めた）と、窓の中に同時にあった数の最大。
     char message[576]{};
-    std::snprintf(
-        message, sizeof(message),
-        "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
-        "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d charge=%.3f maxGap=%d blasts=%u "
-        "blastPlan=%u effects=%u thinned=%u held=%u effectPeak=%u",
-        static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
-        static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds), field.fireDamageTotal,
-        field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters, field.burningTiles, field.emitterStride,
-        static_cast<double>(field.traceAlong), static_cast<double>(field.traceAcross),
-        static_cast<int>(field.fluidAccepted), static_cast<double>(field.charge), field.maxFeedGap, field.blastCount,
-        field.blastPlan, field.blastEffectsPlayed, field.blastEffectsThinned, field.blastEffectsHeld,
-        field.blastEffectPeak);
+    std::snprintf(message, sizeof(message),
+                  "Trace tick=%llu cells=%zu area=%.3f contact=%.3f fireDamage=%.3f absorbedArea=%.3f smokeGiven=%.3f "
+                  "emitters=%d tiles=%d stride=%d fuelLength=%.2f fuelWidth=%.2f fluidAccepted=%d maxGap=%d blasts=%u",
+                  static_cast<unsigned long long>(field.tick), field.map.BurningCells(),
+                  static_cast<double>(field.map.BurningArea()), static_cast<double>(field.contactSeconds),
+                  field.fireDamageTotal, field.absorbedAreaTotal, field.smokeGivenTotal, field.activeEmitters,
+                  field.burningTiles, field.emitterStride, static_cast<double>(field.traceAlong),
+                  static_cast<double>(field.traceAcross), static_cast<int>(field.fluidAccepted), field.maxFeedGap,
+                  field.blastCount);
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Burn", message);
 }
 
 // 描画フレームの、プレイヤーの体の炎の様子（プレイヤーは 1 人）。
-BurnBody SeeBody(HIKARI::WorldView& world) {
+BurnBody SeeBody(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/) {
     BurnBody body;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
-            HIKARI::GameProjectTransform transform{};
-            if (body.found || !object.GetWorldTransform(transform))
-                return;
-            body.found = true;
-            body.position = transform.position;
-            body.remaining = player.burnRemaining;
-            body.endings = player.burnEndings;
-            body.scatter = player.burnEndReason == PlayerBurnEnd::Roll || player.burnEndReason == PlayerBurnEnd::Absorb;
-        });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
+        HIKARI::GameProjectTransform transform{};
+        if (body.found || !object.GetWorldTransform(transform))
+            return;
+        body.found = true;
+        body.position = transform.position;
+        body.remaining = PlayerRules::GetBurnRemaining(player);
+        body.endings = PlayerRules::GetBurnEndings(player);
+        const PlayerBurnEnd reason = PlayerRules::GetBurnEndReason(player);
+        body.scatter = reason == PlayerBurnEnd::Roll || reason == PlayerBurnEnd::Absorb;
+    });
     return body;
 }
 

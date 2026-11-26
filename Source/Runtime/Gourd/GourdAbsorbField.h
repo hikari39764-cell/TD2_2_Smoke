@@ -9,16 +9,15 @@ namespace Project_TD2_2 {
 class GourdAbsorbField final {
 public:
     // 描画フレームごとに、吸い込み中だけ呼ぶ。seconds は吸い込みの経過（脈動の位相）。
-    static void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float seconds);
+    static void Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, float seconds);
     // 捕まえたボスの斬撃を飲み込む口の力：斬撃のエフェクトの域だけに届き、口へ寄せて消す（消した量は読まない＝煙に数えない）。
-    static void SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd);
+    static void SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd);
     // 満杯で吸えない「入らない」の合図：口の前の霧（場の霧と口のエフェクトの域）を、口の向く先へ押し戻す短い噴き。
     // 押す強さは blockedPuffLeft が減るにつれて弱める。霧は消さない。
-    static void SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd);
+    static void SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd);
     // 吸い込みが場から消した霧の累計（口元・口の上・扇の中の力の合計。密度 × m³）。減ることはない。
     // 読めなければ false。
-    static bool ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
-                            double& outTotal);
+    static bool ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, double& outTotal);
 };
 
 } // namespace Project_TD2_2

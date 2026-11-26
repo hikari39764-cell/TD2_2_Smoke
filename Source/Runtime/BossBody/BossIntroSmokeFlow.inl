@@ -4,13 +4,13 @@
 
 // 握っている間（Sword.Grab）：外の地面から、黒い霧がゆっくり渦を巻いて根元へ寄り、そこから自分で立ち上がって行く。
 // 点は外から内へ螺旋に走るので、地面に帯を引く。周りの空気も弱く根元へ寄せる。握るほど濃くなる。
-void Gather(const Feed& feed, const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+void Gather(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SwordGrab, duration);
     if (local < 0.0f)
         return;
-    const Vec3 entry = BossIntroActor::SwordEntry(boss);
+    const Vec3 entry = BossIntroActor::SwordEntry(intro);
     const float u = local / duration;
     for (int k = 0; k < kGatherWisps; ++k) {
         const float run = static_cast<float>(k) / static_cast<float>(kGatherWisps) + state.showSeconds * kGatherSpeed;
@@ -23,7 +23,7 @@ void Gather(const Feed& feed, const BossComponent& boss) {
         wisp.gust = 0.8f;
         wisp.heat = kSeepHeat;
         feed.Smoke(kGatherId + static_cast<uint64_t>(k), wisp,
-                   boss.intro.gatherAmount * u / static_cast<float>(kGatherWisps));
+                   intro.settings.gatherAmount * u / static_cast<float>(kGatherWisps));
     }
     for (int k = 0; k < kGatherPulls; ++k) {
         const Vec3 out =
@@ -39,19 +39,19 @@ void Gather(const Feed& feed, const BossComponent& boss) {
 // 見得の黒い霧（抜刀の後から演技の終わりまで）：主役の両脇から後ろへ回り込みながら立ち上がる壁（点は弧に沿って走り、
 // 力がゆっくりした渦と上昇をつくる）と、両脇の地面を前へ這い出す霧（こちらへ迫って来る）。主役の前へは入れない
 // （体の周りの薄い煙は、別に消し続けている）。
-void Backdrop(const Feed& feed, const BossComponent& boss) {
-    const BossIntroState& state = boss.introState;
+void Backdrop(const Feed& feed, const BossIntroComponent& intro) {
+    const BossIntroState& state = intro.state;
     const float since = Since(state, Kind::SwordOut);
     // 霧が晴れ始めたら、もう足さない。
     if (Since(state, Kind::SmokeDisperse) >= 0.0f)
         return;
-    if (since < kBackdropAt || boss.intro.backdropAmount <= 0.0f)
+    if (since < kBackdropAt || intro.settings.backdropAmount <= 0.0f)
         return;
     const float ramp = Smooth((since - kBackdropAt) / kBackdropRise);
-    const Vec3 feet = BossIntroSmoke::FeetWorld(boss);
+    const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     const Vec3 forward = Forward(state.yaw);
     const Vec3 left = Tangent(forward);
-    const float wall = boss.intro.backdropAmount * 0.7f * ramp / static_cast<float>(kBackdropWisps);
+    const float wall = intro.settings.backdropAmount * 0.7f * ramp / static_cast<float>(kBackdropWisps);
     for (int k = 0; k < kBackdropWisps; ++k) {
         const uint64_t id = kBackdropId + static_cast<uint64_t>(k);
         const float side = k % 2 == 0 ? 1.0f : -1.0f;
@@ -88,7 +88,7 @@ void Backdrop(const Feed& feed, const BossComponent& boss) {
         wisp.radius = 0.38f;
         wisp.velocity = Mul(forward, 3.0f);
         wisp.gust = 1.0f;
-        feed.Smoke(id, wisp, boss.intro.backdropAmount * 0.15f * ramp);
+        feed.Smoke(id, wisp, intro.settings.backdropAmount * 0.15f * ramp);
         // 脇の霧を後ろへ巻き上げる流れと、地面の霧を前へ押し出す流れ。
         feed.Blow(kBackdropId + 10 + static_cast<uint64_t>(k), Add(feet, Add(Mul(left, side * 3.0f), Up(2.6f))), 3.2f,
                   Normalize(Add(Add(Mul(forward, -1.0f), Mul(left, side * 0.4f * sway)), Up(0.35f + 0.3f * sway))),
@@ -131,33 +131,33 @@ void DrawStreamers(const Feed& feed, const BossIntroSettings& s, Vec3 root, Vec3
 }
 
 // 主役から外へ、黒い霧を流す力（周りの 6 か所から、外へ少し上へ）。strength は 0〜1。
-void DisperseFlow(const Feed& feed, const BossComponent& boss, float strength) {
+void DisperseFlow(const Feed& feed, const BossIntroComponent& intro, float strength) {
     if (strength <= 0.0f)
         return;
-    const Vec3 feet = BossIntroSmoke::FeetWorld(boss);
+    const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     for (int k = 0; k < kDisperseBlows; ++k) {
         const Vec3 out = Around(2.0f * kPi * (static_cast<float>(k) + 0.5f) / static_cast<float>(kDisperseBlows));
         feed.Blow(kDisperseId + static_cast<uint64_t>(k), Add(feet, Add(Mul(out, 2.6f), Up(2.2f))), 4.2f,
-                  Normalize(Add(out, Up(0.25f))), boss.intro.disperseBlow * strength, FluidChannels::kIntroSmoke);
+                  Normalize(Add(out, Up(0.25f))), intro.settings.disperseBlow * strength, FluidChannels::kIntroSmoke);
     }
 }
 
 // 見得の終わり（拍 Smoke.Disperse）：黒い霧が主役から外へ流れて、薄れて行く。音も衝撃も付けない。流れはゆっくり立ち
 // 上げ（いきなり吹き飛ばさない）、押し出した先で薄める。演技の後は、BossIntroSmoke::Render が同じ流れのまま消し切る。
-void Disperse(const Feed& feed, BossComponent& boss) {
-    BossIntroState& state = boss.introState;
+void Disperse(const Feed& feed, BossIntroComponent& intro) {
+    BossIntroState& state = intro.state;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SmokeDisperse, duration);
     if (local < 0.0f)
         return;
     const float u = local / duration;
-    const Vec3 feet = BossIntroSmoke::FeetWorld(boss);
+    const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     if (state.dispersePush) {
         state.dispersePush = false;
         feed.Burst(kDisperseId + 6, Add(feet, Up(2.5f)), kDisperseRadius, kDisperseBurst, FluidChannels::kIntroSmoke);
-        feed.Burst(kDisperseId + 7, feet, kDisperseRadius * 1.5f, boss.intro.disperseFogPush, FluidChannels::kFog);
+        feed.Burst(kDisperseId + 7, feet, kDisperseRadius * 1.5f, intro.settings.disperseFogPush, FluidChannels::kFog);
     }
-    DisperseFlow(feed, boss, Smooth(u * 2.5f));
+    DisperseFlow(feed, intro, Smooth(u * 2.5f));
     // 押し出した先（周り）で薄める。後半は真ん中も。
     const float fade = kDisperseFade * Smooth(u * 1.5f);
     for (int k = 0; k < 4; ++k) {

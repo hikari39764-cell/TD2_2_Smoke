@@ -13,7 +13,6 @@
 #include "GourdRules.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Common/ObjectVariables.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
@@ -35,53 +34,67 @@ constexpr float kIntakeSmoothSeconds = 0.2f;
 
 using GameSession::IsPlaying;
 
-Vec3 CameraForward(HIKARI::WorldView& world, const GourdComponent& gourd, Vec3 fallback) {
+// カメラの正面（水平）を out に書く。読めなければ false（out は変えない）。
+bool CameraForward(HIKARI::WorldView& world, const Gourd& gourd, Vec3& out) {
     HIKARI::GameProjectCameraPose pose{};
-    if (world.GetCamera().GetControlPose(pose))
-        return PlayerRules::FlatNormalize(Difference(pose.target, pose.eye), fallback);
-    const auto camera = world.FindSceneObject(gourd.cameraId);
+    if (world.GetCamera().GetControlPose(pose)) {
+        out = PlayerRules::FlatNormalize(Difference(pose.target, pose.eye), out);
+        return true;
+    }
+    const auto camera = HIKARI::Extend::ObjectOf(gourd.camera);
     HIKARI::GameProjectTransform transform{};
     if (camera.IsValid() && camera.GetWorldTransform(transform)) {
         const auto q = transform.rotation;
-        return PlayerRules::FlatNormalize({2.0f * (q.x * q.z + q.w * q.y), 0.0f, 1.0f - 2.0f * (q.x * q.x + q.y * q.y)},
-                                          fallback);
+        out = PlayerRules::FlatNormalize({2.0f * (q.x * q.z + q.w * q.y), 0.0f, 1.0f - 2.0f * (q.x * q.x + q.y * q.y)},
+                                         out);
+        return true;
     }
-    return fallback;
+    return false;
 }
 
-template <class Callback> bool WithPlayer(HIKARI::WorldView& world, const GourdComponent& gourd, Callback&& callback) {
-    const auto playerObject = world.FindSceneObject(gourd.playerId);
+// 口の向きの元になる水平の向き：吸い込み（構え・後隙も）はプレイヤーの向き、ロック中は対象へ、ほかはカメラの正面。
+Vec3 Horizontal(Vec3 from, Vec3 facing, Vec3 camera, bool absorbPose, bool hasLock, Vec3 lockPosition) {
+    if (absorbPose)
+        return facing;
+    if (hasLock)
+        return PlayerRules::FlatNormalize(Difference(lockPosition, from), facing);
+    return camera;
+}
+
+template <class Callback>
+bool WithPlayer(HIKARI::WorldView& world, const Gourd& gourd, Callback&& callback) {
+    const auto playerObject = HIKARI::Extend::ObjectOf(gourd.player);
     if (!playerObject.IsValid())
         return false;
     bool found = false;
-    ForEachOnObject<PlayerComponent>(world, kPlayerType, playerObject,
-                                     [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                         found = true;
-                                         callback(object, player);
-                                     });
+    ForEachOnObject<Player>(world, kPlayerType, playerObject, [&](HIKARI::ObjectView object, Player& player) {
+        found = true;
+        callback(object, player);
+    });
     return found;
 }
 
-void EnterAbsorbPhase(GourdComponent& gourd, GourdAbsorbPhase phase) {
+void EnterAbsorbPhase(Gourd& gourd, GourdAbsorbPhase phase) {
     gourd.absorbPhase = phase;
     gourd.absorbPhaseFrames = 0;
 }
 
 // 後隙が 0 F なら、吸い終わった F から動ける（後隙の段階を 1 F も挟まない）。
-void FinishAbsorb(GourdComponent& gourd) {
+void FinishAbsorb(Gourd& gourd) {
     EnterAbsorbPhase(gourd, gourd.absorbRecoveryFrames > 0 ? GourdAbsorbPhase::Recovery : GourdAbsorbPhase::Idle);
 }
 
 // 固定 tick ごとに一度だけ進める。構え → 吸う → 後隙。どの段階も動作ロックは掛けず、歩きを遅くするだけにする
 // （ロックするとローリングで打ち切れない）。ローリング・被弾などで通常の姿勢でなくなったら、後隙なしで打ち切る。
-void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
-    gourd.playerValid = WithPlayer(world, gourd, [&](HIKARI::ObjectView, PlayerComponent& player) {
+void StepAbsorb(HIKARI::WorldView& world, Gourd& gourd) {
+    gourd.playerValid = WithPlayer(world, gourd, [&](HIKARI::ObjectView, Player& player) {
         // ローリングの移動が終わった後なら、吸い込み（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
         if (gourd.enabled && gourd.absorbPhase == GourdAbsorbPhase::Idle && GourdRules::WantsAbsorb(gourd))
             PlayerRules::TryEndRollForAction(player);
         // 演出の間（ボスの登場）は使えない。
-        const bool usable = gourd.enabled && PlayerRules::IsAlive(player) && player.state == PlayerState::Normal &&
-                            player.cinematicHold <= 0;
+        const bool usable = gourd.enabled && PlayerRules::IsAlive(player) &&
+                            PlayerRules::GetState(player) == PlayerState::Normal &&
+                            !PlayerRules::IsCinematicHeld(player);
         if (!usable)
             EnterAbsorbPhase(gourd, GourdAbsorbPhase::Idle);
         switch (gourd.absorbPhase) {
@@ -130,7 +143,7 @@ void StepAbsorb(HIKARI::WorldView& world, GourdComponent& gourd) {
 
 // 満杯で吸えない「入らない」の tick に、ヒョウタンを口の向きと逆へ小さく跳ねさせ、押し戻す噴きを始める
 // （跳ねは同じ tick の StepRecoil が一歩目を進める。振動は GourdAbsorbVisuals が回数の差を見て出す）。
-void StepBlocked(GourdComponent& gourd, float dt) {
+void StepBlocked(Gourd& gourd, float dt) {
     gourd.blockedPuffLeft = std::max(0, gourd.blockedPuffLeft - 1);
     if (!GourdRules::StepBlocked(gourd, dt))
         return;
@@ -148,7 +161,7 @@ void SpringAxis(float& value, float& velocity, float target, float frequency, fl
     velocity = (velocity - frequency * impulse) * decay;
 }
 
-void StepRecoil(GourdComponent& gourd, float dt) {
+void StepRecoil(Gourd& gourd, float dt) {
     if (gourd.recoilFramesLeft > 0) {
         gourd.recoilOffset.x += gourd.recoilPerFrame.x;
         gourd.recoilOffset.y += gourd.recoilPerFrame.y;
@@ -162,8 +175,8 @@ void StepRecoil(GourdComponent& gourd, float dt) {
     SpringAxis(gourd.recoilOffset.z, gourd.recoilVelocity.z, 0.0f, gourd.followFrequency, dt);
 }
 
-void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd, float dt, float alpha) {
-    WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, PlayerComponent& player) {
+void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, float dt, float alpha) {
+    WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
         HIKARI::GameProjectTransform playerTransform{};
         if (!playerObject.GetWorldTransform(playerTransform))
             return;
@@ -186,32 +199,35 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
             SpringAxis(gourd.followPosition.y, gourd.followVelocity.y, desired.y, gourd.followFrequency, dt);
             SpringAxis(gourd.followPosition.z, gourd.followVelocity.z, desired.z, gourd.followFrequency, dt);
         }
-        gourd.position = {gourd.followPosition.x + gourd.recoilOffset.x, gourd.followPosition.y + gourd.recoilOffset.y,
-                          gourd.followPosition.z + gourd.recoilOffset.z};
-        Vec3 horizontal = CameraForward(world, gourd, facing);
+        // 描画のヒョウタン（見た目と流体の注入だけ。規則の置き場所は StepRulePose）。
+        gourd.drawPosition = {gourd.followPosition.x + gourd.recoilOffset.x,
+                              gourd.followPosition.y + gourd.recoilOffset.y,
+                              gourd.followPosition.z + gourd.recoilOffset.z};
+        Vec3 camera = facing;
+        if (!CameraForward(world, gourd, camera))
+            camera = facing;
         const auto lockTarget = world.FindObject(PlayerRules::GetLockTarget(player));
         HIKARI::GameProjectTransform targetTransform{};
         const bool hasLock = lockTarget.IsValid() && lockTarget.GetWorldTransform(targetTransform);
         // 吸い込み（構え・後隙も）の口は、カメラやロック対象ではなくプレイヤーの向きへ向ける。
         const bool absorbPose = gourd.absorbPhase != GourdAbsorbPhase::Idle;
-        if (absorbPose)
-            horizontal = facing;
-        else if (hasLock)
-            horizontal = PlayerRules::FlatNormalize(Difference(targetTransform.position, gourd.position), facing);
-        gourd.sinkPosition = {gourd.position.x + horizontal.x * gourd.absorbForwardDistance,
-                              playerTransform.position.y + gourd.absorbHeightOffset,
-                              gourd.position.z + horizontal.z * gourd.absorbForwardDistance};
-        gourd.aimDirection = gourd.absorbing ? Normalize(Difference(gourd.sinkPosition, gourd.position), horizontal)
-                             : absorbPose    ? horizontal
-                             : gourd.aimOverridePending ? gourd.aimOverrideDirection
-                             : hasLock ? Normalize(Difference(targetTransform.position, gourd.position), horizontal)
+        const Vec3 horizontal =
+            Horizontal(gourd.drawPosition, facing, camera, absorbPose, hasLock, targetTransform.position);
+        gourd.drawSinkPosition = {gourd.drawPosition.x + horizontal.x * gourd.absorbForwardDistance,
+                                  playerTransform.position.y + gourd.absorbHeightOffset,
+                                  gourd.drawPosition.z + horizontal.z * gourd.absorbForwardDistance};
+        gourd.drawAimDirection =
+            gourd.absorbing            ? Normalize(Difference(gourd.drawSinkPosition, gourd.drawPosition), horizontal)
+            : absorbPose               ? horizontal
+            : gourd.aimOverridePending ? gourd.aimOverrideDirection
+            : hasLock                  ? Normalize(Difference(targetTransform.position, gourd.drawPosition), horizontal)
                                        : horizontal;
-        gourd.mouthPosition = {gourd.position.x + gourd.aimDirection.x * gourd.height * 0.5f,
-                               gourd.position.y + gourd.aimDirection.y * gourd.height * 0.5f,
-                               gourd.position.z + gourd.aimDirection.z * gourd.height * 0.5f};
+        gourd.drawMouthPosition = {gourd.drawPosition.x + gourd.drawAimDirection.x * gourd.height * 0.5f,
+                                   gourd.drawPosition.y + gourd.drawAimDirection.y * gourd.height * 0.5f,
+                                   gourd.drawPosition.z + gourd.drawAimDirection.z * gourd.height * 0.5f};
         HIKARI::GameProjectTransform transform{};
-        transform.position = gourd.position;
-        transform.rotation = VectorMath::RotationFromYAxis(gourd.aimDirection);
+        transform.position = gourd.drawPosition;
+        transform.rotation = VectorMath::RotationFromYAxis(gourd.drawAimDirection);
         // ボスの斬撃を吸い取った時は、飲み込んだように一度大きく膨らんで戻る（止めの間は時間が遅いので、膨らんだまま見える）。
         if (gourd.catchPulseObserved != gourd.catchCount) {
             gourd.catchPulseObserved = gourd.catchCount;
@@ -230,14 +246,46 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent&
     });
 }
 
-void Trace(const HIKARI::WorldView& world, HIKARI::ObjectView object, const GourdComponent& gourd) {
-    // 物体変数の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
-    float varSmoke = 0.0f;
-    float varCapacity = 0.0f;
-    bool varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdSmokeVariable, varSmoke);
-    varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdCapacityVariable, varCapacity) && varsRead;
-    float varFireShot = 0.0f;
-    varsRead = ObjectVariables::ReadFloat(world, object.GetHandle(), kGourdFireShotVariable, varFireShot) && varsRead;
+// 規則のヒョウタンの置き場所（c-164cab）：固定 tick の終わりに、プレイヤーのその tick の位置・向き、吸い込みの段階、
+// ロック対象と、Update で覚えたカメラの正面から決める。ばね・補間は使わない（描画のヒョウタンは Follow が別に持つ）。
+void StepRulePose(HIKARI::WorldView& world, Gourd& gourd) {
+    WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
+        HIKARI::GameProjectTransform playerTransform{};
+        if (!playerObject.GetWorldTransform(playerTransform))
+            return;
+        const auto facing = PlayerRules::GetFacing(player);
+        const Vec3 right{facing.z, 0.0f, -facing.x};
+        const auto offset = gourd.shoulderOffset;
+        gourd.position = {playerTransform.position.x + right.x * offset.x + facing.x * offset.z + gourd.recoilOffset.x,
+                          playerTransform.position.y + offset.y + gourd.recoilOffset.y,
+                          playerTransform.position.z + right.z * offset.x + facing.z * offset.z + gourd.recoilOffset.z};
+        const auto lockTarget = world.FindObject(PlayerRules::GetLockTarget(player));
+        HIKARI::GameProjectTransform targetTransform{};
+        const bool hasLock = lockTarget.IsValid() && lockTarget.GetWorldTransform(targetTransform);
+        const bool absorbPose = gourd.absorbPhase != GourdAbsorbPhase::Idle;
+        const Vec3 camera = gourd.inputCameraForwardValid ? gourd.inputCameraForward : facing;
+        const Vec3 horizontal =
+            Horizontal(gourd.position, facing, camera, absorbPose, hasLock, targetTransform.position);
+        gourd.sinkPosition = {gourd.position.x + horizontal.x * gourd.absorbForwardDistance,
+                              playerTransform.position.y + gourd.absorbHeightOffset,
+                              gourd.position.z + horizontal.z * gourd.absorbForwardDistance};
+        gourd.aimDirection = gourd.absorbing ? Normalize(Difference(gourd.sinkPosition, gourd.position), horizontal)
+                             : absorbPose    ? horizontal
+                             : hasLock ? Normalize(Difference(targetTransform.position, gourd.position), horizontal)
+                                       : horizontal;
+        gourd.mouthPosition = {gourd.position.x + gourd.aimDirection.x * gourd.height * 0.5f,
+                               gourd.position.y + gourd.aimDirection.y * gourd.height * 0.5f,
+                               gourd.position.z + gourd.aimDirection.z * gourd.height * 0.5f};
+        gourd.rulePoseReady = true;
+    });
+}
+
+void Trace(HIKARI::ObjectView object, const Gourd& gourd) {
+    // ゲーム全体の値（Params）の読み戻し。部品の Update との順序で、現在値より 1 フレーム遅れることがある。
+    const float varSmoke = HIKARI::Params::GetFloat(kGourdSmokeVariable, -1.0f);
+    const float varCapacity = HIKARI::Params::GetFloat(kGourdCapacityVariable, -1.0f);
+    const float varFireShot = HIKARI::Params::GetFloat(kGourdFireShotVariable, -1.0f);
+    const bool varsRead = varSmoke >= 0.0f && varCapacity >= 0.0f && varFireShot >= 0.0f;
     char message[1024]{};
     std::snprintf(
         message, sizeof(message),
@@ -277,49 +325,59 @@ void GourdSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& f
     HIKARI::GameProjectInputActionState input{};
     const bool valid = world.GetInput().GetAction("Gameplay.Absorb", input);
     // 先行入力は押した F の終わりにも 1 減るので、1 足して「押した後に覚えておく F 数」にする。
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView, GourdComponent& gourd) {
-                                               GourdRules::Initialize(gourd);
-                                               gourd.absorbHeld = valid && input.down;
-                                               if (valid && input.pressed)
-                                                   gourd.absorbBuffer = std::max(0, gourd.absorbBufferFrames) + 1;
-                                           });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView, Gourd& gourd) {
+        GourdRules::Initialize(gourd);
+        gourd.absorbHeld = valid && input.down;
+        if (valid && input.pressed)
+            gourd.absorbBuffer = std::max(0, gourd.absorbBufferFrames) + 1;
+        // カメラの正面は入力の基準：ここで覚え、固定 tick が使う（c-164cab）。
+        gourd.inputCameraForwardValid = CameraForward(world, gourd, gourd.inputCameraForward);
+    });
 }
 
 void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView, GourdComponent& gourd) {
-                                               gourd.processedTick = frame.fixedTickIndex;
-                                               GourdRules::Initialize(gourd);
-                                               StepAbsorb(world, gourd);
-                                               StepBlocked(gourd, frame.fixedDt);
-                                               if (gourd.enabled && frame.fixedDt > 0.0f)
-                                                   StepRecoil(gourd, frame.fixedDt);
-                                               GourdRules::StepFireShot(gourd, frame.fixedDt);
-                                               GourdRules::StepSwallow(gourd);
-                                           });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView, Gourd& gourd) {
+        gourd.processedTick = frame.fixedTickIndex;
+        GourdRules::Initialize(gourd);
+        // 前の描画のフレームで読み戻した霧の増えを、ここで煙に入れる。
+        GourdRules::ApplyPendingSmoke(gourd);
+        StepAbsorb(world, gourd);
+        StepBlocked(gourd, frame.fixedDt);
+        if (gourd.enabled && frame.fixedDt > 0.0f)
+            StepRecoil(gourd, frame.fixedDt);
+        GourdRules::StepFireShot(gourd, frame.fixedDt);
+        GourdRules::StepSwallow(gourd);
+    });
+}
+
+void GourdSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+    if (!IsPlaying(world, frame))
+        return;
+    // この tick の終わりのプレイヤー（移動の後）に合わせて、規則のヒョウタンの置き場所を決める（次の tick の砲撃の口・
+    // 同じ tick の後で動くボスの捕まえる口が読む）。
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView, Gourd& gourd) {
+        if (gourd.enabled && gourd.playerValid)
+            StepRulePose(world, gourd);
+    });
 }
 
 void GourdSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType),
-                                           [&](HIKARI::ObjectView object, GourdComponent& gourd) {
-                                               if (gourd.enabled && gourd.playerValid)
-                                                   Follow(world, object, gourd, std::max(0.0f, frame.gameDt),
-                                                          frame.fixedInterpolationAlpha);
-                                               gourd.aimOverridePending = false;
-                                               GourdAbsorbVisuals::Update(world, object, gourd, frame);
-                                           });
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView object, Gourd& gourd) {
+        if (gourd.enabled && gourd.playerValid)
+            Follow(world, object, gourd, std::max(0.0f, frame.gameDt), frame.fixedInterpolationAlpha);
+        gourd.aimOverridePending = false;
+        GourdAbsorbVisuals::Update(world, object, gourd, frame);
+    });
 }
 
 void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdComponent>(HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView object,
-                                                                                        GourdComponent& gourd) {
+    ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView object, Gourd& gourd) {
         // 口元の吸入・口の上の回収・扇の中で消した霧を足して、煙に数える（どれも累計値）。
         double total = 0.0;
         gourd.readAccepted = GourdAbsorbField::ReadRemoved(world, object, gourd, total);
@@ -331,7 +389,7 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
         if (frame.gameDt > 0.0f) {
             const float rate =
                 static_cast<float>(gourd.removedDelta) * GourdRules::GetSmokePerVolume(gourd) / frame.gameDt;
-            gourd.intakeRate += (rate - gourd.intakeRate) * (1.0f - std::exp(-frame.gameDt / kIntakeSmoothSeconds));
+            gourd.intakeRate += (rate - gourd.intakeRate) * VectorMath::ExpFollow(frame.gameDt, kIntakeSmoothSeconds);
         }
         gourd.fluidAccepted = true;
         gourd.fluidSubmissions = 0;
@@ -343,14 +401,13 @@ void GourdSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext
             GourdAbsorbField::SubmitPushBack(world, object, gourd);
         ++gourd.renderFrameCount;
         if (TraceInterval::Due(gourd.traceEveryFrames, gourd.renderFrameCount))
-            Trace(world, object, gourd);
+            Trace(object, gourd);
     });
 }
 
 void GourdSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType),
-        [&](HIKARI::ObjectView, GourdComponent& gourd) { GourdAbsorbVisuals::Stop(world, gourd); });
+    ComponentLookup::ForEachGame<Gourd>(
+        [&](HIKARI::ObjectView, Gourd& gourd) { GourdAbsorbVisuals::Stop(world, gourd); });
 }
 
 } // namespace Project_TD2_2
