@@ -10,6 +10,7 @@
 #include "BurnFieldComponent.h"
 #include "BurnFieldRules.h"
 #include "BurnFieldVisuals.h"
+#include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
@@ -28,15 +29,16 @@ struct PlayerOnField {
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 facing{0.0f, 0.0f, 1.0f};
     // この FixedUpdate の中だけ使う（次の tick へ持ち越さない）。
-    PlayerComponent* component = nullptr;
+    Player* component = nullptr;
 };
 
 // 体（足元から contactRadius）が火に触れ続けて damageDelay 秒たつと、プレイヤーを炎上させ、火の中にいる間は
 // その tick の炎上の減り方を damagePerSecond にする（減らすのは PlayerSystem の炎上）。プレイヤーは 1 人（ボスと同じ探し方）。
-PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, float dt, uint64_t tick) {
+PlayerOnField StepFire(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
+                       BurnFieldComponent& field, float dt, uint64_t tick) {
     PlayerOnField seen;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
+    ComponentLookup::ForEachGame<Player>(
+        [&](HIKARI::ObjectView object, Player& player) {
             HIKARI::GameProjectTransform transform{};
             if (seen.found || !object.GetWorldTransform(transform))
                 return;
@@ -68,11 +70,11 @@ PlayerOnField StepFire(HIKARI::WorldView& world, BurnFieldComponent& field, floa
 // 元として数える。満杯で吸えない間は火を消さない（火弾にもならない）。空きが少しでもあれば 1 tick の量を消し、
 // 入りきらない煙は捨てる。ヒョウタンの「満杯でも吸える」（Gourd.absorbWhenFull）を入にすると、満杯でも消せる。
 // 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
-void StepAbsorb(HIKARI::WorldView& world, BurnFieldComponent& field, const PlayerOnField& player, float dt,
-                uint64_t tick) {
+void StepAbsorb(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/, BurnFieldComponent& field,
+                const PlayerOnField& player, float dt, uint64_t tick) {
     bool handled = false;
-    world.ForEachComponent<GourdComponent>(
-        HIKARI::MakeComponentTypeId(kGourdType), [&](HIKARI::ObjectView, GourdComponent& gourd) {
+    ComponentLookup::ForEachGame<Gourd>(
+        [&](HIKARI::ObjectView, Gourd& gourd) {
             if (handled)
                 return;
             handled = true;
@@ -120,20 +122,19 @@ void Trace(const BurnFieldComponent& field) {
 }
 
 // 描画フレームの、プレイヤーの体の炎の様子（プレイヤーは 1 人）。
-BurnBody SeeBody(HIKARI::WorldView& world) {
+BurnBody SeeBody(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/) {
     BurnBody body;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
-            HIKARI::GameProjectTransform transform{};
-            if (body.found || !object.GetWorldTransform(transform))
-                return;
-            body.found = true;
-            body.position = transform.position;
-            body.remaining = PlayerRules::GetBurnRemaining(player);
-            body.endings = PlayerRules::GetBurnEndings(player);
-            const PlayerBurnEnd reason = PlayerRules::GetBurnEndReason(player);
-            body.scatter = reason == PlayerBurnEnd::Roll || reason == PlayerBurnEnd::Absorb;
-        });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
+        HIKARI::GameProjectTransform transform{};
+        if (body.found || !object.GetWorldTransform(transform))
+            return;
+        body.found = true;
+        body.position = transform.position;
+        body.remaining = PlayerRules::GetBurnRemaining(player);
+        body.endings = PlayerRules::GetBurnEndings(player);
+        const PlayerBurnEnd reason = PlayerRules::GetBurnEndReason(player);
+        body.scatter = reason == PlayerBurnEnd::Roll || reason == PlayerBurnEnd::Absorb;
+    });
     return body;
 }
 

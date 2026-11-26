@@ -5,36 +5,36 @@
 
 namespace Project_TD2_2 {
 
-float GourdShotRules::GetFalloffFraction(const GourdShotComponent& shot, float distance) {
+float GourdShotRules::GetFalloffFraction(const GourdShot& shot, float distance) {
     const float start = std::min(shot.falloffStart, shot.range);
     if (distance <= start)
         return 0.0f;
     return shot.range > start ? std::clamp((distance - start) / (shot.range - start), 0.0f, 1.0f) : 1.0f;
 }
 
-float GourdShotRules::GetDamageAtDistance(const GourdShotComponent& shot, float distance) {
+float GourdShotRules::GetDamageAtDistance(const GourdShot& shot, float distance) {
     return shot.damage * (1.0f - (1.0f - shot.finalDamageRatio) * GetFalloffFraction(shot, distance));
 }
 
-float GourdShotRules::GetProjectileDamage(const GourdShotComponent& shot, const GourdProjectile& projectile) {
+float GourdShotRules::GetProjectileDamage(const GourdShot& shot, const GourdProjectile& projectile) {
     return GetDamageAtDistance(shot, projectile.distance) *
            (projectile.fire ? std::max(0.0f, shot.fireShotDamageScale) : 1.0f);
 }
 
-float GourdShotRules::GetSpeedAtDistance(const GourdShotComponent& shot, float distance) {
+float GourdShotRules::GetSpeedAtDistance(const GourdShot& shot, float distance) {
     const float ratio = std::clamp(distance / std::max(shot.range, 0.1f), 0.0f, 1.0f);
     return shot.initialSpeed * (1.0f - (1.0f - shot.finalSpeedRatio) * ratio);
 }
 
-float GourdShotRules::GetRadiusAtDistance(const GourdShotComponent& shot, float distance) {
+float GourdShotRules::GetRadiusAtDistance(const GourdShot& shot, float distance) {
     return shot.projectileRadius * (1.0f + (shot.finalRadiusScale - 1.0f) * GetFalloffFraction(shot, distance));
 }
 
-float GourdShotRules::GetDensityAtDistance(const GourdShotComponent& shot, float distance) {
+float GourdShotRules::GetDensityAtDistance(const GourdShot& shot, float distance) {
     return 1.0f - (1.0f - shot.finalDensityRatio) * GetFalloffFraction(shot, distance);
 }
 
-int GourdShotRules::GetRepeatFrames(const GourdShotComponent& shot, int chainShots) {
+int GourdShotRules::GetRepeatFrames(const GourdShot& shot, int chainShots) {
     const float speedUp =
         std::min(std::max(shot.rapidMax, 1.0f),
                  1.0f + std::max(shot.rapidAccel, 0.0f) * static_cast<float>(std::max(chainShots - 1, 0)));
@@ -42,29 +42,29 @@ int GourdShotRules::GetRepeatFrames(const GourdShotComponent& shot, int chainSho
     return std::max({1, shot.rapidMinFrames, frames});
 }
 
-bool GourdShotRules::IsFiring(const GourdShotComponent& shot) { return shot.phase != GourdShotPhase::Idle; }
+bool GourdShotRules::IsFiring(const GourdShot& shot) { return shot.phase != GourdShotPhase::Idle; }
 
-uint32_t GourdShotRules::GetActiveProjectileCount(const GourdShotComponent& shot) {
+uint32_t GourdShotRules::GetActiveProjectileCount(const GourdShot& shot) {
     return static_cast<uint32_t>(std::count_if(shot.projectiles.begin(), shot.projectiles.end(),
                                                [](const GourdProjectile& projectile) { return projectile.active; }));
 }
 
-bool GourdShotRules::IsWindingUp(const GourdShotComponent& shot) { return shot.phase == GourdShotPhase::Windup; }
+bool GourdShotRules::IsWindingUp(const GourdShot& shot) { return shot.phase == GourdShotPhase::Windup; }
 
-bool GourdShotRules::IsChaining(const GourdShotComponent& shot) {
+bool GourdShotRules::IsChaining(const GourdShot& shot) {
     // 後隙を延ばして連射を待つのと同じ見方（GourdShotSystem の EndRecovery）。
     return shot.phase == GourdShotPhase::Recovery && (shot.attackHeld || shot.attackBuffer > 0) &&
            shot.processedTick <= shot.nextFireTick;
 }
 
-uint64_t GourdShotRules::GetShotsFired(const GourdShotComponent& shot) { return shot.shotsFired; }
+uint64_t GourdShotRules::GetShotsFired(const GourdShot& shot) { return shot.shotsFired; }
 
-HIKARI::GameProjectFloat3 GourdShotRules::GetAimOrigin(const GourdShotComponent& shot) { return shot.aimOrigin; }
+HIKARI::GameProjectFloat3 GourdShotRules::GetAimOrigin(const GourdShot& shot) { return shot.aimOrigin; }
 
-HIKARI::GameProjectFloat3 GourdShotRules::GetAimDirection(const GourdShotComponent& shot) { return shot.aimDirection; }
+HIKARI::GameProjectFloat3 GourdShotRules::GetAimDirection(const GourdShot& shot) { return shot.aimDirection; }
 
-float GourdShotRules::GetSmokeCost(const GourdShotComponent& shot) { return shot.smokeCost; }
+float GourdShotRules::GetSmokeCost(const GourdShot& shot) { return shot.smokeCost; }
 
-void GourdShotRules::ReserveFluidDomains(GourdShotComponent& shot, size_t count) { shot.reservedDomains = count; }
+void GourdShotRules::ReserveFluidDomains(GourdShot& shot, size_t count) { shot.reservedDomains = count; }
 
 } // namespace Project_TD2_2

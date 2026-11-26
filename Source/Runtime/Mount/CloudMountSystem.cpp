@@ -68,17 +68,13 @@ using GameSession::ReadAction;
 // CloudMount と、同じ物体の Player の組ごとに callback(object, mount, player) を呼ぶ。Player が無ければ何もしない。
 template <class Callback>
 void ForEachRider(HIKARI::WorldView& world, Callback&& callback) {
-    world.ForEachComponent<CloudMountComponent>(
-        HIKARI::MakeComponentTypeId(kCloudMountType), [&](HIKARI::ObjectView object, CloudMountComponent& mount) {
-            ForEachOnObject<PlayerComponent>(world, kPlayerType, object,
-                                             [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                 callback(object, mount, player);
-                                             });
-        });
+    ComponentLookup::ForEachGame<CloudMount>([&](HIKARI::ObjectView object, CloudMount& mount) {
+        ForEachOnObject<Player>(world, kPlayerType, object,
+                                [&](HIKARI::ObjectView, Player& player) { callback(object, mount, player); });
+    });
 }
 
-void Log(HIKARI::ObjectView object, const CloudMountComponent& mount, const char* event, uint64_t tick,
-         const char* extra = "") {
+void Log(HIKARI::ObjectView object, const CloudMount& mount, const char* event, uint64_t tick, const char* extra = "") {
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
     char message[256]{};
@@ -105,7 +101,7 @@ bool FindGroundBelow(HIKARI::WorldView& world, HIKARI::ObjectView object, Vec3 c
 }
 
 // 召喚を始める（乗っていない時と、解除中に押し直した時）。持ち上げる高さは足元の地面から決める。
-void StartSummon(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, uint64_t tick) {
+void StartSummon(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, uint64_t tick) {
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
     float groundY = 0.0f;
@@ -120,8 +116,7 @@ void StartSummon(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount
 }
 
 // Mount が押された：乗る・降りるを切り替える。
-void Toggle(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
-            uint64_t tick) {
+void Toggle(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, Player& player, uint64_t tick) {
     const CloudMountState next = CloudMountRules::NextOnToggle(mount.state);
     if (next == CloudMountState::Dismissing) {
         CloudMountRules::Enter(mount, CloudMountState::Dismissing);
@@ -144,8 +139,7 @@ void Toggle(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCompo
 
 // 落下を受け止める：乗っていない時、足場を離れて catchFallMeters 落ちたら自動で召喚する。プレイヤーが通常の状態で
 // なければ（吹っ飛びで縁から落ちた時の吹っ飛び・ダウン・起き上がりの間など）乗れないので、次の tick にまた試す。
-void TryCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
-              uint64_t tick) {
+void TryCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, Player& player, uint64_t tick) {
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
     if (!CloudMountRules::ShouldCatch(mount, transform.position.y))
@@ -166,8 +160,7 @@ void TryCatch(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCom
 }
 
 // 乗る・降りるを決める。PlayerSystem の PreFixedUpdate（状態の F を進める・先行入力）の後、FixedUpdate の前。
-void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
-               uint64_t tick) {
+void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, Player& player, uint64_t tick) {
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
     // 被弾・死亡で Ride でなくなった：雲は消え、いつもの被弾の動きは PlayerSystem が出す。この後の落下は受け止める。
@@ -197,7 +190,7 @@ void StepState(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountCo
     TryCatch(world, object, mount, player, tick);
 }
 
-void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HIKARI::GameProjectKinematicState& state,
+void Trace(HIKARI::ObjectView object, const CloudMount& mount, const HIKARI::GameProjectKinematicState& state,
            uint64_t tick) {
     if (!TraceInterval::Due(mount.traceEveryFrames, tick))
         return;
@@ -227,7 +220,7 @@ void Trace(HIKARI::ObjectView object, const CloudMountComponent& mount, const HI
 }
 
 // 乗っていない間：立った時の体の中心から足元までの高さを測る（召喚の高さと雲の位置に使う）。
-void MeasureStandOffset(CloudMountComponent& mount, const HIKARI::GameProjectKinematicState& state) {
+void MeasureStandOffset(CloudMount& mount, const HIKARI::GameProjectKinematicState& state) {
     if (state.groundState != HIKARI::GameProjectGroundState::OnGround)
         return;
     const float offset = state.pose.position.y - state.groundPosition.y;
@@ -237,8 +230,7 @@ void MeasureStandOffset(CloudMountComponent& mount, const HIKARI::GameProjectKin
 
 // ブーストの 1 固定 tick：精力の残りでブーストできるかを決め、ブースト中は精力を使う（PlayerRules を通す）。
 // 尽きた tick まではブーストし、入力を離すまでブーストしない（走りと同じ決まり）。
-void StepBoost(HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player,
-               const HIKARI::FrameContext& frame) {
+void StepBoost(HIKARI::ObjectView object, CloudMount& mount, Player& player, const HIKARI::FrameContext& frame) {
     const bool unlimited = mount.boostStaminaPerSecond <= 0.0f;
     const bool changed = CloudMountRules::StepBoost(mount, unlimited || PlayerRules::GetStamina(player) > 0.0f);
     if (mount.flight.boosting && !unlimited &&
@@ -254,8 +246,8 @@ void StepBoost(HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComp
 
 // 騎乗中の 1 固定 tick の運動。縦の速さは、跳躍の初速とこの tick の重力の差し替えで決める（ソルバーは提出した速度の
 // 縦を使わない）。
-void StepFlight(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount,
-                PlayerComponent& player, const HIKARI::FrameContext& frame) {
+void StepFlight(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, Player& player,
+                const HIKARI::FrameContext& frame) {
     HIKARI::GameProjectKinematicState state{};
     const bool hasState = world.GetMotion().GetKinematicState(object.GetHandle().value, state);
     const float dt = frame.fixedDt;
@@ -312,7 +304,7 @@ void StepFlight(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountC
 // ブースト中だけの細かい震え（Player/Feedback の揺れ）。続ける間は、位相が飛ばないよう 1 周期ずつ時間を巻き戻し、
 // 弱まった分を揺れ幅で割り戻して一定に保つ。離すと、そのまま cameraBoostShakeFadeSeconds で消えていく。
 // 出した揺れのずれの大きさ (m) を返す（出していなければ 0）。
-float StepBoostShake(HIKARI::WorldView& world, CloudMountComponent& mount, const PlayerComponent& player, float dt) {
+float StepBoostShake(HIKARI::WorldView& world, CloudMount& mount, const Player& player, float dt) {
     Feedback::CameraShake& shake = mount.cameraShake;
     if (mount.flight.boosting && mount.cameraBoostShake > 0.0f && mount.cameraBoostShakeFrequency > 0.0f) {
         const float period = 1.0f / mount.cameraBoostShakeFrequency;
@@ -333,20 +325,20 @@ float StepBoostShake(HIKARI::WorldView& world, CloudMountComponent& mount, const
         shake.params.frequency = mount.cameraBoostShakeFrequency;
     }
     HIKARI::GameProjectFloat3 offset{};
-    if (!Feedback::SubmitCameraShake(world, shake, PlayerRules::GetCameraId(player), dt, &offset))
+    if (!Feedback::SubmitCameraShake(world, shake, PlayerRules::GetCamera(player), dt, &offset))
         return 0.0f;
     return std::hypot(offset.x, offset.y);
 }
 
 // 動きのぼかしと震え。姿勢には触れず（姿勢は PlayerCamera が出す）、その上に掛ける。降りた後も消え終わるまで出す。
-void SubmitCameraEffects(HIKARI::WorldView& world, CloudMountComponent& mount, const PlayerComponent& player,
+void SubmitCameraEffects(HIKARI::WorldView& world, CloudMount& mount, const Player& player,
                          const HIKARI::FrameContext& frame) {
     const float dt = std::max(0.0f, frame.unscaledDt);
     const float weight = CloudMountCamera::StepBlur(mount, dt);
     bool blurAccepted = false;
     if (weight > 0.0f && mount.cameraBlurShutterDegrees > 0.0f) {
         HIKARI::GameProjectCameraMotionBlurRequest blur{};
-        blur.cameraObjectHandle = FeedbackCamera::Resolve(world, PlayerRules::GetCameraId(player));
+        blur.cameraObjectHandle = FeedbackCamera::Resolve(world, PlayerRules::GetCamera(player));
         blur.sourceId = kBlurSource;
         blur.priority = kCameraEffectPriority;
         // 重みはカメラの元の設定（無効なら 0°）からのシャッター角と長さの補間。
@@ -413,8 +405,8 @@ void ProbeOnScreen(const HIKARI::GameProjectCameraViewSnapshot& snapshot, Vec3 p
 
 // 速度感の全画面の効果：強さと流れの中心・体を守る楕円を決め、強さが 0 でなければこのフレームの Action Post として
 // 送る（送らないフレームは効果が無い）。降りた後も弱まり終えるまで送る。
-void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMountComponent& mount,
-                   const PlayerComponent& player, const HIKARI::FrameContext& frame) {
+void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMount& mount, const Player& player,
+                   const HIKARI::FrameContext& frame) {
     const float dt = std::max(0.0f, frame.unscaledDt);
     const float target = CloudMountSpeedFx::TargetStrength(mount);
     const float strength = CloudMountSpeedFx::StepStrength(mount, dt);
@@ -509,7 +501,7 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
     if (!IsPlaying(world, frame))
         return;
     const auto input = world.GetInput();
-    ForEachRider(world, [&](HIKARI::ObjectView, CloudMountComponent& mount, PlayerComponent& player) {
+    ForEachRider(world, [&](HIKARI::ObjectView, CloudMount& mount, Player& player) {
         // 演出の間（ボスの登場）は乗れない。
         if (ReadAction(input, "Gameplay.Mount").pressed && !PlayerRules::IsCinematicHeld(player))
             mount.mountPressed = true;
@@ -535,7 +527,7 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
 void CloudMountSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
+    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         StepState(world, object, mount, player, frame.fixedTickIndex);
     });
 }
@@ -543,7 +535,7 @@ void CloudMountSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::Fr
 void CloudMountSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
+    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         StepFlight(world, object, mount, player, frame);
     });
 }
@@ -551,7 +543,7 @@ void CloudMountSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Frame
 void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMountComponent& mount, PlayerComponent& player) {
+    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         CloudMountVisuals::Update(world, object, mount, player, frame);
         SubmitCameraEffects(world, mount, player, frame);
         SubmitSpeedFx(world, object, mount, player, frame);

@@ -13,7 +13,7 @@ namespace Project_TD2_2 {
 // 点の足元では、場の霧（Default）を吸収だけの力で焼く。当たった所の塊も、ここで流体にする。
 // 火の刃がプレイヤーに当たった所を突き抜ける炎と、炎上の間の体の炎も、ここで流体にする。
 
-// 炎上しているプレイヤーの、描画フレームの様子（BurnFieldSystem が PlayerComponent から写す）。
+// 炎上しているプレイヤーの、描画フレームの様子（BurnFieldSystem が Player から写す）。
 struct BurnBody {
     bool found = false;
     // 体の中心（世界座標）。

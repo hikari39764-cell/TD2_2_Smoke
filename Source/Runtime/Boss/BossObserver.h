@@ -4,7 +4,7 @@
 
 #include "HIKARI/Project/WorldView.h"
 #include "BossComponent.h"
-#include "../Player/PlayerComponent.h"
+#include "../Player/Player.h"
 
 namespace Project_TD2_2 {
 
@@ -35,7 +35,7 @@ struct BossGearSight {
 class BossObserver final {
 public:
     // player が nullptr ならプレイヤーはいない（何も成り立たない）。tickSeconds は 1 固定 tick の秒。
-    static void Observe(HIKARI::WorldView& world, BossComponent& boss, const PlayerComponent* player,
+    static void Observe(HIKARI::WorldView& world, BossComponent& boss, const Player* player,
                         HIKARI::GameProjectFloat3 playerCenter, const BossGearSight& gear, float tickSeconds);
     // ボスが hits 回当てられた。recoveryRow はその時に後隙だった技の行（後隙でなければ -1）。後隙なら咎められた回数に足す。
     static void NotePunished(BossComponent& boss, int recoveryRow, uint64_t hits);

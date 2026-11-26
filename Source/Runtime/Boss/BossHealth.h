@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include "BossFrame.h"
-#include "../Combat/DamageableComponent.h"
+#include "../Combat/Damageable.h"
 
 namespace Project_TD2_2 {
 
@@ -13,7 +13,7 @@ class BossHealth final {
 public:
     // HP の持ち主は Damageable。受けた量から気絶値をため、フェーズと死亡を決める。この tick に新しく当てられた数を返す。
     // HP はフェーズごとの条（BossHealthBars。1 本目が空になった tick に変わり目へ入る）。
-    static uint64_t Sync(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health);
+    static uint64_t Sync(BossFrame& frame, HIKARI::ObjectView object, Damageable& health);
     // 連段が終わった時（待機へ戻る時・新しく技を始める時）に、たまった体勢を決める（c-808641）：満ちていればひざまずき、
     // 半分ほど（poiseFlinchShare）なら怯んで後ろへ跳ぶ技を始める。どちらかを始めたら true。
     static bool ResolvePoise(BossFrame& frame);

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
+#include "../Common/ComponentLookup.h"
 #include "../Common/FireObstacle.h"
 #include "../Common/GameSession.h"
 #include "../Common/VectorMath.h"
@@ -36,7 +37,7 @@ using Vec3 = HIKARI::GameProjectFloat3;
 using GameSession::IsPlaying;
 using GameSession::ReadAction;
 
-void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
+void ReadInput(HIKARI::WorldView& world, Player& player) {
     // 演出の間（ボスの登場）は、入力を受け付けない（動かず、技も出さない）。
     if (player.cinematicHold > 0) {
         player.moveInput = {};
@@ -71,18 +72,18 @@ void ReadInput(HIKARI::WorldView& world, PlayerComponent& player) {
 }
 
 // Update で覚えたロックオンの入れ切りを、固定 tick の始めに決める（c-164cab）。
-void ApplyLockToggle(HIKARI::WorldView& world, PlayerComponent& player) {
+void ApplyLockToggle(Player& player) {
     if (!player.lockToggleRequested)
         return;
     player.lockToggleRequested = false;
     if (!PlayerRules::IsAlive(player))
         return;
-    const auto target = world.FindSceneObject(player.lockTargetId);
+    const auto target = HIKARI::Extend::ObjectOf(player.lockTarget);
     player.lockedOn = !player.lockedOn && target.IsValid();
-    player.lockTarget = player.lockedOn ? target.GetHandle() : HIKARI::GameProjectObjectHandle{};
+    player.lockTargetHandle = player.lockedOn ? target.GetHandle() : HIKARI::GameProjectObjectHandle{};
 }
 
-int StateDuration(const PlayerComponent& player) {
+int StateDuration(const Player& player) {
     switch (player.state) {
     case PlayerState::Roll:
         return player.rollFrames;
@@ -102,14 +103,14 @@ int StateDuration(const PlayerComponent& player) {
 }
 
 // 水平に、吹っ飛びを始めた位置からどれだけ離れたか（ログ用）。
-float KnockbackTravelled(HIKARI::ObjectView object, const PlayerComponent& player) {
+float KnockbackTravelled(HIKARI::ObjectView object, const Player& player) {
     HIKARI::GameProjectTransform transform{};
     if (!object.GetWorldTransform(transform))
         return 0.0f;
     return std::hypot(transform.position.x - player.knockbackOrigin.x, transform.position.z - player.knockbackOrigin.z);
 }
 
-void CompleteState(HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
+void CompleteState(HIKARI::ObjectView object, Player& player, uint64_t tick) {
     const int duration = StateDuration(player);
     if (duration <= 0 || player.stateFrame < duration) {
         return;
@@ -128,11 +129,11 @@ void CompleteState(HIKARI::ObjectView object, PlayerComponent& player, uint64_t 
 }
 
 // ロックオン中の対象への水平方向。対象が無い・位置が取れないときは false。
-bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
+bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, const Player& player,
                            Vec3& outDirection) {
     if (!player.lockedOn)
         return false;
-    const auto target = world.FindObject(player.lockTarget);
+    const auto target = world.FindObject(player.lockTargetHandle);
     HIKARI::GameProjectTransform sourceTransform{}, targetTransform{};
     if (!target.IsValid() || !target.GetWorldTransform(targetTransform) || !object.GetWorldTransform(sourceTransform))
         return false;
@@ -146,12 +147,12 @@ bool DirectionToLockTarget(HIKARI::WorldView& world, HIKARI::ObjectView object, 
 
 // 吹っ飛び中と、ダウンでローリングを受け付ける前：押したローリングは受け付ける F まで保つ（吹っ飛ばされてすぐ押した
 // ローリングが、先行入力の長さで消えて出ないことが無いように）。
-bool HoldsRollBuffer(const PlayerComponent& player) {
+bool HoldsRollBuffer(const Player& player) {
     return player.state == PlayerState::Knockback ||
            (player.state == PlayerState::Down && player.stateFrame < std::min(player.downRollFrame, player.downFrames));
 }
 
-void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
+void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player, uint64_t tick) {
     // ローリングは外部の動作（吸い込み）の最中でも出せて、吸い込みの方が打ち切られる。
     // 回復だけは外部の要求で止める。先行入力は残り、明けた時に通る。
     // 砲撃の動作ロック中でも、打ち切れる F からはローリングで抜けられる。
@@ -193,7 +194,7 @@ void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Pl
     }
 }
 
-float StaggerStep(const PlayerComponent& player) {
+float StaggerStep(const Player& player) {
     // 合計時間を短く調整しても三歩を残し、各距離を失わないようにする。
     const int first = std::clamp(player.staggerStepOneFrames, 1, player.staggerFrames - 2);
     const int second = std::clamp(player.staggerStepTwoFrames, 1, player.staggerFrames - first - 1);
@@ -208,7 +209,7 @@ float StaggerStep(const PlayerComponent& player) {
 // 走る：ふだんの歩き（外部の動作が歩きを変えていない・動作ロックが無い）で、入力があり、走る入力を押している間。
 // 走っている間はスタミナを使い、回復を止める（止めてから回復待ちの F を数え直す）。尽きたら入力を離すまで走らない。
 // 向き（UpdateFacing）と歩き（StateVelocity）より先に、その固定 tick の分を決める。
-void StepSprint(PlayerComponent& player, float dt, uint64_t tick) {
+void StepSprint(Player& player, float dt, uint64_t tick) {
     const bool wasSprinting = player.sprinting;
     if (!player.sprintHeld)
         player.sprintExhausted = false;
@@ -236,7 +237,7 @@ void StepSprint(PlayerComponent& player, float dt, uint64_t tick) {
 // 歩く速度を、入力の向き × speed へ寄せる。歩き出しと止まる時だけ少し時間を掛け、体の重さを出す。
 // 寄せる速さは「最高速に届くまでの時間」で決める（0 なら一瞬）。最高速は歩き・走り・いまの速さの大きい方
 // （走りから止まる時も、決めた時間で止まる）。
-Vec3 WalkVelocity(PlayerComponent& player, float speed, float dt) {
+Vec3 WalkVelocity(Player& player, float speed, float dt) {
     const Vec3 wanted{player.moveInput.x * speed, 0.0f, player.moveInput.z * speed};
     const Vec3 gap{wanted.x - player.moveVelocity.x, 0.0f, wanted.z - player.moveVelocity.z};
     const float distance = std::hypot(gap.x, gap.z);
@@ -254,7 +255,7 @@ Vec3 WalkVelocity(PlayerComponent& player, float speed, float dt) {
     return player.moveVelocity;
 }
 
-Vec3 StateVelocity(PlayerComponent& player, float dt) {
+Vec3 StateVelocity(Player& player, float dt) {
     if (player.state == PlayerState::Normal && (player.actionLockFrames == 0 || player.external.walkAllowed)) {
         const float speed = player.sprinting ? player.sprintSpeed : player.moveSpeed;
         return WalkVelocity(player, speed * std::clamp(player.external.moveScale, 0.0f, 1.0f), dt);
@@ -290,7 +291,7 @@ Vec3 StateVelocity(PlayerComponent& player, float dt) {
 }
 
 // 向きを wanted（水平）へ、毎秒 degreesPerSecond までの速さで回す。
-void TurnToward(PlayerComponent& player, Vec3 wanted, float degreesPerSecond, float dt) {
+void TurnToward(Player& player, Vec3 wanted, float degreesPerSecond, float dt) {
     const float current = std::atan2(player.facing.x, player.facing.z);
     const float target = std::atan2(wanted.x, wanted.z);
     const float limit = degreesPerSecond * kRadiansPerDegree * dt;
@@ -298,7 +299,7 @@ void TurnToward(PlayerComponent& player, Vec3 wanted, float degreesPerSecond, fl
     player.facing = {std::sin(yaw), 0.0f, std::cos(yaw)};
 }
 
-void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player, float dt) {
+void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player, float dt) {
     const bool aimTurn = player.aimTurnPending;
     player.aimTurnPending = false;
     if (!PlayerRules::IsAlive(player))
@@ -307,7 +308,7 @@ void UpdateFacing(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCom
     const bool hasTarget = DirectionToLockTarget(world, object, player, toTarget);
     if (player.lockedOn && !hasTarget) {
         player.lockedOn = false;
-        player.lockTarget = {};
+        player.lockTargetHandle = {};
     }
     const bool hasInput = std::hypot(player.moveInput.x, player.moveInput.z) > kTurnInputDeadZone;
     if (player.external.turnSpeed > 0.0f) {
@@ -339,7 +340,7 @@ struct KnockbackProfile {
     float landFrames = 2.0f;
 };
 
-KnockbackProfile MakeKnockbackProfile(const PlayerComponent& player) {
+KnockbackProfile MakeKnockbackProfile(const Player& player) {
     const float frames = static_cast<float>(std::max(1, player.knockbackFrames));
     KnockbackProfile profile;
     profile.apexFrames = std::max(1.0f, player.knockbackApexAt * frames);
@@ -351,7 +352,7 @@ KnockbackProfile MakeKnockbackProfile(const PlayerComponent& player) {
 int KnockbackLandTick(const KnockbackProfile& profile) { return static_cast<int>(std::ceil(profile.landFrames)) - 1; }
 
 // 飛び始めから frames F たった時の高さ。
-float KnockbackHeightAt(const PlayerComponent& player, const KnockbackProfile& profile, float frames) {
+float KnockbackHeightAt(const Player& player, const KnockbackProfile& profile, float frames) {
     const float height = std::max(0.0f, player.knockbackHeight);
     if (frames <= 0.0f || frames >= profile.landFrames)
         return 0.0f;
@@ -368,7 +369,7 @@ float KnockbackHeightAt(const PlayerComponent& player, const KnockbackProfile& p
 // 最初の tick は跳ね上げの速度だけで、重力は 0。
 // 下りは、下向きの加速度を輪郭の下りの加速度以上に保つ（着地の tick は高さが 0 に切られて速度の変化が上向きになるが、
 // 地面が輪郭より高い坂で先に着地していても上へ突き上げないために、下向きのままにする。着地はソルバーに任せる）。
-void KnockbackVertical(const PlayerComponent& player, float dt, float& outLaunchSpeed, float& outGravity) {
+void KnockbackVertical(const Player& player, float dt, float& outLaunchSpeed, float& outGravity) {
     const KnockbackProfile profile = MakeKnockbackProfile(player);
     const float k = static_cast<float>(player.stateFrame);
     const auto speedAt = [&](float frame) {
@@ -389,8 +390,7 @@ void KnockbackVertical(const PlayerComponent& player, float dt, float& outLaunch
 // 立ち止まっていて（通常の状態で水平の速度が 0）、前の tick に立てる傾きの地面へ足が着いていた。
 // 運動学ソルバーは地面の上でも毎 tick 重力 × dt の下向きの速度を足し、坂ではそれが斜面に沿った動きになって、
 // 立っているだけで坂を滑り落ちる（傾き θ で毎秒 g·dt·sinθ·cosθ。12 度の坂で約 3.3 cm）。
-bool StandingOnSlope(HIKARI::WorldView& world, HIKARI::ObjectView object, const PlayerComponent& player,
-                     Vec3 velocity) {
+bool StandingOnSlope(HIKARI::WorldView& world, HIKARI::ObjectView object, const Player& player, Vec3 velocity) {
     if (player.state != PlayerState::Normal || velocity.x != 0.0f || velocity.z != 0.0f)
         return false;
     HIKARI::GameProjectKinematicState state{};
@@ -404,7 +404,7 @@ bool StandingOnSlope(HIKARI::WorldView& world, HIKARI::ObjectView object, const 
 
 // 吹っ飛びの始まりと着地（ログと、着地の手応えの合図）。ヒットストップの tick は呼ばれないので、始まりは 1 回だけ。
 // 位置は前の tick までの動きが反映された値なので、着地のログの距離は着地の 1 tick 手前までの値になる。
-void StepKnockbackEvents(HIKARI::ObjectView object, PlayerComponent& player, uint64_t tick) {
+void StepKnockbackEvents(HIKARI::ObjectView object, Player& player, uint64_t tick) {
     if (player.state != PlayerState::Knockback)
         return;
     char message[192]{};
@@ -427,7 +427,7 @@ void StepKnockbackEvents(HIKARI::ObjectView object, PlayerComponent& player, uin
     HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "Player", message);
 }
 
-void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
+void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player,
                     const HIKARI::FrameContext& frame, Vec3 velocity, bool frozen = false) {
     HIKARI::GameProjectKinematicMove move{};
     move.objectHandle = object.GetHandle().value;
@@ -470,7 +470,7 @@ void SubmitMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerC
 
 // 食らった瞬間のカメラの揺れと手柄の振動。止めは固定 tick 側（StepPlayer）が出す。
 // 揺れは実時間で進めるので、止めの間も揺れが続いて止まらない。
-void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HIKARI::FrameContext& frame) {
+void StepHitFeedback(HIKARI::WorldView& world, Player& player, const HIKARI::FrameContext& frame) {
     if (player.pendingHitFeedback) {
         player.pendingHitFeedback = false;
         const bool knockback = player.pendingHitFeedbackKnockback;
@@ -506,11 +506,10 @@ void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HI
         Feedback::Rumble(world, player.knockbackLandRumble, player.knockbackLandRumble,
                          player.knockbackLandShakeFrames);
     }
-    Feedback::SubmitCameraShake(world, player.knockbackFov, player.cameraId, frame.unscaledDt);
+    Feedback::SubmitCameraShake(world, player.knockbackFov, player.camera, frame.unscaledDt);
     HIKARI::GameProjectFloat3 offset{};
     const bool wasActive = player.hitShake.active;
-    const bool accepted =
-        Feedback::SubmitCameraShake(world, player.hitShake, player.cameraId, frame.unscaledDt, &offset);
+    const bool accepted = Feedback::SubmitCameraShake(world, player.hitShake, player.camera, frame.unscaledDt, &offset);
     if (wasActive && player.cameraTrace) {
         char message[192]{};
         std::snprintf(message, sizeof(message), "HitShake tick=%llu offset=(%.6f,%.6f) length=%.6f accepted=%d",
@@ -522,7 +521,7 @@ void StepHitFeedback(HIKARI::WorldView& world, PlayerComponent& player, const HI
 }
 
 // 自分の足での 1 固定 tick の向きと移動（騎乗中は呼ばない）。
-void StepMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
+void StepMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player,
                   const HIKARI::FrameContext& frame) {
     UpdateFacing(world, object, player, frame.fixedDt);
     StepKnockbackEvents(object, player, frame.fixedTickIndex);
@@ -539,7 +538,7 @@ void StepMovement(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCom
     SubmitMovement(world, object, player, frame, velocity);
 }
 
-void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerComponent& player,
+void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, Player& player,
                 const HIKARI::FrameContext& frame) {
     PlayerRules::Initialize(player);
     if (player.pendingHitStopFrames > 0) {
@@ -575,77 +574,70 @@ void StepPlayer(HIKARI::WorldView& world, HIKARI::ObjectView object, PlayerCompo
 void PlayerSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                PlayerRules::Initialize(player);
-                                                ReadInput(world, player);
-                                            });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView, Player& player) {
+        PlayerRules::Initialize(player);
+        ReadInput(world, player);
+    });
 }
 
 void PlayerSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                                PlayerRules::Initialize(player);
-                                                // 演出の間の止め（演出の側が毎 tick 入れ直す）を 1 tick 進める。
-                                                if (player.cinematicHold > 0)
-                                                    --player.cinematicHold;
-                                                ApplyLockToggle(world, player);
-                                                // この tick の始めの体の位置（描画のフレームの補間の起点）。
-                                                HIKARI::GameProjectTransform start{};
-                                                if (object.GetWorldTransform(start)) {
-                                                    player.tickStartPosition = start.position;
-                                                    player.tickStartKnown = true;
-                                                }
-                                                // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
-                                                // ずれないようにする。
-                                                if (player.advanceStateNextTick)
-                                                    ++player.stateFrame;
-                                                player.advanceStateNextTick = false;
-                                                CompleteState(object, player, frame.fixedTickIndex);
-                                                StartBufferedAction(world, object, player, frame.fixedTickIndex);
-                                                // 外部の要求は毎 tick 失効させ、外部システムが消えても減速や停止を
-                                                // 残さない（回復の停止・ローリングの扱いは前の tick の要求なので、
-                                                // 先行入力が使った後に消す）。
-                                                player.external = {};
-                                            });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
+        PlayerRules::Initialize(player);
+        // 演出の間の止め（演出の側が毎 tick 入れ直す）を 1 tick 進める。
+        if (player.cinematicHold > 0)
+            --player.cinematicHold;
+        ApplyLockToggle(player);
+        // この tick の始めの体の位置（描画のフレームの補間の起点）。
+        HIKARI::GameProjectTransform start{};
+        if (object.GetWorldTransform(start)) {
+            player.tickStartPosition = start.position;
+            player.tickStartKnown = true;
+        }
+        // 全 FixedUpdate の前に境界を決め、被弾側の実行順で無敵が一 F
+        // ずれないようにする。
+        if (player.advanceStateNextTick)
+            ++player.stateFrame;
+        player.advanceStateNextTick = false;
+        CompleteState(object, player, frame.fixedTickIndex);
+        StartBufferedAction(world, object, player, frame.fixedTickIndex);
+        // 外部の要求は毎 tick 失効させ、外部システムが消えても減速や停止を
+        // 残さない（回復の停止・ローリングの扱いは前の tick の要求なので、
+        // 先行入力が使った後に消す）。
+        player.external = {};
+    });
 }
 
 void PlayerSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType),
-        [&](HIKARI::ObjectView object, PlayerComponent& player) { StepPlayer(world, object, player, frame); });
+    ComponentLookup::ForEachGame<Player>(
+        [&](HIKARI::ObjectView object, Player& player) { StepPlayer(world, object, player, frame); });
 }
 
 void PlayerSystem::PostFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
     // 炎上は、その tick の被弾（ボス）と燃える地面（BurnFieldSystem）が全部済んだ後に進める（点いた tick から減る）。
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType),
-                                            [&](HIKARI::ObjectView, PlayerComponent& player) {
-                                                PlayerRules::StepBurn(player, frame.fixedDt, frame.fixedTickIndex);
-                                            });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView, Player& player) {
+        PlayerRules::StepBurn(player, frame.fixedDt, frame.fixedTickIndex);
+    });
 }
 
 void PlayerSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<PlayerComponent>(
-        HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object, PlayerComponent& player) {
-            PlayerCamera::Update(world, object, player, std::max(0.0f, frame.unscaledDt),
-                                 frame.fixedInterpolationAlpha);
-            StepHitFeedback(world, player, frame);
-        });
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
+        PlayerCamera::Update(world, object, player, std::max(0.0f, frame.unscaledDt), frame.fixedInterpolationAlpha);
+        StepHitFeedback(world, player, frame);
+    });
 }
 
 void PlayerSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<PlayerComponent>(HIKARI::MakeComponentTypeId(kPlayerType), [&](HIKARI::ObjectView object,
-                                                                                          PlayerComponent& player) {
+    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
         player.fluidAccepted = FireObstacle::Submit(world, object, kFireObstacleInstance, player.fireObstacleRadius,
                                                     player.fireObstacleHeight);
         if (player.pendingLandFog) {

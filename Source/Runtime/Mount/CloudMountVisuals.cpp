@@ -15,6 +15,7 @@
 #include "CloudMountArrival.h"
 #include "CloudMountComponent.h"
 #include "CloudMountRules.h"
+#include "../Common/VfxPlayback.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -79,7 +80,7 @@ float Ramp(float current, float target, float seconds, float dt) {
 }
 
 // 進む向きの上り下りの角度（度、下りが正）× 傾ける割合。水平の速さが遅いほど弱める（真上・真下だけの動きでは 0）。
-float PathPitch(const CloudMountComponent& mount) {
+float PathPitch(const CloudMount& mount) {
     const HIKARI::GameProjectFloat3& velocity = mount.velocity;
     const float horizontal = std::hypot(velocity.x, velocity.z);
     const float weight = std::clamp(horizontal / mount.cloudIdleSpeed, 0.0f, 1.0f);
@@ -89,7 +90,7 @@ float PathPitch(const CloudMountComponent& mount) {
 }
 
 // 出し入れ・吹き出し・傾き・揺れの時間を 1 描画フレーム進める。召喚中と騎乗中は雲を出し、解除中と乗っていない間は消す。
-void Step(CloudMountComponent& mount, float dt) {
+void Step(CloudMount& mount, float dt) {
     const bool shown = mount.state == CloudMountState::Summoning || mount.state == CloudMountState::Riding;
     mount.cloudAppear = Ramp(mount.cloudAppear, shown ? 1.0f : 0.0f,
                              shown ? mount.cloudAppearSeconds : mount.cloudVanishSeconds, dt);
@@ -105,17 +106,17 @@ void Step(CloudMountComponent& mount, float dt) {
 }
 
 // 雲の原点（資産の足元）を置く所：体の足元（揺れを除く）。
-Vec3 Feet(const CloudMountComponent& mount, Vec3 bodyCenter) {
+Vec3 Feet(const CloudMount& mount, Vec3 bodyCenter) {
     return {bodyCenter.x, bodyCenter.y - mount.standOffset - mount.cloudBelowFeet, bodyCenter.z};
 }
 
 // 一度きりの飾りを、雲の芯の所に世界の向きのまま出す。
-void PlayAccent(HIKARI::WorldView& world, const HIKARI::GameProjectVfxAssetReference& asset, Vec3 root, float scale,
+void PlayAccent(HIKARI::WorldView& world, const HIKARI::VfxAsset& asset, Vec3 root, float scale,
                 const HIKARI::GameProjectVfxParameterOverrides& parameters) {
-    if (asset.IsEmpty())
+    if (!asset.IsSet())
         return;
     HIKARI::GameProjectVfxPlayRequest play{};
-    play.asset = asset;
+    play.asset = VfxPlayback::Reference(asset);
     play.transform.position = {root.x, root.y - kCloudCoreDepth, root.z};
     play.transform.scale = {scale, scale, scale};
     play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
@@ -133,7 +134,7 @@ void LogEvent(const char* event, const HIKARI::FrameContext& frame, const char* 
 
 // 段階の変わり目：乗り始め（乗っていない・解除中から召喚へ）で雲を飛ばし始め、降りた（召喚中・騎乗中から解除・
 // 乗っていないへ）時に、雲をその場に残して散らし始める。雲がまだ見えている間に呼び直した時は飛ばさず、その場で湧かせる。
-void OnStateChange(HIKARI::WorldView& world, CloudMountComponent& mount, const PlayerComponent& player,
+void OnStateChange(HIKARI::WorldView& world, CloudMount& mount, const Player& player,
                    const HIKARI::FrameContext& frame) {
     CloudMountArrivalState& state = mount.arrival;
     const bool wasShown = state.lastState == CloudMountState::Summoning || state.lastState == CloudMountState::Riding;
@@ -172,7 +173,7 @@ void OnStateChange(HIKARI::WorldView& world, CloudMountComponent& mount, const P
 }
 
 // 雲が足元に着いた：沈み・膨らみ・向きの戻しを始め、空気のゆがみの輪と、カメラの小さな沈みを出す。
-void Land(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 root, const HIKARI::FrameContext& frame) {
+void Land(HIKARI::WorldView& world, CloudMount& mount, Vec3 root, const HIKARI::FrameContext& frame) {
     CloudMountArrivalState& state = mount.arrival;
     state.flying = false;
     state.landedAge = 0.0f;
@@ -199,7 +200,7 @@ void Land(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 root, const
 }
 
 // 飛んで来る間の根：足元から見た道の位置へ置き、進む向き（体の動きを含む、世界の向き）へ向ける。
-HIKARI::GameProjectTransform FlyingPlacement(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 feet, float dt,
+HIKARI::GameProjectTransform FlyingPlacement(HIKARI::WorldView& world, CloudMount& mount, Vec3 feet, float dt,
                                              const HIKARI::FrameContext& frame) {
     CloudMountArrivalState& state = mount.arrival;
     state.age += dt;
@@ -228,8 +229,7 @@ HIKARI::GameProjectTransform FlyingPlacement(HIKARI::WorldView& world, CloudMoun
 
 // 足元に置き、体の向き（水平）へ向け、上り下りと旋回の内側へ傾ける。止まっている時だけ上下に揺らす。着いた直後は
 // 雲だけ沈めて戻し、向きを飛んで来た向きから戻す。
-HIKARI::GameProjectTransform RidingPlacement(CloudMountComponent& mount, const PlayerComponent& player, Vec3 feet,
-                                             float dt) {
+HIKARI::GameProjectTransform RidingPlacement(CloudMount& mount, const Player& player, Vec3 feet, float dt) {
     CloudMountArrivalState& state = mount.arrival;
     const float horizontal = std::hypot(mount.velocity.x, mount.velocity.z);
     const float idle = 1.0f - std::clamp(horizontal / mount.cloudIdleSpeed, 0.0f, 1.0f);
@@ -253,9 +253,8 @@ HIKARI::GameProjectTransform RidingPlacement(CloudMountComponent& mount, const P
 }
 
 // このフレームの根の変換。散っている間は降りた所に留め、飛んで来る間は道の上、ほかは足元。
-HIKARI::GameProjectTransform Placement(HIKARI::WorldView& world, CloudMountComponent& mount,
-                                       const PlayerComponent& player, Vec3 bodyCenter, float dt,
-                                       const HIKARI::FrameContext& frame) {
+HIKARI::GameProjectTransform Placement(HIKARI::WorldView& world, CloudMount& mount, const Player& player,
+                                       Vec3 bodyCenter, float dt, const HIKARI::FrameContext& frame) {
     CloudMountArrivalState& state = mount.arrival;
     const Vec3 feet = Feet(mount, bodyCenter);
     HIKARI::GameProjectTransform transform{};
@@ -276,7 +275,7 @@ HIKARI::GameProjectTransform Placement(HIKARI::WorldView& world, CloudMountCompo
     return transform;
 }
 
-HIKARI::GameProjectVfxParameterOverrides Parameters(const CloudMountComponent& mount) {
+HIKARI::GameProjectVfxParameterOverrides Parameters(const CloudMount& mount) {
     const CloudMountArrivalState& state = mount.arrival;
     const float tail = std::min(mount.flight.speed / mount.cloudTailFullSpeed, mount.cloudTailLimit);
     // 飛んで来る間は雲の量・尾の量・渦を飛来の値にし、着いた後は膨らみの分を足して、渦を余韻に合わせて戻す。
@@ -297,7 +296,7 @@ HIKARI::GameProjectVfxParameterOverrides Parameters(const CloudMountComponent& m
     return parameters;
 }
 
-void Trace(const CloudMountComponent& mount, const HIKARI::GameProjectVfxParameterOverrides& parameters,
+void Trace(const CloudMount& mount, const HIKARI::GameProjectVfxParameterOverrides& parameters,
            const HIKARI::GameProjectTransform& transform, const HIKARI::FrameContext& frame) {
     if (!TraceInterval::Due(mount.traceEveryFrames, frame.frameIndex))
         return;
@@ -326,7 +325,7 @@ void Trace(const CloudMountComponent& mount, const HIKARI::GameProjectVfxParamet
 
 // 場面の始めに一度だけ、着いた瞬間の飾りを見えない強さ（輪・光・粒とも 0）で足元に出す。画面のゆがみの合成は初めて
 // 使うフレームにシェーダーを作るので（headless で約 150〜180 ms）、最初の召喚で止まらないよう、場面の始めに済ませる。
-void Prewarm(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 root) {
+void Prewarm(HIKARI::WorldView& world, CloudMount& mount, Vec3 root) {
     if (mount.arrival.prewarmed || !mount.arrivePrewarm)
         return;
     mount.arrival.prewarmed = true;
@@ -345,7 +344,7 @@ float SpeedShare(float speed, float start, float full) {
 
 // 飛行の飾りの量を 1 描画フレーム進める。騎乗中で、飛んで来ても散ってもいない時だけ速さで出す。ブーストの押し始めに
 // 体の中心へ衝撃の輪を出す。
-void StepTrims(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 bodyCenter, float dt,
+void StepTrims(HIKARI::WorldView& world, CloudMount& mount, Vec3 bodyCenter, float dt,
                const HIKARI::FrameContext& frame) {
     const CloudMountFlightReadout& flight = mount.flight;
     const bool riding = mount.state == CloudMountState::Riding && !mount.arrival.flying && mount.arrival.scatterAge < 0.0f;
@@ -364,9 +363,9 @@ void StepTrims(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 bodyCe
     mount.trimHaze = step(mount.trimHaze, haze);
     mount.trimCone = step(mount.trimCone, cone);
     const bool boosting = riding && flight.boosting;
-    if (boosting && !mount.trimWasBoosting && !mount.boostRingEffect.IsEmpty()) {
+    if (boosting && !mount.trimWasBoosting && mount.boostRingEffect.IsSet()) {
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = mount.boostRingEffect;
+        play.asset = VfxPlayback::Reference(mount.boostRingEffect);
         play.transform.position = bodyCenter;
         const float scale = std::max(0.0f, mount.boostRingScale);
         play.transform.scale = {scale, scale, scale};
@@ -383,7 +382,7 @@ void StepTrims(HIKARI::WorldView& world, CloudMountComponent& mount, Vec3 bodyCe
     mount.trimWasBoosting = boosting;
 }
 
-HIKARI::GameProjectVfxParameterOverrides TrimParameters(const CloudMountComponent& mount) {
+HIKARI::GameProjectVfxParameterOverrides TrimParameters(const CloudMount& mount) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetColor(parameters, kStreakInput, {mount.trimStreak, mount.trimStreak, mount.trimStreak});
     // ゆがみの色：R＝強さの倍率、B＝1（貼図の向きを使う）のまま。
@@ -393,8 +392,8 @@ HIKARI::GameProjectVfxParameterOverrides TrimParameters(const CloudMountComponen
 }
 
 // 飛行の飾りを雲の根と同じ変換で出し続ける（場面の作り直しで消えたら出し直す）。
-void UpdateTrims(HIKARI::WorldView& world, CloudMountComponent& mount, const HIKARI::GameProjectTransform& transform) {
-    if (mount.trimEffect.IsEmpty())
+void UpdateTrims(HIKARI::WorldView& world, CloudMount& mount, const HIKARI::GameProjectTransform& transform) {
+    if (!mount.trimEffect.IsSet())
         return;
     const HIKARI::GameProjectVfxParameterOverrides parameters = TrimParameters(mount);
     if (mount.trimVfx.IsValid()) {
@@ -409,14 +408,14 @@ void UpdateTrims(HIKARI::WorldView& world, CloudMountComponent& mount, const HIK
         return;
     }
     HIKARI::GameProjectVfxPlayRequest play{};
-    play.asset = mount.trimEffect;
+    play.asset = VfxPlayback::Reference(mount.trimEffect);
     play.transform = transform;
     play.parameters = parameters;
     mount.trimVfx = world.GetVfx().Play(play);
     mount.trimAccepted = mount.trimVfx.IsValid();
 }
 
-void Stop(HIKARI::WorldView& world, CloudMountComponent& mount) {
+void Stop(HIKARI::WorldView& world, CloudMount& mount) {
     if (mount.cloudVfx.IsValid())
         world.GetVfx().Stop(mount.cloudVfx);
     mount.cloudVfx = {};
@@ -427,8 +426,8 @@ void Stop(HIKARI::WorldView& world, CloudMountComponent& mount) {
 
 } // namespace
 
-void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body, CloudMountComponent& mount,
-                               const PlayerComponent& player, const HIKARI::FrameContext& frame) {
+void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body, CloudMount& mount,
+                               const Player& player, const HIKARI::FrameContext& frame) {
     // 雲の流れ（エフェクト）はゲーム時間で進むので、出し入れ・揺れ・飛来もゲーム時間で進める。
     const float dt = std::max(0.0f, frame.gameDt);
     // 段階の変わり目は、出し入れを進める前に見る（呼び直した時に、雲がまだ見えていたかを前のフレームの値で決める）。
@@ -436,12 +435,12 @@ void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body
         OnStateChange(world, mount, player, frame);
     Step(mount, dt);
     // カメラの沈みは、停止中も実時間で戻す。
-    Feedback::SubmitCameraShake(world, mount.arrival.cameraDip, PlayerRules::GetCameraId(player),
+    Feedback::SubmitCameraShake(world, mount.arrival.cameraDip, PlayerRules::GetCamera(player),
                                 std::max(0.0f, frame.unscaledDt));
     HIKARI::GameProjectTransform bodyTransform{};
     const bool wanted =
-        !mount.cloudEffect.IsEmpty() && (mount.cloudKeepAlive || mount.cloudHiddenSeconds < mount.cloudLingerSeconds ||
-                                         mount.arrival.scatterAge >= 0.0f);
+        mount.cloudEffect.IsSet() && (mount.cloudKeepAlive || mount.cloudHiddenSeconds < mount.cloudLingerSeconds ||
+                                      mount.arrival.scatterAge >= 0.0f);
     if (!wanted || !body.GetWorldTransform(bodyTransform)) {
         Stop(world, mount);
         return;
@@ -464,7 +463,7 @@ void CloudMountVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView body
             mount.cloudVfx = {};
     } else {
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = mount.cloudEffect;
+        play.asset = VfxPlayback::Reference(mount.cloudEffect);
         play.transform = transform;
         play.parameters = parameters;
         mount.cloudVfx = world.GetVfx().Play(play);

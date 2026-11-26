@@ -3,13 +3,13 @@
 #include <cstdint>
 #include <string>
 
-#include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Extend/World.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
 
-inline constexpr std::string_view kCloudMountType = "Project_TD2_2.CloudMount";
+inline constexpr std::string_view kCloudMountType = "TD2_2.CloudMount";
 inline constexpr std::string_view kCloudMountSystem = "Project_TD2_2.CloudMountSystem";
 
 // 筋斗雲の段階。Gameplay.Mount を押すたびに、乗る（Summoning → Riding）と降りる（Dismissing → None）を切り替える。
@@ -86,251 +86,376 @@ struct CloudMountArrivalState {
 
 // プレイヤーの筋斗雲。Player と同じ物体に付ける。状態と飛行の運動の規則は CloudMountRules、入力を読んで運動を出すのは
 // CloudMountSystem。見た目（CloudMountVisuals）とカメラの要求（CloudMountCamera）は別の所に置く。ここは調整値と実行時の状態だけ。
-class CloudMountComponent final : public HIKARI::IGameComponent {
-public:
-    void DescribeProperties(HIKARI::PropertyFields& fields) override;
+struct CloudMount : HIKARI::Component {
+    HIKARI_COMPONENT(CloudMount)
 
     // 召喚：summonFrames F で、足元を地面から rideHeight 浮いた高さへ持ち上げる（今より低くはしない）。
-    int summonFrames = 30;
-    float rideHeight = 1.2f;
+    FIELD(
+        int, summonFrames, 30, "浮き上がるまで (F)", HIKARI::Range(1, 600), HIKARI::Group("召喚"),
+        HIKARI::Tip(
+            "Gameplay.Mount（F／LB）を押すたびに、乗る・降りるを切り替えます。地上でも落下中でも呼べます（通常の状態で、砲撃などの動作の最中でない時）。"))
+    FIELD(float, rideHeight, 1.2f, "浮き上がる高さ（足元から地面まで m）", HIKARI::Range(0.0f, 20.0f))
     // 持ち上げの出だしの速さ（1 は等速、大きいほど初め速くあとゆっくり）。
-    float summonEasePower = 2.0f;
+    FIELD(float, summonEasePower, 2.0f, "浮き上がりの出だしの速さ（1 は等速、大きいほど初め速くあとゆっくり）",
+          HIKARI::Range(1.0f, 5.0f))
     // 召喚の時に足元の地面を探す距離 (m)。これより下に地面が無ければ、その場の高さで乗る（落下中の召喚）。
-    float summonGroundReach = 4.0f;
+    FIELD(float, summonGroundReach, 4.0f, "足元の地面を探す距離 (m。これより高い所ではその場で乗る)",
+          HIKARI::Range(0.0f, 100.0f))
     // 解除：dismissFrames F その場で止まってから、いつもの重力で落ちる。
-    int dismissFrames = 12;
+    FIELD(int, dismissFrames, 12, "降りる時にその場で止まる長さ (F。その後はいつもの重力で落ちる)",
+          HIKARI::Range(0, 600))
     // 飛行：入力が無ければその場に浮く。前後はカメラの見ている向き、左右は水平の横、上昇・下降は真上・真下。
-    float cruiseSpeed = 16.0f;
-    float verticalSpeed = 10.0f;
-    float accelSeconds = 0.35f;
-    float brakeSeconds = 0.5f;
+    FIELD(float, cruiseSpeed, 16.0f, "前後左右の速さ (m/s)", HIKARI::Range(0.0f, 100.0f), HIKARI::Group("飛行"),
+          HIKARI::Tip("入力が無ければその場に浮きます（高さも変わりません）。"
+                      "前後はカメラの見ている向き（見上げ・見下ろしを含む）、左右は水平の横、Jump は真上、"
+                      "Descend は真下です。地形や物には当たって止まります。"))
+    FIELD(float, verticalSpeed, 10.0f, "上昇・下降の速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, accelSeconds, 0.35f, "最高速になるまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, brakeSeconds, 0.5f, "入力を離して止まるまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 5.0f))
     // 体を水平の進む向きへ回す速さ（度/秒）。
-    float turnSpeed = 540.0f;
+    FIELD(float, turnSpeed, 540.0f, "体を進む向きへ回す速さ (度/s)", HIKARI::Range(1.0f, 5000.0f))
     // このカメラの見下ろし角度（度）を水平の飛行とみなす。0 でカメラの向きのまま（始めのカメラは 16 度見下ろす）。
-    float levelPitch = 16.0f;
+    FIELD(
+        float, levelPitch, 16.0f, "水平に飛ぶカメラの見下ろし角度 (度。0 でカメラの向きのまま)",
+        HIKARI::Range(-45.0f, 45.0f),
+        HIKARI::Tip(
+            "前を押した時の上り下りの角度＝カメラの見下ろし角度 − この値。始めのカメラ（16 度見下ろす）で水平に飛ぶよう 16 にしています。"))
     // どの状態でも超えない速さ (m/s)。⑤ の雲の流体の域は 1 フレームに 60 m/s を超える動きを瞬間移動と見なす。
-    float maxFlightSpeed = 45.0f;
+    FIELD(
+        float, maxFlightSpeed, 45.0f, "どの状態でも超えない速さ (m/s)", HIKARI::Range(1.0f, 100.0f),
+        HIKARI::Tip("雲の流体（⑤）は 1 フレームに 60 m/s を超える動きを瞬間移動と見なすので、60 未満にしてください。"))
     // 地面すれすれの持ち上げ：騎乗中に地面に触れ、水平の速さが groundSkimMinSpeed 以上なら、その tick の縦の速さの
     // 下向きを捨てて groundSkimSpeed (m/s) 上へ出す。地面に触れたまま速く進むと運動学ソルバーが平らに近い所で止まる
     // 件（エンジンへの要望 e-dca15c）を避け、起伏を滑るように越える。groundSkimSpeed 0 で切る。
     // 持ち上げた後 groundSkimHoldSeconds の間は下へ向かわない（地面へ向けて飛び続けても、持ち上げと下降を毎 tick
     // 繰り返して震えず、地面に沿って滑る）。
-    float groundSkimSpeed = 3.0f;
-    float groundSkimMinSpeed = 6.0f;
-    float groundSkimHoldSeconds = 0.2f;
+    FIELD(float, groundSkimSpeed, 3.0f, "地面に触れたまま速く進む時に上へ出す速さ (m/s、0 で切る)",
+          HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, groundSkimMinSpeed, 6.0f, "上へ出し始める水平の速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(
+        float, groundSkimHoldSeconds, 0.2f, "上へ出した後、下へ向かわない長さ (秒)", HIKARI::Range(0.0f, 2.0f),
+        HIKARI::Tip(
+            "地面に触れたまま速く進むと、平らに近い所でも止まってしまう（エンジンの件）ので、騎乗中に地面に触れたら下向きの速さを捨てて少し上へ出し、起伏を滑るように越えます。"))
     // ブースト：Gameplay.Sprint を押している間の最高速。押した瞬間は boostKickSeconds で boostKickSpeed まで弾き出す。
-    float boostSpeed = 32.0f;
-    float boostKickSpeed = 28.0f;
-    float boostKickSeconds = 0.15f;
+    FIELD(float, boostSpeed, 32.0f, "ブーストの速さ (m/s)", HIKARI::Range(0.0f, 100.0f), HIKARI::Group("ブースト"),
+          HIKARI::Tip("Gameplay.Sprint（Shift／L3）を押している間、"
+                      "前後左右の入力があればブーストします。押した瞬間に弾き出し、その後はブーストの速さで安定します。"
+                      "精力が尽きたら、入力を離すまでブーストしません。"))
+    FIELD(float, boostKickSpeed, 28.0f, "弾き出しの速さ (m/s。押した瞬間にここまで一気に上げる)",
+          HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, boostKickSeconds, 0.15f, "弾き出しの長さ (秒、0 で一瞬)", HIKARI::Range(0.0f, 2.0f))
     // ブースト中に使う精力（/秒）。尽きたら入力を離すまでブーストしない。0 で使い放題。
-    float boostStaminaPerSecond = 12.0f;
+    FIELD(float, boostStaminaPerSecond, 12.0f, "使う精力 (/秒、0 で使い放題)", HIKARI::Range(0.0f, 200.0f))
     // 急降下：下向きに進んでいる間、下向きの度合いに応じて速さが伸びる（度合い 1 で diveAccel、上限 diveMaxSpeed）。
     // 度合いは下向きの角度が diveStartDegrees で 0、diveFullDegrees で 1。浅い下りでは伸びない（速さが溜まり続け
     // ないように）。前で飛べる一番急な下りは「騎乗中のカメラの見下ろす限度 − levelPitch」（既定 75 − 16 = 59 度）。
-    float diveAccel = 12.0f;
-    float diveMaxSpeed = 45.0f;
-    float diveStartDegrees = 10.0f;
-    float diveFullDegrees = 55.0f;
+    FIELD(float, diveAccel, 12.0f, "度合い 1 の時の伸び (m/s²)", HIKARI::Range(0.0f, 100.0f), HIKARI::Group("急降下"),
+          HIKARI::Tip("前後左右の入力で下向きに進んでいる間、下向きの度合いに応じて速さが伸びます。引き起こした後は、"
+                      "巡航（ブースト中はブースト）より速い分がゆっくり戻るので、速いまま上へ抜けられます。"
+                      "Descend だけの下降は伸びません（降りる場所を選ぶ時の、決まった速さの下降）。"))
+    FIELD(float, diveMaxSpeed, 45.0f, "急降下の最高速 (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, diveStartDegrees, 10.0f, "伸び始める下向きの角度 (度。これより浅い下りは伸びない)",
+          HIKARI::Range(0.0f, 89.0f))
+    FIELD(
+        float, diveFullDegrees, 55.0f, "度合いが 1 になる下向きの角度 (度)", HIKARI::Range(1.0f, 90.0f),
+        HIKARI::Tip(
+            "前で飛べる一番急な下りは、騎乗中のカメラの見下ろす限度 − levelPitch（既定 75 − 16 = 59 度）。Descend を足すともっと急になります。"))
     // 巡航・ブーストより速い分は、急降下をやめてからこの秒数で戻る（その間は速いまま上へ抜けられる）。
-    float overspeedDecaySeconds = 1.5f;
+    FIELD(float, overspeedDecaySeconds, 1.5f, "速い分が戻るまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 10.0f))
     // 旋回：速度の向きを入力の向きへ回す速さ（度/秒）。巡航の速さ以下で turnRateCruise、ブーストの速さ以上で
     // turnRateBoost、間は速さで補間する。旋回の半径＝速さ ÷ 回る速さ（ラジアン/秒）なので速いほど大回りになる。
-    float turnRateCruise = 180.0f;
-    float turnRateBoost = 90.0f;
+    FIELD(float, turnRateCruise, 180.0f, "巡航の回る速さ (度/s)", HIKARI::Range(1.0f, 2000.0f), HIKARI::Group("旋回"),
+          HIKARI::Tip("進む向きを入力の向きへ、毎秒この角度まで回します。巡航の速さ以下は巡航の値、"
+                      "ブーストの速さ以上はブーストの値、間は速さで補間します。"
+                      "旋回の半径＝速さ ÷ 回る速さ（巡航 16 m/s・180 度で約 5.1 m、"
+                      "ブースト 32 m/s・90 度で約 20.4 m）。止まり方は「飛行」の値のままです。"))
+    FIELD(float, turnRateBoost, 90.0f, "ブーストの回る速さ (度/s)", HIKARI::Range(1.0f, 2000.0f))
     // 落下の受け止め：乗っていない時、足場を離れて catchFallMeters 落ちたら自動で召喚し、下向きの速さを
     // catchBrakeSeconds でならして止める。自分で降りた後の落下は、catchAfterDismiss が true の時だけ受け止める。
-    bool autoCatch = true;
-    float catchFallMeters = 12.0f;
-    float catchBrakeSeconds = 0.4f;
-    bool catchAfterDismiss = false;
+    FIELD(
+        bool, autoCatch, true, "落下を自動で受け止める", HIKARI::Group("受け止め"),
+        HIKARI::Tip(
+            "乗っていない時に足場を離れて落ちると、自動で筋斗雲を呼んで受け止めます（通常の状態の時）。落ちた高さは足場を離れてから一番高い所から数えます。"))
+    FIELD(float, catchFallMeters, 12.0f, "受け止めるまでに落ちる高さ (m)", HIKARI::Range(0.0f, 500.0f))
+    FIELD(float, catchBrakeSeconds, 0.4f, "受け止めた後、落ちる勢いを止めるまで (秒、0 で一瞬)",
+          HIKARI::Range(0.0f, 5.0f))
+    FIELD(bool, catchAfterDismiss, false, "自分で降りた後の落下も受け止める")
     // 飛べる範囲：場の原点から水平の半径 boundsRadius、高さ boundsMinY〜boundsMaxY（世界の Y）。境界の手前
     // boundsSoftMeters から外向きの速さを弱め、境界の上で 0 にする（壁に当たったようには止めない）。
     // 高さの既定は NimbusSky の島の床（Y 3400）から −150〜+300 m。
-    float boundsRadius = 400.0f;
-    float boundsMinY = 3250.0f;
-    float boundsMaxY = 3700.0f;
-    float boundsSoftMeters = 30.0f;
-    // 騎乗中のカメラ（PlayerCamera への要求。姿勢を作るのは PlayerCamera だけ）。上下の追い方と見上げの限度は
-    // Player の「カメラ」の値の代わりに使う。cameraVerticalSeconds は止まっている時の上下のならしで、水平の速さが巡航へ
-    // 近づくほど水平のならし（加速の遅れを含む）へ寄せる（体が飛ぶ向きのまま画面の奥へ離れ、上下へ外れない）。
-    float cameraVerticalSeconds = 0.08f;
-    float cameraVerticalDeadZone = 0.0f;
-    float cameraMinPitch = -70.0f;
-    float cameraMaxPitch = 75.0f;
-    // 見上げた時に、視点が軸からどこまで下がってよいか (m)。Player の値（1.5）のままだと、見上げて上る時に距離が
-    // 縮んで引きが効かない。
-    float cameraEyeFloor = 4.0f;
+    FIELD(float, boundsRadius, 400.0f, "場の原点からの水平の半径 (m)", HIKARI::Range(1.0f, 100000.0f),
+          HIKARI::Group("範囲"),
+          HIKARI::Tip("騎乗中に飛べる範囲です。境界の手前から外向きの速さを弱め、境界の上で 0 にします。"
+                      "境界に沿う向きの速さはそのまま残ります。高さは世界の Y（NimbusSky の島の床は 340"
+                      "0）。下の限度は雲海の上端より上に置いてください。"))
+    FIELD(float, boundsMinY, 3250.0f, "下の限度 (世界の Y)", HIKARI::Range(-100000.0f, 100000.0f))
+    FIELD(float, boundsMaxY, 3700.0f, "上の限度 (世界の Y)", HIKARI::Range(-100000.0f, 100000.0f))
+    FIELD(float, boundsSoftMeters, 30.0f, "外向きの速さを弱め始める距離 (m)", HIKARI::Range(1.0f, 1000.0f))
     // 距離 (m) と縦の画角（度）：止まっている・巡航・ブースト。間は速さで補間し、ブースト中はブーストの値。
     // 巡航・ブーストより速い時（急降下）はブーストの値。距離は cameraZoomSeconds、画角は cameraFovSeconds でならす。
-    float cameraDistanceStop = 6.0f;
-    float cameraDistanceCruise = 7.5f;
-    float cameraDistanceBoost = 9.5f;
-    float cameraZoomSeconds = 0.35f;
-    float cameraFovStop = 60.0f;
-    float cameraFovCruise = 68.0f;
-    float cameraFovBoost = 82.0f;
-    float cameraFovSeconds = 0.15f;
+    FIELD(float, cameraDistanceStop, 6.0f, "距離：止まっている (m)", HIKARI::Range(0.5f, 50.0f),
+          HIKARI::Group("カメラ"),
+          HIKARI::Tip("騎乗中だけ、Player のカメラへ値を渡します（姿勢を作るのは Player のカメラのまま）"
+                      "。降りると cameraReleaseSeconds で普段の値へ戻ります。"))
+    FIELD(float, cameraDistanceCruise, 7.5f, "距離：巡航 (m)", HIKARI::Range(0.5f, 50.0f))
+    FIELD(float, cameraDistanceBoost, 9.5f, "距離：ブースト (m)", HIKARI::Range(0.5f, 50.0f))
+    FIELD(float, cameraZoomSeconds, 0.35f, "距離・見下ろしのならし (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, cameraFovStop, 60.0f, "画角：止まっている (度)", HIKARI::Range(10.0f, 120.0f))
+    FIELD(float, cameraFovCruise, 68.0f, "画角：巡航 (度)", HIKARI::Range(10.0f, 120.0f))
+    FIELD(float, cameraFovBoost, 82.0f, "画角：ブースト (度)", HIKARI::Range(10.0f, 120.0f))
+    FIELD(
+        float, cameraFovSeconds, 0.15f, "画角のならし (秒)", HIKARI::Range(0.0f, 3.0f),
+        HIKARI::Tip(
+            "止まっている → 巡航の速さ → ブーストの速さの間は速さで補間します。ブースト中はすぐブーストの値を目標にし、急降下などで速い時もブーストの値です。"))
     // ブーストの出だしに、ならさずに足す画角（度）と、その長さ（秒）。初めの半分で上がり、残りで戻る。その間は画角の
     // ならしを短くしてブーストの画角へ素早く届かせるので、ブーストの画角を一度これだけ行き過ぎて戻る。
-    float cameraBoostFovKick = 6.0f;
-    float cameraBoostFovKickSeconds = 0.25f;
+    FIELD(float, cameraBoostFovKick, 6.0f, "ブーストの出だしに行き過ぎる画角 (度、0 で無し)",
+          HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, cameraBoostFovKickSeconds, 0.25f, "出だしの画角が戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
     // 傾き：旋回の強さ（−1〜1）× 上限（度）。上限は巡航の速さで cameraRollCruise、ブーストで cameraRollBoost、
     // 巡航より遅い時は速さに比例して小さくする。cameraRollSeconds でならす。
-    bool cameraRollEnabled = true;
-    float cameraRollCruise = 12.0f;
-    float cameraRollBoost = 20.0f;
-    float cameraRollSeconds = 0.25f;
+    FIELD(bool, cameraRollEnabled, true, "旋回で画面を傾ける")
+    FIELD(float, cameraRollCruise, 12.0f, "傾きの上限：巡航 (度、0 で傾けない)", HIKARI::Range(0.0f, 45.0f))
+    FIELD(float, cameraRollBoost, 20.0f, "傾きの上限：ブースト (度、0 で傾けない)", HIKARI::Range(0.0f, 45.0f))
+    FIELD(
+        float, cameraRollSeconds, 0.25f, "傾きのならし (秒)", HIKARI::Range(0.0f, 3.0f),
+        HIKARI::Tip(
+            "傾き＝旋回の強さ（−1〜1。右へ回ると右へ傾く）× 上限。巡航より遅い時は速さに比例して小さくなります。酔いやすい人は切るか上限を 0 に。"))
     // 水平に追うならし（秒）。速さが増えている間は、増え方が cameraFollowFullAccel (m/s²) で cameraFollowAccelSeconds
     // まで伸ばし（体が先に画面の奥へ出る）、減っている間は cameraFollowBrakeSeconds まで縮める。伸ばした分は
     // cameraFollowRecoverSeconds で戻す（カメラが追いつく）。
-    float cameraFollowSeconds = 0.09f;
-    float cameraFollowAccelSeconds = 0.22f;
-    float cameraFollowBrakeSeconds = 0.06f;
-    float cameraFollowFullAccel = 60.0f;
-    float cameraFollowRecoverSeconds = 0.05f;
+    FIELD(float, cameraFollowSeconds, 0.09f, "水平に追うならし (秒)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, cameraFollowAccelSeconds, 0.22f, "加速中に伸ばすならし (秒)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, cameraFollowBrakeSeconds, 0.06f, "減速中に縮めるならし (秒)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, cameraFollowFullAccel, 60.0f, "伸ばし切る加速 (m/s²)", HIKARI::Range(1.0f, 500.0f))
+    FIELD(float, cameraFollowRecoverSeconds, 0.05f, "伸ばした分を戻すならし (秒)", HIKARI::Range(0.0f, 2.0f),
+          HIKARI::Tip("速さが増えている間だけ水平に追うならしを伸ばし、体が先に画面の奥へ出てからカメラが追いつきます（"
+                      "ブーストの弾き出しは約 80 m/s²、止まった所から巡航へは約 46 m/s²、"
+                      "急降下は 12 m/s²）。"))
+    // 騎乗中のカメラ（PlayerCamera への要求。姿勢を作るのは PlayerCamera だけ）。上下の追い方と見上げの限度は
+    // Player の「カメラ」の値の代わりに使う。cameraVerticalSeconds は止まっている時の上下のならしで、水平の速さが巡航へ
+    // 近づくほど水平のならし（加速の遅れを含む）へ寄せる（体が飛ぶ向きのまま画面の奥へ離れ、上下へ外れない）。
+    FIELD(float, cameraVerticalSeconds, 0.08f, "上下に追うならし：止まっている時 (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(
+        float, cameraVerticalDeadZone, 0.0f, "上下を追わない幅 (m)", HIKARI::Range(0.0f, 10.0f),
+        HIKARI::Tip(
+            "上下のならしは、水平の速さが巡航へ近づくほど水平のならしに寄せます（遅れが飛ぶ向きに沿い、体が画面の上下へずれずに奥へ離れます）。"))
     // 急降下の度合い 1 で足す、見せるだけの見下ろし（度。進む向きは変えない）。
-    float diveLookDegrees = 6.0f;
+    FIELD(float, diveLookDegrees, 6.0f, "急降下で足す見下ろし (度。見せるだけで進む向きは変えない)",
+          HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, cameraMinPitch, -70.0f, "見上げる限度 (度、負で見上げ)", HIKARI::Range(-89.0f, 89.0f))
+    FIELD(float, cameraMaxPitch, 75.0f, "見下ろす限度 (度)", HIKARI::Range(-89.0f, 89.0f))
+    // 見上げた時に、視点が軸からどこまで下がってよいか (m)。Player の値（1.5）のままだと、見上げて上る時に距離が
+    // 縮んで引きが効かない。
+    FIELD(float, cameraEyeFloor, 4.0f, "見上げた時に視点が軸から下がれる限度 (m)", HIKARI::Range(0.0f, 50.0f))
     // 動きのぼかし：ブースト中と急降下の度合いに合わせて強める（TAA／DLAA／DLSS の時だけ効く）。強さは cameraBlurSeconds
     // でならす。シャッター角 0 で切る。
-    float cameraBlurShutterDegrees = 90.0f;
-    float cameraBlurMaxPixels = 8.0f;
-    float cameraBlurSeconds = 0.2f;
+    FIELD(float, cameraBlurShutterDegrees, 90.0f, "動きのぼかしのシャッター角 (度、0 で切る)",
+          HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, cameraBlurMaxPixels, 8.0f, "ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(
+        float, cameraBlurSeconds, 0.2f, "ぼかしの強まり・弱まりのならし (秒)", HIKARI::Range(0.0f, 3.0f),
+        HIKARI::Tip(
+            "ぼかしはブースト中と急降下の度合いに合わせて強めます。TAA／DLAA／DLSS の時だけ効きます。全画面の流れ（⑦）と重なるので控えめから。"))
     // ブースト中だけの細かい震え：揺れ幅 (m)・速さ (Hz)。離すと cameraBoostShakeFadeSeconds で消える。0 で切る。
-    float cameraBoostShake = 0.015f;
-    float cameraBoostShakeFrequency = 26.0f;
-    float cameraBoostShakeFadeSeconds = 0.15f;
+    FIELD(float, cameraBoostShake, 0.015f, "ブースト中の震えの揺れ幅 (m、0 で切る)", HIKARI::Range(0.0f, 0.1f))
+    FIELD(float, cameraBoostShakeFrequency, 26.0f, "震えの速さ (Hz)", HIKARI::Range(1.0f, 60.0f))
+    FIELD(float, cameraBoostShakeFadeSeconds, 0.15f, "離した後に震えが消えるまで (秒)", HIKARI::Range(0.0f, 1.0f))
     // 降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろしを普段の値へ戻すならし（秒）。
-    float cameraReleaseSeconds = 0.4f;
+    FIELD(
+        float, cameraReleaseSeconds, 0.4f, "降りた後に普段のカメラへ戻すならし (秒)", HIKARI::Range(0.0f, 3.0f),
+        HIKARI::Tip(
+            "降りた後、距離・画角・傾きと、騎乗中だけ許した見上げ・見下ろし（普段の限度の外）を一度に戻さず、このならしで戻します。"))
     // 雲の見た目（CloudMountVisuals）：足元に付いて動く流体の雲のエフェクト。空なら出さない。資産の入力は
     // input.appear（体の雲の量）・input.speed（尾の量）・input.boost（吹き出しと金の縁の明るさ）。
-    HIKARI::GameProjectVfxAssetReference cloudEffect{"467fbd610a584de599d6946884fcdb67", "Assets/Vfx/NimbusCloud.hvfx"};
+    FIELD(
+        HIKARI::VfxAsset, cloudEffect, (HIKARI::VfxAsset{"467fbd610a584de599d6946884fcdb67"}),
+        "雲のエフェクト（足元に付く流体。空なら出さない）", HIKARI::Group("雲の見た目"),
+        HIKARI::Tip(
+            "足元に付いて動く流体の雲です。色・明るさ・形・尾の伸び方（相対風と消散）はエフェクト資産（NimbusCloud）で、量と尾の量・揺れ・傾きはここで変えます。"))
     // エフェクトの原点（資産の足元）を、体の足元からどれだけ下げるか (m)。
-    float cloudBelowFeet = 0.0f;
+    FIELD(float, cloudBelowFeet, 0.0f, "エフェクトの原点を足元から下げる量 (m)", HIKARI::Range(-2.0f, 2.0f))
     // 体の雲の量（倍率）。出す・消すは cloudAppearSeconds・cloudVanishSeconds で 0〜1 をならす（⑥ の演出の口）。
-    float cloudAmount = 1.0f;
-    float cloudAppearSeconds = 0.3f;
-    float cloudVanishSeconds = 0.25f;
+    FIELD(float, cloudAmount, 1.0f, "体の雲の量（倍率）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudAppearSeconds, 0.3f, "雲が湧き出るまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudVanishSeconds, 0.25f, "降りて雲の湧きが止まるまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 5.0f))
     // 尾の量：速さ ÷ cloudTailFullSpeed（上限 cloudTailLimit）× cloudTailAmount。尾の長さは資産の相対風と消散で決まる。
-    float cloudTailAmount = 1.0f;
-    float cloudTailFullSpeed = 32.0f;
-    float cloudTailLimit = 1.4f;
+    FIELD(float, cloudTailAmount, 1.0f, "尾の量（倍率。速さが下の値の時）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudTailFullSpeed, 32.0f, "尾の量が倍率どおりになる速さ (m/s)", HIKARI::Range(1.0f, 100.0f))
+    FIELD(
+        float, cloudTailLimit, 1.4f, "それより速い時の尾の量の上限（倍）", HIKARI::Range(0.0f, 5.0f),
+        HIKARI::Tip(
+            "尾の量＝速さ ÷ 上の速さ（上限まで）× 倍率。止まると尾の源は止まり、残った尾は消散で雲へ戻るように消えます。"))
     // 吹き出しと金の縁の強さ：ブースト中 cloudBoostAmount、弾き出しの間 cloudBoostKickAmount を足し、急降下の度合い ×
     // cloudDiveAmount を足す。cloudBoostSeconds でならす。
-    float cloudBoostAmount = 1.0f;
-    float cloudBoostKickAmount = 1.0f;
-    float cloudDiveAmount = 0.6f;
-    float cloudBoostSeconds = 0.12f;
+    FIELD(float, cloudBoostAmount, 1.0f, "ブースト中の吹き出しと金の縁の強さ", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudBoostKickAmount, 1.0f, "弾き出しの間に足す強さ", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudDiveAmount, 0.6f, "急降下の度合い 1 で足す強さ", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, cloudBoostSeconds, 0.12f, "強さのならし (秒)", HIKARI::Range(0.0f, 2.0f))
     // 止まっている時の上下の揺れ（雲だけ。体は動かさない）：揺れ幅 (m) と 1 往復の秒。水平の速さ cloudIdleSpeed で 0 になる。
-    float cloudBobHeight = 0.08f;
-    float cloudBobSeconds = 2.4f;
-    float cloudIdleSpeed = 6.0f;
+    FIELD(float, cloudBobHeight, 0.08f, "止まっている時の上下の揺れ幅 (m。雲だけ)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, cloudBobSeconds, 2.4f, "揺れの 1 往復 (秒)", HIKARI::Range(0.1f, 20.0f))
+    FIELD(float, cloudIdleSpeed, 6.0f, "揺れが無くなり、上り下りの傾きを全部掛ける水平の速さ (m/s)",
+          HIKARI::Range(0.1f, 100.0f))
+    // 旋回で雲を内側へ傾ける角度（旋回の強さ ±1 で、度）と、そのならし（秒）。
+    FIELD(float, cloudBankDegrees, 18.0f, "旋回で雲を内側へ傾ける角度 (度。体は傾けない)", HIKARI::Range(0.0f, 60.0f))
+    FIELD(float, cloudBankSeconds, 0.2f, "旋回の傾きのならし (秒)", HIKARI::Range(0.0f, 2.0f))
     // 上り下りで雲の前を進む向きへ傾ける割合（0〜1）と上限（度）、ならし（秒）。水平の速さが cloudIdleSpeed 以上で全部掛け、
     // 真上・真下だけの上昇・下降では傾けない。急降下で相対風が雲を体の上へ吹き上げず、尾が進む向きの後ろへ流れる。
-    float cloudPitchFollow = 0.8f;
-    float cloudPitchMaxDegrees = 45.0f;
-    float cloudPitchSeconds = 0.25f;
-    // 旋回で雲を内側へ傾ける角度（旋回の強さ ±1 で、度）と、そのならし（秒）。
-    float cloudBankDegrees = 18.0f;
-    float cloudBankSeconds = 0.2f;
+    FIELD(float, cloudPitchFollow, 0.8f, "上り下りで雲の前を進む向きへ傾ける割合 (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, cloudPitchMaxDegrees, 45.0f, "上り下りの傾きの上限 (度)", HIKARI::Range(0.0f, 89.0f))
+    FIELD(
+        float, cloudPitchSeconds, 0.25f, "上り下りの傾きのならし (秒)", HIKARI::Range(0.0f, 2.0f),
+        HIKARI::Tip(
+            "急降下では、傾けないと相対風が雲を体の上へ吹き上げます。傾けると雲は進む向きに沿い、尾は後ろへ流れます。真上・真下だけの上昇・下降では傾けません。"))
     // 乗っていない間もエフェクトを出したままにする（中は空で域は眠る。召喚のたびに出し直す詰まりを避ける）。false なら
     // 雲が消えてから cloudLingerSeconds 後に止める。
-    bool cloudKeepAlive = true;
-    float cloudLingerSeconds = 1.5f;
+    FIELD(bool, cloudKeepAlive, true, "乗っていない間もエフェクトを出したままにする")
+    FIELD(
+        float, cloudLingerSeconds, 1.5f, "出したままにしない時、雲が消えてから止めるまで (秒)",
+        HIKARI::Range(0.0f, 10.0f),
+        HIKARI::Tip(
+            "出したままにすると、乗っていない間は中が空で域が眠り、ほぼ重さが無くなります。止めると、召喚のたびにエフェクトを出し直す 1 フレームの詰まりが出ます。"))
     // 召喚の演出（CloudMountArrival・CloudMountVisuals）：雲（本体のエフェクトの根）が、体の向きの斜め後ろ上（後ろへ
     // summonFromDistance・上へ summonFromHeight、真後ろから横へ summonFromSideDegrees）から尾を引いて足元へ飛んで来る。
     // 着くのは召喚の summonArriveFraction（summonFrames の割合）の時。落下中の受け止めでは足元の下へ summonCatchDip 回り
     // 込んで下から受け止める。飛ぶ速さが summonFlySpeedLimit を超える時は飛び始めを近くする（流体は 1 フレームに 60 m/s を
     // 超える動きを瞬間移動と見なし、尾が引けない）。
-    float summonFromDistance = 25.0f;
-    float summonFromHeight = 10.0f;
-    float summonFromSideDegrees = 60.0f;
-    float summonArriveFraction = 0.8f;
-    float summonFlyEasePower = 1.3f;
-    float summonFlySpeedLimit = 55.0f;
-    float summonApproachHeight = 1.0f;
-    float summonCatchDip = 1.5f;
+    FIELD(float, summonFromDistance, 25.0f, "飛び始め：後ろへの水平の距離 (m)", HIKARI::Range(0.0f, 200.0f),
+          HIKARI::Group("召喚の演出"),
+          HIKARI::Tip("乗る時（落下の受け止めも）、雲が体の向きの斜め後ろ上から尾を引いて足元へ飛んで来ます。"
+                      "雲は本体のエフェクトをそのまま飛ばすので、流体の域は増えません。"
+                      "着くのは召喚の summonFrames × 割合の時で、体の動き（規則）は変えません。"))
+    FIELD(float, summonFromHeight, 10.0f, "飛び始め：足元からの高さ (m)", HIKARI::Range(-50.0f, 100.0f))
+    FIELD(float, summonFromSideDegrees, 60.0f, "飛び始め：真後ろから右へ回す角度 (度。負で左)",
+          HIKARI::Range(-180.0f, 180.0f))
+    FIELD(float, summonArriveFraction, 0.8f, "着く時（召喚の長さの割合）", HIKARI::Range(0.05f, 1.0f))
+    FIELD(float, summonFlyEasePower, 1.3f, "飛ぶ速さのゆるみ（1 は等速、大きいほど初め速く足元の手前でゆっくり）",
+          HIKARI::Range(1.0f, 4.0f))
+    FIELD(float, summonFlySpeedLimit, 55.0f, "飛ぶ速さの上限 (m/s。超える時は飛び始めを近くする。0 で上限なし)",
+          HIKARI::Range(0.0f, 200.0f),
+          HIKARI::Tip("流体は 1 フレームに 60 m/s を超える動きを瞬間移動と見なし、尾が引けません。"
+                      "既定（30 F の召喚の 0.8 で着く＝0.4 秒）では、"
+                      "25 m・10 m からだと速すぎるので、上限 55 m/s に合わせて道を縮め、"
+                      "約 16 m・6 m の所から飛びます。遠くから飛ばすなら summonFrames（召喚）"
+                      "か割合を大きくします。"))
+    FIELD(float, summonApproachHeight, 1.0f, "地上：足元へ入る手前の道の高さ (m。0 で水平に滑り込む)",
+          HIKARI::Range(-10.0f, 10.0f))
+    FIELD(float, summonCatchDip, 1.5f, "落下中：足元の下へ回り込む深さ (m)", HIKARI::Range(0.0f, 20.0f))
     // 飛んで来る間の雲の量・尾の量（倍率）と、軌跡の帯の明るさ。帯は着いてから summonTrailFadeSeconds で消す。
-    float summonFlyAmount = 0.7f;
-    float summonFlyTail = 0.4f;
+    FIELD(float, summonFlyAmount, 0.7f, "飛んで来る間の雲の量（倍率）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, summonFlyTail, 0.4f, "飛んで来る間の尾の量（倍率）", HIKARI::Range(0.0f, 5.0f))
     // 飛んで来る間の渦の強さ（域の乱流の倍率）。相対風でなめらかに伸びる煙を巻いて、綿の縁を保つ。着いた後は膨らみと
     // 一緒に 1 へ戻る。
-    float summonFlySwirl = 2.5f;
-    float summonTrailAmount = 1.0f;
-    float summonTrailFadeSeconds = 0.15f;
+    FIELD(float, summonFlySwirl, 2.5f, "飛んで来る間の渦の強さ（乱流の倍率。1 で普段のまま）",
+          HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, summonTrailAmount, 1.0f, "軌跡の帯の明るさ（0 で出さない）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, summonTrailFadeSeconds, 0.15f, "着いてから帯が消えるまで (秒)", HIKARI::Range(0.0f, 2.0f))
     // 着いた時：雲だけが沈んで戻る（体は動かさない。地上 summonSinkMeters、受け止め summonCatchSinkMeters を
     // summonSinkSeconds で）、雲の量を一度 summonPuffAmount 足して膨らませる（summonPuffSeconds で戻る）、向きを飛ぶ向きから
     // 体の向きへ summonSettleSeconds で戻す。
-    float summonSinkMeters = 0.15f;
-    float summonCatchSinkMeters = 0.4f;
-    float summonSinkSeconds = 0.3f;
-    float summonPuffAmount = 1.0f;
-    float summonPuffSeconds = 0.3f;
-    float summonSettleSeconds = 0.2f;
+    FIELD(float, summonSinkMeters, 0.15f, "地上で着いた時に雲が沈む深さ (m。体は動かさない)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, summonCatchSinkMeters, 0.4f, "落下を受け止めた時に雲が沈む深さ (m)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, summonSinkSeconds, 0.3f, "沈んで戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, summonPuffAmount, 1.0f, "着いた瞬間に足す雲の量（膨らみ）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, summonPuffSeconds, 0.3f, "膨らみが戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, summonSettleSeconds, 0.2f, "飛んで来た向きから体の向きへ戻すまで (秒)", HIKARI::Range(0.0f, 2.0f))
     // 着いた瞬間の飾り（空気のゆがみの輪・光・粒。流体の域は持たない）と、輪の強さ・大きさの倍率。
-    HIKARI::GameProjectVfxAssetReference arriveEffect{"5c1e7a3f2b8d4e60a9f4d2c7b1e08a36",
-                                                      "Assets/Vfx/NimbusArrive.hvfx"};
-    float arriveRingStrength = 1.0f;
-    float arriveRingScale = 1.0f;
+    FIELD(HIKARI::VfxAsset, arriveEffect, (HIKARI::VfxAsset{"5c1e7a3f2b8d4e60a9f4d2c7b1e08a36"}),
+          "着いた瞬間の飾り（空気のゆがみの輪・光の粒。空なら出さない）")
+    FIELD(float, arriveRingStrength, 1.0f, "ゆがみの輪の強さ（倍率）", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, arriveRingScale, 1.0f, "飾りの大きさ（倍率）", HIKARI::Range(0.1f, 5.0f))
     // 場面の始めに飾りを見えない強さで一度出し、画面のゆがみの合成の初回の準備を済ませる（最初の召喚で止まらない）。
-    bool arrivePrewarm = true;
+    FIELD(bool, arrivePrewarm, true, "場面の始めに飾りの下準備をする（最初の召喚の詰まりを防ぐ）",
+          HIKARI::Tip("ゆがみの輪は太く柔らかい輪をカメラへ向けて広げます（細い輪はぎざぎざに見えます）。"
+                      "強すぎると像が崩れて段が見えるので、倍率は 1.3 くらいまで。"
+                      "背景が空だけの時はほとんど見えません。"))
     // 着いた瞬間のカメラの手応え：下へ summonCameraDip (m) 沈んで summonCameraDipSeconds で戻る。0 で切る。
-    float summonCameraDip = 0.05f;
-    float summonCameraDipSeconds = 0.25f;
+    FIELD(float, summonCameraDip, 0.05f, "着いた瞬間にカメラを下へ沈める量 (m、0 で切る)", HIKARI::Range(0.0f, 0.5f))
+    FIELD(float, summonCameraDipSeconds, 0.25f, "カメラが戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
     // 解除の演出：雲はその場に残り（体と一緒に落ちない）、disperseSeconds の間だけ外へ押し広げながら吸って散る。
     // disperseHoldSeconds 後に根を体の足元へ戻す（その時は空）。散る瞬間に disperseEffect（光の粒）を出す。
-    HIKARI::GameProjectVfxAssetReference disperseEffect{"a7d93e15c4f2480bb6e1f0a2d95c3b74",
-                                                        "Assets/Vfx/NimbusDisperse.hvfx"};
-    float disperseSeconds = 0.5f;
-    float disperseHoldSeconds = 1.0f;
+    FIELD(
+        HIKARI::VfxAsset, disperseEffect, (HIKARI::VfxAsset{"a7d93e15c4f2480bb6e1f0a2d95c3b74"}),
+        "散る瞬間の飾り（光の粒。空なら出さない）", HIKARI::Group("解除の演出"),
+        HIKARI::Tip(
+            "降りる時（被弾で解けた時も）、雲はその場に残り、外へほどけるように膨らみながら吸われて消えます。残った煙は域の消散（NimbusCloud）でも薄くなります。"))
+    FIELD(float, disperseSeconds, 0.5f, "散らす長さ (秒。外へ押し広げて吸う)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, disperseHoldSeconds, 1.0f, "雲を降りた所に留める長さ (秒。この後は体の足元へ戻る)",
+          HIKARI::Range(0.0f, 5.0f))
     // 散らす間の渦の強さ（域の乱流の倍率）。煙を筋にちぎって散らす。
-    float disperseSwirl = 3.0f;
+    FIELD(float, disperseSwirl, 3.0f, "散らす間の渦の強さ（乱流の倍率。煙を筋にちぎる）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, speedFxLimit, 1.0f, "強さの上限 (0〜1。0 で出さない：酔いやすい人向け)", HIKARI::Range(0.0f, 1.0f),
+          HIKARI::Group("速度感"),
+          HIKARI::Tip("速く飛ぶ間、進む向き（画面の中心近く）を澄ませたまま、"
+                      "縁を放射状に流します（ぼかし・細い筋・わずかな色ずれ・縁の減光）。巡航は弱く、"
+                      "ブーストと急降下で強くなります。歩き・止まっている時は一切掛かりません。"
+                      "ぼかしの長さ・筋・色ずれ・減光・中心の澄んだ広さは効果資産（FlightSpeed）で変えます。"))
+    FIELD(float, speedFxStartSpeed, 4.0f, "掛かり始める速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, speedFxCruise, 0.15f, "巡航の速さの強さ", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, speedFxBoost, 0.75f, "ブースト（中・ブーストの速さ）の強さ", HIKARI::Range(0.0f, 1.0f))
+    FIELD(
+        float, speedFxDive, 1.0f, "急降下（度合い 1・急降下の上限の速さ）の強さ", HIKARI::Range(0.0f, 1.0f),
+        HIKARI::Tip(
+            "強さ＝速さの曲線（掛かり始める速さまで 0 → 巡航 → ブーストの速さ → 急降下の上限の速さ）と、ブースト中・急降下の度合いの大きい方。"))
+    FIELD(float, speedFxRiseSeconds, 0.25f, "強まる時のならし (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, speedFxFallSeconds, 0.5f, "弱まる時のならし (秒)", HIKARI::Range(0.0f, 3.0f))
+    // 流れの中心（進む向きを画面へ写した点）のならし（秒）と、画面の中心からの限度（画面の端が 1）。横へ飛ぶ時は
+    // 限度の所に置き、流れはほぼ平行になる。
+    FIELD(float, speedFxCenterSeconds, 0.1f, "流れの中心（進む向き）のならし (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(
+        float, speedFxCenterLimit, 1.4f, "流れの中心を置ける、画面の中心からの限度（画面の端が 1）",
+        HIKARI::Range(0.0f, 5.0f),
+        HIKARI::Tip(
+            "横へ飛ぶと進む向きは画面の外になります。その時は向きのまま限度の所に中心を置き、流れはほぼ平行になります。"))
+    // 体と雲を守る球：体の中心から speedFxGuardDrop (m) 下げた所の、半径 speedFxGuardRadius (m)。画面で守る楕円の
+    // 内は流さない（縁のぼかし具合は効果資産の guardFeather）。半径 0 で守らない。
+    FIELD(float, speedFxGuardRadius, 1.5f, "流さない体と雲の球の半径 (m。0 で守らない)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, speedFxGuardDrop, 0.35f, "その球の中心を体の中心から下げる量 (m。雲を含める)",
+          HIKARI::Range(-5.0f, 5.0f),
+          HIKARI::Tip("動きのぼかし（節：カメラ）と重なります。流れを強める時は両方を見て決めてください。"))
     // 速度感（全画面の効果 FlightSpeed：進む向きを中心に、縁が放射状に流れる・ぼかし・わずかな色ずれ・縁の減光）。
     // 強さは速さの曲線（speedFxStartSpeed まで 0 → 巡航 speedFxCruise → ブーストの速さ speedFxBoost → 急降下の上限の速さ
     // speedFxDive）と、ブースト中 speedFxBoost・急降下の度合い × speedFxDive の大きい方。強まる時 speedFxRiseSeconds、
     // 弱まる時 speedFxFallSeconds でならし、speedFxLimit で抑える（0 で出さない。酔いやすい人向け）。強さ 0 の間は
     // 効果を一切出さない。見た目（ぼかしの長さ・筋・色ずれ・減光・中心の澄んだ広さ）は効果資産の値。
-    std::string speedFxProfile{"0b62bd7baa7d48e4a65dc8867fd3d990"};
-    float speedFxLimit = 1.0f;
-    float speedFxStartSpeed = 4.0f;
-    float speedFxCruise = 0.15f;
-    float speedFxBoost = 0.75f;
-    float speedFxDive = 1.0f;
-    float speedFxRiseSeconds = 0.25f;
-    float speedFxFallSeconds = 0.5f;
-    // 流れの中心（進む向きを画面へ写した点）のならし（秒）と、画面の中心からの限度（画面の端が 1）。横へ飛ぶ時は
-    // 限度の所に置き、流れはほぼ平行になる。
-    float speedFxCenterSeconds = 0.1f;
-    float speedFxCenterLimit = 1.4f;
-    // 体と雲を守る球：体の中心から speedFxGuardDrop (m) 下げた所の、半径 speedFxGuardRadius (m)。画面で守る楕円の
-    // 内は流さない（縁のぼかし具合は効果資産の guardFeather）。半径 0 で守らない。
-    float speedFxGuardRadius = 1.5f;
-    float speedFxGuardDrop = 0.35f;
+    FIELD(std::string, speedFxProfile, std::string("0b62bd7baa7d48e4a65dc8867fd3d990"),
+          "効果のプロファイル（FlightSpeed。空なら出さない。資産の GUID）")
     // 飛行の飾り（シェーダーの層だけ。流体の域は使わない）。trimEffect（NimbusTrail）を雲の根と同じ変換で出し続け、
     // 入力で出し入れする：長い尾の帯は、速さが trimStreakStartSpeed で 0 → trimStreakFullSpeed（巡航）で
     // trimStreakAmount、ブースト中は trimStreakBoostAmount（帯の長さは資産の秒 × 速さで、速いほど長い）。
     // 空気のゆがみと高速の気流の錐は、それぞれの StartSpeed で 0 → FullSpeed で量。どれも強まる時 trimRiseSeconds、
     // 弱まる時 trimFallSeconds でならす（秒の時定数）。騎乗中だけ出す（召喚の飛来・解除の散りの間は 0）。
-    HIKARI::GameProjectVfxAssetReference trimEffect{"3e8b1c94d27f4a05b6c0e9a7f15d2b48", "Assets/Vfx/NimbusTrail.hvfx"};
-    float trimStreakAmount = 1.0f;
-    float trimStreakBoostAmount = 1.8f;
-    float trimStreakStartSpeed = 6.0f;
-    float trimStreakFullSpeed = 16.0f;
-    float trimHazeAmount = 1.0f;
-    float trimHazeStartSpeed = 14.0f;
-    float trimHazeFullSpeed = 32.0f;
-    float trimConeAmount = 1.0f;
-    float trimConeStartSpeed = 24.0f;
-    float trimConeFullSpeed = 38.0f;
-    float trimRiseSeconds = 0.15f;
-    float trimFallSeconds = 0.35f;
+    FIELD(HIKARI::VfxAsset, trimEffect, (HIKARI::VfxAsset{"3e8b1c94d27f4a05b6c0e9a7f15d2b48"}),
+          "飛行の飾り（NimbusTrail。空なら出さない）", HIKARI::Group("飾り"),
+          HIKARI::Tip("騎乗中に、雲の左右の端から後ろへ伸びる長い尾の帯、雲の後ろの空気のゆがみ、"
+                      "速い時に体のまわりを前から後ろへ流れる気流の錐を出します（シェーダーの層だけ）。"
+                      "量は速さで決まり、0 にすると出ません。帯の長さ・幅・色、ゆがみの強さ、"
+                      "錐の筋の置き場所は効果資産（NimbusTrail）の値です。"))
+    FIELD(float, trimStreakAmount, 1.0f, "尾の帯の明るさ（巡航の速さで。0 で出さない）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, trimStreakBoostAmount, 1.8f, "ブースト中の尾の帯の明るさ", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, trimStreakStartSpeed, 6.0f, "尾の帯が出始める速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimStreakFullSpeed, 16.0f, "尾の帯が明るさに届く速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimHazeAmount, 1.0f, "空気のゆがみの強さ（倍率。資産の強さに掛かる。0 で出さない）",
+          HIKARI::Range(0.0f, 1.5f))
+    FIELD(float, trimHazeStartSpeed, 14.0f, "ゆがみが出始める速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimHazeFullSpeed, 32.0f, "ゆがみが強さに届く速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimConeAmount, 1.0f, "高速の気流の錐の明るさ（0 で出さない）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, trimConeStartSpeed, 24.0f, "錐が出始める速さ (m/s。巡航 16・ブースト 32・急降下の上限 45)",
+          HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimConeFullSpeed, 38.0f, "錐が明るさに届く速さ (m/s)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, trimRiseSeconds, 0.15f, "飾りが強まる時のならし (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, trimFallSeconds, 0.35f, "飾りが弱まる時のならし (秒)", HIKARI::Range(0.0f, 3.0f))
     // ブーストの衝撃の輪：ブーストを押した瞬間（騎乗中）に、体の中心へ boostRingEffect（NimbusBoost）を一度だけ出す。
     // 世界に置くので、前へ飛ぶ体から見て後ろへ抜ける。強さ（倍率。資産の 0.28 に掛かる。0.35 を超えると段が出る）と大きさ。
-    HIKARI::GameProjectVfxAssetReference boostRingEffect{"c72f05a1e94b4d3a8e6b1f0d2a7c9e53",
-                                                         "Assets/Vfx/NimbusBoost.hvfx"};
-    float boostRingStrength = 1.0f;
-    float boostRingScale = 1.0f;
+    FIELD(HIKARI::VfxAsset, boostRingEffect, (HIKARI::VfxAsset{"c72f05a1e94b4d3a8e6b1f0d2a7c9e53"}),
+          "ブーストを押した瞬間の衝撃の輪（NimbusBoost。空なら出さない）")
+    FIELD(float, boostRingStrength, 1.0f, "衝撃の輪のゆがみの強さ（倍率。1.25 くらいまで。上げすぎると段が出る）",
+          HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, boostRingScale, 1.0f, "衝撃の輪の大きさ（倍率）", HIKARI::Range(0.1f, 5.0f))
     // 確かめ用：この F ごとに位置・速度をログに出す（0 は出さない）。
-    int traceEveryFrames = 0;
+    FIELD(int, traceEveryFrames, 0, "位置と速度をログに出す間隔 (F、0 は出さない)", HIKARI::Range(0, 7200),
+          HIKARI::Group("確かめ"))
 
     // 実行時のデータは保存しない。
     CloudMountState state = CloudMountState::None;

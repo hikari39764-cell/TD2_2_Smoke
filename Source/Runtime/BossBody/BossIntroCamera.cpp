@@ -10,7 +10,7 @@ namespace Project_TD2_2 {
 
 using namespace BossBodyMath;
 
-void BossIntroCamera::Update(const BossIntroComponent& intro, PlayerComponent& player) {
+void BossIntroCamera::Update(const BossIntroComponent& intro, Player& player) {
     const BossIntroState& state = intro.state;
     // 演技の後の一息の段：演出の資産が最後に見せていたカメラの姿勢から、ゲームのカメラへ滑らかに渡す（切り替えない）。
     if (state.phase != BossIntroPhase::Settle || !state.filmValid || state.skipped)

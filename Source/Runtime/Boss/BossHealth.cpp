@@ -13,12 +13,14 @@
 #include "BossPose.h"
 #include "BossRules.h"
 #include "BossSelection.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 
 namespace Project_TD2_2 {
 namespace {
 
 using namespace BossMath;
+
+HIKARI::Vec3 ToGame(Vec3 value) { return {value.x, value.y, value.z}; }
 
 // 気絶：技を打ち切って沈み込み、動けなくなる（飛んでいる斬撃はそのまま）。気絶値がたまった時と、大技が崩れた時。
 void EnterStun(BossComponent& boss) {
@@ -81,28 +83,27 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
 
 } // namespace
 
-uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent& health) {
+uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageable& health) {
     BossComponent& boss = frame.boss;
     BossHealthBars::Prepare(boss, frame.shift, health);
-    DamageableRules::Initialize(health);
     if (boss.testDamageAtFrame >= 0 && boss.testDamageDone < boss.testDamageRepeatCount &&
         static_cast<int64_t>(boss.tick) >=
             static_cast<int64_t>(boss.testDamageAtFrame) +
                 static_cast<int64_t>(boss.testDamageDone) * std::max(0, boss.testDamageRepeatFrames)) {
         if (boss.testDamageDone == 0 || boss.testDamageRepeatFrames > 0) {
-            const bool accepted = DamageableRules::ApplyDamage(health, boss.testDamageAmount, Forward(boss.yaw));
+            const bool accepted = health.Apply(boss.testDamageAmount, ToGame(Forward(boss.yaw)));
             char message[192]{};
             std::snprintf(message, sizeof(message), "TestDamage tick=%llu amount=%.3f accepted=%d health=%.3f",
                           static_cast<unsigned long long>(boss.tick), static_cast<double>(boss.testDamageAmount),
-                          static_cast<int>(accepted), static_cast<double>(DamageableRules::GetHealth(health)));
+                          static_cast<int>(accepted), static_cast<double>(health.Health()));
             BossLog::Write(message);
         }
         ++boss.testDamageDone;
     }
     // 当てられた回数は技の選び方が覚える（連続攻撃への割り込み、突進系の出やすさ）。前隙の間なら大技が崩れる。
-    const uint64_t hits = BossSelection::NoteHits(boss, DamageableRules::GetHitCount(health));
+    const uint64_t hits = BossSelection::NoteHits(boss, health.hitCount);
     // 累計は条を満たしても戻さない（差分だけを読むので、2 本目を満たした tick も気絶値の基準はずれない）。
-    const double base = DamageableRules::GetBaseDamageTotal(health);
+    const double base = health.baseDamageTotal;
     const double delta = base - boss.seenBaseDamage;
     boss.seenBaseDamage = base;
     // 1 本目が空になった tick は、崩れも気絶値も数えずに変わり目へ入る（気絶値は 0 に戻る）。変わり目の演出（c-8dd296）を
@@ -122,7 +123,7 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
     if (boss.state != BossState::Stunned && boss.stun > 0.0f &&
         boss.clockSeconds - boss.stunHitSeconds > boss.stunDecayDelaySeconds)
         boss.stun = std::max(0.0f, boss.stun - boss.stunDecayPerSecond * frame.dt);
-    if (!DamageableRules::IsAlive(health) && boss.state != BossState::Dead) {
+    if (!health.IsAlive() && boss.state != BossState::Dead) {
         BossMoveExecutor::Interrupt(boss);
         BossRules::CancelRequest(boss);
         boss.state = BossState::Dead;
@@ -135,14 +136,14 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
     }
     // 気絶（ひざまずき）の間と、戻り（後隙）の間は、受ける威力が増える。戻りの当たりは手応えも強める（次の当たりに効く）。
     const bool inRecovery = boss.state == BossState::Act && boss.phase == BossActPhase::Post;
-    DamageableRules::SetIncomingDamageScale(health, boss.state == BossState::Stunned ? boss.stunDamageScale
+    health.incomingScale = (boss.state == BossState::Stunned ? boss.stunDamageScale
                                                     : inRecovery                     ? boss.recoveryDamageScale
                                                                                      : 1.0f);
     if (inRecovery) {
-        DamageableRules::BoostHitFeedback(health, boss.recoveryHitPushScale, boss.recoveryHitStopFrames);
+        health.Boost(boss.recoveryHitPushScale, boss.recoveryHitStopFrames);
         boss.recoveryBoosted = true;
     } else if (boss.recoveryBoosted) {
-        DamageableRules::BoostHitFeedback(health, 1.0f, 0);
+        health.Boost(1.0f, 0);
         boss.recoveryBoosted = false;
     }
     // 弾をかわす霞歩の跳び始め（kasumiStepGuardFrames）は当たらない。登場の間（構えに収まるまで）と、フェーズの
@@ -150,7 +151,7 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
     const bool shielded =
         BossKasumiStep::Guarding(boss) || BossIntro::Shielded(frame.intro) || BossRules::IsPhaseShifting(boss);
     if (shielded != boss.shieldApplied) {
-        DamageableRules::SetInvulnerable(health, shielded);
+        health.invulnerable = shielded;
         boss.shieldApplied = shielded;
     }
     // HUD へ出す値は、この tick の被弾と条の入れ替えを済ませた後に写す（1 本目が空の 0 を出さない。出すと Flow が

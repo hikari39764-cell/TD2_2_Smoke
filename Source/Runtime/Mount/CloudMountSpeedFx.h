@@ -23,17 +23,17 @@ struct CloudMountSpeedFxView {
 class CloudMountSpeedFx final {
 public:
     // ならす前の狙いの強さ（0〜1 を超えることもある。上限の前）。乗っていなければ 0。
-    static float TargetStrength(const CloudMountComponent& mount);
+    static float TargetStrength(const CloudMount& mount);
     // 描画フレームごとに呼ぶ。狙いへ speedFxRiseSeconds（強まる時）・speedFxFallSeconds（弱まる時）でならし、
     // 上限 speedFxLimit を掛けた強さ（0〜1）を返す。乗っていない間も呼ぶ（降りた後は弱まって消える）。
-    static float StepStrength(CloudMountComponent& mount, float dt);
+    static float StepStrength(CloudMount& mount, float dt);
     // 進む向き（世界の単位ベクトル）を画面へ写す。uv は左上が 0、右下が 1（画面の外も取る）。画面の中心から
     // speedFxCenterLimit（画面の端が 1）より遠い時と、カメラの横・後ろへ向かう時は、その向きのまま限度の所へ置く。
     // 戻り値は前へ向かう度合い（1＝カメラの前、後ろへ向かうほど 0 へ。強さに掛ける）。
-    static float HeadingOnScreen(const CloudMountComponent& mount, const CloudMountSpeedFxView& view,
+    static float HeadingOnScreen(const CloudMount& mount, const CloudMountSpeedFxView& view,
                                  HIKARI::GameProjectFloat3 direction, float& outU, float& outV);
     // 中心を前の値から speedFxCenterSeconds でならす（first なら一度に置く）。
-    static void StepCenter(CloudMountComponent& mount, float u, float v, bool first, float dt);
+    static void StepCenter(CloudMount& mount, float u, float v, bool first, float dt);
     // 世界の点を画面へ写し、半径 radius (m) の球が画面の高さに対して占める半径を返す。カメラの後ろなら false。
     static bool SphereOnScreen(const CloudMountSpeedFxView& view, HIKARI::GameProjectFloat3 center, float radius,
                                float& outU, float& outV, float& outRadius);

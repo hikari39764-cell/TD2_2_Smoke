@@ -5,7 +5,7 @@
 
 namespace Project_TD2_2 {
 
-class PlayerComponent;
+struct Player;
 
 // フェーズの変わり目の演出の規則（c-8dd296）：拍を固定 tick ごとに進め、閃光の tick（フェーズ 2 の見た目の切り替え・
 // プレイヤーを押し出す）と、HP の条が満ち始める時を決める。変わり目そのもの（無敵・技を出さない・2 本目を満たす）は
@@ -35,7 +35,7 @@ public:
     // 演出の後の、技を選ばない間。
     static bool Calm(const BossPhaseShiftComponent* shift) { return shift != nullptr && shift->state.calmLeft > 0; }
     // 閃光の後の最初の tick：プレイヤーを押し出す（ボスから pushToDistance まで。場の縁の内側で止める）。
-    static void Push(BossComponent& boss, BossPhaseShiftComponent* shift, PlayerComponent& player,
+    static void Push(BossComponent& boss, BossPhaseShiftComponent* shift, Player& player,
                      HIKARI::GameProjectFloat3 playerCenter);
 };
 

@@ -39,7 +39,7 @@ ENGINE = BIN + "/hikari.exe"
 SDK = BIN + "/Runtime/Sdk"
 SCENES = {"main": "Assets/Scenes/SmokeArena.scene.json", "kujata": "Assets/Scenes/SmokeArena_Kujata.scene.json"}
 BOSS_TYPE = "Project_TD2_2.Boss"
-PLAYER_TYPE = "Project_TD2_2.Player"
+PLAYER_TYPE = "TD2_2.Player"  # 新しいゲーム層の部品（c-df5bfd）
 COPIED = ("Source", "Data", "Assets", "ProjectSettings", "Tools")
 # エンジンの側の、整理と関係なく毎回出る警告（数えない）。
 IGNORED_WARNINGS = (r"SubmitActionCinematicGrade", r"GPU wait exceeded", r"RetiredSpecialOutput")

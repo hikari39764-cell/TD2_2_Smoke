@@ -42,7 +42,7 @@ char DirectionLetter(BossRollDirection direction) {
 
 // 転がる向きを、プレイヤーからボスへの向きと比べて分ける。前後から外れた向きは、ボスがプレイヤーへ向いているとみなした
 // 時のボスの左右（ボスの右＝ボスの前を右へ 90 度回した向き。右手系で前 f の右は (−f.z, 0, f.x)）。
-BossRollDirection RollDirectionOf(const BossComponent& boss, const PlayerComponent& player, Vec3 playerCenter) {
+BossRollDirection RollDirectionOf(const BossComponent& boss, const Player& player, Vec3 playerCenter) {
     const Vec3 toBoss = FlatNormalize(Sub(boss.ground, playerCenter));
     const Vec3 roll = FlatNormalize(PlayerRules::GetActionDirection(player));
     const float along = Dot(roll, toBoss);
@@ -76,7 +76,7 @@ void LogHabit(const BossComponent& boss) {
 }
 
 // ローリングの始まり：転がっていなかった所から転がった、または続けてもう一度転がった（経過 F が戻った）。
-void ObserveRoll(BossComponent& boss, const PlayerComponent& player, Vec3 playerCenter) {
+void ObserveRoll(BossComponent& boss, const Player& player, Vec3 playerCenter) {
     BossPlayerWatch& watch = boss.watch;
     const bool rolling = PlayerRules::GetState(player) == PlayerState::Roll;
     if (rolling && (!watch.wasRolling || PlayerRules::GetStateFrame(player) < watch.rollFrame)) {
@@ -179,7 +179,7 @@ void ObserveStance(BossComponent& boss, Vec3 playerCenter) {
 }
 
 // プレイヤーの残り：ヒョウタンの煙・満杯、精力、HP、残りの回復の数。満杯・回復の数・HP（1 % 刻み）が変わったらログ。
-void ObserveRemaining(BossComponent& boss, const PlayerComponent& player, const BossGearSight& gear) {
+void ObserveRemaining(BossComponent& boss, const Player& player, const BossGearSight& gear) {
     BossPlayerWatch& watch = boss.watch;
     watch.gourdPercent = gear.hasGourd ? gear.smokePercent : -1.0f;
     watch.gourdFull = gear.hasGourd && gear.gourdFull;
@@ -216,7 +216,7 @@ float SecondsWhile(const BossPlayerWatch& watch, Holds holds) {
 
 } // namespace
 
-void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const PlayerComponent* player,
+void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const Player* player,
                            HIKARI::GameProjectFloat3 playerCenter, const BossGearSight& gear, float tickSeconds) {
     BossPlayerWatch& watch = boss.watch;
     const float now = boss.clockSeconds;

@@ -4,7 +4,7 @@
 
 namespace Project_TD2_2 {
 
-// 発射規則から独立した見た目と手応え。GourdShotComponent がデータとして所有する。
+// 発射規則から独立した見た目と手応え。GourdShot がデータとして所有する。
 struct GourdFeedback {
     void DescribeProperties(HIKARI::PropertyFields& fields);
 

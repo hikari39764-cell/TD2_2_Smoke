@@ -54,7 +54,7 @@ constexpr float kGlowHeatDrop = 0.26f;
 struct Field {
     HIKARI::WorldView& world;
     HIKARI::ObjectView object;
-    GourdComponent& gourd;
+    Gourd& gourd;
     uint32_t channels = FluidChannels::kFog;
     uint64_t instance = kGatherInstanceBase;
     // 火の域にも届ける力に足す通り道（0 なら火には届けない）。
@@ -83,7 +83,7 @@ struct Field {
 
 } // namespace
 
-bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
+bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd,
                                    double& outTotal) {
     const HIKARI::FluidView fluid = world.GetFluid();
     outTotal = gourd.removedSum;
@@ -106,7 +106,7 @@ bool GourdAbsorbField::ReadRemoved(HIKARI::WorldView& world, HIKARI::ObjectView 
     return true;
 }
 
-void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd) {
     if (!(gourd.swallowRadius > 0.0f))
         return;
     // 向きの無い負の力＝吸い口：半径の面から strength m/s で吸い込み、外の霧も口へ流れる。斬撃のエフェクトの域だけに届く。
@@ -122,7 +122,7 @@ void GourdAbsorbField::SubmitSwallow(HIKARI::WorldView& world, HIKARI::ObjectVie
     ++gourd.fluidSubmissions;
 }
 
-void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd) {
+void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd) {
     const int frames = std::max(1, gourd.blockedPuffFrames);
     const float strength =
         gourd.blockedPuffStrength * static_cast<float>(gourd.blockedPuffLeft) / static_cast<float>(frames);
@@ -141,8 +141,7 @@ void GourdAbsorbField::SubmitPushBack(HIKARI::WorldView& world, HIKARI::ObjectVi
     ++gourd.fluidSubmissions;
 }
 
-void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdComponent& gourd,
-                              float seconds) {
+void GourdAbsorbField::Submit(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, float seconds) {
     // 満杯で吸えない時は霧を消さない（吸っても増えない煙を場から減らさない）。流れもそよ風まで弱める。
     const bool blocked = GourdRules::IsBlocked(gourd);
     const float flow = blocked ? kFullFlowScale : 1.0f;

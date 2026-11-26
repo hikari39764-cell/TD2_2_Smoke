@@ -14,7 +14,7 @@
 #include "GourdRules.h"
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
-#include "../Combat/DamageableRules.h"
+#include "../Combat/Damageable.h"
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
@@ -36,36 +36,34 @@ using GameSession::IsPlaying;
 template <class Callback>
 bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callback&& callback) {
     bool found = false;
-    ForEachOnObject<GourdComponent>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, GourdComponent& gourd) {
-        const auto playerObject = world.FindSceneObject(gourd.playerId);
+    ForEachOnObject<Gourd>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, Gourd& gourd) {
+        const auto playerObject = HIKARI::Extend::ObjectOf(gourd.player);
         if (!playerObject.IsValid())
             return;
-        ForEachOnObject<PlayerComponent>(world, kPlayerType, playerObject,
-                                         [&](HIKARI::ObjectView object, PlayerComponent& player) {
-                                             found = true;
-                                             callback(gourd, object, player);
-                                         });
+        ForEachOnObject<Player>(world, kPlayerType, playerObject, [&](HIKARI::ObjectView object, Player& player) {
+            found = true;
+            callback(gourd, object, player);
+        });
     });
     return found;
 }
 
 float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
     float value = 0.0f;
-    ForEachOnObject<GourdComponent>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, GourdComponent& gourd) {
-        value = GourdRules::GetSmokePerVolume(gourd);
-    });
+    ForEachOnObject<Gourd>(world, kGourdType, shotObject,
+                           [&](HIKARI::ObjectView, Gourd& gourd) { value = GourdRules::GetSmokePerVolume(gourd); });
     return value;
 }
 
 // ロック中のカメラと同じ点（胸のあたり。霧へ沈んだボスなど、対象の原点からずらした点も同じ規則：PlayerRules::LockAimPoint）。
-Vec3 LockPoint(const HIKARI::GameProjectTransform& target, const PlayerComponent& player) {
+Vec3 LockPoint(const HIKARI::GameProjectTransform& target, const Player& player) {
     return PlayerRules::LockAimPoint(player, target.position);
 }
 
 // ロックしていない時の照準補助。カメラの正面（水平）から aimAssistDegrees 以内・aimAssistRange 以内の
 // ロック候補のうち、いちばん正面に近い相手の LockPoint を返す。候補が無ければ false。
-bool AssistPoint(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdComponent& gourd,
-                 const PlayerComponent& player, Vec3 cameraForward, Vec3& outPoint) {
+bool AssistPoint(HIKARI::WorldView& world, const GourdShot& shot, const Gourd& gourd, const Player& player,
+                 Vec3 cameraForward, Vec3& outPoint) {
     const float flat = std::hypot(cameraForward.x, cameraForward.z);
     if (shot.aimAssistDegrees <= 0.0f || shot.aimAssistRange <= 0.0f || flat <= 0.0f)
         return false;
@@ -93,14 +91,13 @@ bool AssistPoint(HIKARI::WorldView& world, const GourdShotComponent& shot, const
     for (size_t i = 0; i < count; ++i)
         consider(world.FindObject(PlayerRules::GetLockCandidate(player, i)));
     if (count == 0)
-        consider(world.FindSceneObject(PlayerRules::GetLockCandidateId(player)));
+        consider(world.FindObject(PlayerRules::GetLockCandidateTarget(player)));
     return found;
 }
 
 // ロックオン中は対象へ。ロックしていない時は照準補助の相手へ、いなければカメラの正面（画面の中央）へ撃つ。
 // カメラは上から見下ろすので、正面へ撃つ時の下向きは aimMinVertical までにして足元へ撃ち込まないようにする。
-Vec3 Aim(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdComponent& gourd,
-         const PlayerComponent& player) {
+Vec3 Aim(HIKARI::WorldView& world, const GourdShot& shot, const Gourd& gourd, const Player& player) {
     const auto fallback = PlayerRules::FlatNormalize(PlayerRules::GetFacing(player));
     const auto target = world.FindObject(PlayerRules::GetLockTarget(player));
     HIKARI::GameProjectTransform transform{};
@@ -117,12 +114,12 @@ Vec3 Aim(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdCo
     return Normalize(forward, fallback);
 }
 
-void Log(const GourdShotComponent& shot, const char* message) {
+void Log(const GourdShot& shot, const char* message) {
     if (shot.traceEveryFrames > 0)
         HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdShot", message);
 }
 
-void LogPhase(const GourdShotComponent& shot, const char* event) {
+void LogPhase(const GourdShot& shot, const char* event) {
     char message[384]{};
     std::snprintf(
         message, sizeof(message),
@@ -134,7 +131,7 @@ void LogPhase(const GourdShotComponent& shot, const char* event) {
     Log(shot, message);
 }
 
-int BlockedReason(const GourdShotComponent& shot, const GourdComponent& gourd, const PlayerComponent& player) {
+int BlockedReason(const GourdShot& shot, const Gourd& gourd, const Player& player) {
     if (shot.staminaCost > 0.0f && PlayerRules::GetStamina(player) <= 0.0f)
         return 1;
     if (shot.smokeCost > 0.0f && GourdRules::GetSmoke(gourd) < shot.smokeCost)
@@ -146,7 +143,7 @@ int BlockedReason(const GourdShotComponent& shot, const GourdComponent& gourd, c
     return free < std::clamp(shot.pelletsPerShot, 1, static_cast<int>(kGourdProjectileCapacity)) ? 3 : 0;
 }
 
-bool CanPay(GourdShotComponent& shot, const GourdComponent& gourd, const PlayerComponent& player) {
+bool CanPay(GourdShot& shot, const Gourd& gourd, const Player& player) {
     const int reason = BlockedReason(shot, gourd, player);
     if (reason != 0 && reason != shot.blockedReason) {
         char message[256]{};
@@ -160,7 +157,7 @@ bool CanPay(GourdShotComponent& shot, const GourdComponent& gourd, const PlayerC
     return reason == 0;
 }
 
-void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle player, Vec3 origin, Vec3 direction,
+void SpawnPellets(GourdShot& shot, HIKARI::GameProjectObjectHandle player, Vec3 origin, Vec3 direction,
                   float groundClearance, bool fire) {
     const int count = std::clamp(shot.pelletsPerShot, 1, static_cast<int>(kGourdProjectileCapacity));
     int pellet = 0;
@@ -190,8 +187,7 @@ void SpawnPellets(GourdShotComponent& shot, HIKARI::GameProjectObjectHandle play
     }
 }
 
-bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& gourd, HIKARI::ObjectView playerObject,
-          PlayerComponent& player) {
+bool Fire(HIKARI::WorldView& world, GourdShot& shot, Gourd& gourd, HIKARI::ObjectView playerObject, Player& player) {
     if (!CanPay(shot, gourd, player))
         return false;
     const float staminaBefore = PlayerRules::GetStamina(player), smokeBefore = GourdRules::GetSmoke(gourd);
@@ -251,7 +247,7 @@ bool Fire(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& go
 }
 
 // 構え・後隙の間に、プレイヤーへ歩きとローリングの扱いを毎 tick 伝える（PlayerSystem が使ったら消す）。
-void RequestPlayerAllowances(const GourdShotComponent& shot, PlayerComponent& player) {
+void RequestPlayerAllowances(const GourdShot& shot, Player& player) {
     if (shot.phase == GourdShotPhase::Windup) {
         PlayerRules::AllowWalkDuringAction(player, shot.shotMoveScale);
         PlayerRules::HoldRollInput(player);
@@ -271,7 +267,7 @@ void RequestPlayerAllowances(const GourdShotComponent& shot, PlayerComponent& pl
 
 // 後隙が明けていれば終える。ただし押し続けている（先行入力を含む）間は、次の発射まで連射を続ける
 // （連射の間隔は 24 F からで後隙より長いことがあり、ここで止めると連射の表がずれる）。連射を待っているなら true。
-bool EndRecovery(GourdShotComponent& shot, PlayerComponent& player, bool wantsAttack) {
+bool EndRecovery(GourdShot& shot, Player& player, bool wantsAttack) {
     const bool chaining =
         shot.phase == GourdShotPhase::Recovery && wantsAttack && shot.processedTick <= shot.nextFireTick;
     if (shot.phase == GourdShotPhase::Recovery && shot.processedTick >= shot.recoveryEndTick && !chaining) {
@@ -283,8 +279,8 @@ bool EndRecovery(GourdShotComponent& shot, PlayerComponent& player, bool wantsAt
     return chaining;
 }
 
-void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponent& gourd,
-               HIKARI::ObjectView playerObject, PlayerComponent& player) {
+void StepPhase(HIKARI::WorldView& world, GourdShot& shot, Gourd& gourd, HIKARI::ObjectView playerObject,
+               Player& player) {
     const bool wantsAttack = shot.attackHeld || shot.attackBuffer > 0;
     // ローリングの移動が終わった後なら、攻撃（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
     if (shot.phase == GourdShotPhase::Idle && shot.enabled && gourd.enabled && wantsAttack &&
@@ -360,7 +356,7 @@ void StepPhase(HIKARI::WorldView& world, GourdShotComponent& shot, GourdComponen
     RequestPlayerAllowances(shot, player);
 }
 
-void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 position, uint64_t ignoredObject) {
+void AddResidue(HIKARI::WorldView& world, GourdShot& shot, Vec3 position, uint64_t ignoredObject) {
     auto& residue = shot.residues[shot.residueCursor % kGourdResidueCapacity];
     ++shot.residueCursor;
     if (residue.smoke.IsValid() && world.GetVfx().IsActive(residue.smoke))
@@ -381,25 +377,22 @@ void AddResidue(HIKARI::WorldView& world, GourdShotComponent& shot, Vec3 positio
     residue.position = position;
 }
 
-bool ApplyHit(HIKARI::WorldView& world, const GourdShotComponent& shot, const GourdProjectile& projectile,
-              uint64_t target, float& health) {
-    bool accepted = false;
-    world.ForEachComponent<DamageableComponent>(
-        HIKARI::MakeComponentTypeId(kDamageableType), [&](HIKARI::ObjectView object, DamageableComponent& damageable) {
-            if (object.GetHandle().value == target) {
-                accepted = DamageableRules::ApplyDamage(
-                    damageable, GourdShotRules::GetProjectileDamage(shot, projectile), projectile.direction);
-                // 火弾は、この命中の手応えだけを強めてもらう。
-                if (accepted && projectile.fire)
-                    DamageableRules::BoostHitFeedback(damageable, shot.fireHitCameraScale, shot.fireHitStopFrames);
-                health = DamageableRules::GetHealth(damageable);
-            }
-        });
+bool ApplyHit(const GourdShot& shot, const GourdProjectile& projectile, uint64_t target, float& health) {
+    Damageable* damageable = Damageable::Of(target);
+    if (damageable == nullptr)
+        return false;
+    const auto& d = projectile.direction;
+    const bool accepted =
+        damageable->Apply(GourdShotRules::GetProjectileDamage(shot, projectile), HIKARI::Vec3{d.x, d.y, d.z});
+    // 火弾は、この命中の手応えだけを強めてもらう。
+    if (accepted && projectile.fire)
+        damageable->Boost(shot.fireHitCameraScale, shot.fireHitStopFrames);
+    health = damageable->Health();
     return accepted;
 }
 
-void LogProjectile(const GourdShotComponent& shot, const GourdProjectile& projectile, const char* event,
-                   uint64_t hitObject = 0, bool damageAccepted = false, float health = 0.0f) {
+void LogProjectile(const GourdShot& shot, const GourdProjectile& projectile, const char* event, uint64_t hitObject = 0,
+                   bool damageAccepted = false, float health = 0.0f) {
     char message[512]{};
     std::snprintf(
         message, sizeof(message),
@@ -415,8 +408,8 @@ void LogProjectile(const GourdShotComponent& shot, const GourdProjectile& projec
     Log(shot, message);
 }
 
-void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdShotComponent& shot,
-                    GourdProjectile& projectile, float dt) {
+void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdShot& shot, GourdProjectile& projectile,
+                    float dt) {
     if (projectile.spawnedTick == shot.processedTick) {
         // 同じ描画フレームで砲口に源を作り、次の移動から最初の区間も掃掠する。
         LogProjectile(shot, projectile, "ProjectileSpawn");
@@ -444,7 +437,7 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
     projectile.densityScale = GourdShotRules::GetDensityAtDistance(shot, projectile.distance);
     if (didHit) {
         float health = 0.0f;
-        const bool accepted = ApplyHit(world, shot, projectile, hit.objectHandle, health);
+        const bool accepted = ApplyHit(shot, projectile, hit.objectHandle, health);
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;
@@ -479,88 +472,81 @@ void GourdShotSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContex
         return;
     HIKARI::GameProjectInputActionState action{};
     const bool valid = world.GetInput().GetAction("Gameplay.Attack", action);
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
-                                                   shot.attackHeld = valid && action.down;
-                                                   if (valid && action.pressed) {
-                                                       shot.attackBuffer = shot.inputBufferFrames;
-                                                       shot.attackPressed = true;
-                                                   }
-                                               });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView, GourdShot& shot) {
+        shot.attackHeld = valid && action.down;
+        if (valid && action.pressed) {
+            shot.attackBuffer = shot.inputBufferFrames;
+            shot.attackPressed = true;
+        }
+    });
 }
 
 void GourdShotSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
-            shot.processedTick = frame.fixedTickIndex;
-            const bool found = WithShooter(
-                world, object, [&](GourdComponent& gourd, HIKARI::ObjectView playerObject, PlayerComponent& player) {
-                    StepPhase(world, shot, gourd, playerObject, player);
-                });
-            if (!found)
-                shot.phase = GourdShotPhase::Idle;
-            shot.attackPressed = false;
-            shot.attackBuffer = std::max(0, shot.attackBuffer - 1);
-        });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
+        shot.processedTick = frame.fixedTickIndex;
+        const bool found =
+            WithShooter(world, object, [&](Gourd& gourd, HIKARI::ObjectView playerObject, Player& player) {
+                StepPhase(world, shot, gourd, playerObject, player);
+            });
+        if (!found)
+            shot.phase = GourdShotPhase::Idle;
+        shot.attackPressed = false;
+        shot.attackBuffer = std::max(0, shot.attackBuffer - 1);
+    });
 }
 
 void GourdShotSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
-            GourdShotFogReturn::Step(shot);
-            for (auto& residue : shot.residues) {
-                if (residue.active) {
-                    residue.framesLeft = std::max(0, residue.framesLeft - 1);
-                    if (residue.framesLeft <= 0 && !residue.burstPending)
-                        residue.active = false;
-                }
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
+        GourdShotFogReturn::Step(shot);
+        for (auto& residue : shot.residues) {
+            if (residue.active) {
+                residue.framesLeft = std::max(0, residue.framesLeft - 1);
+                if (residue.framesLeft <= 0 && !residue.burstPending)
+                    residue.active = false;
             }
-            for (auto& projectile : shot.projectiles) {
-                projectile.flashFramesLeft = std::max(0, projectile.flashFramesLeft - 1);
-                projectile.fadeFramesLeft = std::max(0, projectile.fadeFramesLeft - 1);
-                if (projectile.active)
-                    StepProjectile(world, object, shot, projectile, frame.fixedDt);
-            }
-        });
+        }
+        for (auto& projectile : shot.projectiles) {
+            projectile.flashFramesLeft = std::max(0, projectile.flashFramesLeft - 1);
+            projectile.fadeFramesLeft = std::max(0, projectile.fadeFramesLeft - 1);
+            if (projectile.active)
+                StepProjectile(world, object, shot, projectile, frame.fixedDt);
+        }
+    });
 }
 
 void GourdShotSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
     uint32_t trails = 0;
-    world.ForEachComponent<GourdShotComponent>(
-        HIKARI::MakeComponentTypeId(kGourdShotType), [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
-            if (GourdShotRules::IsFiring(shot)) {
-                WithShooter(world, object, [&](GourdComponent& gourd, HIKARI::ObjectView, PlayerComponent& player) {
-                    GourdRules::SetAimOverride(gourd, Aim(world, shot, gourd, player));
-                });
-            }
-            GourdShotVisuals::Update(world, object, shot, trails);
-        });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
+        if (GourdShotRules::IsFiring(shot)) {
+            WithShooter(world, object, [&](Gourd& gourd, HIKARI::ObjectView, Player& player) {
+                GourdRules::SetAimOverride(gourd, Aim(world, shot, gourd, player));
+            });
+        }
+        GourdShotVisuals::Update(world, object, shot, trails);
+    });
 }
 
 void GourdShotSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
     uint32_t submitted = 0;
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView object, GourdShotComponent& shot) {
-                                                   GourdShotVisuals::Render(world, object, shot, submitted);
-                                                   GourdShotFogReturn::Render(world, object, shot, submitted,
-                                                                              SmokePerVolume(world, object));
-                                               });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
+        GourdShotVisuals::Render(world, object, shot, submitted);
+        GourdShotFogReturn::Render(world, object, shot, submitted, SmokePerVolume(world, object));
+    });
 }
 
 void GourdShotSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ForEachComponent<GourdShotComponent>(HIKARI::MakeComponentTypeId(kGourdShotType),
-                                               [&](HIKARI::ObjectView, GourdShotComponent& shot) {
-                                                   GourdShotVisuals::Stop(world, shot);
-                                                   GourdShotFogReturn::Clear(shot);
-                                               });
+    ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView, GourdShot& shot) {
+        GourdShotVisuals::Stop(world, shot);
+        GourdShotFogReturn::Clear(shot);
+    });
 }
 
 } // namespace Project_TD2_2
