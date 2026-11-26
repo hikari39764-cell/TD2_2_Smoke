@@ -150,10 +150,10 @@ class GameProjectModule final : public HIKARI::RUNTIME::IGameProjectModule {
 public:
     std::string_view GetModuleId() const noexcept override { return "Project_TD2_2"; }
     // 新しいゲーム層（HIKARI/Game.h の HIKARI_COMPONENT / HIKARI_SYSTEM。型名 TD2_2.*、機能 TD2_2.Game）も同じ DLL で
-    // 登録する。古い登録が無くなったら、このモジュールごと HIKARI_GAME("TD2_2") の一行に替える。
+    // 登録する（移行用の公開の入口 RegisterGameLayer）。古い登録が無くなったら、このモジュールごと
+    // HIKARI_GAME("TD2_2") の一行に替える。
     bool RegisterRuntimeFeatures(HIKARI::RuntimeFeatureCatalog& catalog) override {
-        return HIKARI::RegisterRuntimeFeature<GameplayFeature>(catalog) &&
-               HIKARI::RegisterRuntimeFeature<HIKARI::detail::GameFeature>(catalog, "TD2_2");
+        return HIKARI::RegisterRuntimeFeature<GameplayFeature>(catalog) && HIKARI::RegisterGameLayer(catalog, "TD2_2");
     }
     std::unique_ptr<HIKARI::IGameProjectSession> CreateGameSession() override {
         return std::make_unique<GameSession>();
