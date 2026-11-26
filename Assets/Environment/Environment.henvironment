@@ -82,9 +82,9 @@
       1.0
     ],
     "shadowsTint": [
-      1.0,
-      1.0,
-      1.0
+      0.2867383360862732,
+      0.24254567921161652,
+      0.24254567921161652
     ]
   },
   "defaultWeather": "engine.weather.clear",
@@ -191,9 +191,9 @@
   "sun": {
     "angularRadius": 0.004674999974668026,
     "color": [
-      0.9569892287254333,
-      0.841362714767456,
-      0.7683354616165161
+      1.0,
+      0.771534264087677,
+      0.6272401809692383
     ],
     "fixedAzimuthDegrees": 140.8000030517578,
     "fixedElevationDegrees": 15.699999809265137,
@@ -217,10 +217,10 @@
     "streakLength": 0.15000000596046448
   },
   "toneMapping": {
-    "contrast": 1.3609999418258667,
+    "contrast": 1.6109999418258667,
     "curve": "AcesFitted",
     "gamma": 2.200000047683716,
-    "saturation": 1.5010000467300415,
+    "saturation": 1.5959999561309814,
     "whiteBalanceTemperature": 6500.0,
     "whiteBalanceTint": 0.0
   }
