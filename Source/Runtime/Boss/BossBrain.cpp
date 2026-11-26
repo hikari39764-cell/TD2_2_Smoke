@@ -67,6 +67,13 @@ void BossTestBrain::Describe(HIKARI::PropertyFields& fields, BossComponent& boss
         fields.Int("testDamageRepeatCount", "確かめのダメージの回数", boss.testDamageRepeatCount, 1, 7200);
         fields.Int("traceEveryFrames", "状態をログに出す間隔 (F、0 は出さない)", boss.traceEveryFrames, 0, 7200);
         fields.Int("randomSeed", "乱数の種（移動の長さ・浮く高さ）", boss.randomSeed, 0, 1000000);
+        fields.Bool("reachProbe", "剣の技が当たる間合い（距離 × 角度）を測って記録に出す（始めに 1 度）",
+                    boss.reachProbe);
+        fields.Float("reachProbeDistanceMin", "間合いの計測：近い端 (m)", boss.reachProbeDistanceMin, 0.0f, 50.0f);
+        fields.Float("reachProbeDistanceMax", "間合いの計測：遠い端 (m)", boss.reachProbeDistanceMax, 0.0f, 50.0f);
+        fields.Float("reachProbeDistanceStep", "間合いの計測：距離の刻み (m)", boss.reachProbeDistanceStep, 0.05f,
+                     5.0f);
+        fields.Int("reachProbeAngleStep", "間合いの計測：角度の刻み (度)", boss.reachProbeAngleStep, 1, 90);
     }
 }
 

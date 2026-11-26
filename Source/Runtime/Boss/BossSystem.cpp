@@ -18,6 +18,7 @@
 #include "BossPhaseShift.h"
 #include "BossPhaseShiftComponent.h"
 #include "BossPose.h"
+#include "BossReachProbe.h"
 #include "BossSmoke.h"
 #include "BossStateMachine.h"
 #include "BossTableLoader.h"
@@ -184,6 +185,7 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, DamageableComponent* 
     boss.swordPose = BossPose::Target(boss);
     BossTransform::Apply(object, boss, intro);
     Trace(boss, health);
+    BossReachProbe::Step(frame);
 }
 
 } // namespace

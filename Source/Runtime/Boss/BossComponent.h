@@ -599,9 +599,17 @@ public:
     int testDamageRepeatCount = 1;
     int traceEveryFrames = 0;
     int randomSeed = 7;
+    // 間合いの計測（c-c010ef。BossReachProbe）：剣の技が当たる距離 × 角度を記録に出す。
+    bool reachProbe = false;
+    float reachProbeDistanceMin = 1.0f;
+    float reachProbeDistanceMax = 10.0f;
+    float reachProbeDistanceStep = 0.25f;
+    int reachProbeAngleStep = 10;
 
     // 実行時の状態は保存しない。
     bool initialized = false;
+    // 間合いの計測を済ませた（Play の間に 1 度だけ測る）。
+    bool reachProbeDone = false;
     // 戦いの流れ（Flow）が、戦いが始まるまでボスの行動を止めている間 true。技を頼まず、歩かない。
     bool held = false;
     // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。

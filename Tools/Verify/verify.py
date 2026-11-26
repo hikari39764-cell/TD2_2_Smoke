@@ -13,6 +13,9 @@
                                                                      既定は短い場面（quick_moves・quick_fight。数分で終わる）だけ。
                                                                      長い場面は only= に名前を書いた時だけ流す
   python -I -X utf8 Tools/Verify/verify.py compare <名前A> <名前B>     2 つの基準の記録を比べる（違えば終了コード 1）
+  python -I -X utf8 Tools/Verify/verify.py reach [close=2.5] [reachProbeDistanceStep=0.25] [reachProbeAngleStep=10]
+                                                                     剣の技が当たる間合い（距離 × 角度）を測り、
+                                                                     Library/Verify/runs/reach/reach.md に表を書く（c-c010ef）
 
 写しを作る時、作業中でない他人の書き換え（コミットしていない変更）は HEAD の中身に戻して入れる（比べる記録に
 混ぜない）。自分の作業のパスは own=<頭,頭,...>、無ければ .hikari-hub/active.json の paths を使う。
@@ -328,6 +331,92 @@ def summarize(lines):
             print("  |", line.split("] ", 1)[-1][:200])
 
 
+def parse_angles(text):
+    """「-40..30,90..120」→ 角度の集合（刻みは step）。"""
+    if text == "-":
+        return []
+    out = []
+    for part in text.split(","):
+        a, b = part.split("..")
+        out.append((int(a), int(b)))
+    return out
+
+
+def covers(intervals, angle):
+    return any(a <= angle <= b for a, b in intervals)
+
+
+def reach(opts):
+    """剣の技が当たる間合い（c-c010ef）：ボスの reachProbe で測り、技・斬りごとの表を Library/Verify/runs/reach/reach.md に書く。
+    hit はプレイヤーの当たりの筒（ゲームと同じ）、tall は高さを無視した筒。tall に入るのに hit に入らない所は、
+    刀が頭の上か足の下を通っている（向きは合っている）。"""
+    folder = WORK / "runs" / "reach"
+    patch = dict(reachProbe=True, testMove="斜め切り下ろし", testHoldStill=True, testStartFrames=100000)
+    for key in ("reachProbeDistanceMin", "reachProbeDistanceMax", "reachProbeDistanceStep"):
+        if key in opts:
+            patch[key] = float(opts[key])
+    if "reachProbeAngleStep" in opts:
+        patch["reachProbeAngleStep"] = int(opts["reachProbeAngleStep"])
+    lines = headless("main", int(opts.get("ticks", 300)), [], folder, patch, STURDY)
+    strikes, order = {}, []
+    for line in lines:
+        text = line.split("] ", 1)[-1]
+        m = re.search(r"ReachStrike move=(\S+) strike=(\d+) window=(\S+) frames=(\d+) bladeLow=(\S+) bladeHigh=(\S+) "
+                      r"radius=(\S+) playerCenter=(\S+)", text)
+        if m:
+            key = (m.group(1), int(m.group(2)))
+            strikes[key] = dict(window=m.group(3), low=float(m.group(5)), high=float(m.group(6)),
+                                center=float(m.group(8)), rows=[])
+            order.append(key)
+            continue
+        m = re.search(r"ReachProbe move=(\S+) strike=(\d+) d=(\S+) hit=(\S+) tall=(\S+)", text)
+        if m:
+            strikes[(m.group(1), int(m.group(2)))]["rows"].append(
+                (float(m.group(3)), parse_angles(m.group(4)), parse_angles(m.group(5)), m.group(4), m.group(5)))
+    if not order:
+        print("REACH 記録が無い（ReachStrike が出ていない）。engine.log を見る:", folder)
+        return 1
+    close = float(opts.get("close", 2.5))
+    md = ["# ボスの剣の技が当たる間合い（c-c010ef）", "",
+          "ボスを原点・正面固定に置き、プレイヤーの体を距離 × 角度に置いて、ゲームと同じ当たりの式で測った（踏み込み・左右移動・"
+          "振りながらの向き直りは入れない）。角度は正がボスの右。",
+          "「正面で当たる距離」は角度 0 で当たる距離の範囲。「高さで外れる」は、高さを無視すれば当たるのに実際は当たらない所"
+          "（刀が頭の上か足の下を通る）。", "",
+          "「一番当たる向き」は、当たる距離の幅が一番広い角度（ボスをその分だけ回して向けば、正面のプレイヤーに当たる）。", "",
+          f"| 技 | 斬り | 窓 (F) | 刀の高さ (m) | 正面で当たる距離 (m) | 一番当たる向き：角度・距離 (m) | "
+          f"{close:g} m 以内で当たる角度 | 正面の高さで外れる距離 (m) |",
+          "|---|---|---|---|---|---|---|---|"]
+    detail = []
+    for key in order:
+        s = strikes[key]
+        front = [d for d, hit, _, _, _ in s["rows"] if covers(hit, 0)]
+        over = [d for d, hit, tall, _, _ in s["rows"] if covers(tall, 0) and not covers(hit, 0)]
+        span = lambda xs: f"{min(xs):g}–{max(xs):g}" if xs else "なし"
+        near_text = "なし"
+        rows_close = [r for r in s["rows"] if r[0] <= close + 1e-6]
+        if rows_close:
+            near_text = " / ".join(f"{d:g}m:{h}" for d, _, _, h, _ in rows_close if h != "-") or "なし"
+        # 角度ごとに当たる距離を数え、一番多い角度（同じなら 0 に近い方）。
+        best_angle, best = 0, []
+        for angle in range(-180, 181, int(opts.get("reachProbeAngleStep", 10))):
+            ds = [d for d, hit, _, _, _ in s["rows"] if covers(hit, angle)]
+            if len(ds) > len(best) or (len(ds) == len(best) and ds and abs(angle) < abs(best_angle)):
+                best_angle, best = angle, ds
+        best_text = f"{best_angle:+d}°・{span(best)}" if best else "なし"
+        md.append(f"| {key[0]} | {key[1] + 1} | {s['window']} | {s['low']:.2f}〜{s['high']:.2f} | {span(front)} | "
+                  f"{best_text} | {near_text} | {span(over)} |")
+        detail += ["", f"## {key[0]} の {key[1] + 1} 刀目（窓 {s['window']} F）", "", "| 距離 m | 当たる角度 | 高さを無視すれば当たる角度 |",
+                   "|---|---|---|"]
+        detail += [f"| {d:g} | {h} | {t} |" for d, _, _, h, t in s["rows"]]
+    center = strikes[order[0]]["center"]
+    md += ["", f"プレイヤーの体の中心は足元から {center:.2f} m（測った時の立ち位置）。"] + detail
+    out = folder / "reach.md"
+    out.write_text("\n".join(md) + "\n", encoding="utf-8")
+    print("\n".join(md[:10 + len(order)]))
+    print("REACH ->", out)
+    return 0
+
+
 def main():
     args = sys.argv[1:]
     opts = dict(a.split("=", 1) for a in args if "=" in a)
@@ -349,6 +438,8 @@ def main():
         caps = [int(x) for x in opts["caps"].split(",")] if "caps" in opts else []
         extra = shoot_events(ticks) if opts.get("shoot") == "1" else None
         summarize(headless(key, ticks, caps, WORK / "runs" / f"scene_{key}", None, STURDY, extra))
+    if "reach" in words and reach(opts) != 0:
+        sys.exit(1)
     if "baseline" in words:
         baseline(words[words.index("baseline") + 1], opts)
     if "compare" in words:
