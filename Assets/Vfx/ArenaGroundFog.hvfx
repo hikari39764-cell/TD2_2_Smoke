@@ -35,6 +35,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -53,10 +55,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -293,7 +293,7 @@
           "inertia": 0.0,
           "maxSubsteps": 2,
           "multipleScattering": 1.0,
-          "prewarmSeconds": 6.0,
+          "prewarmSeconds": 1.0,
           "priority": 94,
           "relativeWind": 0.0,
           "resolution": 256,
@@ -904,6 +904,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -934,10 +936,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -1754,6 +1754,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -1784,10 +1786,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -2604,6 +2604,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -2622,10 +2624,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -3442,6 +3442,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -3460,10 +3462,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
