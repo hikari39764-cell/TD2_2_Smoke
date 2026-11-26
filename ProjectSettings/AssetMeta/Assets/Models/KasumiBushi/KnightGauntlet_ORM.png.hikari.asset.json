@@ -1,0 +1,21 @@
+{
+  "displayName": "KnightGauntlet_ORM",
+  "guid": "5910e65b08bae2319a075b8c9f693d75",
+  "importSettings": {
+    "allowResize": false,
+    "colorSpace": "Linear",
+    "compression": "BC7",
+    "debugOutputFormat": "DDS",
+    "dimension": "Texture2D",
+    "forcePowerOfTwo": false,
+    "maxSize": 2048,
+    "mipPolicy": "Generate",
+    "outputFormat": "HTEX",
+    "usage": "MetallicRoughness"
+  },
+  "importerId": "TextureImporter",
+  "importerVersion": 8,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Models/KasumiBushi/KnightGauntlet_ORM.png",
+  "type": "Texture"
+}
