@@ -115,6 +115,31 @@ struct BossAnimBodyState {
     bool lastTipValid = false;
     // 骨の読み方を 1 度だけ記録に書いたか。
     bool bonesLogged = false;
+    // 演出のクリップ（変わり目の演出が毎フレーム頼む。c-271cba）：流すクリップ（空は頼んでいない）、その時刻（0〜1）、
+    // 外す時に待機の姿へ混ぜる長さ (秒)。いま重ねているか。
+    std::string cinematicClip;
+    float cinematicNormalized = 0.0f;
+    float cinematicBlendOut = 0.35f;
+    bool cinematicLayered = false;
+    // 見えている腰の骨（世界。描画のフレーム。1 フレーム前に描いた姿）と、それを読めたか（演出の間、胴の煙の域を
+    // 体に付いて行かせる）。
+    HIKARI::GameProjectFloat3 hipsWorld{};
+    bool hipsSeen = false;
+    // 見えている胸の骨（Spine2）の所（世界。描画のフレーム。1 フレーム前に描いた姿。hipsSeen の時だけ意味がある）。
+    HIKARI::GameProjectFloat3 chestWorld{};
+    // 見えている頭の骨の所（同じ。戦いの間、胴の煙の域を倒す向きを 腰 → 頭 で決める）。
+    HIKARI::GameProjectFloat3 headWorld{};
+    // 胴の煙の域を倒す向き（世界。腰 → 胸をなめらかに追った向き。長さ 1）と、倒す重み（0 倒さない 〜 1。変わり目の
+    // 演出で体を据えている間は 1、戦いの間は smokeTiltCombat）。
+    HIKARI::GameProjectFloat3 smokeSpine{0.0f, 1.0f, 0.0f};
+    float smokeTiltWeight = 0.0f;
+    // 胴の煙の域の軸（世界。腰をなめらかに追った所。細かい揺れは追わない）と、それを持っているか。
+    HIKARI::GameProjectFloat3 smokePivot{};
+    bool smokePivotValid = false;
+    // 戦いの間、域の軸と向きを体（根）の動きと一緒に運ぶための、前のフレームの体の置き場所と、それを持っているか。
+    HIKARI::GameProjectFloat3 smokeBodyPosition{};
+    HIKARI::GameProjectQuaternion smokeBodyRotation{0.0f, 0.0f, 0.0f, 1.0f};
+    bool smokeBodyValid = false;
 };
 
 namespace BossAnimBody {

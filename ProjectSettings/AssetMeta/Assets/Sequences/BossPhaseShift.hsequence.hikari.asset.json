@@ -1,0 +1,13 @@
+{
+  "displayName": "BossPhaseShift",
+  "guid": "f417d9926c1bae81a991107f933b1e26",
+  "importSettings": {
+    "runtimeLoader": "SequenceAssetStore",
+    "sourceAuthoritative": true
+  },
+  "importerId": "SequenceAssetImporter",
+  "importerVersion": 3,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Sequences/BossPhaseShift.hsequence",
+  "type": "Sequence"
+}

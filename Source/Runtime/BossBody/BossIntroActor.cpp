@@ -113,6 +113,13 @@ void ReadSockets(const HIKARI::AnimationView& animation, uint64_t actor, BossInt
                      ReadSocket(animation, actor, "LeftArm", a.leftShoulder) &&
                      ReadSocket(animation, actor, "LeftForeArm", a.leftElbow) &&
                      ReadSocket(animation, actor, "LeftHand", a.leftHand);
+    // 右手の指（握る拍の煙。無い模型では、その煙を出さないだけ）。
+    a.fingersValid = ReadSocket(animation, actor, "RightHandIndex1", a.rightKnuckles[0]) &&
+                     ReadSocket(animation, actor, "RightHandMiddle1", a.rightKnuckles[1]) &&
+                     ReadSocket(animation, actor, "RightHandRing1", a.rightKnuckles[2]) &&
+                     ReadSocket(animation, actor, "RightHandPinky1", a.rightKnuckles[3]) &&
+                     ReadSocket(animation, actor, "RightHandMiddle3", a.rightFingerTip) &&
+                     ReadSocket(animation, actor, "RightHandThumb2", a.rightThumb);
 }
 
 const HIKARI::GameProjectTransform& BoneOf(const BossIntroActorState& a, size_t part) {

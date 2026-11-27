@@ -242,10 +242,20 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
         return false;
     }
     const uint64_t handle = object.GetHandle().value;
+    // 演出のクリップ（変わり目の演出が頼む。c-271cba）がある間は、技のクリップの代わりに、それを頼まれた時刻で重ねる。
+    const bool cinematic = !state.cinematicClip.empty() && state.cinematicClip != state.failedClip;
+    if (!cinematic && state.cinematicLayered) {
+        // 演出のクリップを外す：最後の姿は待機の姿にそろえてあるので、短く混ぜて待機へ戻す。
+        (void)animation.ClearMaskedPoseLayer(handle, std::max(0.0f, state.cinematicBlendOut));
+        state.cinematicLayered = false;
+        state.layerClip.clear();
+        state.layerOffSeconds = 0.0f;
+    }
     // 技のクリップ：技を出している間、表のアニメーションの列のクリップ。
-    const BossMove* move = CurrentMove(boss);
-    const std::string* moveClip = move != nullptr && !move->clip.empty() && move->clip != state.failedClip ? &move->clip
-                                                                                                             : nullptr;
+    const BossMove* move = cinematic ? nullptr : CurrentMove(boss);
+    const std::string* moveClip =
+        cinematic ? &state.cinematicClip
+                  : (move != nullptr && !move->clip.empty() && move->clip != state.failedClip ? &move->clip : nullptr);
     // 待機のクリップ（刀を肩に担ぐ姿）はどの状態でも下の層に流す（c-db1a15。気絶・撃破・変わり目の演出・クリップの
     // 無い技の間も、待機の姿で効果だけを出す）。
     const bool idle = !settings.idleClip.empty() && settings.idleClip != state.failedClip;
@@ -293,16 +303,24 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
             (void)animation.Pause(handle);
             state.playing = *moveClip;
         }
-        const float length = static_cast<float>(move->clipFrames > 0 ? move->clipFrames : move->pre + move->act + move->post);
-        const float elapsed = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);
-        const float normalized = std::clamp(elapsed / std::max(1.0f, length), 0.0f, 1.0f);
-        // 待機の姿から重ね始める時（層を外し切った後）は、重みを混ぜる長さで 0 から上げる（技の始めの姿へ跳ばない）。
-        // 技から技へ続く時・外している途中で次の技が始まった時は 1 のまま（1 つの層しか無いので、混ぜる元が無い）。
-        if (state.layerClip != *moveClip)
-            state.layerFromIdle =
-                idle && state.layerClip.empty() && state.layerOffSeconds >= std::max(0.0f, settings.blendSeconds);
-        const float blendFrames = std::max(1.0f, settings.blendSeconds * 60.0f);
-        const float weight = state.layerFromIdle ? BossMath::Smooth(elapsed / blendFrames) : 1.0f;
+        float normalized = std::clamp(state.cinematicNormalized, 0.0f, 1.0f);
+        float weight = 1.0f;
+        if (!cinematic) {
+            const float length =
+                static_cast<float>(move->clipFrames > 0 ? move->clipFrames : move->pre + move->act + move->post);
+            const float elapsed = MoveElapsed(boss, *move) + std::clamp(alpha, 0.0f, 1.0f);
+            normalized = std::clamp(elapsed / std::max(1.0f, length), 0.0f, 1.0f);
+            // 待機の姿から重ね始める時（層を外し切った後）は、重みを混ぜる長さで 0 から上げる（技の始めの姿へ跳ばない）。
+            // 技から技へ続く時・外している途中で次の技が始まった時は 1 のまま（1 つの層しか無いので、混ぜる元が無い）。
+            if (state.layerClip != *moveClip)
+                state.layerFromIdle =
+                    idle && state.layerClip.empty() && state.layerOffSeconds >= std::max(0.0f, settings.blendSeconds);
+            const float blendFrames = std::max(1.0f, settings.blendSeconds * 60.0f);
+            weight = state.layerFromIdle ? BossMath::Smooth(elapsed / blendFrames) : 1.0f;
+        } else {
+            // 演出はカットで入るので、混ぜずに初めから全身をクリップの姿にする。
+            state.layerFromIdle = false;
+        }
         state.layerWeight = weight;
         // 時刻を指定する層は毎フレーム置き直すので、混ぜる長さは 0（0 より大きいと置き直すたびに混ぜ始めから
         // やり直し、重みが上がらず骨格の初期の姿＝T ポーズになる。登場の役者と同じ）。重みは毎フレームここで決める。
@@ -312,14 +330,17 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
             HIKARI::GameProjectAnimationState animator{};
             const bool read = animation.GetState(handle, animator);
             char message[256]{};
-            std::snprintf(message, sizeof(message),
-                          "[AnimBody] MoveClip %s frames=%d move=%s state=%d valid=%d duration=%.2f weight=%.2f base=%s",
-                          moveClip->c_str(), move->clipFrames, move->name.c_str(), static_cast<int>(read),
-                          static_cast<int>(animator.valid), static_cast<double>(animator.durationSeconds),
-                          static_cast<double>(animator.transitionWeight), state.playing.c_str());
+            std::snprintf(
+                message, sizeof(message),
+                "[AnimBody] MoveClip %s frames=%d move=%s state=%d valid=%d duration=%.2f weight=%.2f base=%s",
+                moveClip->c_str(), move != nullptr ? move->clipFrames : 0,
+                move != nullptr ? move->name.c_str() : "(cinematic)", static_cast<int>(read),
+                static_cast<int>(animator.valid), static_cast<double>(animator.durationSeconds),
+                static_cast<double>(animator.transitionWeight), state.playing.c_str());
             BossLog::Write(message);
         }
         state.layerClip = *moveClip;
+        state.cinematicLayered = cinematic;
     }
     Show(object, state);
     // ボスの足元（体の中心から体の高さの半分だけ下）と向きに置く。傾き・揺れは骨格の動画が受け持つ。
@@ -485,6 +506,7 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss
     state.tipSpeed = 0.0f;
     state.leftHandSeen = false;
     state.swordSeen = false;
+    state.hipsSeen = false;
     if (!state.active) {
         state.lastTipValid = false;
         return;
@@ -496,6 +518,17 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss
     if (object.IsValid() && world.GetAnimation().IsValid() &&
         ReadBones(world.GetAnimation(), object.GetHandle().value, boss.animBody, state.placed, bones)) {
         PoseFromBones(bones, pose);
+        // 腰（演出の間、胴の煙の域をここへ寄せる。クリップの中で体が下がる・戻るのに付いて行く）。
+        HIKARI::GameProjectTransform hips{};
+        if (world.GetAnimation().GetSocketTransform(object.GetHandle().value, kSkeletonRoot,
+                                                    HIKARI::GameProjectAnimationSocketSpace::Local, hips)) {
+            state.hipsWorld = BossMath::Add(
+                state.placed.position,
+                BossMath::Rotate(state.placed.rotation, BossMath::Mul(hips.position, state.placed.scale.x)));
+            state.hipsSeen = true;
+            state.chestWorld = bones.chest.position;
+            state.headWorld = bones.head.position;
+        }
         state.leftHandWorld = pose.leftHand.position;
         state.leftHandSeen = true;
         state.swordGripWorld = pose.sword.position;
