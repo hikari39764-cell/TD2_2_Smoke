@@ -6,8 +6,13 @@
 /imgui.ini
 *.user
 CMakeUserPresets.json
-# 制作の道具（ボスの籠手の Blender・Designer・Painter の台本など）はゲームのリポジトリに入れない（総監の手元だけ）
-/Tools/BossBody/knight_gauntlet/
+# 制作の道具（模型・演出・VFX を作る台本、元の模型、コードの整理の道具）はゲームのリポジトリに入れない（総監の手元だけ）。
+# Tools に残すのは Kujata の作業で使う verify.py と export_clip_lengths.ps1 だけ（c-feb331）
+/Tools/BossBody/
+/Tools/BossIntro/
+/Tools/Nimbus/
+/Tools/Verify/include_graph.py
+/Tools/Verify/migrate_scene_components.py
 
 # ---- Documents: not tracked in git ----
 *.md
