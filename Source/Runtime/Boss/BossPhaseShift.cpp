@@ -255,6 +255,10 @@ void BossPhaseShift::Begin(BossComponent& boss, BossPhaseShiftComponent* shift, 
     if (!shift->settings.enabled)
         return;
     state.origin = boss.ground;
+    // 狙いのずれのねじり（c-884095）は演出へ持ち込まない：骨格の体は BodyYaw で置くので、残っていると舞台へ置き直した
+    // 体が最初の 0.2 秒ほどで正面へねじり戻って見える。
+    boss.aimTwist = 0.0f;
+    boss.aimTwistTarget = 0.0f;
     state.startYaw = boss.yaw;
     state.yaw = boss.yaw;
     const Vec3 toPlayer = Sub(playerCenter, boss.ground);

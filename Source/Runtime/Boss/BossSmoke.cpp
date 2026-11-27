@@ -120,7 +120,8 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         emitter.Emit(kSwordInnerId, boss.swordInner, boss.swordSmokeRadius,
                      boss.swordSmokeRate * (1.0f - kSwordOuterShare), {});
         // 振りの空気（c-4be37e）：刃が進む向き（規則の剣の構えの斬る向き）へ、刀の外側・内側の所で場の霧を押す。
-        const Vec3 edge = RotateY(boss.swordPose.edge, boss.yaw);
+        // 向きは見えている体の向き（体の回転・狙いのずれのねじり込み。刀の点 swordOuter・swordInner と同じ）。
+        const Vec3 edge = RotateY(boss.swordPose.edge, BossPose::BodyYaw(boss));
         if (boss.swingPushForce > 0.0f && Length(edge) > 0.5f) {
             const Vec3 at[2] = {boss.swordOuter, boss.swordInner};
             for (uint64_t k = 0; k < 2; ++k) {
