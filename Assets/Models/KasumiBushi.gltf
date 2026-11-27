@@ -2284,57 +2284,57 @@
 		{
 			"bufferView":115,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3",
 			"min":[
-				-0.15400000000000003,
-				-0.368,
-				0.2837330863266536
+				-0.16254545454545452,
+				-0.384,
+				0.27749673530829444
 			],
 			"max":[
-				0.15199999999999997,
-				-0.11199999999999999,
-				0.32288090604685643
+				0.1605714285714286,
+				-0.09600000000000003,
+				0.32292775935155343
 			]
 		},
 		{
 			"bufferView":116,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":117,
 			"componentType":5123,
-			"count":2160,
+			"count":30,
 			"type":"SCALAR"
 		},
 		{
 			"bufferView":115,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3",
 			"min":[
-				-0.15400000000000003,
-				-0.368,
-				0.2837330863266536
+				-0.16254545454545452,
+				-0.384,
+				0.27749673530829444
 			],
 			"max":[
-				0.15199999999999997,
-				-0.11199999999999999,
-				0.32288090604685643
+				0.1605714285714286,
+				-0.09600000000000003,
+				0.32292775935155343
 			]
 		},
 		{
 			"bufferView":116,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":117,
 			"componentType":5123,
-			"count":2160,
+			"count":30,
 			"type":"SCALAR"
 		},
 		{
@@ -2508,29 +2508,29 @@
 		{
 			"bufferView":134,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3",
 			"min":[
-				-0.15400000000000003,
-				-0.368,
-				0.2837330863266536
+				-0.16254545454545452,
+				-0.384,
+				0.27749673530829444
 			],
 			"max":[
-				0.15199999999999997,
-				-0.11199999999999999,
-				0.32288090604685643
+				0.1605714285714286,
+				-0.09600000000000003,
+				0.32292775935155343
 			]
 		},
 		{
 			"bufferView":135,
 			"componentType":5126,
-			"count":494,
+			"count":20,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":136,
 			"componentType":5123,
-			"count":2160,
+			"count":30,
 			"type":"SCALAR"
 		}
 	],
@@ -3228,19 +3228,19 @@
 		{
 			"buffer":0,
 			"byteOffset":1818312,
-			"byteLength":5928,
+			"byteLength":240,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteOffset":1824240,
-			"byteLength":5928,
+			"byteLength":240,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteOffset":1830168,
-			"byteLength":4320,
+			"byteLength":60,
 			"target":34963
 		},
 		{
@@ -3342,19 +3342,19 @@
 		{
 			"buffer":0,
 			"byteOffset":2242248,
-			"byteLength":5928,
+			"byteLength":240,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteOffset":2248176,
-			"byteLength":5928,
+			"byteLength":240,
 			"target":34962
 		},
 		{
 			"buffer":0,
 			"byteOffset":2254104,
-			"byteLength":4320,
+			"byteLength":60,
 			"target":34963
 		}
 	],
@@ -3363,15 +3363,5 @@
 			"byteLength":2258424,
 			"uri":"KasumiBushi.bin"
 		}
-	],
-	"extras":{
-		"helmGlow":{
-			"nodes":22,
-			"meshes":20,
-			"materials":19,
-			"accessors":145,
-			"bufferViews":134,
-			"bytes":2242248
-		}
-	}
+	]
 }

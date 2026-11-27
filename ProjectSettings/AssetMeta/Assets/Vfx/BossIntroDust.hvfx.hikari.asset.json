@@ -1,0 +1,14 @@
+{
+  "displayName": "BossIntroDust",
+  "guid": "83c6508d9192ba8b5339f8dd40a97665",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroDust.hvfx",
+  "type": "VfxEffect"
+}

@@ -344,6 +344,19 @@
               "$hikariRef": "SceneObject",
               "id": 960
             },
+            "introBarsAspect": 2.39,
+            "introDebrisEffect": {
+              "assetGuid": "2878eaf194e48e44b24d5a1523f9204c",
+              "assetPath": "Assets/Vfx/BossIntroDebris.hvfx"
+            },
+            "introDustEffect": {
+              "assetGuid": "83c6508d9192ba8b5339f8dd40a97665",
+              "assetPath": "Assets/Vfx/BossIntroDust.hvfx"
+            },
+            "introFistSmokeEffect": {
+              "assetGuid": "1dafc19886d14fd93d63046bb7ecaa9f",
+              "assetPath": "Assets/Vfx/BossIntroFistSmoke.hvfx"
+            },
             "introGauntletLeftObject": {
               "$hikariRef": "SceneObject",
               "id": 963
@@ -351,6 +364,10 @@
             "introGauntletRightObject": {
               "$hikariRef": "SceneObject",
               "id": 962
+            },
+            "introHazeEffect": {
+              "assetGuid": "303b6d4b33c677abefa6b3b6fab7dadd",
+              "assetPath": "Assets/Vfx/BossIntroEyeHaze.hvfx"
             },
             "introHelmObject": {
               "$hikariRef": "SceneObject",
@@ -360,12 +377,20 @@
               "$hikariRef": "SceneObject",
               "id": 964
             },
+            "introMotesEffect": {
+              "assetGuid": "b8862ac414453430affad2f81e139e81",
+              "assetPath": "Assets/Vfx/BossIntroMotes.hvfx"
+            },
             "introMotionBlurMaxPixels": 24.0,
             "introMotionBlurShutter": 180.0,
             "introSequence": {
               "$hikari.assetGuid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c"
             },
-            "introSkipAction": "Gameplay.Jump"
+            "introSkipAction": "Gameplay.Jump",
+            "introTipSmokeEffect": {
+              "assetGuid": "fb452e922ab463d1bb9cc09cb6665cba",
+              "assetPath": "Assets/Vfx/BossIntroTipSmoke.hvfx"
+            }
           },
           "type": "Project_TD2_2.BossIntro"
         },

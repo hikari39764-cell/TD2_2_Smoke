@@ -1,0 +1,14 @@
+{
+  "displayName": "BossIntroFistSmoke",
+  "guid": "1dafc19886d14fd93d63046bb7ecaa9f",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroFistSmoke.hvfx",
+  "type": "VfxEffect"
+}

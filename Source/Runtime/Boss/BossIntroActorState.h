@@ -63,6 +63,11 @@ struct BossIntroActorState {
     HIKARI::GameProjectTransform leftShoulder{};
     HIKARI::GameProjectTransform leftElbow{};
     HIKARI::GameProjectTransform leftHand{};
+    // 右手の指の骨（1 フレーム前の姿）：付け根 4 つ（人差し指 → 小指）、中指の先、親指。取れたか。握る拍の煙が読む。
+    bool fingersValid = false;
+    std::array<HIKARI::GameProjectTransform, 4> rightKnuckles{};
+    HIKARI::GameProjectTransform rightFingerTip{};
+    HIKARI::GameProjectTransform rightThumb{};
     // 地に立つ刀が地面に入る所（世界）。演技が始まる前の刀の骨から決めて、演技の間は変えない。
     bool swordEntryValid = false;
     HIKARI::GameProjectFloat3 swordEntry{};

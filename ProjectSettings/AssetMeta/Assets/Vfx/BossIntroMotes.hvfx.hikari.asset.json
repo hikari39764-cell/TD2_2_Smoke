@@ -1,0 +1,14 @@
+{
+  "displayName": "BossIntroMotes",
+  "guid": "b8862ac414453430affad2f81e139e81",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroMotes.hvfx",
+  "type": "VfxEffect"
+}
