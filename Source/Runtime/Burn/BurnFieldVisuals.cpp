@@ -5,7 +5,10 @@
 #include <cmath>
 
 #include "HIKARI/Project/FluidView.h"
+#include "HIKARI/Project/VfxView.h"
 #include "../Common/FluidChannels.h"
+#include "../Common/VectorMath.h"
+#include "../Common/VfxParameters.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -36,9 +39,26 @@ constexpr float kMaximumStrength = 10000.0f;
 // （BurnField の fuelSweep）。
 constexpr float kMinimumRadius = 0.45f;
 constexpr float kMaximumRadius = 3.0f;
+// 升目ごとの炎の層のエフェクト（ArenaFireTile）：入力の名前と、資産が作られている升目の一辺 (m)、火のかたまりに合わせて
+// 根を伸ばす時の長さ・幅の下限 (m)、量を面積で決める時の下限（升目の端の少ないセルでも炎が途切れない）。
+constexpr const char* kTileAmountInput = "input.amount";
+constexpr const char* kTileFadeInput = "input.fade";
+constexpr float kTileAuthoredSize = 2.0f;
+constexpr float kTileFlameMinimum = 0.9f;
+constexpr float kTileAreaShareMinimum = 0.25f;
+
+// 升目の炎の層を全部止める（升目を確保し直す前）。
+void StopTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field) {
+    for (BurnTile& tile : field.tiles) {
+        if (tile.flame.IsValid())
+            world.GetVfx().Stop(tile.flame);
+        tile.flame = {};
+        tile.flameAmount = 0.0f;
+    }
+}
 
 // 升目（タイル）の大きさを決め、持ち越しと作業場所を、その数に合わせる（大きさが変わった時だけ確保し直す）。
-void LayoutTiles(BurnFieldComponent& field) {
+void LayoutTiles(HIKARI::WorldView& world, BurnFieldComponent& field) {
     const BurnMap& map = field.map;
     const int side = std::max(map.Width(), map.Height());
     const int wanted = std::max(1, static_cast<int>(std::lround(field.emitterTile / map.CellSize())));
@@ -46,6 +66,7 @@ void LayoutTiles(BurnFieldComponent& field) {
     const int tilesPerSide = (side + tileCells - 1) / tileCells;
     if (tileCells == field.tileCells && tilesPerSide == field.tilesPerSide)
         return;
+    StopTileFlames(world, field);
     field.tileCells = tileCells;
     field.tilesPerSide = tilesPerSide;
     const size_t count = static_cast<size_t>(tilesPerSide) * static_cast<size_t>(tilesPerSide);
@@ -116,6 +137,74 @@ TileShape ShapeOf(const BurnFieldComponent& field, const BurnTileSum& sum, const
     shape.along = std::sqrt(12.0f * (half + root)) + map.CellSize();
     shape.across = std::sqrt(12.0f * std::max(0.0f, half - root)) + map.CellSize();
     return shape;
+}
+
+// 升目ごとの炎の層（c-3c908c）：燃えているセルのある升目に、炎の舌・熾火・煙・地面の光のエフェクトを 1 つずつ重ねる。
+// 流体の火は格子が粗く（約 34 cm）、炎の舌の形が出ないので、形はここで見せる。置く所は升目の火のかたまりの重心、
+// 局所 X を長い方へ向け、長さ・幅に合わせて根を伸ばす。量は、燃えている面積と消えかけ（fadeSeconds）で決め、燃え始めに
+// 上げ、消えた後は下げてから止める（吸って消した所も、ふっと消える）。
+void UpdateTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field, bool anyBurning, float seconds) {
+    if (field.tileEffect.IsEmpty()) {
+        StopTileFlames(world, field);
+        return;
+    }
+    const BurnMap& map = field.map;
+    const HIKARI::VfxView vfx = world.GetVfx();
+    const float tileArea = kTileAuthoredSize * kTileAuthoredSize;
+    for (size_t index = 0; index < field.tiles.size(); ++index) {
+        BurnTile& tile = field.tiles[index];
+        const bool burning = anyBurning && field.tileSums[index].cells > 0;
+        if (tile.flame.IsValid() && !vfx.IsActive(tile.flame)) {
+            tile.flame = {};
+            tile.flameAmount = 0.0f;
+        }
+        if (!burning && !tile.flame.IsValid())
+            continue;
+        float target = 0.0f;
+        float areaShare = 1.0f;
+        if (burning) {
+            const BurnTileSum& sum = field.tileSums[index];
+            const TileShape shape = ShapeOf(field, sum, tile, static_cast<int>(index) % field.tilesPerSide,
+                                            static_cast<int>(index) / field.tilesPerSide);
+            target = std::clamp(sum.remaining / std::max(0.01f, field.fadeSeconds), 0.0f, 1.0f);
+            areaShare =
+                std::clamp(static_cast<float>(sum.cells) * map.CellArea() / tileArea, kTileAreaShareMinimum, 1.0f);
+            tile.flameTransform = {};
+            tile.flameTransform.position = {shape.x, map.FloorY(), shape.z};
+            tile.flameTransform.rotation = VectorMath::RotationFromXAxis({shape.axisX, 0.0f, shape.axisZ});
+            tile.flameTransform.scale = {std::max(kTileFlameMinimum, shape.along) / kTileAuthoredSize, 1.0f,
+                                         std::max(kTileFlameMinimum, shape.across) / kTileAuthoredSize};
+        }
+        const float ramp = target > tile.flameAmount ? field.tileEffectRise : field.tileEffectFade;
+        const float step = ramp > 0.0f ? seconds / ramp : 1.0f;
+        tile.flameAmount = target > tile.flameAmount ? std::min(target, tile.flameAmount + step)
+                                                     : std::max(target, tile.flameAmount - step);
+        if (!burning && !(tile.flameAmount > 0.0f)) {
+            vfx.Stop(tile.flame);
+            tile.flame = {};
+            continue;
+        }
+        HIKARI::GameProjectVfxParameterOverrides parameters{};
+        VfxParameters::SetFloat(parameters, kTileAmountInput,
+                                tile.flameAmount * areaShare * std::max(0.0f, field.tileEffectAmount));
+        VfxParameters::SetColor(parameters, kTileFadeInput, {tile.flameAmount, tile.flameAmount, tile.flameAmount});
+        if (tile.flame.IsValid()) {
+            HIKARI::GameProjectVfxUpdateRequest update{};
+            update.updateTransform = 1u;
+            update.updateParameters = 1u;
+            update.transform = tile.flameTransform;
+            update.parameters = parameters;
+            field.vfxAccepted = vfx.Update(tile.flame, update) && field.vfxAccepted;
+            continue;
+        }
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = field.tileEffect;
+        play.transform = tile.flameTransform;
+        play.parameters = parameters;
+        play.randomSeed = static_cast<uint32_t>(index) * 2654435761u + 1u;
+        tile.flame = vfx.Play(play);
+        field.vfxAccepted = tile.flame.IsValid() && field.vfxAccepted;
+    }
 }
 
 // 何フレームに 1 回ずつ入れるか。足りなければすぐ広げ、狭めるのは、1 つ狭い間隔でも上限の 85 % に収まる時だけ
@@ -309,20 +398,24 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
             tile.phase = -1;
             tile.fedFrame = 0;
         }
+        UpdateTileFlames(world, field, false, seconds);
         return;
     }
     // 燃えているセルを、場所の決まった升目ごとにまとめ、升目ごとに 1 か所へ燃料を入れる。升目の炎の位置と太さは、
     // その升目のセルだけで決まる（ほかの所で火が増えても減っても動かない）。燃えている升目が 1 フレームに出せる数より
     // 多い時は、stride フレームに 1 回ずつ、升目ごとに決まった番で入れ、その分だけ燃料を増やす（どの升目も同じ間隔で
     // 入る。番は燃えている間は変えない）。
-    LayoutTiles(field);
+    LayoutTiles(world, field);
     field.burningTiles = SumTiles(field);
+    UpdateTileFlames(world, field, true, seconds);
     const int limit = std::clamp(field.emitterCount, 1, static_cast<int>(kBurnEmitterCapacity));
     const int stride = HoldStride(field, limit);
     AssignPhases(field, stride, limit);
     const int turn = static_cast<int>(field.renderFrame % static_cast<uint32_t>(stride));
 
     const float sweepSpeed = std::clamp(field.fuelSweep, 0.0f, 55.0f);
+    // 順番待ちの升目へまとめて入れる燃料の倍率（待った回数の累乗。広い火ほど控えめにして、白く飛ばさない）。
+    const float crowdGain = std::pow(static_cast<float>(stride), std::clamp(field.fuelCrowdPower, 0.0f, 1.0f));
     const HIKARI::FluidView fluid = world.GetFluid();
     for (size_t index = 0; index < field.tileSums.size(); ++index) {
         const BurnTileSum& sum = field.tileSums[index];
@@ -386,7 +479,7 @@ void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
                          shape.z + shape.axisZ * tile.sweep};
         fuel.extents = {radius, std::max(0.0f, temperature), 0.0f};
         fuel.direction = {0.0f, rise * swell, 0.0f};
-        fuel.strength = std::min(kMaximumStrength, rate * share * fade * swell * stretch * static_cast<float>(stride));
+        fuel.strength = std::min(kMaximumStrength, rate * share * fade * swell * stretch * crowdGain);
         fuel.channels = FluidChannels::kFire;
         field.fluidAccepted =
             fluid.Submit(object.GetHandle(), kFuelInstanceBase + index, fuel).Accepted() && field.fluidAccepted;

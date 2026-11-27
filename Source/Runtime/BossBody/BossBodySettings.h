@@ -38,6 +38,16 @@ struct BossBodyAccentSettings {
     float bladeHeatSeconds = 0.25f;
     // 燃える刀身から立つ火の粉の量（倍率。刀のエフェクトの入力 embers。0 で出さない。c-857ae3）。
     float bladeEmbers = 1.0f;
+    // 燃える刀身の流体の炎（c-3c908c）：刃に付いて動く局所空間の流体域を持つエフェクト（空なら出さず、シェーダーの炎の帯の
+    // まま）。燃料の量（倍率）と、流体の炎を出している間に残す、シェーダーの炎の帯の割合・刀身の光の層の割合。
+    HIKARI::GameProjectVfxAssetReference bladeFireEffect{};
+    float bladeFireAmount = 1.0f;
+    float bladeFlameShare = 0.25f;
+    float bladeFireGlowShare = 0.8f;
+    // …速く振る間は、流体の炎が刃から剥がれて後ろへ流れる。剣先がこの速さ (m/秒) に近づくほど、刃に貼り付くシェーダーの
+    // 炎の帯を元の強さへ戻し（0 で戻さない）、止まったら bladeFlameReturnSeconds で bladeFlameShare へ下げる。
+    float bladeFlameFastSpeed = 25.0f;
+    float bladeFlameReturnSeconds = 0.35f;
     // 刃口の常時の光（刀に付くエフェクトの Edge Line・Edge Glow。入力 input.edge）：刀を見れば何をしているか分かるように、
     // 段階で明るさを変える（倍率。色は edgeMistColor／edgeFireColor に掛ける）。待機 edgeIdle は弱いが必ず見える、前隙は
     // 進みにつれて edgeWindup まで（曲がり edgeRampPower、ゆっくり脈打つ）、
@@ -175,12 +185,49 @@ struct BossBodyAccentSettings {
     float handBurst = 1.0f;
     // 光を置く所（左手の模型の座標・実寸 m。掌の真ん中の少し前）。
     HIKARI::GameProjectFloat3 handPoint{0.0f, -0.07f, 0.20f};
+    // 範囲爆発の溜め（c-3c908c）：叩きつけの前に、左手へ霧（剣が燃えている技は火）を集めて掌へ押し縮める。手に付いて動く
+    // 流体域を持つエフェクト（霞／火。両方空なら出さない）と、押し縮める瞬間の一度きりのエフェクト。
+    HIKARI::GameProjectVfxAssetReference gatherMistEffect{};
+    HIKARI::GameProjectVfxAssetReference gatherFireEffect{};
+    HIKARI::GameProjectVfxAssetReference gatherPinchEffect{};
+    // 拍：叩きつけ（輪を放つ tick）の何 F 前から集め始めるか、何 F 前に押し縮めるか（集めるのを止め、内へ縮む輪と一閃を
+    // 出す。その後は、縮んだ芯だけが手に付いて落ちる）。
+    int gatherLeadFrames = 62;
+    int gatherPinchFrames = 22;
+    // 掌の芯の光（倍率）：集め終わりの明るさと、押し縮めた後の明るさ。押し縮めた後の細かい明滅の深さ（0 で明滅なし）。
+    float gatherCore = 0.45f;
+    float gatherCorePinched = 1.6f;
+    float gatherCoreFlicker = 0.18f;
+    // 押し縮める瞬間のエフェクトの色（霞／火）。
+    HIKARI::GameProjectFloat3 gatherMistColor{0.78f, 0.92f, 1.0f};
+    HIKARI::GameProjectFloat3 gatherFireColor{1.0f, 0.58f, 0.22f};
+    // 集めている間、足元の霧と場の火を、手の真下へ寄せる加速度 (m/s²。0 は寄せない) と、寄せる輪の半径 (m)。
+    float gatherFogPull = 30.0f;
+    float gatherFogPullRadius = 4.0f;
+    // 掌へ渦を巻いて流れ込む腕（手の真下の地面の輪から立ちのぼる）：本数（8 まで）、1 本の濃さ（中心での毎秒の密度）と
+    // 太さ (m)、地面の輪の半径 (m)、掌へ着くまでに回る回数、1 秒に流れ込む回数（集め始め → 押し縮める直前。終わりへ
+    // 向けて速くなる）、温度（霞／火。光り方）。
+    int gatherArms = 6;
+    float gatherArmStrength = 1600.0f;
+    float gatherArmRadius = 0.28f;
+    float gatherArmReach = 2.6f;
+    float gatherArmTurns = 0.6f;
+    float gatherArmRate = 1.8f;
+    float gatherArmRateEnd = 3.4f;
+    float gatherArmHeatMist = 1.6f;
+    float gatherArmHeatFire = 8.0f;
+    // …昇り方の曲がり（大きいほど、地面を長く這ってから一気に昇る）と、輪の半径のばらつき（0〜1。腕ごとに内へ寄せる）。
+    float gatherArmLift = 1.7f;
+    float gatherArmSpread = 0.25f;
 };
 
 // 技の演出の実行時の状態（保存しない）。
 struct BossBodyAccentState {
     // 刀に付くエフェクトの再生。
     HIKARI::GameProjectVfxPlaybackHandle bladeVfx{};
+    // 燃える刀身の流体の炎の再生（刀が燃えている間だけ）と、速く振る間にシェーダーの炎の帯を戻している割合（0〜1）。
+    HIKARI::GameProjectVfxPlaybackHandle bladeFireVfx{};
+    float bladeFlameFast = 0.0f;
     // 刀光を出し続ける残り時間 (秒)、刀光の明るさ（0〜1）、刀身の炎の明るさ（0〜1）。
     float trailHold = 0.0f;
     float trailGain = 0.0f;
@@ -202,6 +249,8 @@ struct BossBodyAccentState {
     HIKARI::GameProjectVfxPlaybackHandle auraVfx{};
     // 目の閃きの明るさ（出した瞬間の強さから 0 へ）、気配の強さ（0〜1）、前のフレームに構えの合図が出ていたか。
     float flare = 0.0f;
+    // 骨格の体の面頬の隙間の光を、目の色で上書きしているか（c-271cba）。
+    bool bodyGlowOverridden = false;
     float aura = 0.0f;
     bool wasGlint = false;
     // 見た剣気を放った数（c-ecd963。BossComponent::releaseCount と比べて、放つ瞬間を見つける）。
@@ -226,6 +275,20 @@ struct BossBodyAccentState {
     float hand = 0.0f;
     int previousGesture = -1;
     int previousHandPhase = -1;
+    // 範囲爆発の溜め：手に集めるエフェクトと押し縮める瞬間のエフェクトの再生、出しているのが火の版か、もう押し縮めたか、
+    // 芯の光（追う値）、明滅の時計、叩きつけの後に消すまでの残り (秒)、足元の霧を寄せる強さ（0〜1。BossSmoke が読む）。
+    HIKARI::GameProjectVfxPlaybackHandle gatherVfx{};
+    HIKARI::GameProjectVfxPlaybackHandle pinchVfx{};
+    bool gatherFire = false;
+    bool gatherPinched = false;
+    float gatherCoreGain = 0.0f;
+    float gatherClock = 0.0f;
+    float gatherLinger = 0.0f;
+    float gatherPull = 0.0f;
+    // 掌へ流れ込む腕（BossSmoke が読む）：濃さ（0〜1。0 は出さない）、回りの進み（周の数）、掌の位置（世界）。
+    float gatherArm = 0.0f;
+    float gatherPhase = 0.0f;
+    HIKARI::GameProjectFloat3 gatherPoint{};
 };
 
 // ボスの体の見た目の、人が調整する値（体に付く効果の大きさと置き場所・胴の煙と火・フェーズ 2 の場）。体そのものは
@@ -270,6 +333,29 @@ struct BossBodySettings {
     float smokeHeatPhaseTwo = 1.6f;
     // 気絶している間の煙の量（倍率。煙が薄れて、鎧がからっぽに見える）。
     float smokeAmountStunned = 0.35f;
+    // 骨に付いて行く煙（c-271cba）：骨格の体の、腰から胸への背骨に沿う点と、両腕（肩 → 肘 → 袖口）に沿う点から、胴の煙の
+    // 域へ煙を入れる。体が傾く・屈む・腕を振る時に、煙が鎧に付いて行き、胴と手の間（腕）が煙でつながる。背骨・腕の
+    // 毎秒の濃さ（0 で出さない）と半径（1 倍の体での m）、腕の煙が手の方へ流れる速さ (m/秒)。
+    float spineSmoke = 26.0f;
+    float spineSmokeRadius = 0.30f;
+    float armSmoke = 34.0f;
+    float armSmokeRadius = 0.17f;
+    float armSmokeFlow = 0.8f;
+    // 胴の煙を体の傾きに付ける（フェーズの変わり目の演出の間。c-271cba）：胴の煙の域を、腰を軸にして背骨の向き
+    // （腰 → 胸）へ倒す。smokeTilt は付いて行く割合（0 倒さない 〜 1 背骨の向きまで）、smokeTiltMaxDegrees は倒す角度の
+    // 上限（度）、smokeTiltFollow は寄せる速さ（1/秒。大きいほど体の動きにすぐ付く）、smokeHipsHeight は胴の煙の資産の
+    // 中の腰の高さ（足元から m。立ち姿の腰の骨の高さ。ここを軸に倒す）。
+    float smokeTilt = 1.0f;
+    float smokeTiltMaxDegrees = 62.0f;
+    float smokeTiltFollow = 7.0f;
+    // 体がほとんど動いていない間（座り込み・待機）に、域が腰と背骨の細かい揺れへ寄る速さ（1/秒。小さいほど煙が
+    // 落ち着く。大きく動いた時は smokeTiltFollow で追う）。
+    float smokeCalmFollow = 0.7f;
+    float smokeHipsHeight = 2.9f;
+    // 戦いの間（骨格の体が出ている間）も、胴の煙の域を背骨へ倒す割合（0 倒さない＝立ったまま 〜 1。屈む・のけぞる体に、
+    // 煙の柱が付いて行く）と、その間の寄せる速さ（1/秒。技の屈みは速いので、演出の smokeTiltFollow より速く追う）。
+    float smokeTiltCombat = 1.0f;
+    float smokeTiltCombatFollow = 12.0f;
     // フェーズ 2 の本体の鎧を、灼けた鎧（継ぎ目の糸と隙間の闇が熾火に光る模型のノード ○○Hot）に差し替える（c-857ae3）。
     bool armorHot = true;
 
@@ -289,11 +375,17 @@ struct BossBodySettings {
     HIKARI::GameProjectFloat3 fireCollar{-0.36f, 0.60f, -0.06f};
     float fireCollarSpread = 0.1f;
     float fireCuffAlong = 0.85f;
-    float fireTongueDensity = 16.0f;
+    float fireTongueDensity = 22.0f;
     float fireTongueRadius = 0.15f;
     float fireTongueHeat = 2.0f;
-    float fireTongueRise = 1.6f;
-    float fireCuffShare = 0.6f;
+    float fireTongueRise = 2.0f;
+    float fireCuffShare = 0.8f;
+    // 腰の周りの火の舌（c-280b71。3 本：前の左右と後ろ）：胴の煙の柱の中を、下から火が上がる（体そのものが燃えて
+    // 見える）。襟の火に対する強さ（0 で出さない）、半径の倍率、腰からの距離（1 倍の体の m）と、腰から下げる高さ（同）。
+    float fireHemShare = 0.7f;
+    float fireHemRadius = 1.5f;
+    float fireHemRing = 0.42f;
+    float fireHemDrop = 0.35f;
 
     // フェーズ 2 の場（c-857ae3）：場の色（環境の色調整を、暗部・中間・明部の色味で暖かく置き換える。1 で変えない）が
     // fieldWarmSeconds かけて変わり、撃破で戻る。漂う火の粉はボスの足元に付けて出し（量は fieldEmbers 倍）、焦げた輪は

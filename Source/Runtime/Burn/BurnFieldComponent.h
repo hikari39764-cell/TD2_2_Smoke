@@ -52,6 +52,11 @@ struct BurnTile {
     int phase = -1;
     // 検証ログ用：最後に燃料を入れた描画フレーム（燃えていない間は 0）。
     uint32_t fedFrame = 0;
+    // この升目に重ねている炎の層のエフェクト（c-3c908c。燃えている間だけ出す）と、その量（0〜1。燃え始めに上げ、
+    // 消える時に下げてから止める）、最後に置いた所（薄れていく間はそこに残す）。
+    HIKARI::GameProjectVfxPlaybackHandle flame{};
+    float flameAmount = 0.0f;
+    HIKARI::GameProjectTransform flameTransform{};
 };
 // タイルごとに、そのフレームの燃えているセルを足し合わせる作業場所（タイルの中心からの相対位置で足す）。
 struct BurnTileSum {
@@ -102,10 +107,19 @@ public:
     float fuelSweep = 45.0f;
     float fuelWave = 0.3f;
     float fuelWaveHz = 0.8f;
+    // 燃えている升目が多くて順番に入れる時、待った回数ぶんの燃料をどれだけまとめて入れるか（待った回数の累乗。1 は全部＝
+    // 前の作り、0 は増やさない）。小さいほど、広い火が白く飛ばない（c-3c908c）。
+    float fuelCrowdPower = 0.5f;
     float fadeSeconds = 2.0f;
     float fogBurnAbsorption = 5.0f;
     float fogBurnRadiusScale = 1.8f;
     float fogUpdraft = 10.0f;
+    // 見た目：升目ごとに、流体の火の上へ重ねる炎の層のエフェクト（c-3c908c。空なら出さない）。量の倍率と、燃え始めに
+    // 出そろうまで・消える時に薄れるまでの秒数。
+    HIKARI::GameProjectVfxAssetReference tileEffect{};
+    float tileEffectAmount = 1.0f;
+    float tileEffectRise = 0.2f;
+    float tileEffectFade = 0.45f;
     float blastFuel = 550.0f;
     float blastTemperature = 10.0f;
     float blastRise = 2.0f;

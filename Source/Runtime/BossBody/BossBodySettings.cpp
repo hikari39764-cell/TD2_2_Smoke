@@ -34,6 +34,21 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyBladeHeatSeconds", "燃える刀身：火が付く・消える時間 (秒)", bladeHeatSeconds, 0.01f, 3.0f);
     fields.Float("bodyBladeEmbers", "燃える刀身：刀身から立つ火の粉の量（倍率。0 で出さない）", bladeEmbers, 0.0f,
                  8.0f);
+    fields.Vfx("bodyBladeFireEffect",
+               "燃える刀身：流体の炎のエフェクト（刃に付いて動く流体域。空ならシェーダーの炎の帯だけ）",
+               bladeFireEffect);
+    fields.Float("bodyBladeFireAmount", "…流体の炎の燃料の量（倍率。0 で出さない）", bladeFireAmount, 0.0f, 4.0f);
+    fields.Float("bodyBladeFlameShare", "…流体の炎を出している間に残す、シェーダーの炎の帯の割合（0 で消す）",
+                 bladeFlameShare, 0.0f, 1.0f);
+    fields.Float("bodyBladeFireGlowShare", "…流体の炎を出している間に残す、刀身の光の層の割合", bladeFireGlowShare,
+                 0.0f, 1.0f);
+    fields.Float(
+        "bodyBladeFlameFastSpeed",
+        "…剣先がこの速さ (m/秒) に近づくほど、シェーダーの炎の帯を元の強さへ戻す（流体の炎は速い振りで剥がれる。"
+        "0 で戻さない）",
+        bladeFlameFastSpeed, 0.0f, 200.0f);
+    fields.Float("bodyBladeFlameReturnSeconds", "…振り終わった後、シェーダーの炎の帯を下げて流体の炎へ渡す時間 (秒)",
+                 bladeFlameReturnSeconds, 0.01f, 3.0f);
     fields.Vfx("bodyEyesEffect", "目の光のエフェクト（兜に付く。尾を引く光・暈・閃き。空なら出さない）", eyesEffect);
     fields.Float3("bodyEyesMistColor", "目の光：ふだんの色と明るさ", eyesMistColor);
     fields.Float3("bodyEyesFireColor", "目の光：フェーズ 2 の色と明るさ", eyesFireColor);
@@ -127,6 +142,36 @@ void BossBodyAccentSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Float("bodyHandSeconds", "左手の光：立ち上がる・引く時間 (秒)", handSeconds, 0.01f, 2.0f);
     fields.Float("bodyHandBurst", "左手の弾けの大きさ（倍率。0 で出さない）", handBurst, 0.0f, 6.0f);
     fields.Float3("bodyHandPoint", "左手の光を置く所（左手の模型の座標・実寸 m）", handPoint);
+    fields.Vfx("bodyGatherMistEffect",
+               "範囲爆発の溜め：左手へ霧を集めるエフェクト（手に付いて動く流体域。空なら出さない）", gatherMistEffect);
+    fields.Vfx("bodyGatherFireEffect", "…剣が燃えている技で、火を集めるエフェクト（空なら霧と同じ）", gatherFireEffect);
+    fields.Vfx("bodyGatherPinchEffect", "…掌へ押し縮める瞬間のエフェクト（内へ縮む輪・一閃。空なら出さない）",
+               gatherPinchEffect);
+    fields.Int("bodyGatherLeadFrames", "…叩きつけの何 F 前から集め始めるか", gatherLeadFrames, 1, 600);
+    fields.Int("bodyGatherPinchFrames", "…叩きつけの何 F 前に押し縮めるか（集めるのを止める）", gatherPinchFrames, 0,
+               600);
+    fields.Float("bodyGatherCore", "…掌の芯の光：集め終わりの明るさ（倍率）", gatherCore, 0.0f, 8.0f);
+    fields.Float("bodyGatherCorePinched", "…掌の芯の光：押し縮めた後の明るさ（倍率）", gatherCorePinched, 0.0f, 8.0f);
+    fields.Float("bodyGatherCoreFlicker", "…押し縮めた後の芯の細かい明滅の深さ（0 で明滅なし）", gatherCoreFlicker,
+                 0.0f, 1.0f);
+    fields.Float3("bodyGatherMistColor", "…押し縮める瞬間の色（霞）", gatherMistColor);
+    fields.Float3("bodyGatherFireColor", "…押し縮める瞬間の色（火）", gatherFireColor);
+    fields.Float("bodyGatherFogPull", "…集めている間、足元の霧と場の火を手の真下へ寄せる加速度 (m/s²。0 は寄せない)",
+                 gatherFogPull, 0.0f, 400.0f);
+    fields.Float("bodyGatherFogPullRadius", "…寄せる輪の半径 (m)", gatherFogPullRadius, 0.5f, 20.0f);
+    fields.Int("bodyGatherArms", "…掌へ流れ込む腕の本数", gatherArms, 1, 8);
+    fields.Float("bodyGatherArmStrength", "…腕の濃さ（中心での毎秒の密度）", gatherArmStrength, 0.0f, 5000.0f);
+    fields.Float("bodyGatherArmRadius", "…腕の太さ (m)", gatherArmRadius, 0.05f, 2.0f);
+    fields.Float("bodyGatherArmReach", "…腕が立ちのぼる地面の輪の半径（手の真下から m）", gatherArmReach, 0.5f, 10.0f);
+    fields.Float("bodyGatherArmTurns", "…掌へ着くまでに回る回数", gatherArmTurns, 0.0f, 4.0f);
+    fields.Float("bodyGatherArmRate", "…1 秒に流れ込む回数（集め始め）", gatherArmRate, 0.1f, 10.0f);
+    fields.Float("bodyGatherArmRateEnd", "…1 秒に流れ込む回数（押し縮める直前。大きいほど終わりが速い）",
+                 gatherArmRateEnd, 0.1f, 10.0f);
+    fields.Float("bodyGatherArmHeatMist", "…腕の温度（霞。高いほど光る）", gatherArmHeatMist, 0.0f, 10.0f);
+    fields.Float("bodyGatherArmHeatFire", "…腕の温度（火）", gatherArmHeatFire, 0.0f, 10.0f);
+    fields.Float("bodyGatherArmLift", "…腕の昇り方（大きいほど、地面を長く這ってから一気に昇る）", gatherArmLift, 0.2f,
+                 6.0f);
+    fields.Float("bodyGatherArmSpread", "…地面の輪の半径のばらつき（0〜1）", gatherArmSpread, 0.0f, 1.0f);
 }
 
 void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
@@ -152,6 +197,26 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
     fields.Float("bodySmokeHeatPhaseTwo", "フェーズ 2 で胴の煙を熱くする倍率（熱い煙は橙に光る。1 で光らない）",
                  smokeHeatPhaseTwo, 0.0f, 64.0f);
     fields.Float("bodySmokeAmountStunned", "気絶の間の胴の煙の量（倍率）", smokeAmountStunned, 0.0f, 8.0f);
+    fields.Float("bodySpineSmoke", "骨に付いて行く煙：背骨（腰から胸）の濃さ（毎秒。0 で出さない）", spineSmoke, 0.0f,
+                 500.0f);
+    fields.Float("bodySpineSmokeRadius", "骨に付いて行く煙：背骨の半径（1 倍の体での m）", spineSmokeRadius, 0.02f,
+                 2.0f);
+    fields.Float("bodyArmSmoke", "骨に付いて行く煙：両腕（肩から袖口）の濃さ（毎秒。0 で出さない）", armSmoke, 0.0f,
+                 500.0f);
+    fields.Float("bodyArmSmokeRadius", "骨に付いて行く煙：腕の半径（1 倍の体での m）", armSmokeRadius, 0.02f, 2.0f);
+    fields.Float("bodySmokeTilt", "胴の煙を体の傾きに付ける割合（変わり目の演出の間。0 倒さない 〜 1 背骨の向きまで）",
+                 smokeTilt, 0.0f, 1.0f);
+    fields.Float("bodySmokeTiltMaxDegrees", "胴の煙を倒す角度の上限（度）", smokeTiltMaxDegrees, 0.0f, 85.0f);
+    fields.Float("bodySmokeTiltFollow", "胴の煙が体の傾きに寄る速さ（1/秒）", smokeTiltFollow, 0.5f, 60.0f);
+    fields.Float("bodySmokeCalmFollow", "胴の煙が、体の細かい揺れへ寄る速さ（1/秒。小さいほど煙が落ち着く）",
+                 smokeCalmFollow, 0.0f, 20.0f);
+    fields.Float("bodySmokeHipsHeight", "胴の煙の資産の中の腰の高さ（足元から m。ここを軸に倒す）", smokeHipsHeight,
+                 0.0f, 8.0f);
+    fields.Float("bodySmokeTiltCombat", "戦いの間も、胴の煙を体の傾きに付ける割合（0 立ったまま 〜 1 背骨の向きまで）",
+                 smokeTiltCombat, 0.0f, 1.0f);
+    fields.Float("bodySmokeTiltCombatFollow", "戦いの間、胴の煙が体の傾きに寄る速さ（1/秒）", smokeTiltCombatFollow,
+                 0.5f, 60.0f);
+    fields.Float("bodyArmSmokeFlow", "骨に付いて行く煙：腕の煙が手の方へ流れる速さ (m/秒)", armSmokeFlow, 0.0f, 10.0f);
     fields.Bool("bodyArmorHot", "フェーズ 2 の本体の鎧を灼けた鎧（継ぎ目と隙間が熾火に光る）に差し替える", armorHot);
     fields.Float("bodyFireRiseSeconds", "フェーズ 2 の燃える胴：火が付く・消える時間 (秒)", fireRiseSeconds, 0.0f,
                  10.0f);
@@ -175,6 +240,12 @@ void BossBodySettings::DescribeShape(HIKARI::PropertyFields& fields) {
                  fireTongueHeat, 0.0f, 50.0f);
     fields.Float("bodyFireTongueRise", "火の舌：上へ吹き出す速さ (m/秒)", fireTongueRise, 0.0f, 20.0f);
     fields.Float("bodyFireCuffShare", "火の舌：袖口の強さ（襟に対する割合。0 で出さない）", fireCuffShare, 0.0f, 4.0f);
+    fields.Float("bodyFireHemShare", "火の舌：腰の周りの 3 本の強さ（襟に対する割合。0 で出さない）", fireHemShare,
+                 0.0f, 4.0f);
+    fields.Float("bodyFireHemRadius", "火の舌：腰の周りの火の半径（襟の火の半径に対する倍率）", fireHemRadius, 0.2f,
+                 4.0f);
+    fields.Float("bodyFireHemRing", "火の舌：腰の周りの火を置く、腰からの距離 (1 倍の体の m)", fireHemRing, 0.0f, 2.0f);
+    fields.Float("bodyFireHemDrop", "火の舌：腰の周りの火を、腰から下げる高さ (1 倍の体の m)", fireHemDrop, 0.0f, 2.0f);
     fields.Vfx("bodyFieldEffect", "フェーズ 2 の場：漂う火の粉と焦げた輪のエフェクト（空なら出さない）", fieldEffect);
     fields.Float("bodyFieldWarmSeconds", "フェーズ 2 の場：場の色が変わる・戻る時間 (秒)", fieldWarmSeconds, 0.0f,
                  30.0f);

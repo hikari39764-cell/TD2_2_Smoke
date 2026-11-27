@@ -47,6 +47,11 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
         fields.Float("fuelWave", "炎の背のうねり（0 で一様。点ごとに燃料をゆっくり増減させる割合）", fuelWave, 0.0f,
                      0.9f);
         fields.Float("fuelWaveHz", "うねりの速さ (Hz)", fuelWaveHz, 0.05f, 5.0f);
+        fields.Float(
+            "fuelCrowdPower",
+            "火が広い時（升目へ順番に入れる時）に、待った分の燃料をまとめて入れる割合（1 で全部、小さいほど広い火が"
+            "白く飛ばない）",
+            fuelCrowdPower, 0.0f, 1.0f);
         fields.Float("fuelRadiusScale", "炎の幅 (燃えている所の幅に対する倍。1 で踏むと痛い範囲とほぼ同じ幅)",
                      fuelRadiusScale, 0.5f, 4.0f);
         fields.Float("fadeSeconds", "消える前に火が細くなり始める残り秒数", fadeSeconds, 0.01f, 30.0f);
@@ -62,6 +67,12 @@ void BurnFieldComponent::DescribeProperties(HIKARI::PropertyFields& fields) {
                      fogBurnRadiusScale, 0.0f, 6.0f);
         fields.Float("fogUpdraft", "火のそばの霧を上へ持ち上げる加速度 (m/s²。0 は持ち上げない)", fogUpdraft, 0.0f,
                      60.0f);
+        fields.Vfx("tileEffect",
+                   "升目ごとに重ねる炎の層のエフェクト（炎の舌・熾火・立ちのぼる煙・地面の光。空なら流体の火だけ）",
+                   tileEffect);
+        fields.Float("tileEffectAmount", "…炎の層の量（倍）", tileEffectAmount, 0.0f, 4.0f);
+        fields.Float("tileEffectRise", "…燃え始めに出そろうまで (秒)", tileEffectRise, 0.0f, 5.0f);
+        fields.Float("tileEffectFade", "…消える時に薄れるまで (秒)", tileEffectFade, 0.0f, 5.0f);
         fields.Note(
             "炎そのものの色・明るさ・揺れ・煙の量は、エフェクト資産 ArenaFireField の流体域の層で決めます。"
             "ここは、燃えている所へ燃料をどう入れるかだけです。燃料の点は、燃えているセルのかたまりの上に居続けて、"

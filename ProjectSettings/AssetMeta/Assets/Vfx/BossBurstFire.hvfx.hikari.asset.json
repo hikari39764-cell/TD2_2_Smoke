@@ -1,0 +1,14 @@
+{
+  "displayName": "BossBurstFire",
+  "guid": "ff186fd5bfe37c9aa8df229f4a70a71d",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossBurstFire.hvfx",
+  "type": "VfxEffect"
+}
