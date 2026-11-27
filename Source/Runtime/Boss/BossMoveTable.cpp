@@ -874,4 +874,87 @@ void BossMoveTable::ApplyClips(std::string_view clipsCsv, std::string_view segme
     }
 }
 
+void BossMoveTable::ApplyAim(std::string_view csv, std::vector<std::string>& warnings) {
+    const auto rows = ParseCsv(csv);
+    if (rows.empty())
+        return;
+    const Row& header = rows[0];
+    const int name = ColumnOf(header, "技");
+    const int strike = ColumnOf(header, "斬り");
+    const int distance = ColumnOf(header, "距離");
+    const int degrees = ColumnOf(header, "狙いのずれ");
+    const int start = ColumnOf(header, "当たりの始め");
+    const int end = ColumnOf(header, "当たりの終わり");
+    // 「クリップ」は「クリップの長さ」より前の列（ColumnOf は見出しの始まりで探すので、先にある方に合う）。
+    const int clip = ColumnOf(header, "クリップ");
+    const int clipFrames = ColumnOf(header, "クリップの長さ");
+    const int fingerprint = ColumnOf(header, "指紋");
+    if (name < 0 || strike < 0 || distance < 0 || degrees < 0) {
+        warnings.push_back("狙いのずれの表：見出し（技・斬り・距離・狙いのずれ）が読めません");
+        return;
+    }
+    std::vector<std::string> unknown;
+    for (size_t r = 1; r < rows.size(); ++r) {
+        const std::string moveName = CellOf(rows[r], name);
+        if (moveName.empty())
+            continue;
+        const int index = Find(moveName);
+        const auto k = NumberOf(CellOf(rows[r], strike));
+        const auto d = NumberOf(CellOf(rows[r], distance));
+        const auto a = NumberOf(CellOf(rows[r], degrees));
+        if (index < 0 || !k || *k < 1.0 ||
+            static_cast<size_t>(*k) > moves_[static_cast<size_t>(index)].strikes.size() || !d || !a) {
+            if (std::find(unknown.begin(), unknown.end(), moveName) == unknown.end()) {
+                unknown.push_back(moveName);
+                warnings.push_back("狙いのずれの表：技「" + moveName +
+                                   "」の行が技の表と合いません（技の名前・斬りの番号・距離・角度）");
+            }
+            continue;
+        }
+        BossStrikeAim& aim = moves_[static_cast<size_t>(index)].strikes[static_cast<size_t>(*k) - 1].aim;
+        aim.samples.push_back({static_cast<float>(*d), static_cast<float>(*a)});
+        aim.clip = CellOf(rows[r], clip);
+        aim.clipFrames = RoundHalfUp(NumberOf(CellOf(rows[r], clipFrames)).value_or(0.0));
+        aim.start = RoundHalfUp(NumberOf(CellOf(rows[r], start)).value_or(0.0));
+        aim.end = RoundHalfUp(NumberOf(CellOf(rows[r], end)).value_or(0.0));
+        aim.fingerprint = static_cast<uint32_t>(std::strtoul(CellOf(rows[r], fingerprint).c_str(), nullptr, 16));
+    }
+    for (BossMove& move : moves_) {
+        int accumulated = 0;
+        for (const BossSegment& segment : move.segments) {
+            if (segment.hit && static_cast<size_t>(segment.strike) < move.strikes.size()) {
+                BossStrikeAim& aim = move.strikes[static_cast<size_t>(segment.strike)].aim;
+                std::sort(aim.samples.begin(), aim.samples.end(),
+                          [](const BossAimSample& x, const BossAimSample& y) { return x.distance < y.distance; });
+                const int hitStart = move.pre + accumulated;
+                if (!aim.samples.empty() && (aim.clip != move.clip || aim.clipFrames != move.clipFrames ||
+                                             aim.start != hitStart || aim.end != hitStart + segment.length)) {
+                    warnings.push_back("狙いのずれの表が古い：技「" + move.name + "」の " +
+                                       std::to_string(segment.strike + 1) +
+                                       " 刀目のクリップ・長さ・当たりの窓が、計算した時と違います（Tools/Verify/verify.py "
+                                       "aim を流す。それまでは古い角度のまま狙う）");
+                }
+            }
+            accumulated += segment.length;
+        }
+    }
+}
+
+float BossMoveTable::AimDegrees(const BossStrikeData& strike, float distance) {
+    const std::vector<BossAimSample>& samples = strike.aim.samples;
+    if (samples.empty())
+        return 0.0f;
+    if (distance <= samples.front().distance)
+        return samples.front().degrees;
+    for (size_t k = 1; k < samples.size(); ++k) {
+        if (distance <= samples[k].distance) {
+            const BossAimSample& a = samples[k - 1];
+            const BossAimSample& b = samples[k];
+            const float u = b.distance > a.distance ? (distance - a.distance) / (b.distance - a.distance) : 1.0f;
+            return a.degrees + (b.degrees - a.degrees) * u;
+        }
+    }
+    return samples.back().degrees;
+}
+
 } // namespace Project_TD2_2

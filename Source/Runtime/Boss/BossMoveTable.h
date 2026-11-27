@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -100,6 +101,23 @@ struct BossSegment {
     int rangeMax = 0;
 };
 
+// 狙いのずれの表の 1 点：プレイヤーがこの距離 (m) にいる時、体をねじる角度（度。正がボスの右）。
+struct BossAimSample {
+    float distance = 0.0f;
+    float degrees = 0.0f;
+};
+
+// 一撃の狙いのずれ（c-884095。Data/Boss/boss_aim_offsets.csv。Tools/Verify/verify.py aim がクリップの刀から計算する）。
+// clip〜fingerprint は計算した時のクリップ・長さ・当たりの窓・刀の動きの指紋（今と違えば表が古い）。
+struct BossStrikeAim {
+    std::vector<BossAimSample> samples;
+    std::string clip;
+    int clipFrames = 0;
+    int start = 0;
+    int end = 0;
+    uint32_t fingerprint = 0;
+};
+
 // 一撃ぶんの値。連撃で別の行を参照した一撃は、その行の値が入る。
 struct BossStrikeData {
     BossStrikeDirection direction = BossStrikeDirection::Horizontal;
@@ -114,6 +132,7 @@ struct BossStrikeData {
     int damage = 0;
     // 参照した行（-1 は参照なし）。
     int reference = -1;
+    BossStrikeAim aim;
 };
 
 // 表の 1 行を読んだ結果。F は 1/60 秒の固定 tick。
@@ -236,6 +255,12 @@ public:
     // 始め F, 当たりの終わり F, 向き）を読み、アニメーションの列がある技の前隙・攻撃中・後隙をクリップの長さで決め直す。
     // 前隙＝最初の当たりの始めまで、当たりと間は区間の表どおり、後隙＝最後の当たりの終わりからクリップの終わりまで。
     void ApplyClips(std::string_view clipsCsv, std::string_view segmentsCsv, std::vector<std::string>& warnings);
+    // 狙いのずれの表（c-884095。技, 斬り, 距離 m, 狙いのずれ °, 当たりの始め F, 当たりの終わり F, クリップ,
+    // クリップの長さ F, 指紋）を ApplyClips の後に読み、一撃の aim に入れる。計算した時のクリップ・長さ・当たりの窓が今と
+    // 違う一撃は、表が古いと warnings に入れる（値はそのまま使う）。刀の動きの指紋は BossAnimBody::CheckAimFingerprints。
+    void ApplyAim(std::string_view csv, std::vector<std::string>& warnings);
+    // 一撃の、プレイヤーが distance m にいる時の狙いのずれ（度。正がボスの右）。表の点の間は補間、端の外は端の値、無ければ 0。
+    static float AimDegrees(const BossStrikeData& strike, float distance);
     // 名前が完全に一致する行。無ければ -1。
     int Find(std::string_view name) const;
     static const char* TypeKey(BossMoveType type);
