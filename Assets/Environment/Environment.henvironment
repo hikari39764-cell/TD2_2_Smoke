@@ -203,18 +203,18 @@
   },
   "sunGlare": {
     "edgeFade": 0.15000000596046448,
-    "enabled": false,
+    "enabled": true,
     "ghostIntensity": 0.0,
-    "haloFalloff": 3.0,
-    "haloRadius": 0.07999999821186066,
-    "intensity": 0.15000000596046448,
-    "maxRadiance": 4.0,
+    "haloFalloff": 3.8,
+    "haloRadius": 0.28,
+    "intensity": 3.2,
+    "maxRadiance": 12.0,
     "occlusionRadius": 0.012000000104308128,
     "shaftDecay": 0.9399999976158142,
     "shaftIntensity": 0.0,
     "shaftLength": 0.550000011920929,
-    "streakIntensity": 0.0,
-    "streakLength": 0.15000000596046448
+    "streakIntensity": 0.08,
+    "streakLength": 0.18
   },
   "toneMapping": {
     "contrast": 1.3609999418258667,

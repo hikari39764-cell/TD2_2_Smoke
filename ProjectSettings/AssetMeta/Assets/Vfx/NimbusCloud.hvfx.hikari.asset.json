@@ -7,7 +7,7 @@
     "sourceFormat": ".hvfx"
   },
   "importerId": "VfxAssetImporter",
-  "importerVersion": 27,
+  "importerVersion": 28,
   "metaVersion": 1,
   "sourcePath": "Assets/Vfx/NimbusCloud.hvfx",
   "type": "VfxEffect"

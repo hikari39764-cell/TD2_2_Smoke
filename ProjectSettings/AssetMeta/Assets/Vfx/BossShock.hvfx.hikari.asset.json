@@ -1,5 +1,5 @@
 {
-  "displayName": "BossShock",
+  "displayName": "Boss Shock",
   "guid": "e1a7c3f05b2d4d96a8c4f7b16d0e3a29",
   "importSettings": {
     "cookVfx": true,
@@ -7,7 +7,7 @@
     "sourceFormat": ".hvfx"
   },
   "importerId": "VfxAssetImporter",
-  "importerVersion": 27,
+  "importerVersion": 28,
   "metaVersion": 1,
   "sourcePath": "Assets/Vfx/BossShock.hvfx",
   "type": "VfxEffect"
