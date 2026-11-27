@@ -1,0 +1,14 @@
+{
+  "displayName": "BossShockRingFire",
+  "guid": "bd0ac1d05c32593df580e3b7f304378c",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossShockRingFire.hvfx",
+  "type": "VfxEffect"
+}

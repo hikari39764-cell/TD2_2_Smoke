@@ -122,6 +122,11 @@ struct Feed {
     void Blow(uint64_t id, Vec3 at, float radius, Vec3 direction, float acceleration, uint32_t channels) const {
         Send(id, Fluid::Force, at, {radius, 0.0f, 0.0f}, direction, acceleration, 0.0f, channels);
     }
+    // 半径の球面を外へ speed (m/秒) で流れ出す、体積の湧き出し（出している間。向きの無い力）。中の煙は四方へ押し広げ
+    // られ、遠くほど遅くなる。開いた境界の域だけ（閉じた箱では、流体に逃げ場が無い）。
+    void Swell(uint64_t id, Vec3 at, float radius, float speed, uint32_t channels) const {
+        Send(id, Fluid::Force, at, {radius, 0.0f, 0.0f}, {}, speed, 0.0f, channels);
+    }
     // 半径の中の煙を消す。
     void Absorb(uint64_t id, Vec3 at, float radius, float rate) const {
         Send(id, Fluid::Force, at, {radius, 0.0f, 0.0f}, {}, 0.0f, rate, FluidChannels::kIntroSmoke);

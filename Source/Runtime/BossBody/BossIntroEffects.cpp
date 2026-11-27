@@ -1,6 +1,7 @@
 #include "BossIntroEffects.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <iterator>
@@ -9,12 +10,15 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/CameraViewSnapshot.h"
 #include "HIKARI/Project/SequenceView.h"
+#include "HIKARI/Project/UiView.h"
 #include "BossBodyMath.h"
 #include "BossCinematicFx.h"
 #include "BossIntroActor.h"
 #include "BossIntroSmoke.h"
 #include "../Boss/BossFrame.h"
 #include "../Boss/BossIntro.h"
+#include "../Boss/BossVfx.h"
+#include "../Common/VfxParameters.h"
 #include "../Player/Feedback.h"
 
 namespace Project_TD2_2 {
@@ -25,6 +29,17 @@ using namespace BossBodyMath;
 // 演出の動きのぼかしの出し元の番号（c-bc5908）と優先度（演出の効果の手応えと同じ。崩しの手応えより下）。
 constexpr uint64_t kMotionBlurSource = 0x5444324A16ull;
 constexpr int kMotionBlurPriority = Project_TD2_2::Feedback::kBreakPriority - 10;
+// 演出の被写界深度の出し元の番号（c-280b71。優先度は動きのぼかしと同じ）。
+constexpr uint64_t kFocusSource = 0x5444324A17ull;
+// 上下の黒帯（UI の矩形 2 枚）の出し元の番号と重ね順（HUD の条より上、勝ち負けの画面の色より下）。
+constexpr uint64_t kBarTopId = 0x5444324A18ull;
+constexpr uint64_t kBarBottomId = 0x5444324A19ull;
+constexpr int kBarOrder = 90;
+constexpr const char* kSolidTexture = "generated://solid/ffffffff";
+// 「続く」ピントの段を、前の段の終わりと見なす始めのずれ (秒)。
+constexpr float kFocusLinkSlack = 0.05f;
+// 漂う塵の入力（資産側の約束）。
+constexpr const char* kMotesAmountInput = "input.amount";
 // 落ちている兜の隙間の瞬き：拍のこの割合までで灯り切り、残りで消える。
 constexpr float kGlintRise = 0.22f;
 // 衝撃の輪の 2 つ目：1 つ目に対する大きさの倍率と、遅れて出す秒。刀が抜けた後、刀光を引く長さ (秒)。
@@ -43,10 +58,34 @@ constexpr float kDrawStarSeconds = 0.45f;
 constexpr float kBladeEdgeRest = 0.3f;
 constexpr float kDrawAura = 0.45f;
 
-// 事件段の名前から、効果の拍の種類へ（演出の資産の側の約束）。
-BossIntroCueKind KindOf(const char (&name)[HIKARI::kGameProjectSequenceEventNameCapacity]) {
+// 「:」で区切った数を 2 つまで読む（「6.40:1.5」。読めない所は、渡された値のまま）。
+void ReadValues(std::string_view text, float& a, float& b) {
+    const size_t split = text.find(':');
+    const std::string_view first = text.substr(0, split);
+    (void)std::from_chars(first.data(), first.data() + first.size(), a);
+    if (split == std::string_view::npos)
+        return;
+    const std::string_view second = text.substr(split + 1);
+    (void)std::from_chars(second.data(), second.data() + second.size(), b);
+}
+
+// 事件段の名前から、効果の拍の種類へ（演出の資産の側の約束）。数の付く名前（Focus・Blur）は、数も読む。
+BossIntroCueKind KindOf(BossIntroCue& cue) {
+    const char(&name)[HIKARI::kGameProjectSequenceEventNameCapacity] = cue.clip.name;
     // 終端が無くても、入れ物の外は読まない。
     const std::string_view text{name, static_cast<size_t>(std::find(name, std::end(name), '\0') - name)};
+    if (text.rfind("Focus:", 0) == 0 || text.rfind("Focus>", 0) == 0) {
+        cue.valueA = 0.0f;
+        cue.valueB = 1.0f;
+        ReadValues(text.substr(6), cue.valueA, cue.valueB);
+        return text[5] == ':' ? BossIntroCueKind::Focus : BossIntroCueKind::FocusLink;
+    }
+    if (text.rfind("Blur:", 0) == 0) {
+        cue.valueA = 180.0f;
+        cue.valueB = 24.0f;
+        ReadValues(text.substr(5), cue.valueA, cue.valueB);
+        return BossIntroCueKind::Blur;
+    }
     if (text == "Helm.Seat")
         return BossIntroCueKind::HelmSeat;
     if (text == "Sword.Out")
@@ -65,10 +104,14 @@ BossIntroCueKind KindOf(const char (&name)[HIKARI::kGameProjectSequenceEventName
         return BossIntroCueKind::HandRight;
     if (text == "Hand.Left")
         return BossIntroCueKind::HandLeft;
+    if (text == "Hand.Fist")
+        return BossIntroCueKind::HandFist;
     if (text == "Smoke.HelmLift")
         return BossIntroCueKind::HelmLift;
     if (text == "Sword.Grab")
         return BossIntroCueKind::SwordGrab;
+    if (text == "Sword.Tip")
+        return BossIntroCueKind::SwordTip;
     if (text == "Smoke.Clear")
         return BossIntroCueKind::SmokeClear;
     if (text == "Step")
@@ -90,7 +133,7 @@ void StepCues(BossComponent& boss, BossIntroComponent& intro, float t) {
     for (int k = 0; k < state.cueCount; ++k) {
         BossIntroCue& cue = state.cues[static_cast<size_t>(k)];
         if (cue.kind == BossIntroCueKind::Unread)
-            cue.kind = KindOf(cue.clip.name);
+            cue.kind = KindOf(cue);
         const float start = cue.clip.startSeconds;
         const float duration = std::max(0.0f, cue.clip.durationSeconds);
         if (t < start) {
@@ -132,6 +175,8 @@ void BossIntroEffects::OnCueStart(BossComponent& boss, BossIntroComponent& intro
         intro.state.smokeSeatPush = true;
         break;
     }
+    // 煙が鎧に届いて引き起こす瞬間：足元から砂ぼこりが立つ。
+    case BossIntroCueKind::SmokeRise: intro.state.dustPending = true; break;
     case BossIntroCueKind::SwordOut: {
         // 刀が地から抜けた瞬間：白黒の閃き・根元の衝撃の輪・強い揺れ・停止・刀身の光・黒い煙の噴き上げ（BossIntroSmoke）。
         const HIKARI::GameProjectFloat3 entry = BossIntroSmoke::SwordEntryWorld(intro);
@@ -145,6 +190,8 @@ void BossIntroEffects::OnCueStart(BossComponent& boss, BossIntroComponent& intro
         if (s.drawFlashScale > 0.0f)
             BossCinematicFx::MistBurst(boss, {entry.x, entry.y + 1.0f, entry.z}, s.drawFlashScale);
         intro.state.smokeDrawPush = true;
+        // 土くれと砂の輪（一度きりの特効）。
+        intro.state.debrisPending = true;
         // 根元から、画の上を衝撃の輪が走る（全画面の効果）。
         intro.state.shockSeconds = 0.0f;
         intro.state.shockAt = {entry.x, entry.y + 0.6f, entry.z};
@@ -158,6 +205,7 @@ void BossIntroEffects::OnCueStart(BossComponent& boss, BossIntroComponent& intro
     case BossIntroCueKind::Eyes:
         intro.state.eyesLit = true;
         BossCinematicFx::EyeFlare(boss);
+        intro.state.hazePending = true;
         break;
     default: break;
     }
@@ -201,6 +249,30 @@ void BossIntroEffects::OnCue(BossComponent& boss, BossIntroComponent& intro, con
         break;
     }
     // 抜けた後、刀光を引いて上がり、気配が引いていく。
+    // ピント：この段の値から、すぐ後に続く段（Focus>）の値へ、段の間に線形に寄る（続く段が無ければ、この段の値のまま）。
+    case BossIntroCueKind::Focus:
+    case BossIntroCueKind::FocusLink: {
+        float distance = cue.valueA;
+        float strength = cue.valueB;
+        const float end = cue.clip.startSeconds + std::max(0.0f, cue.clip.durationSeconds);
+        for (int k = 0; k < intro.state.cueCount; ++k) {
+            const BossIntroCue& next = intro.state.cues[static_cast<size_t>(k)];
+            if (next.kind == BossIntroCueKind::FocusLink && std::abs(next.clip.startSeconds - end) <= kFocusLinkSlack) {
+                distance = Lerp(cue.valueA, next.valueA, u);
+                strength = Lerp(cue.valueB, next.valueB, u);
+                break;
+            }
+        }
+        intro.state.focusSeen = true;
+        intro.state.focusWantDistance = distance;
+        intro.state.focusWantStrength = strength;
+        break;
+    }
+    // 動きのぼかしの強い所。
+    case BossIntroCueKind::Blur:
+        intro.state.blurWantShutter = cue.valueA;
+        intro.state.blurWantPixels = cue.valueB;
+        break;
     case BossIntroCueKind::SwordOut:
         BossCinematicFx::Aura(boss, kDrawAura * (1.0f - u));
         // 刃口の細い線は、抜けた後も弱く残る。振り上げの頂点で、剣先に星を 1 つ。
@@ -228,6 +300,9 @@ void BossIntroEffects::Update(BossComponent& boss, BossIntroComponent& intro, fl
     BossCinematicFxState& fx = boss.cinematicFxState;
     // 毎フレームの頼み（兜の瞬き）は、ここで 0 に戻す（気配・刃口・刀光・目は BossCinematicFx::BeginFrame が戻した）。
     state.helmGlint = 0.0f;
+    // カメラの効果の頼み（ピント・動きのぼかしの強い所）も、拍が毎フレーム入れ直す。
+    state.focusSeen = false;
+    state.blurWantShutter = state.blurWantPixels = -1.0f;
     // 目が灯った後、演技の間は普段より明るく灯す（昼の空を背にしても、兜の隙間の光が読める）。
     fx.eyeGlow =
         state.eyesLit && (state.phase == BossIntroPhase::Show || BossIntro::ActorLingers(&intro)) ? kShowEyeGlow : 0.0f;
@@ -251,15 +326,59 @@ void BossIntroEffects::Render(HIKARI::WorldView& world, HIKARI::ObjectView objec
     const Vec3 tint = body.accents.eyesMistColor;
     BossIntroActor::SetHelmPartGlint(world, intro, Mul(tint, 1.0f / std::max({tint.x, tint.y, tint.z, kTiny})),
                                      intro.settings.helmGlint * intro.state.helmGlint);
+    // 一度きりの特効（c-280b71）：拍が立てた頼みを、ここで出す。飛ばした後は出さない。
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
+    const auto burst = [&](bool& pending, const HIKARI::GameProjectVfxAssetReference& asset, Vec3 at, float scale) {
+        if (!pending)
+            return;
+        pending = false;
+        if (asset.IsEmpty() || state.skipped)
+            return;
+        HIKARI::GameProjectVfxPlayRequest play{};
+        play.asset = asset;
+        play.transform.position = at;
+        play.transform.scale = {scale, scale, scale};
+        play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+        BossVfx::Start(world, boss, play);
+    };
+    burst(state.dustPending, s.dustEffect, BossIntroSmoke::FeetWorld(intro), s.dustScale);
+    burst(state.debrisPending, s.debrisEffect, BossIntroSmoke::SwordEntryWorld(intro), s.debrisScale);
+    BossBodyPose pose{};
+    const bool posed = BossIntroActor::Pose(intro, pose);
+    burst(state.hazePending, s.hazeEffect,
+          posed ? pose.head.position : Add(BossIntroSmoke::FeetWorld(intro), {0.0f, 5.5f, 0.0f}), s.hazeScale);
+    // 演技の間じゅう舞台に漂う塵と灰（演技が済んだ・飛ばしたら止める）。
+    const bool showing = state.phase == BossIntroPhase::Show && !state.skipped;
+    if (showing && !s.motesEffect.IsEmpty() && s.motesAmount > 0.0f) {
+        HIKARI::GameProjectTransform stage{};
+        stage.position = BossIntroSmoke::FeetWorld(intro);
+        HIKARI::GameProjectVfxParameterOverrides parameters{};
+        VfxParameters::SetFloat(parameters, kMotesAmountInput, s.motesAmount);
+        BossVfx::StartOrSend(world, boss, state.motesHandle, s.motesEffect, stage, parameters);
+    } else {
+        BossVfx::StopHandle(world, state.motesHandle);
+    }
 }
 
 namespace {
 
 // 演出の動きのぼかし（c-bc5908）：演技の間は設定のまま、一息の段ではゲームのカメラへ渡すのに合わせて弱める
 // （BossIntroCamera の渡しと同じ進み）。飛ばした時は掛けない。頼みは 1 フレームだけ効くので、描画のフレームごとに出す。
-void SubmitMotionBlur(HIKARI::WorldView& world, BossIntroComponent& intro, uint64_t owner) {
+void SubmitMotionBlur(HIKARI::WorldView& world, BossIntroComponent& intro, uint64_t owner, float unscaledSeconds) {
     const BossIntroSettings& s = intro.settings;
     BossIntroState& state = intro.state;
+    // 強い所（事件段 Blur）の値へ、実時間で寄せる。拍が無い間は設定の値へ戻る。
+    const float wantShutter = state.blurWantShutter >= 0.0f ? state.blurWantShutter : s.motionBlurShutterDegrees;
+    const float wantPixels = state.blurWantPixels >= 0.0f ? state.blurWantPixels : s.motionBlurMaxPixels;
+    if (state.blurShutter < 0.0f || !(s.motionBlurBlendSeconds > 0.0f)) {
+        state.blurShutter = wantShutter;
+        state.blurPixels = wantPixels;
+    } else {
+        const float ease = std::clamp(std::max(0.0f, unscaledSeconds) / s.motionBlurBlendSeconds, 0.0f, 1.0f);
+        state.blurShutter += (wantShutter - state.blurShutter) * ease;
+        state.blurPixels += (wantPixels - state.blurPixels) * ease;
+    }
     float weight = 0.0f;
     if (!state.skipped && s.motionBlurShutterDegrees > 0.0f && s.motionBlurMaxPixels > 0.0f) {
         if (state.phase == BossIntroPhase::Show) {
@@ -271,18 +390,10 @@ void SubmitMotionBlur(HIKARI::WorldView& world, BossIntroComponent& intro, uint6
         }
     }
     bool accepted = false;
-    if (weight > 0.0f) {
-        HIKARI::GameProjectCameraMotionBlurRequest blur{};
-        blur.cameraObjectHandle = 0; // いま画を出しているカメラ（演技の間は演出の資産のカメラ）
-        blur.sourceId = kMotionBlurSource ^ owner;
-        blur.priority = kMotionBlurPriority;
-        // 重みはカメラの元の設定（無効なら 0°）からのシャッター角と長さの補間。
-        blur.weight = weight;
-        blur.settings.enabled = 1;
-        blur.settings.shutterAngleDegrees = std::clamp(s.motionBlurShutterDegrees, 0.0f, 360.0f);
-        blur.settings.maxBlur1080pPixels = std::clamp(s.motionBlurMaxPixels, 0.0f, 64.0f);
-        accepted = world.GetCamera().SubmitMotionBlur(blur);
-    }
+    // いま画を出しているカメラへ（演技の間は演出の資産のカメラ）。
+    if (weight > 0.0f)
+        accepted = Project_TD2_2::Feedback::SubmitMotionBlur(world, kMotionBlurSource ^ owner, kMotionBlurPriority,
+                                                             weight, state.blurShutter, state.blurPixels);
     if (accepted != state.motionBlurAccepted) {
         state.motionBlurAccepted = accepted;
         char message[128]{};
@@ -291,6 +402,74 @@ void SubmitMotionBlur(HIKARI::WorldView& world, BossIntroComponent& intro, uint6
                       static_cast<double>(s.motionBlurShutterDegrees), static_cast<double>(s.motionBlurMaxPixels));
         BossLog::Write(message);
     }
+}
+
+// 演出の被写界深度（c-280b71）：拍（Focus）が入れた距離と強さで、描画のフレームごとに頼む。拍が無い間・一息の段・
+// 飛ばした後は、focusFadeSeconds で外す（外れ切ったら頼まない＝カメラの元の設定）。
+void SubmitFocus(HIKARI::WorldView& world, BossIntroComponent& intro, uint64_t owner, float unscaledSeconds) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
+    const bool wanted = state.focusSeen && state.phase == BossIntroPhase::Show && !state.skipped;
+    if (wanted) {
+        // 距離は、拍が線形に寄せた値をそのまま（カットの始めの段は、その値へ跳ぶ）。
+        state.focusDistance = state.focusWantDistance;
+        state.focusStrength = state.focusWantStrength;
+    }
+    const float step = s.focusFadeSeconds > 0.0f ? std::max(0.0f, unscaledSeconds) / s.focusFadeSeconds : 1.0f;
+    state.focusWeight = wanted ? std::min(1.0f, state.focusWeight + step) : std::max(0.0f, state.focusWeight - step);
+    bool accepted = false;
+    if (state.focusWeight > 0.0f && state.focusDistance > 0.0f) {
+        const float distance = state.focusDistance;
+        HIKARI::GameProjectCameraDepthOfFieldRequest request{};
+        request.cameraObjectHandle = 0; // いま画を出しているカメラ
+        request.sourceId = kFocusSource ^ owner;
+        request.priority = kMotionBlurPriority;
+        request.weight = state.focusWeight;
+        request.settings.enabled = 1;
+        request.settings.focusDistance = distance;
+        request.settings.focusRange = distance * std::max(0.0f, s.focusRangeShare);
+        request.settings.nearTransition = std::max(0.05f, distance * s.focusNearShare);
+        request.settings.farTransition = std::max(0.05f, distance * s.focusFarShare);
+        request.settings.nearBlurRadius1080pPixels =
+            std::clamp(s.focusNearBlurPixels * state.focusStrength, 0.0f, 64.0f);
+        request.settings.farBlurRadius1080pPixels = std::clamp(s.focusFarBlurPixels * state.focusStrength, 0.0f, 64.0f);
+        accepted = world.GetCamera().SubmitDepthOfField(request);
+    }
+    if (accepted != state.focusAccepted) {
+        state.focusAccepted = accepted;
+        char message[128]{};
+        std::snprintf(message, sizeof(message), "IntroFocus accepted=%d weight=%.2f distance=%.2f strength=%.2f",
+                      static_cast<int>(accepted), static_cast<double>(state.focusWeight),
+                      static_cast<double>(state.focusDistance), static_cast<double>(state.focusStrength));
+        BossLog::Write(message);
+    }
+}
+
+// 上下の黒帯（c-280b71）：演技の間、画を barsAspect の横縦比に見せる。UI の黒い矩形 2 枚（ブルームの後に載る）。
+// 演技が済んだ・飛ばしたら、barsFadeSeconds で引っ込む。
+void SubmitBars(HIKARI::WorldView& world, BossIntroComponent& intro, float unscaledSeconds) {
+    const BossIntroSettings& s = intro.settings;
+    BossIntroState& state = intro.state;
+    const bool wanted = state.phase == BossIntroPhase::Show && !state.skipped && s.barsAspect > 0.0f;
+    const float step = s.barsFadeSeconds > 0.0f ? std::max(0.0f, unscaledSeconds) / s.barsFadeSeconds : 1.0f;
+    state.bars = wanted ? std::min(1.0f, state.bars + step) : std::max(0.0f, state.bars - step);
+    HIKARI::GameProjectUiSpriteRequest request{};
+    // 帯 1 本の高さ（参照の画面 1920×1080 の画素）：画面の比より横長に見せる分だけ。
+    const float full = 0.5f * (request.referenceHeight - request.referenceWidth / std::max(s.barsAspect, 0.1f));
+    const float height = full * Smooth(state.bars);
+    if (!(height > 0.5f))
+        return;
+    request.order = kBarOrder;
+    request.x = 0.0f;
+    request.width = request.referenceWidth;
+    request.height = height;
+    request.tint = {0.0f, 0.0f, 0.0f, 1.0f};
+    request.sourceId = kBarTopId;
+    request.y = 0.0f;
+    (void)world.GetUi().SubmitSprite(kSolidTexture, request);
+    request.sourceId = kBarBottomId;
+    request.y = request.referenceHeight - height;
+    (void)world.GetUi().SubmitSprite(kSolidTexture, request);
 }
 
 } // namespace
@@ -357,7 +536,9 @@ void BossIntroEffects::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obj
         state.filmTarget = film.target;
         state.filmFov = film.verticalFovRadians;
     }
-    SubmitMotionBlur(world, intro, object.GetHandle().value);
+    SubmitMotionBlur(world, intro, object.GetHandle().value, unscaledSeconds);
+    SubmitFocus(world, intro, object.GetHandle().value, unscaledSeconds);
+    SubmitBars(world, intro, unscaledSeconds);
 }
 
 } // namespace Project_TD2_2

@@ -63,6 +63,8 @@ struct BossClipSwordTrack {
     std::vector<HIKARI::GameProjectQuaternion> swordRotation;
     std::vector<HIKARI::GameProjectFloat3> leftHand;
     std::vector<HIKARI::GameProjectQuaternion> leftHandRotation;
+    // 刀の骨の動きの指紋（c-884095。狙いのずれの表が、今のクリップで計算されたかを見る）。SwordFingerprint で作る。
+    uint32_t fingerprint = 0;
 };
 
 // 技のクリップの刀（規則の側。c-bd1a7a でボスの部品の骨格の体の状態から分けた）：クリップごとの刀の骨・左手の骨と、
@@ -77,6 +79,8 @@ struct BossClipSwords {
     HIKARI::GameProjectQuaternion idleRotation{0.0f, 0.0f, 0.0f, 1.0f};
     bool idleReady = false;
     bool idleFailed = false;
+    // 狙いのずれの表の指紋を、読んだ刀と比べたか（表を読み直すと BossTableLoader が戻す）。
+    bool aimChecked = false;
 };
 
 // 骨格の体の、描画のフレームごとの状態（シーンに保存しない。描画のフレームだけが書き、読む。体の見た目の部品
@@ -115,6 +119,31 @@ struct BossAnimBodyState {
     bool lastTipValid = false;
     // 骨の読み方を 1 度だけ記録に書いたか。
     bool bonesLogged = false;
+    // 演出のクリップ（変わり目の演出が毎フレーム頼む。c-271cba）：流すクリップ（空は頼んでいない）、その時刻（0〜1）、
+    // 外す時に待機の姿へ混ぜる長さ (秒)。いま重ねているか。
+    std::string cinematicClip;
+    float cinematicNormalized = 0.0f;
+    float cinematicBlendOut = 0.35f;
+    bool cinematicLayered = false;
+    // 見えている腰の骨（世界。描画のフレーム。1 フレーム前に描いた姿）と、それを読めたか（演出の間、胴の煙の域を
+    // 体に付いて行かせる）。
+    HIKARI::GameProjectFloat3 hipsWorld{};
+    bool hipsSeen = false;
+    // 見えている胸の骨（Spine2）の所（世界。描画のフレーム。1 フレーム前に描いた姿。hipsSeen の時だけ意味がある）。
+    HIKARI::GameProjectFloat3 chestWorld{};
+    // 見えている頭の骨の所（同じ。戦いの間、胴の煙の域を倒す向きを 腰 → 頭 で決める）。
+    HIKARI::GameProjectFloat3 headWorld{};
+    // 胴の煙の域を倒す向き（世界。腰 → 胸をなめらかに追った向き。長さ 1）と、倒す重み（0 倒さない 〜 1。変わり目の
+    // 演出で体を据えている間は 1、戦いの間は smokeTiltCombat）。
+    HIKARI::GameProjectFloat3 smokeSpine{0.0f, 1.0f, 0.0f};
+    float smokeTiltWeight = 0.0f;
+    // 胴の煙の域の軸（世界。腰をなめらかに追った所。細かい揺れは追わない）と、それを持っているか。
+    HIKARI::GameProjectFloat3 smokePivot{};
+    bool smokePivotValid = false;
+    // 戦いの間、域の軸と向きを体（根）の動きと一緒に運ぶための、前のフレームの体の置き場所と、それを持っているか。
+    HIKARI::GameProjectFloat3 smokeBodyPosition{};
+    HIKARI::GameProjectQuaternion smokeBodyRotation{0.0f, 0.0f, 0.0f, 1.0f};
+    bool smokeBodyValid = false;
 };
 
 namespace BossAnimBody {
@@ -134,6 +163,13 @@ bool Showing(const BossBodyComponent* look);
 void PrepareSword(HIKARI::WorldView& world, BossComponent& boss);
 // move がクリップの刀で当たる技か（クリップがあり、その刀の骨を読めた）。当たりの窓は区間の表どおりになる。
 bool ClipMove(const BossComponent& boss, const BossMove& move);
+// 刀の骨の動きの指紋（c-884095）：位置を mm、回転を 1/10000 に丸めてから混ぜる（パソコンの小数の差で変わらない）。
+// 狙いのずれの表（verify.py aim）にも、計測の時に同じ値を書く。
+uint32_t SwordFingerprint(const BossClipSwordTrack& track);
+// clip の刀の指紋（その刀を読めていなければ 0）。
+uint32_t SwordFingerprint(const BossComponent& boss, const std::string& clip);
+// クリップの刀を読んだ後に 1 度（表を読み直したらまた）：狙いのずれの表の指紋が今の刀と違う斬りを警告する。
+void CheckAimFingerprints(BossComponent& boss);
 // いまの技がクリップの刀で当たる技なら、規則の時計のいまの時刻のクリップの刀を、規則の剣の構え（足元が原点・体の向きの
 // 局所）にして true（BossPose::Target が使う。当たり・斬撃の面・刀の煙がクリップの刀に付いて行く）。
 bool ClipSwordPose(const BossComponent& boss, BossSwordPose& out);

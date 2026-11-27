@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/FluidView.h"
 #include "../Common/FireObstacle.h"
+#include "../Common/FluidChannels.h"
 #include "../Common/FluidEmit.h"
 #include "BossMath.h"
 #include "BossPose.h"
@@ -37,8 +38,22 @@ constexpr uint64_t kTwoHandMistPoints = 4;
 constexpr uint64_t kTwoHandMistBase = 310;
 // 左手にまとう霧（c-40f6c1）の提出 ID と、吹き出す向きが左手の周りを 1 秒に回る回数。
 constexpr uint64_t kLeftHandMistId = 320;
+// 範囲爆発の溜め（c-3c908c）：足元の霧と場の火を、左手の真下へ寄せる力の提出 ID と、輪に並べる数。
+constexpr uint64_t kGatherPullBase = 330;
+constexpr int kGatherPullCount = 6;
+// …掌へ渦を巻いて流れ込む腕（手の域へ入れる細い注入）の提出 ID と本数の上限、掌のそばで終わる距離 (m)、掌へ近づく速さの
+// 曲がり（1 より小さいと、掌の近くほど速い＝吸い込まれる）、立ちのぼり始める高さ（地面から m）。
+constexpr uint64_t kGatherArmBase = 340;
+constexpr int kGatherArmMax = 8;
+constexpr float kGatherArmInner = 0.35f;
+constexpr float kGatherArmCurve = 0.6f;
+constexpr float kGatherArmFloor = 0.15f;
+// …立ちのぼり始めを薄く入れる区間（1 周のうちの割合）と、腕ごとの濃さのばらつき（0〜1。その分だけ薄い腕が混ざる）。
+constexpr float kGatherArmFadeIn = 0.12f;
+constexpr float kGatherArmVary = 0.35f;
 constexpr float kLeftHandMistTurnsPerSecond = 1.5f;
-constexpr int kRingPushCount = 6;
+// （c-3c908c：6 → 12。6 方向だと、押された霧の流れが六角になり、後から置く残り煙が六角形に流された。）
+constexpr int kRingPushCount = 12;
 // 斬撃 1 つが残り煙を入れる点の数と並び（判定の幅に対する位置）。
 // 場の霧の域が受け取れる干渉は 32 個までなので、1 本 4 点に抑える。
 constexpr int kWavePoints = 4;
@@ -50,6 +65,18 @@ constexpr float kSwordOuterShare = 0.65f;
 constexpr float kStrengthLimit = 10000.0f;
 
 using FluidEmit::EmitVolume;
+
+// 霧の弾の残り煙のむら：弾が kTrailPatch (m) 進むごとに変わる 0〜1 の乱数（弾の id と進んだ距離から。フレームの刻みに
+// 依らない）。
+constexpr float kTrailPatch = 0.6f;
+float TrailNoise(uint64_t id, float travelled, uint32_t salt) {
+    uint32_t n = static_cast<uint32_t>(id) * 747796405u + static_cast<uint32_t>(travelled / kTrailPatch) * 2891336453u +
+                 salt * 277803737u;
+    n = (n ^ (n >> 16u)) * 0x7feb352du;
+    n = (n ^ (n >> 15u)) * 0x846ca68bu;
+    n ^= n >> 16u;
+    return static_cast<float>(n & 0xffffffu) / 16777215.0f;
+}
 
 struct Emitter {
     HIKARI::WorldView& world;
@@ -93,7 +120,8 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         emitter.Emit(kSwordInnerId, boss.swordInner, boss.swordSmokeRadius,
                      boss.swordSmokeRate * (1.0f - kSwordOuterShare), {});
         // 振りの空気（c-4be37e）：刃が進む向き（規則の剣の構えの斬る向き）へ、刀の外側・内側の所で場の霧を押す。
-        const Vec3 edge = RotateY(boss.swordPose.edge, boss.yaw);
+        // 向きは見えている体の向き（体の回転・狙いのずれのねじり込み。刀の点 swordOuter・swordInner と同じ）。
+        const Vec3 edge = RotateY(boss.swordPose.edge, BossPose::BodyYaw(boss));
         if (boss.swingPushForce > 0.0f && Length(edge) > 0.5f) {
             const Vec3 at[2] = {boss.swordOuter, boss.swordInner};
             for (uint64_t k = 0; k < 2; ++k) {
@@ -118,12 +146,74 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         }
     }
     // 左手にまとう霧（c-40f6c1）：骨格の体が出ている間、見えている左手の所から、手の周りを回る向きに吹き出す。
-    if (look != nullptr && look->anim.leftHandSeen && boss.animBody.leftHandMist > 0.0f) {
+    // 変わり目の演出のクリップの間は出さない（太陽へ伸ばす手・拳の火の所に、白い霧が掛からないように。c-271cba）。
+    if (look != nullptr && look->anim.leftHandSeen && !look->anim.cinematicLayered &&
+        boss.animBody.leftHandMist > 0.0f) {
         const float angle = kTau * kLeftHandMistTurnsPerSecond * boss.floatClock;
         const Vec3 swirl{std::cos(angle) * boss.animBody.leftHandMistSwirl, 0.0f,
                          std::sin(angle) * boss.animBody.leftHandMistSwirl};
         emitter.Emit(kLeftHandMistId, look->anim.leftHandWorld, boss.animBody.leftHandMistRadius,
                      boss.animBody.leftHandMist, swirl);
+    }
+    // 範囲爆発の溜め（c-3c908c）：左手へ霧・火を集めている間、足元の霧と場の火を、手の真下へ地面に沿って寄せる
+    // （叩きつけの爆発が、それを外へ吹き飛ばす）。手の真下を囲む輪の上から、内向きの力を並べる。
+    if (look != nullptr && look->anim.leftHandSeen && look->state.accents.gatherPull > 0.0f &&
+        look->settings.accents.gatherFogPull > 0.0f) {
+        const float radius = std::max(0.5f, look->settings.accents.gatherFogPullRadius);
+        const Vec3 center{look->anim.leftHandWorld.x, boss.ground.y + kBlastPushHeight, look->anim.leftHandWorld.z};
+        for (int k = 0; k < kGatherPullCount; ++k) {
+            const float angle = kTau * static_cast<float>(k) / static_cast<float>(kGatherPullCount);
+            const Vec3 outward{std::cos(angle), 0.0f, std::sin(angle)};
+            HIKARI::GameProjectFluidInteraction pull{};
+            pull.kind = HIKARI::GameProjectFluidInteractionKind::Force;
+            pull.position = Add(center, Mul(outward, radius));
+            pull.direction = Mul(outward, -1.0f);
+            pull.extents = {radius, 0.0f, 0.0f};
+            pull.strength = look->settings.accents.gatherFogPull * look->state.accents.gatherPull;
+            pull.channels = FluidChannels::kFog | FluidChannels::kFire;
+            boss.fluidAccepted = world.GetFluid()
+                                     .Submit(object.GetHandle(), kGatherPullBase + static_cast<uint64_t>(k), pull)
+                                     .Accepted() &&
+                                 boss.fluidAccepted;
+        }
+    }
+    // 範囲爆発の溜め（c-3c908c）：掌へ渦を巻いて流れ込む腕。細い注入の点を、手の真下の地面の輪から、体のまわりを巻いて
+    // 掌へ滑らせる（エンジンが動いた線に沿って入れるので、球の塊ではなく細い筋になる。掲げた手は画面の上端に掛かる
+    // ので、地面から昇る筋で画面の中ほどに見せる）。掌へ着いたら地面へ戻り（瞬間移動なので線は引かれない）、周ごとに
+    // 始まりの向きを変える。手の域（Channel4）だけに届く。
+    if (look != nullptr && look->state.accents.gatherArm > 0.0f) {
+        const auto& gs = look->settings.accents;
+        const auto& ga = look->state.accents;
+        const int arms = std::clamp(gs.gatherArms, 1, kGatherArmMax);
+        const float reach = std::max(kGatherArmInner + 0.1f, gs.gatherArmReach);
+        const float heat = ga.gatherFire ? gs.gatherArmHeatFire : gs.gatherArmHeatMist;
+        const float floorY = boss.ground.y + kGatherArmFloor;
+        const float height = std::max(0.0f, ga.gatherPoint.y - floorY);
+        const float lift = std::max(0.2f, gs.gatherArmLift);
+        const float spread = std::clamp(gs.gatherArmSpread, 0.0f, 1.0f);
+        for (int k = 0; k < arms; ++k) {
+            const float turn = ga.gatherPhase + static_cast<float>(k) / static_cast<float>(arms);
+            const float cycle = std::floor(turn);
+            const float u = turn - cycle;
+            const float seed = static_cast<float>(k) * 2.399963f + cycle * 1.7f;
+            const float ring =
+                std::max(kGatherArmInner, reach * (1.0f - spread * (0.5f + 0.5f * std::sin(seed * 2.1f))));
+            const float angle = seed + kTau * gs.gatherArmTurns * u;
+            const float r = kGatherArmInner + (ring - kGatherArmInner) * std::pow(1.0f - u, kGatherArmCurve);
+            HIKARI::GameProjectFluidInteraction emit{};
+            emit.kind = HIKARI::GameProjectFluidInteractionKind::Emit;
+            emit.position = {ga.gatherPoint.x + std::cos(angle) * r, floorY + height * std::pow(u, lift),
+                             ga.gatherPoint.z + std::sin(angle) * r};
+            emit.extents = {std::max(0.05f, gs.gatherArmRadius), std::max(0.0f, heat), 0.0f};
+            const float weight = std::clamp(u / kGatherArmFadeIn, 0.0f, 1.0f) *
+                                 (1.0f - kGatherArmVary * (0.5f + 0.5f * std::sin(seed * 3.7f)));
+            emit.strength = std::min(kStrengthLimit, gs.gatherArmStrength * ga.gatherArm * weight);
+            emit.channels = FluidChannels::kHandGather;
+            boss.fluidAccepted = world.GetFluid()
+                                     .Submit(object.GetHandle(), kGatherArmBase + static_cast<uint64_t>(k), emit)
+                                     .Accepted() &&
+                                 boss.fluidAccepted;
+        }
     }
     if (boss.glintFrames > 0) {
         // 構え：剣が止まり、剣先に霞が集まる（地面や画面の予告の代わり）。
@@ -143,10 +233,13 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         if (!blast.pushPending)
             continue;
         blast.pushPending = false;
-        if (!(boss.blastPush > 0.0f))
+        // 叩きつけの爆発（c-3c908c）は、自分の速さと半径で押す（爆発の大きさ scale は、残す霧の量にだけ使う）。
+        const float speed = blast.burst ? boss.burstPush : boss.blastPush;
+        if (!(speed > 0.0f))
             continue;
         // 爆発：当たった所の真下から、地面に沿って六方へ 1 回押す。半径の半分ずつで輪を作り、全体で blastPushRadius まで届く。
-        const float reach = boss.blastPushRadius * blast.scale * 0.5f;
+        const float reach =
+            (blast.burst ? boss.burstPushRadius * blast.burstScale : boss.blastPushRadius * blast.scale) * 0.5f;
         const Vec3 center{blast.position.x, boss.ground.y + kBlastPushHeight, blast.position.z};
         for (int k = 0; k < kBlastPushCount; ++k) {
             const float angle = kTau * static_cast<float>(k) / static_cast<float>(kBlastPushCount);
@@ -155,7 +248,7 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
             push.direction = {std::cos(angle), 0.0f, std::sin(angle)};
             push.position = Add(center, Mul(push.direction, reach));
             push.extents = {reach, 0.0f, 0.0f};
-            push.strength = boss.blastPush;
+            push.strength = speed;
             const uint64_t id = kBlastPushBase + i * kBlastPushCount + static_cast<uint64_t>(k);
             boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, push).Accepted() && boss.fluidAccepted;
         }
@@ -168,8 +261,10 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         // 霞の輪：広がっている輪の線の上で、足元の霧を地面に沿って外へ押す（霧そのものが輪になって広がる）。
         // 押しは 1 回きりの速さなので、輪が押す半径ぶん広がるごとに 1 回だけ入れる（毎フレーム入れると強すぎる）。
         wave.pushedRadius = wave.radius;
+        // 押すたびに、向きを半分ずらす（同じ 12 方向だけを押し続けない）。
+        const float turn = static_cast<int>(wave.radius / std::max(0.1f, boss.ringPushRadius)) % 2 == 0 ? 0.5f : 0.0f;
         for (int k = 0; k < kRingPushCount; ++k) {
-            const float angle = kTau * (static_cast<float>(k) + 0.5f) / static_cast<float>(kRingPushCount);
+            const float angle = kTau * (static_cast<float>(k) + turn) / static_cast<float>(kRingPushCount);
             HIKARI::GameProjectFluidInteraction push{};
             push.kind = HIKARI::GameProjectFluidInteractionKind::Impulse;
             push.direction = {std::sin(angle), 0.0f, std::cos(angle)};
@@ -220,6 +315,21 @@ void BossSmoke::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
                          wave.smokeRate / kWavePoints, velocity);
         }
     }
+    // ナイフ・霧の弾の残り煙（c-e0a9c3 の続き）：弾の真下の地面近くへ 1 点だけ入れる。弾そのもの（細い霧の尾）は、弾の
+    // エフェクトの域が見せる。提出 ID は斬撃と同じ枠の 1 つ目（同じ枠に斬撃とナイフが同時に居ることは無い）。
+    for (size_t i = 0; i < boss.waves.size() && boss.knifeTrailRadius > 0.0f; ++i) {
+        const auto& wave = boss.waves[i];
+        if (!wave.active || !wave.knife || wave.smokeRate <= 0.0f)
+            continue;
+        // むら：入れる所を左右へ振り、量を 0.3〜1.7 倍に強弱させる（平均は 1 倍。まっすぐで一様な白い帯にしない）。
+        const Vec3 forward = FlatNormalize(wave.direction);
+        const Vec3 side{forward.z, 0.0f, -forward.x};
+        const float sway = (TrailNoise(wave.id, wave.travelled, 1u) * 2.0f - 1.0f) * boss.knifeTrailJitter;
+        const float amount = 0.3f + 1.4f * TrailNoise(wave.id, wave.travelled, 2u);
+        const Vec3 at = Add({wave.position.x, boss.ground.y + kResidueFloor, wave.position.z}, Mul(side, sway));
+        emitter.Emit(kWaveBase + i * kWavePoints, at, boss.knifeTrailRadius, wave.smokeRate * amount,
+                     {0.0f, -boss.waveSmokeSink, 0.0f});
+    }
 }
 
 void BossSmoke::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
@@ -227,6 +337,11 @@ void BossSmoke::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
         fields.Float("residuePerTwoMeters", "斬撃が 2 m 進むごとに残す煙", boss.residuePerTwoMeters, 0.0f, 1000.0f);
         fields.Float("knifeEndResidueScale", "ナイフが消えた所に残す煙（斬撃の何倍）", boss.knifeEndResidueScale, 0.0f,
                      10.0f);
+        fields.Float("knifeTrailResidue", "ナイフ・霧の弾が 2 m 進むごとに、真下の地面近くへ残す煙（1 発ぶん）",
+                     boss.knifeTrailResidue, 0.0f, 1000.0f);
+        fields.Float("knifeTrailRadius", "…その 1 点の半径 (m。0 は残さない)", boss.knifeTrailRadius, 0.0f, 10.0f);
+        fields.Float("knifeTrailJitter", "…入れる所を左右へ振る幅 (m。0 はまっすぐな帯)", boss.knifeTrailJitter, 0.0f,
+                     5.0f);
         fields.Float("bossResidue", "ボスが動いた跡に残す煙（1 回ぶん）", boss.bossResidue, 0.0f, 1000.0f);
         fields.Float("bossResidueStep", "…この距離動くごと (m)", boss.bossResidueStep, 0.1f, 100.0f);
         fields.Float("swingSmoke", "剣の一振りが描く煙（仮）", boss.swingSmoke, 0.0f, 1000.0f);

@@ -38,6 +38,9 @@ public:
     static BossSwordLine SwordLine(const BossComponent& boss, const BossSwordPose& pose);
     // 刀の点（世界）。体ごとの回転（spin。回し蹴り・体の回転の技）も含める（見える刀と同じ所。SwordLine は体の向きだけ）。
     static BossSwordPoints SwordPoints(const BossComponent& boss, const BossSwordPose& pose);
+    // 見えている体の向き（rad）：プレイヤーの方（yaw）に、体の回転（spin）と狙いのずれのねじり（aimTwist。c-884095）を
+    // 足したもの。体の物体・骨格の体・刀の当たり・左手の骨は、どれもこの向きで置く（置く所ごとに式を書かない）。
+    static float BodyYaw(const BossComponent& boss);
     // 振りの進み（0〜1。振りの速さの曲線。tIn は振りに入ってからの F）。
     static float SwingShare(const BossComponent& boss, int tIn, int length);
     // 地面から足元までの高さ（跳躍・浮遊から、霧へ沈んだ深さを引く。見た目の上下のゆれは含めない）。

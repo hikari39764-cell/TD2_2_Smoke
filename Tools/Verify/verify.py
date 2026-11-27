@@ -16,6 +16,12 @@
   python -I -X utf8 Tools/Verify/verify.py reach [close=2.5] [reachProbeDistanceStep=0.25] [reachProbeAngleStep=10]
                                                                      剣の技が当たる間合い（距離 × 角度）を測り、
                                                                      Library/Verify/runs/reach/reach.md に表を書く（c-c010ef）
+  python -I -X utf8 Tools/Verify/verify.py sync build aim            狙いのずれの表 Data/Boss/boss_aim_offsets.csv を作り直す
+                                                                     （c-884095。モーション・区間の表を変えたら流す。写しにも入れる
+                                                                     ので、続けて run・reach・aimcheck を流せる）
+  python -I -X utf8 Tools/Verify/verify.py aimcheck [moves=a,b] [distances=2,3,4]
+                                                                     技 × 距離 × ねじりの有無で当たるかを数え、
+                                                                     Library/Verify/runs/aimcheck.md に表を書く（c-884095）
 
 写しを作る時、作業中でない他人の書き換え（コミットしていない変更）は HEAD の中身に戻して入れる（比べる記録に
 混ぜない）。自分の作業のパスは own=<頭,頭,...>、無ければ .hikari-hub/active.json の paths を使う。
@@ -346,12 +352,15 @@ def covers(intervals, angle):
     return any(a <= angle <= b for a, b in intervals)
 
 
-def reach(opts):
-    """剣の技が当たる間合い（c-c010ef）：ボスの reachProbe で測り、技・斬りごとの表を Library/Verify/runs/reach/reach.md に書く。
-    hit はプレイヤーの当たりの筒（ゲームと同じ）、tall は高さを無視した筒。tall に入るのに hit に入らない所は、
-    刀が頭の上か足の下を通っている（向きは合っている）。"""
-    folder = WORK / "runs" / "reach"
+AIM_CSV = ROOT / "Data" / "Boss" / "boss_aim_offsets.csv"
+AIM_HEADER = "技,斬り,距離 m,狙いのずれ °,当たりの始め F,当たりの終わり F,クリップ,クリップの長さ F,指紋,メモ"
+
+
+def probe(opts, folder, defaults):
+    """ボスの reachProbe で測り、斬りごとの記録を返す：({(技, 斬り): {window, low, high, center, clip, clipFrames,
+    fingerprint, hitStart, hitEnd, rows}}, 斬りの順)。rows は (距離, 当たる角度の区間, 高さを無視した区間, 文字, 文字)。"""
     patch = dict(reachProbe=True, testMove="斜め切り下ろし", testHoldStill=True, testStartFrames=100000)
+    patch.update(defaults)
     for key in ("reachProbeDistanceMin", "reachProbeDistanceMax", "reachProbeDistanceStep"):
         if key in opts:
             patch[key] = float(opts[key])
@@ -362,20 +371,164 @@ def reach(opts):
     for line in lines:
         text = line.split("] ", 1)[-1]
         m = re.search(r"ReachStrike move=(\S+) strike=(\d+) window=(\S+) frames=(\d+) bladeLow=(\S+) bladeHigh=(\S+) "
-                      r"radius=(\S+) playerCenter=(\S+)", text)
+                      r"radius=(\S+) playerCenter=(\S+) clip=(\S*) clipFrames=(\d+) fingerprint=(\S+) "
+                      r"hitStart=(\d+) hitEnd=(\d+)", text)
         if m:
             key = (m.group(1), int(m.group(2)))
             strikes[key] = dict(window=m.group(3), low=float(m.group(5)), high=float(m.group(6)),
-                                center=float(m.group(8)), rows=[])
+                                center=float(m.group(8)), clip=m.group(9), clipFrames=int(m.group(10)),
+                                fingerprint=m.group(11), hitStart=int(m.group(12)), hitEnd=int(m.group(13)), rows=[])
             order.append(key)
             continue
         m = re.search(r"ReachProbe move=(\S+) strike=(\d+) d=(\S+) hit=(\S+) tall=(\S+)", text)
         if m:
             strikes[(m.group(1), int(m.group(2)))]["rows"].append(
                 (float(m.group(3)), parse_angles(m.group(4)), parse_angles(m.group(5)), m.group(4), m.group(5)))
+    return strikes, order
+
+
+def best_angle(intervals, step):
+    """当たる角度の区間のうち一番広いものの真ん中（度。正がボスの右）。±180 をまたぐ区間はつないで見る。無ければ None。"""
+    spans = list(intervals)
+    if len(spans) >= 2 and spans[0][0] == -180 + step and spans[-1][1] == 180:
+        spans = [(spans[-1][0], spans[0][1] + 360)] + spans[1:-1]
+    if not spans:
+        return None
+    a, b = max(spans, key=lambda s: s[1] - s[0])
+    center = (a + b) / 2.0
+    return center - 360.0 if center > 180.0 else center
+
+
+def read_aim():
+    """狙いのずれの表 → {(技, 斬り 0 起): [(距離, 角度)]}（無ければ空）。"""
+    table = {}
+    if not AIM_CSV.exists():
+        return table
+    for row in AIM_CSV.read_text(encoding="utf-8").splitlines()[1:]:
+        cells = row.split(",")
+        if len(cells) >= 4 and cells[0]:
+            table.setdefault((cells[0], int(cells[1]) - 1), []).append((float(cells[2]), float(cells[3])))
+    return table
+
+
+def aim_at(samples, d):
+    """距離 d の狙いのずれ（ゲームの BossMoveTable::AimDegrees と同じ：間は補間、端の外は端の値）。"""
+    if not samples:
+        return 0.0
+    samples = sorted(samples)
+    if d <= samples[0][0]:
+        return samples[0][1]
+    for (d0, a0), (d1, a1) in zip(samples, samples[1:]):
+        if d <= d1:
+            return a0 + (a1 - a0) * ((d - d0) / (d1 - d0) if d1 > d0 else 1.0)
+    return samples[-1][1]
+
+
+def aim(opts):
+    """狙いのずれの表（c-884095）を作る：クリップの刀を細かく測り、斬りごと・距離ごとに一番当たる向きを
+    Data/Boss/boss_aim_offsets.csv に書く。モーション（クリップ・区間の表）を変えたら流し直す（ゲームは起動時に表を読む
+    だけで計算しない。古いと警告が出る）。"""
+    folder = WORK / "runs" / "aim"
+    step = int(opts.get("reachProbeAngleStep", 2))
+    strikes, order = probe(opts, folder, dict(reachProbeAngleStep=step, reachProbeDistanceMin=1.0,
+                                              reachProbeDistanceMax=8.0, reachProbeDistanceStep=0.5))
+    if not order:
+        print("AIM 記録が無い（ReachStrike が出ていない）。engine.log を見る:", folder)
+        return 1
+    out = [AIM_HEADER]
+    for key in order:
+        s = strikes[key]
+        found = [(d, best_angle(hit, step)) for d, hit, _, _, _ in s["rows"]]
+        hits = [(d, a) for d, a in found if a is not None]
+        for d, a in found:
+            note = ""
+            if a is None:
+                # その距離では当たらない：近い距離（同じなら遠い方）の角度を使う。どの距離でも当たらなければ 0。
+                if hits:
+                    a = min(hits, key=lambda h: (abs(h[0] - d), -h[0]))[1]
+                    note = "この距離では当たらない（近い距離の角度）"
+                else:
+                    a = 0.0
+                    note = "どの距離でも当たらない"
+            out.append(f"{key[0]},{key[1] + 1},{d:g},{a:g},{s['hitStart']},{s['hitEnd']},{s['clip']},{s['clipFrames']},"
+                       f"{s['fingerprint']},{note}")
+        print(f"  {key[0]} {key[1] + 1}: " + " ".join(f"{d:g}m:{a if a is not None else '-'}" for d, a in found))
+    AIM_CSV.write_text("\n".join(out) + "\n", encoding="utf-8")
+    # 写し（Probe）にも入れる：続けて run・reach・aimcheck を流した時に、作り直した表で動くように。
+    put(PROBE / AIM_CSV.relative_to(ROOT), AIM_CSV.read_bytes())
+    print("AIM ->", AIM_CSV, "rows", len(out) - 1)
+    return 0
+
+
+# aimcheck で流す技（滑って・突進して寄る剣の技。止まる距離の項目で、プレイヤーとの距離を決められるもの）。
+AIMCHECK_MOVES = ("斜め切り下ろし", "横二連撃", "突進横", "溜め横", "三連撃")
+AIMCHECK_DISTANCES = (2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0)
+
+
+def aimcheck(opts):
+    """狙いのずれが効いているか（c-884095）：技 × プレイヤーとの距離 × ねじりの有無で、技を本当に出させて当たるかを数え、
+    Library/Verify/runs/aimcheck.md に表を書く。距離はボスがプレイヤーの手前で止まる項目（滑って入る・連撃の歩き寄り・
+    突進）を d にして決める。斬りごとの距離は、その斬りを狙い始めた時の記録（AimTwist）の値。"""
+    moves = opts["moves"].split(",") if "moves" in opts else AIMCHECK_MOVES
+    distances = [float(x) for x in opts["distances"].split(",")] if "distances" in opts else AIMCHECK_DISTANCES
+    folder = WORK / "runs" / "aimcheck_run"
+    results = {}
+    for move in moves:
+        for d in distances:
+            for twist in (False, True):
+                patch = dict(testMove=move, testHoldStill=True, testStartFrames=60, testGapFrames=90, testChain=False,
+                             slideInStopDistance=d, stringApproachStop=d, dashStopDistance=d)
+                if not twist:
+                    patch["aimOffsetsPath"] = ""
+                lines = headless("main", int(opts.get("ticks", 900)), [], folder, patch, STURDY)
+                seen, hits = {}, {}
+                for line in lines:
+                    # 角度を止めた時（振り始め）の距離と角度。同じ斬りを何度も止めたら最初の 1 回。
+                    m = re.search(r"AimHold .*strike=(\d+) used=(\S+) distance=(\S+)", line)
+                    if m and int(m.group(1)) not in seen:
+                        seen[int(m.group(1))] = (float(m.group(2)), float(m.group(3)))
+                    m = re.search(r"PlayerHit .*strike=(\d+) source=(\S+)", line)
+                    if m:
+                        hits[int(m.group(1))] = m.group(2)
+                for strike, (used, at) in seen.items():
+                    results[(move, strike, d, twist)] = (hits.get(strike), used, at)
+                print(f"  {move} d={d:g} {'ねじる' if twist else 'なし'}: " +
+                      " ".join(f"{k + 1}:{hits.get(k, '-')}" for k in sorted(seen)), flush=True)
+    strikes = sorted({(m, k) for (m, k, _, _) in results}, key=lambda x: (moves.index(x[0]), x[1]))
+    md = ["# 狙いのずれの効き目（c-884095）", "",
+          "技を本当に出させ、正面に立ったプレイヤーに当たるかを数えた。各マスは「ねじりなし → ねじる」。",
+          "○ = 刀で当たった、◇ = 飛ぶ斬撃で当たった、× = 当たらない、空 = その斬りまで行かなかった。"
+          "距離は止まる距離の項目の値（括弧は、ねじる時にその斬りを振り始めた時の実際の距離 m と、ねじった角度）。", "",
+          "| 技 | 斬り | " + " | ".join(f"{d:g} m" for d in distances) + " |",
+          "|---|---|" + "---|" * len(distances)]
+    mark = lambda r: "" if r is None else ("○" if r[0] == "sword" else "◇" if r[0] else "×")
+    for move, k in strikes:
+        cells = []
+        for d in distances:
+            off, on = results.get((move, k, d, False)), results.get((move, k, d, True))
+            detail = f"（{on[2]:.1f} m・{on[1]:+.0f}°）" if on else ""
+            cells.append(f"{mark(off)} → {mark(on)}{detail}")
+        md.append(f"| {move} | {k + 1} | " + " | ".join(cells) + " |")
+    out = WORK / "runs" / "aimcheck.md"
+    out.write_text("\n".join(md) + "\n", encoding="utf-8")
+    print("\n".join(md))
+    print("AIMCHECK ->", out)
+    return 0
+
+
+def reach(opts):
+    """剣の技が当たる間合い（c-c010ef）：ボスの reachProbe で測り、技・斬りごとの表を Library/Verify/runs/reach/reach.md に書く。
+    hit はプレイヤーの当たりの筒（ゲームと同じ）、tall は高さを無視した筒。tall に入るのに hit に入らない所は、
+    刀が頭の上か足の下を通っている（向きは合っている）。狙いのずれの表（c-884095）があれば、そのねじりを入れた時に
+    正面で当たる距離も出す。"""
+    folder = WORK / "runs" / "reach"
+    strikes, order = probe(opts, folder, {})
     if not order:
         print("REACH 記録が無い（ReachStrike が出ていない）。engine.log を見る:", folder)
         return 1
+    aim_table = read_aim()
+    aim_max = float(opts.get("aimTwistMax", 80))
+    step = int(opts.get("reachProbeAngleStep", 10))
     close = float(opts.get("close", 2.5))
     md = ["# ボスの剣の技が当たる間合い（c-c010ef）", "",
           "ボスを原点・正面固定に置き、プレイヤーの体を距離 × 角度に置いて、ゲームと同じ当たりの式で測った（踏み込み・左右移動・"
@@ -383,9 +536,11 @@ def reach(opts):
           "「正面で当たる距離」は角度 0 で当たる距離の範囲。「高さで外れる」は、高さを無視すれば当たるのに実際は当たらない所"
           "（刀が頭の上か足の下を通る）。", "",
           "「一番当たる向き」は、当たる距離の幅が一番広い角度（ボスをその分だけ回して向けば、正面のプレイヤーに当たる）。", "",
-          f"| 技 | 斬り | 窓 (F) | 刀の高さ (m) | 正面で当たる距離 (m) | 一番当たる向き：角度・距離 (m) | "
-          f"{close:g} m 以内で当たる角度 | 正面の高さで外れる距離 (m) |",
-          "|---|---|---|---|---|---|---|---|"]
+          "「ねじった時」は狙いのずれの表（Data/Boss/boss_aim_offsets.csv）の角度だけ体を回した時に、正面のプレイヤーに"
+          f"当たる距離（角度が {aim_max:g} 度を超える距離はねじらない。角度は測った刻みに丸めて見る）。", "",
+          f"| 技 | 斬り | 窓 (F) | 刀の高さ (m) | 正面で当たる距離 (m) | ねじった時に正面で当たる距離 (m) | "
+          f"一番当たる向き：角度・距離 (m) | {close:g} m 以内で当たる角度 | 正面の高さで外れる距離 (m) |",
+          "|---|---|---|---|---|---|---|---|---|"]
     detail = []
     for key in order:
         s = strikes[key]
@@ -397,14 +552,21 @@ def reach(opts):
         if rows_close:
             near_text = " / ".join(f"{d:g}m:{h}" for d, _, _, h, _ in rows_close if h != "-") or "なし"
         # 角度ごとに当たる距離を数え、一番多い角度（同じなら 0 に近い方）。
-        best_angle, best = 0, []
-        for angle in range(-180, 181, int(opts.get("reachProbeAngleStep", 10))):
+        widest_angle, best = 0, []
+        for angle in range(-180, 181, step):
             ds = [d for d, hit, _, _, _ in s["rows"] if covers(hit, angle)]
-            if len(ds) > len(best) or (len(ds) == len(best) and ds and abs(angle) < abs(best_angle)):
-                best_angle, best = angle, ds
-        best_text = f"{best_angle:+d}°・{span(best)}" if best else "なし"
+            if len(ds) > len(best) or (len(ds) == len(best) and ds and abs(angle) < abs(widest_angle)):
+                widest_angle, best = angle, ds
+        best_text = f"{widest_angle:+d}°・{span(best)}" if best else "なし"
+        twisted = []
+        for d, hit, _, _, _ in s["rows"]:
+            a = aim_at(aim_table.get(key, []), d)
+            a = 0.0 if abs(a) > aim_max else a
+            if covers(hit, int(round(a / step)) * step):
+                twisted.append(d)
+        twisted_text = span(twisted) if key in aim_table else "表なし"
         md.append(f"| {key[0]} | {key[1] + 1} | {s['window']} | {s['low']:.2f}〜{s['high']:.2f} | {span(front)} | "
-                  f"{best_text} | {near_text} | {span(over)} |")
+                  f"{twisted_text} | {best_text} | {near_text} | {span(over)} |")
         detail += ["", f"## {key[0]} の {key[1] + 1} 刀目（窓 {s['window']} F）", "", "| 距離 m | 当たる角度 | 高さを無視すれば当たる角度 |",
                    "|---|---|---|"]
         detail += [f"| {d:g} | {h} | {t} |" for d, _, _, h, t in s["rows"]]
@@ -412,7 +574,7 @@ def reach(opts):
     md += ["", f"プレイヤーの体の中心は足元から {center:.2f} m（測った時の立ち位置）。"] + detail
     out = folder / "reach.md"
     out.write_text("\n".join(md) + "\n", encoding="utf-8")
-    print("\n".join(md[:10 + len(order)]))
+    print("\n".join(md[:12 + len(order)]))
     print("REACH ->", out)
     return 0
 
@@ -438,6 +600,10 @@ def main():
         caps = [int(x) for x in opts["caps"].split(",")] if "caps" in opts else []
         extra = shoot_events(ticks) if opts.get("shoot") == "1" else None
         summarize(headless(key, ticks, caps, WORK / "runs" / f"scene_{key}", None, STURDY, extra))
+    if "aim" in words and aim(opts) != 0:
+        sys.exit(1)
+    if "aimcheck" in words and aimcheck(opts) != 0:
+        sys.exit(1)
     if "reach" in words and reach(opts) != 0:
         sys.exit(1)
     if "baseline" in words:

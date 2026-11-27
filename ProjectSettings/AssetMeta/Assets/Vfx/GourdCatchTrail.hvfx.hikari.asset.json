@@ -1,0 +1,14 @@
+{
+  "displayName": "GourdCatchTrail",
+  "guid": "957767dbeb0c51292669eeaf55bab604",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdCatchTrail.hvfx",
+  "type": "VfxEffect"
+}

@@ -36,6 +36,9 @@ inline constexpr size_t kBossWaveCapacity = 12;
 // 同時に見せる斬撃のエフェクトの枠。1 つが流体域を 1 つ使う。流体域は 1 フレームに 6 個まで（均衡画質）で、
 // 場の霧・吸い口・砲撃と分け合う（出している間は砲撃の枠を同じ数だけ減らす）。
 inline constexpr size_t kBossSlashEffectCapacity = 2;
+// 同時に見せる霧の弾（投げナイフ・煙弾）の本体のエフェクトの枠。これも 1 つが流体域を 1 つ使う（扇の 3 発ぶん）。
+// エンジンが一度に描ける流体域は 8 個まで（場の霧・場の火・胴の煙・燃える刀身で 3〜4 個は埋まっている）。
+inline constexpr size_t kBossMistShotCapacity = 3;
 // 当たった所の爆発の枠。
 inline constexpr size_t kBossBlastCapacity = 6;
 // 斬撃が消えた所などに置く残り煙の枠。爆発の跡の煙（炎が消えるまで待つ）も入るので 8 から増やした。
@@ -137,10 +140,33 @@ struct BossSlashEffect {
     float impactSeconds = 0.0f;
     // 光の層の大きさ（1＝出ている、0＝消えた）。刃を出すのをやめたら数フレームで 0 へ縮める。
     float glow = 1.0f;
+    // 噛まれた瞬間の光の膨らみ（absorbBiteGlow から 0 へ引く。光の層の大きさに足す）と、引き込みの尾のエフェクト。
+    float bite = 0.0f;
+    HIKARI::GameProjectVfxPlaybackHandle trail{};
+    // 捕まった刃が火の刃か（尾の色。入り切った後も、残った粒の色を変えない）。
+    bool trailFire = false;
     float travelled = 0.0f;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 velocity{};
+    HIKARI::GameProjectQuaternion rotation{0.0f, 0.0f, 0.0f, 1.0f};
+};
+
+// 霧の弾 1 発の本体のエフェクト（c-e0a9c3 の続き）。弾ごとに、付いて動く細かい流体域を 1 つ持つ（域は後ろへ長く、
+// 弾の頭の源から出た煙は、その場に残って尾になる）。飛んでいる間はエフェクト側の速度で進み、捕まった後は規則の位置へ
+// 毎フレーム置く。弾が消えたら、煙を出すのをやめて、域に残った煙が消えるまでその場で待ってから止める（域ごと急に消さない）。
+struct BossMistShotEffect {
+    HIKARI::GameProjectVfxPlaybackHandle handle{};
+    uint64_t waveId = 0;
+    bool flying = false;
+    bool captured = false;
+    // 煙を出す量（1＝飛んでいる時）と、頭の光の大きさ（1＝出ている、0＝消えた）。
+    float fly = 1.0f;
+    float glow = 1.0f;
+    float fadeSeconds = 0.0f;
+    float travelled = 0.0f;
+    float scale = 1.0f;
+    HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectQuaternion rotation{0.0f, 0.0f, 0.0f, 1.0f};
 };
 
@@ -155,6 +181,13 @@ struct BossBlast {
     // 爆発の後、真下の地面へ吸える煙を残す（BossWaves::AddBlast）。爆発がプレイヤーに当たった所（燃える地面の塊の側で
     // 残す）は残さない。
     bool leavesFog = true;
+    // 範囲爆発の叩きつけ（c-3c908c）：当たった所の小さな爆発の代わりに、叩きつけの爆発のエフェクト（burstEffect／
+    // burstMistEffect）を出し、足元の霧を burstPush で押す。atHand なら、見えている左手の真下の地面から（範囲爆発の
+    // 叩きつけ）、偽なら position の真下の地面から（火の剣気が狙った所で爆ぜる時）。burstScale はエフェクトの大きさと
+    // 押す半径の倍率。
+    bool burst = false;
+    bool atHand = false;
+    float burstScale = 1.0f;
     float scale = 1.0f;
     HIKARI::GameProjectFloat3 position{};
     HIKARI::GameProjectFloat3 direction{};
@@ -168,6 +201,14 @@ struct BossCatchHandoff {
     // 吸い取った数（ヒョウタンの手応え）と、そのうちの火の刃（火を残す斬撃・ナイフ。火弾の状態にする）の数。
     int count = 0;
     int fireCount = 0;
+    // 吸い取った数のうちのナイフ（呑み込みの手応えを小さく見せる）。
+    int knifeCount = 0;
+    // 噛んだ数（この tick に吸い込みに捕まった斬撃・ナイフ）と、そのうちの火の刃、最後に捕まった所。引き込みの進み
+    // （0〜1。引き込んでいる中でいちばん進んだもの）。ヒョウタンの「噛む」「引き込む」の手応えが読む（c-e0a9c3）。
+    int bites = 0;
+    int fireBites = 0;
+    HIKARI::GameProjectFloat3 bitePosition{};
+    float pull = 0.0f;
 };
 
 // 場の霧へ少しずつ入れる煙（斬撃の終点・ボスの通った跡・爆発の跡）。
@@ -180,6 +221,10 @@ struct BossSmokeDeposit {
     float rate = 0.0f;
     // 出し始めるまでの残りの tick（爆発の跡は、爆発の炎と光が消えるまで待つ。0 ならすぐ出す）。
     int waitFrames = 0;
+    // 円に沿って滑らせながら出す時（輪が消えた所の残り煙。c-3c908c）：円の中心と、1 tick に回る角度 (rad。0 は動かさない)。
+    // 注入は、同じ番号の点が動いた線に沿って入るので、球の塊ではなく弧になる。
+    HIKARI::GameProjectFloat3 orbitCenter{};
+    float orbitStep = 0.0f;
 };
 
 // 剣を振っている一撃（判定区間ごと）。振り抜いた瞬間に、剣先の霞の弧から斬撃を飛ばす。
@@ -268,6 +313,8 @@ public:
     // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
     std::string clipsPath = "Boss/boss_anim_clips.csv";
     std::string segmentsPath;
+    // 狙いのずれの表（c-884095。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）。
+    std::string aimOffsetsPath = "Boss/boss_aim_offsets.csv";
     // ヒョウタンの読み（c-14392d。横の剣気を転がる癖の側へ寄せる）。
     BossGourdReadSettings gourdRead;
     // 斬撃の共通の値（試作の共通パラメータ）
@@ -317,6 +364,10 @@ public:
     float breakRumbleLow = 0.9f;
     float breakRumbleHigh = 0.7f;
     int breakRumbleFrames = 12;
+    // 崩した・気絶した瞬間の動きのぼかしの一瞬（シャッター角 度・長さの上限 1080p の画素・戻るまで F。c-e0a9c3 の続き）。
+    float breakBlurShutter = 280.0f;
+    float breakBlurPixels = 32.0f;
+    int breakBlurFrames = 12;
     int breakFlashFrames = 12;
     // 崩した・気絶した瞬間に体の中心から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で出さない）。
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
@@ -380,6 +431,13 @@ public:
     float preTurnRate = 360.0f;
     float overheadTurnRate = 220.0f;
     float stringGapTurnRate = 200.0f;
+    // 狙いのずれ（c-884095）：剣の技の当たりの区間が始まる aimTwistLeadFrames F 前から、表の角度へ体を
+    // aimTwistTurnRate 度/秒でねじる。
+    // 角度が aimTwistMax 度を超える斬りはねじらない（横や背中を向いて振ることになるので）。80 度は避けながら攻撃2
+    // （刀がボスの左 72〜77 度に落ちる）を回せるように上げた値（c-e44b91）。
+    float aimTwistTurnRate = 360.0f;
+    float aimTwistMax = 80.0f;
+    int aimTwistLeadFrames = 20;
     // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
     int deadVanishDelayFrames = 60;
     int deadVanishFrames = 30;
@@ -449,6 +507,14 @@ public:
     // 域に残った三日月の両翼の霧を、刃の中心（口）へ押し寄せる力の強さ (m/s²) と半径 (m)。引き込みが進むほど強くなる。
     float absorbPullSqueeze = 700.0f;
     float absorbPullSqueezeRadius = 3.5f;
+    // 噛む（c-e0a9c3）：吸い込みに捕まった瞬間、刃の光の層を膨らませる量（光の層の大きさに足す）と、引くまで（秒）。
+    float absorbBiteGlow = 0.9f;
+    float absorbBiteGlowSeconds = 0.14f;
+    // 引き込みの尾：捕まった刃が口へ入るまで、通った所に残す光の粒のエフェクト（空なら出さない）と、霞の刃・火の刃の色。
+    HIKARI::GameProjectVfxAssetReference absorbTrailEffect{"957767dbeb0c51292669eeaf55bab604",
+                                                           "Assets/Vfx/GourdCatchTrail.hvfx"};
+    HIKARI::GameProjectFloat3 absorbTrailMistColor{1.10f, 1.55f, 2.10f};
+    HIKARI::GameProjectFloat3 absorbTrailFireColor{2.40f, 1.05f, 0.30f};
     // 体の見た目（体に付く効果の大きさと置き場所・胴の煙と火）は、同じ物体の体の見た目の部品（BossBodyComponent。
     // c-bd1a7a）。
     // 演出の効果の部品の既定（登場とフェーズの変わり目の演出が共通で使う。登場そのものは、同じ物体の
@@ -494,6 +560,12 @@ public:
     // 残る煙（試作の residue／bossResidue）と吸い込みの煙（試作の waveSmoke／knifeSmoke）
     float residuePerTwoMeters = 10.0f;
     float knifeEndResidueScale = 0.5f;
+    // ナイフ・霧の弾が飛んだ跡に残す煙（2 m 進むごと。c-e0a9c3 の続き）と、その 1 点の半径 (m)。弾の高さではなく、
+    // 弾の真下の地面近くへ入れる（弾の高さへ残すと、ボスとプレイヤーの間に霧の腕が残って視界を塞ぐ）。
+    // knifeTrailJitter は、入れる所を左右へ振る幅 (m)。量も進むにつれて強弱させる（まっすぐで一様な白い帯にしない）。
+    float knifeTrailResidue = 2.0f;
+    float knifeTrailRadius = 1.6f;
+    float knifeTrailJitter = 0.9f;
     float bossResidue = 3.0f;
     float bossResidueStep = 1.2f;
     float waveAbsorbSmoke = 25.0f;
@@ -564,17 +636,25 @@ public:
     float knifeEffectAmount = 0.8f;
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
     HIKARI::GameProjectVfxAssetReference knifeEffect{"26fa37413fbcc48cc52d0605225433bb", "Assets/Vfx/BossKnife.hvfx"};
-    // 見た目：左手の技の霧の弾（c-4be37e）。入れると投げナイフの刃を出さず、尾の霞（swordEffect）を弾の大きさ
-    // knifeMistScale 倍にして、霧の芯を knifeMistCore の明るさで灯して飛ばす。
+    // 見た目：左手の技の霧の弾（c-4be37e）。入れると、投げナイフの刃と尾を出さず、下の本体のエフェクトを飛ばす。
     bool knifeMistBullet = false;
-    float knifeMistScale = 2.5f;
-    float knifeMistCore = 1.5f;
+    // 見た目：霧の弾の本体（c-e0a9c3）。knifeMistBullet の時に、1 発に 1 つ飛ばす：弾に付いて動く、後ろへ長い細かい
+    // 流体域を持ち、弾の頭の源から出た煙がその場に残って尾になる。頭の光・軌跡の光の帯・熱の揺らぎも持つ（局所 +X が
+    // 飛ぶ向き。入力 input.fly・input.glow）。mistShotScale は大きさの倍率、mistShotFadeSeconds は弾が消えた後に尾の煙が
+    // 残る秒、mistShotGlowFadeSeconds は頭の光が消えるまでの秒。
+    HIKARI::GameProjectVfxAssetReference mistShotEffect{"575bd3cb4f236a63437967fe0946b5a3",
+                                                        "Assets/Vfx/BossMistShot.hvfx"};
+    float mistShotScale = 1.0f;
+    float mistShotFadeSeconds = 0.45f;
+    float mistShotGlowFadeSeconds = 0.1f;
     // 見た目：振りで場の霧を揺らす（c-4be37e）。当たりの窓の間、刀の外側と内側の所で、刃が進む向きへ場の霧を押す力
     // (m/s²。0 は押さない) と、その力が届く半径 (m)。
     float swingPushForce = 0.0f;
     float swingPushRadius = 2.0f;
     // 見た目：回し蹴りの霞の輪（広がる炎の輪。自前の流体域を 1 つ使う。足元の霧を外へ押す）
     HIKARI::GameProjectVfxAssetReference ringEffect{"cbffd59dc133951894e126d8243b0fd2", "Assets/Vfx/BossKickRing.hvfx"};
+    // …火を残す技の輪（フェーズ 2）のエフェクト。空なら ringEffect（c-3c908c）。入力の契約は ringEffect と同じ。
+    HIKARI::GameProjectVfxAssetReference ringFireEffect{};
     float ringEffectRadius = 9.0f;
     float ringFadeSeconds = 0.35f;
     float ringHeight = 0.6f;
@@ -585,6 +665,40 @@ public:
     float spinRingShare = 0.45f;
     float ringPush = 6.0f;
     float ringPushRadius = 1.2f;
+    // 見た目：範囲爆発の叩きつけの爆発（c-3c908c。自前の流体域を 1 つ使う一度きりのエフェクト）。剣が燃えている技
+    // （フェーズ 2）は burstEffect、ほかは burstMistEffect（空なら burstEffect）。どちらも空なら、今までの小さな爆ぜ。
+    HIKARI::GameProjectVfxAssetReference burstEffect{};
+    HIKARI::GameProjectVfxAssetReference burstMistEffect{};
+    float burstScale = 1.0f;
+    // …火の剣気が狙った所で爆ぜる時（「交差」）の爆発の大きさ（叩きつけの爆発に対する倍率。0 は今までの小さな爆発）。
+    float crossBurstScale = 0.6f;
+    // …爆発が足元の霧を外へ押す速さ (m/秒) と、届く半径 (m)。
+    float burstPush = 14.0f;
+    float burstPushRadius = 6.0f;
+    // …爆発の瞬間のカメラの揺れ（幅 m・長さ F・周波数 Hz。幅か長さが 0 なら揺らさない）と、パッドの振動（重い・軽い
+    // モーター 0〜1、長さ F）。
+    float burstCameraAmplitude = 0.12f;
+    int burstCameraFrames = 18;
+    float burstCameraFrequency = 20.0f;
+    float burstRumbleLow = 0.8f;
+    float burstRumbleHigh = 0.5f;
+    int burstRumbleFrames = 14;
+    // …爆発の瞬間の動きのぼかしの一瞬（シャッター角 度・長さの上限 1080p の画素・戻るまで F。c-e0a9c3 の続き）。
+    float burstBlurShutter = 330.0f;
+    float burstBlurPixels = 44.0f;
+    int burstBlurFrames = 16;
+    // 手応え：斬撃・霧の弾を放った瞬間（c-e0a9c3 の続き）。カメラを小さく打ち込む：視野角を一瞬狭め（負で狭まる）、小さく
+    // 揺らし、パッドを短く振るわせる。放った所がプレイヤーから releaseCameraNear (m) より遠いと弱まり、
+    // releaseCameraRange (m) で 0 になる。霧の弾（ナイフ）は releaseKnifeScale 倍。時間は止めない。
+    float releaseCameraAmplitude = 0.016f;
+    float releaseCameraFov = -1.4f;
+    int releaseCameraFrames = 9;
+    float releaseCameraFrequency = 26.0f;
+    float releaseCameraNear = 6.0f;
+    float releaseCameraRange = 30.0f;
+    float releaseKnifeScale = 0.5f;
+    float releaseRumble = 0.4f;
+    int releaseRumbleFrames = 5;
     // 確かめ用（正式シーンでは使わない）
     std::string testMove;
     bool testSequence = false;
@@ -634,6 +748,7 @@ public:
     BossMoveTable table;
     std::string loadedClipsText;
     std::string loadedSegmentsText;
+    std::string loadedAimText;
     // プレイヤーへ当たった数（受け付けられた当たり。姿勢が「当てた後」を見る）。
     unsigned playerHitCount = 0;
     // 最後に読んだ表の中身。同じなら読み直さない（警告を何度も出さない）。
@@ -682,6 +797,12 @@ public:
     int glintFrames = 0;
     // 回し蹴りの回転（見た目の向きに足す rad）。
     float spin = 0.0f;
+    // 狙いのずれのねじり（c-884095。見た目の向きと刀の当たりに足す rad。yaw はプレイヤーの方のまま）。いまの角度・目標・
+    // 目標を決めた斬り（-1 は無し。振っている間・向きを止めている間は、その斬りの目標を変えない）。
+    float aimTwist = 0.0f;
+    float aimTwistTarget = 0.0f;
+    int aimTwistStrike = -1;
+    bool aimTwistHeld = false;
     // Damageable の無敵を、霞歩の跳び始め・登場・変わり目の間だけ立てたか（シーンで最初から無敵にしてある時に戻しすぎない）。
     bool shieldApplied = false;
     BossKasumiStepState kasumiStepState;
@@ -706,6 +827,13 @@ public:
     // 崩れ・気絶に入った tick に立て、描画フレームの手応え（BossFeedback）が使ったら消す。
     bool breakFeedbackPending = false;
     Feedback::CameraShake breakShake{};
+    // 叩きつけの爆発の手応え（揺れ・振動）を、次の描画フレームで出す印と、その揺れ。
+    bool burstFeedbackPending = false;
+    float burstFeedbackScale = 1.0f;
+    Feedback::CameraShake burstShake{};
+    // 斬撃・霧の弾を放った tick に、手応えの強さ（0〜1。距離で弱めた後）を入れ、描画フレームの手応えが使ったら 0 へ戻す。
+    float releaseFeedbackPending = 0.0f;
+    Feedback::CameraShake releaseShake{};
     float stunHitSeconds = -1000.0f;
     double seenBaseDamage = 0.0;
     float clockSeconds = 0.0f;
@@ -745,11 +873,18 @@ public:
     HIKARI::GameProjectFloat3 swordOuter{};
     std::array<HIKARI::GameProjectVfxPlaybackHandle, kBossWaveCapacity> waveVfx{};
     std::array<HIKARI::GameProjectVfxPlaybackHandle, kBossWaveCapacity> knifeVfx{};
+    std::array<BossMistShotEffect, kBossMistShotCapacity> mistShots{};
     std::array<uint64_t, kBossWaveCapacity> waveVfxId{};
     HIKARI::GameProjectVfxPlaybackHandle ringVfx{};
+    // 叩きつけの爆発のエフェクト（2 回ぶん。域が消えるまで、流体域の枠に数える）。
+    std::array<HIKARI::GameProjectVfxPlaybackHandle, 2> burstVfx{};
+    size_t burstCursor = 0;
     uint64_t ringVfxId = 0;
     // この技で霞の輪をもう出したか（回転斬り）。
     bool spinRingOut = false;
+    // クリップの回転斬りの型で、次の輪を放つまでの残りの F（放つ見込みが無い間は -1）。見た目（左手に集める霧・火）が、
+    // 叩きつけの拍に合わせるために読む（c-3c908c）。
+    int ringCountdown = -1;
     // クリップの回転斬りの型で、最後に輪を出した当たりの番号（当たりの窓ごとに 1 つ出す。-1 はまだ）。
     int spinRingHit = -1;
     // 輪が消えた後、炎が消えるのを待っている残り時間（秒。負は輪が広がっている間）。

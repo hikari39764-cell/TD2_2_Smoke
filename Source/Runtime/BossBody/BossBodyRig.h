@@ -37,6 +37,8 @@ struct BossBodyPose {
     int tassetCount = 0;
     // 目の光を火の色で出す（フェーズ 2）。気絶・撃破の間は目の光を出さない。
     bool eyesFire = false;
+    // 目の熱さ（0〜1：ふだんの色 → フェーズ 2 の色へ混ぜる。負は eyesFire のとおり。変わり目の演出が書く）。
+    float eyesHeat = -1.0f;
     bool eyesLit = true;
     // 鎧を灼けた鎧で出す（フェーズ 2 の本体）。
     bool armorHot = false;

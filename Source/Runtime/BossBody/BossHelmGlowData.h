@@ -25,7 +25,7 @@ inline constexpr std::string_view kCoreSocket = "HelmCore";
 // 隙間の帯の中心（面の表）と、帯の半分の幅・高さ。
 inline constexpr HIKARI::GameProjectFloat3 kVisorCentre{-0.00100f, -0.24000f, 0.35053f};
 inline constexpr float kVisorHalfWidth = 0.15300f;
-inline constexpr float kVisorHalfHeight = 0.12800f;
+inline constexpr float kVisorHalfHeight = 0.13600f;
 // 役者の兜の大きさ（兜の模型の寸法に対する倍率）。
 inline constexpr float kActorHelmScale = 1.95750f;
 

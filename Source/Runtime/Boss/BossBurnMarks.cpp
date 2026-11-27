@@ -320,9 +320,15 @@ void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave&
     const Vec3 center = wave.travelled >= wave.crossReach ? wave.crossCenter : Floor(boss, wave.position);
     // 外れても地面で爆ぜる（当たった時は HitPlayer が同じ爆発を出しているので足さない）。
     if (!wave.struck) {
+        // 爆発のエフェクトがあるシーンでは、叩きつけの爆発を小さく出す（c-3c908c）。
+        const bool burst = !boss.burstEffect.IsEmpty() && boss.crossBurstScale > 0.0f;
+        boss.burstFeedbackPending = burst;
+        boss.burstFeedbackScale = boss.crossBurstScale;
         BossWaves::AddBlast(boss, {.pushPending = true,
                                    .effectPending = true,
                                    .fire = true,
+                                   .burst = burst,
+                                   .burstScale = boss.burstScale * boss.crossBurstScale,
                                    .scale = 1.0f,
                                    .position = {center.x, boss.ground.y + boss.bodyHalfHeight, center.z}});
     }

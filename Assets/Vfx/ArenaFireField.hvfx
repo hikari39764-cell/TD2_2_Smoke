@@ -281,10 +281,10 @@
           ],
           "emissionHotColor": [
             1.0,
-            0.6,
-            0.2
+            0.5,
+            0.12
           ],
-          "emissionHotTemperature": 7.0,
+          "emissionHotTemperature": 10.0,
           "emissionIntensity": 280000.0,
           "emissionTemperature": 1.5,
           "expansionPerBurn": 0.1,
@@ -308,7 +308,7 @@
           "smokePerBurn": 0.25,
           "substepRate": 60.0,
           "temperatureDissipation": 5.0,
-          "vorticity": 6.0,
+          "vorticity": 4.0,
           "weight": 0.0,
           "channel": "Channel1"
         },

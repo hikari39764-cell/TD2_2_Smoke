@@ -52,12 +52,12 @@
             0.5,
             0.5,
             0.5,
-            0.1
+            0.10000000149011612
           ],
           "mix": 1.0,
           "parameters": [
             0.0,
-            -0.6,
+            -0.6000000238418579,
             2.0,
             1.0
           ],
@@ -77,6 +77,8 @@
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -95,10 +97,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -326,7 +326,7 @@
               "stops": [
                 {
                   "color": [
-                    0.26,
+                    0.25999999046325684,
                     0.0,
                     1.0,
                     1.0
@@ -336,7 +336,7 @@
                 },
                 {
                   "color": [
-                    0.182,
+                    0.18199999630451202,
                     0.0,
                     1.0,
                     1.0
@@ -364,7 +364,7 @@
           "transform": {
             "position": [
               0.0,
-              0.12,
+              0.11999999731779099,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -382,6 +382,7 @@
         "forces": {
           "collisionPlaneEnabled": false,
           "collisionPlaneHeight": 0.0,
+          "collisionThickness": 0.5,
           "drag": 0.0,
           "field": {
             "attraction": 0.0,
@@ -401,6 +402,11 @@
             "turbulence": 0.0,
             "vortex": 0.0
           },
+          "fluidCoupling": 0.0,
+          "fluidFollow": 0.0,
+          "fluidRadius": 0.15000000596046448,
+          "fluidSmoke": 0.0,
+          "fluidTemperature": 0.0,
           "friction": 0.20000000298023224,
           "gravity": [
             0.0,
@@ -408,7 +414,8 @@
             0.0
           ],
           "id": "module.forces.091db697ccf375987618b0babac6389a",
-          "restitution": 0.3499999940395355
+          "restitution": 0.3499999940395355,
+          "sceneDepthCollision": false
         },
         "position": {
           "id": "module.position.324994fb053e017e392cbc63068ad72e",
@@ -1610,7 +1617,7 @@
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
           "postProcessMode": "Scene",
-          "softIntersectionDistance": 0.2
+          "softIntersectionDistance": 0.20000000298023224
         },
         "renderShape": {
           "bendAmount": 0.0,
@@ -1624,7 +1631,7 @@
           "ribbonSegmentCount": 48,
           "ribbonWidth": 0.10000000149011612,
           "ringEndAngleDegrees": 360.0,
-          "ringInnerRadius": 0.6599999999999999,
+          "ringInnerRadius": 0.6600000262260437,
           "ringOuterRadius": 1.0,
           "ringSegmentCount": 64,
           "ringStartAngleDegrees": 0.0,
@@ -2416,7 +2423,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.1666666716337204,
-                    "value": -121.48147583007812
+                    "value": -121.48147583007813
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.187500.rotation",
@@ -2535,7 +2542,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.5208333134651184,
-                    "value": 21.214614868164062
+                    "value": 21.214614868164063
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.541667.rotation",
@@ -2661,7 +2668,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.8958333134651184,
-                    "value": 96.27957153320312
+                    "value": 96.27957153320313
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.916667.rotation",
@@ -2827,21 +2834,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.408
+                    "value": 0.40799999237060547
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.108
+                    "value": 2.1080000400543213
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sx.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.4
+                    "value": 3.4000000953674316
                   }
                 ],
                 "randomOffset": {
@@ -2859,21 +2866,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.408
+                    "value": 0.40799999237060547
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.108
+                    "value": 2.1080000400543213
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sy.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.4
+                    "value": 3.4000000953674316
                   }
                 ],
                 "randomOffset": {
@@ -2891,21 +2898,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.408
+                    "value": 0.40799999237060547
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.108
+                    "value": 2.1080000400543213
                   },
                   {
                     "id": "emitter.0c2895af2e29227b6583c3d38af8ed19.sz.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.4
+                    "value": 3.4000000953674316
                   }
                 ],
                 "randomOffset": {
@@ -3047,8 +3054,13 @@
         "spawn": {
           "burstTimeline": [],
           "capacityMode": "Automatic",
+          "eventKind": "Collision",
+          "eventSourceLayerId": "",
           "id": "module.spawn.d6a1164950f5dc9a34e10836bd159a4e",
+          "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1,
+          "minimumImpactSpeed": 1.0,
+          "particlesPerEvent": 4,
           "ratePerSecond": 0.0
         }
       },
@@ -3086,13 +3098,98 @@
         "stretch": true,
         "targetLayerId": ""
       },
-      "effects": [],
+      "effects": [
+        {
+          "colorA": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorB": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorStops": [],
+          "enabled": true,
+          "id": "effect.4c303971ababa6ad86e6c6b3de05e8ab",
+          "kind": "UvFlow",
+          "mask": 0,
+          "maskInvert": false,
+          "maskParameters": [
+            0.5,
+            0.5,
+            0.5,
+            0.10000000149011612
+          ],
+          "mix": 1.0,
+          "parameters": [
+            18.34000015258789,
+            13.199999809265137,
+            1.0,
+            1.0
+          ],
+          "parameters2": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "space": "LayerUv",
+          "textureTarget": "Shared"
+        },
+        {
+          "colorA": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorB": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorStops": [],
+          "enabled": true,
+          "id": "effect.5f91158179499873f10349538c21ef7b",
+          "kind": "Blur",
+          "mask": 0,
+          "maskInvert": false,
+          "maskParameters": [
+            0.5,
+            0.5,
+            0.5,
+            0.10000000149011612
+          ],
+          "mix": 1.0,
+          "parameters": [
+            0.39100000262260437,
+            -12.960000038146973,
+            2.0,
+            0.0
+          ],
+          "parameters2": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "space": "LayerUv",
+          "textureTarget": "Shared"
+        }
+      ],
       "history": {
         "breakDistance": 2.5,
         "duration": 0.20000000298023224,
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -3123,10 +3220,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -3354,9 +3449,9 @@
               "stops": [
                 {
                   "color": [
-                    1.6,
-                    1.6,
-                    1.6,
+                    1.600000023841858,
+                    1.600000023841858,
+                    1.600000023841858,
                     1.0
                   ],
                   "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.c0",
@@ -3364,29 +3459,29 @@
                 },
                 {
                   "color": [
-                    1.6,
-                    1.6,
-                    1.6,
-                    0.7
+                    1.600000023841858,
+                    1.600000023841858,
+                    1.600000023841858,
+                    0.699999988079071
                   ],
                   "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.c1",
-                  "time": 0.2
+                  "time": 0.20000000298023224
                 },
                 {
                   "color": [
-                    1.6,
-                    1.6,
-                    1.6,
+                    1.600000023841858,
+                    1.600000023841858,
+                    1.600000023841858,
                     0.0
                   ],
                   "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.c2",
-                  "time": 0.45
+                  "time": 0.44999998807907104
                 },
                 {
                   "color": [
-                    1.6,
-                    1.6,
-                    1.6,
+                    1.600000023841858,
+                    1.600000023841858,
+                    1.600000023841858,
                     0.0
                   ],
                   "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.c3",
@@ -3402,7 +3497,7 @@
           "transform": {
             "position": [
               0.0,
-              0.12,
+              0.11999999731779099,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -3420,6 +3515,7 @@
         "forces": {
           "collisionPlaneEnabled": false,
           "collisionPlaneHeight": 0.0,
+          "collisionThickness": 0.5,
           "drag": 0.0,
           "field": {
             "attraction": 0.0,
@@ -3439,6 +3535,11 @@
             "turbulence": 0.0,
             "vortex": 0.0
           },
+          "fluidCoupling": 0.0,
+          "fluidFollow": 0.0,
+          "fluidRadius": 0.15000000596046448,
+          "fluidSmoke": 0.0,
+          "fluidTemperature": 0.0,
           "friction": 0.20000000298023224,
           "gravity": [
             0.0,
@@ -3446,7 +3547,8 @@
             0.0
           ],
           "id": "module.forces.3438f0ccd0b2e7bfa5d321d8f58479d7",
-          "restitution": 0.3499999940395355
+          "restitution": 0.3499999940395355,
+          "sceneDepthCollision": false
         },
         "position": {
           "id": "module.position.6ec3bd39d957be58e3199332f67428d8",
@@ -4631,7 +4733,7 @@
         },
         "renderCommon": {
           "blendMode": "Additive",
-          "colorTextureAssetGuid": "engine.vfx.texture.soft_line",
+          "colorTextureAssetGuid": "engine.vfx.texture.noise_fractal_4",
           "depthBias": 0.0003499999875202775,
           "depthMode": "SoftIntersection",
           "detailNoiseTextureAssetGuid": "",
@@ -4648,7 +4750,7 @@
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
           "postProcessMode": "Scene",
-          "softIntersectionDistance": 0.2
+          "softIntersectionDistance": 0.20000000298023224
         },
         "renderShape": {
           "bendAmount": 0.0,
@@ -4662,7 +4764,7 @@
           "ribbonSegmentCount": 48,
           "ribbonWidth": 0.10000000149011612,
           "ringEndAngleDegrees": 360.0,
-          "ringInnerRadius": 0.85,
+          "ringInnerRadius": 0.8500000238418579,
           "ringOuterRadius": 1.0,
           "ringSegmentCount": 64,
           "ringStartAngleDegrees": 0.0,
@@ -5454,7 +5556,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.1666666716337204,
-                    "value": -121.48147583007812
+                    "value": -121.48147583007813
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.187500.rotation",
@@ -5573,7 +5675,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.5208333134651184,
-                    "value": 21.214614868164062
+                    "value": 21.214614868164063
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.541667.rotation",
@@ -5699,7 +5801,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.8958333134651184,
-                    "value": 96.27957153320312
+                    "value": 96.27957153320313
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.916667.rotation",
@@ -5865,21 +5967,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.42432
+                    "value": 0.4243200123310089
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.19232
+                    "value": 2.1923201084136963
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sx.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.536
+                    "value": 3.5360000133514404
                   }
                 ],
                 "randomOffset": {
@@ -5897,21 +5999,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.42432
+                    "value": 0.4243200123310089
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.19232
+                    "value": 2.1923201084136963
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sy.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.536
+                    "value": 3.5360000133514404
                   }
                 ],
                 "randomOffset": {
@@ -5929,21 +6031,21 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 0.42432
+                    "value": 0.4243200123310089
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.25,
-                    "value": 2.19232
+                    "value": 2.1923201084136963
                   },
                   {
                     "id": "emitter.8908dbf7fc2776c66ea7824beb8e3459.sz.2",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 3.536
+                    "value": 3.5360000133514404
                   }
                 ],
                 "randomOffset": {
@@ -6085,8 +6187,13 @@
         "spawn": {
           "burstTimeline": [],
           "capacityMode": "Automatic",
+          "eventKind": "Collision",
+          "eventSourceLayerId": "",
           "id": "module.spawn.7a31d834eebbb9a34c2ed5af21c4a45d",
+          "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1,
+          "minimumImpactSpeed": 1.0,
+          "particlesPerEvent": 4,
           "ratePerSecond": 0.0
         }
       },
@@ -6124,13 +6231,57 @@
         "stretch": true,
         "targetLayerId": ""
       },
-      "effects": [],
+      "effects": [
+        {
+          "colorA": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorB": [
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ],
+          "colorStops": [],
+          "enabled": true,
+          "id": "effect.9b66fa30f7486ba013f82a9de3be21b1",
+          "kind": "UvDistortion",
+          "mask": 0,
+          "maskInvert": false,
+          "maskParameters": [
+            0.5,
+            0.5,
+            0.5,
+            0.10000000149011612
+          ],
+          "mix": 1.0,
+          "parameters": [
+            0.05999999865889549,
+            5.0,
+            0.20000000298023224,
+            0.0
+          ],
+          "parameters2": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "space": "LayerUv",
+          "textureTarget": "Shared"
+        }
+      ],
       "history": {
         "breakDistance": 2.5,
         "duration": 0.20000000298023224,
         "fadePower": 1.0,
         "mode": "None",
         "samples": 12,
+        "speedFadeEnd": 0.0,
+        "speedFadeStart": 0.0,
         "tailColor": [
           1.0,
           1.0,
@@ -6161,10 +6312,8 @@
         "sourceOnly": false
       },
       "meshOutput": {
-        "castShadows": false,
         "enabled": false,
-        "meshAssetGuid": "",
-        "receiveShadow": false
+        "meshAssetGuid": ""
       },
       "modules": {
         "attachment": {
@@ -6395,7 +6544,7 @@
                     1.0,
                     1.0,
                     1.0,
-                    0.55
+                    0.550000011920929
                   ],
                   "id": "emitter.2cb3012fbabc7f99ba4409d8b323b130.c0",
                   "time": 0.0
@@ -6408,7 +6557,7 @@
                     0.0
                   ],
                   "id": "emitter.2cb3012fbabc7f99ba4409d8b323b130.c1",
-                  "time": 0.3
+                  "time": 0.30000001192092896
                 },
                 {
                   "color": [
@@ -6430,7 +6579,7 @@
           "transform": {
             "position": [
               0.0,
-              0.12,
+              0.11999999731779099,
               0.0
             ],
             "rotationEulerDegrees": [
@@ -6448,6 +6597,7 @@
         "forces": {
           "collisionPlaneEnabled": false,
           "collisionPlaneHeight": 0.0,
+          "collisionThickness": 0.5,
           "drag": 0.0,
           "field": {
             "attraction": 0.0,
@@ -6467,6 +6617,11 @@
             "turbulence": 0.0,
             "vortex": 0.0
           },
+          "fluidCoupling": 0.0,
+          "fluidFollow": 0.0,
+          "fluidRadius": 0.15000000596046448,
+          "fluidSmoke": 0.0,
+          "fluidTemperature": 0.0,
           "friction": 0.20000000298023224,
           "gravity": [
             0.0,
@@ -6474,7 +6629,8 @@
             0.0
           ],
           "id": "module.forces.c62f6d394ea0a2626b370ac69ff831c6",
-          "restitution": 0.3499999940395355
+          "restitution": 0.3499999940395355,
+          "sceneDepthCollision": false
         },
         "position": {
           "id": "module.position.be63c739d28a7f6b10fa0c63a4274bd7",
@@ -7659,7 +7815,7 @@
         },
         "renderCommon": {
           "blendMode": "Additive",
-          "colorTextureAssetGuid": "engine.vfx.texture.soft_disc",
+          "colorTextureAssetGuid": "engine.vfx.texture.particle_hard",
           "depthBias": 0.0003499999875202775,
           "depthMode": "SoftIntersection",
           "detailNoiseTextureAssetGuid": "",
@@ -7676,7 +7832,7 @@
           "materialMode": "StandardUnlit",
           "noiseTextureAssetGuid": "",
           "postProcessMode": "Scene",
-          "softIntersectionDistance": 0.2
+          "softIntersectionDistance": 0.20000000298023224
         },
         "renderShape": {
           "bendAmount": 0.0,
@@ -8482,7 +8638,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.1666666716337204,
-                    "value": -121.48147583007812
+                    "value": -121.48147583007813
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.187500.rotation",
@@ -8601,7 +8757,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.5208333134651184,
-                    "value": 21.214614868164062
+                    "value": 21.214614868164063
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.541667.rotation",
@@ -8727,7 +8883,7 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.8958333134651184,
-                    "value": 96.27957153320312
+                    "value": 96.27957153320313
                   },
                   {
                     "id": "emitter.main.Leading glint.path.2.0.916667.rotation",
@@ -8893,14 +9049,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   },
                   {
                     "id": "emitter.2cb3012fbabc7f99ba4409d8b323b130.sx.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   }
                 ],
                 "randomOffset": {
@@ -8918,14 +9074,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   },
                   {
                     "id": "emitter.2cb3012fbabc7f99ba4409d8b323b130.sy.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   }
                 ],
                 "randomOffset": {
@@ -8943,14 +9099,14 @@
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 0.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   },
                   {
                     "id": "emitter.2cb3012fbabc7f99ba4409d8b323b130.sz.1",
                     "inTangent": 0.0,
                     "outTangent": 0.0,
                     "time": 1.0,
-                    "value": 2.6
+                    "value": 2.5999999046325684
                   }
                 ],
                 "randomOffset": {
@@ -9092,8 +9248,13 @@
         "spawn": {
           "burstTimeline": [],
           "capacityMode": "Automatic",
+          "eventKind": "Collision",
+          "eventSourceLayerId": "",
           "id": "module.spawn.9e486fbd8b76bbc453926a07bd1ec4df",
+          "inheritVelocity": 0.30000001192092896,
           "maximumParticles": 1,
+          "minimumImpactSpeed": 1.0,
+          "particlesPerEvent": 4,
           "ratePerSecond": 0.0
         }
       },

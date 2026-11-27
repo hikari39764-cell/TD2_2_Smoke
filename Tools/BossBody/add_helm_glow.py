@@ -1,9 +1,11 @@
 """兜の面頬の 5 本の隙間の中に、自発光の面と、エフェクトを結ぶ場所の印を、模型へ足す（c-e0c500）。
 使い方：python -X utf8 Tools/BossBody/add_helm_glow.py     （何度流しても同じ結果になる）
+光の面がもうある模型では、面の網目だけを同じ場所へ書き直す：ほかの道具が後から足したもの（役者の動画の片段など）は動かさない。
 
 兜（KnightHelm）は閉じた殻で、面頬の隙間は底のある溝になっている（中は外から見えない）。光は模型の側で持つ：
-- 溝の底の少し前に、溝の形どおりの面（HelmGlow）を張る。溝の中にあるので、隙間からだけ見える。溝の場所と深さは、
-  兜の網目を正面から調べて決める（数字を手で置かない）。
+- 溝の底の少し前に、溝 1 本につき 1 枚の平らな四角（HelmGlow）を張る。四角は溝の口より外（兜の殻の中）まで広げて
+  あるので、隙間からだけ見え、見える縁は兜の溝の縁そのものになる（格子の升を並べた網目だと、斜めの溝の縁が階段になり、
+  寄りの画でモザイクに見えた）。溝の場所と深さは、兜の網目を正面から調べて決める（数字を手で置かない）。
 - エフェクトや灯を結ぶ場所の印（HelmVisor：隙間の帯の中心・面の表、HelmCore：兜の原点）をノードとして足す。
 足す先は 2 つ：
 - Assets/Models/KasumiBushi.gltf（戦いの体）：ノード HelmGlow・HelmGlowHot（フェーズ 2 の色）・HelmVisor・HelmCore。
@@ -26,6 +28,8 @@ STEP_X, STEP_Y = 0.006, 0.008
 GROOVE_DEPTH = 0.014
 ENVELOPE = 0.036          # 周りの面を取る幅（溝より広く）
 LIFT = 0.35               # 溝の底から、溝の深さのこの割合だけ前へ出した所に面を張る
+MARGIN = 0.008            # 四角を、溝の口より外へ広げる幅（兜の殻の中へ入る分）
+MIN_CELLS = 12            # 溝 1 本と数える格子の点の数の下限（小さなへこみを拾わない）
 # 光の色と強さ（材質の物理量。昼の空の下で、隙間がはっきり光る強さ）。登場の間はコードが明るさを上書きする。
 GLOW_COLOR, GLOW_STRENGTH = (0.42, 0.66, 1.0), 14000.0
 HOT_COLOR, HOT_STRENGTH = (1.0, 0.42, 0.12), 14000.0
@@ -44,27 +48,41 @@ class Model:
         self.doc = json.loads(text)
         self.bin_path = MODELS / self.doc["buffers"][0]["uri"]
         self.blob = bytearray(self.bin_path.read_bytes())
-        self.restore()
 
-    def restore(self):
-        """前に足した分を取り除く（足したものは必ず各配列の末尾にある）。"""
-        mark = self.doc.get("extras", {}).pop("helmGlow", None)
-        if not mark:
-            return
-        for key in ("nodes", "meshes", "materials", "accessors", "bufferViews"):
-            del self.doc[key][mark[key]:]
-        del self.blob[mark["bytes"]:]
-        limit = mark["nodes"]
-        for node in self.doc["nodes"]:
-            if "children" in node:
-                node["children"] = [c for c in node["children"] if c < limit]
-        for scene in self.doc["scenes"]:
-            scene["nodes"] = [n for n in scene["nodes"] if n < limit]
+    def replace(self, index, rows, code, kind, bounds=False):
+        """アクセサ index の中身を、同じ場所へ書き直す（前より小さい時だけ）。配列の番号も、後ろに足されたほかのデータ
+        （動画の片段など）も動かさない。余った分は、使わない隙間としてバッファに残る。"""
+        accessor = self.doc["accessors"][index]
+        view = self.doc["bufferViews"][accessor["bufferView"]]
+        data = bytearray()
+        for row in rows:
+            data.extend(struct.pack("<%d%s" % (WIDTH[kind], code), *row) if WIDTH[kind] > 1 else struct.pack("<" + code, row))
+        if accessor.get("byteOffset", 0) != 0 or COMPONENT[accessor["componentType"]] != code or len(data) > view["byteLength"]:
+            raise SystemExit("%s: 面の網目を同じ場所へ書き直せません（アクセサ %d）" % (self.path.name, index))
+        start = view.get("byteOffset", 0)
+        self.blob[start:start + len(data)] = data
+        view["byteLength"] = len(data)
+        accessor["count"] = len(rows)
+        if bounds:
+            accessor["min"] = [min(r[i] for r in rows) for i in range(3)]
+            accessor["max"] = [max(r[i] for r in rows) for i in range(3)]
 
-    def mark(self):
-        d = self.doc
-        d.setdefault("extras", {})["helmGlow"] = {k: len(d[k]) for k in ("nodes", "meshes", "materials", "accessors", "bufferViews")}
-        d["extras"]["helmGlow"]["bytes"] = len(self.blob)
+    def glow_primitives(self):
+        """前に足した光の面（網目の名前 HelmGlow・HelmGlowHot）の primitive（アクセサを分け合うものは 1 つだけ）。"""
+        seen, out = set(), []
+        for mesh in self.doc["meshes"]:
+            if mesh.get("name") in ("HelmGlow", "HelmGlowHot"):
+                primitive = mesh["primitives"][0]
+                if primitive["attributes"]["POSITION"] not in seen:
+                    seen.add(primitive["attributes"]["POSITION"])
+                    out.append(primitive)
+        return out
+
+    def unmark(self):
+        """前の版の道具が付けた印を外す（前の版は、印から後ろを全部切り落として足し直した）。"""
+        self.doc.get("extras", {}).pop("helmGlow", None)
+        if "extras" in self.doc and not self.doc["extras"]:
+            del self.doc["extras"]
 
     def read(self, index):
         a = self.doc["accessors"][index]
@@ -149,8 +167,33 @@ def depth_map(points, faces):
     return grid
 
 
+def solve3(m, v):
+    """3x3 の連立方程式（掃き出し）。"""
+    a = [list(m[r]) + [v[r]] for r in range(3)]
+    for c in range(3):
+        pivot = max(range(c, 3), key=lambda r: abs(a[r][c]))
+        a[c], a[pivot] = a[pivot], a[c]
+        if abs(a[c][c]) < 1e-12:
+            return None
+        a[c] = [x / a[c][c] for x in a[c]]
+        for r in range(3):
+            if r != c:
+                a[r] = [x - a[r][c] * y for x, y in zip(a[r], a[c])]
+    return [a[r][3] for r in range(3)]
+
+
+def fit_line(ys, xs):
+    """x = p*y + q（最小二乗。点が 1 行だけなら傾き 0）。"""
+    n = len(ys)
+    my, mx = sum(ys) / n, sum(xs) / n
+    den = sum((y - my) ** 2 for y in ys)
+    slope = sum((y - my) * (x - mx) for y, x in zip(ys, xs)) / den if den > 1e-12 else 0.0
+    return slope, mx - slope * my
+
+
 def glow_mesh(points, faces):
-    """溝の中の面：格子の升のうち、4 隅とも溝の所を、溝の底から少し前へ出して張る。"""
+    """溝ごとに 1 枚の平らな四角：溝の底から少し前へ出した高さの平面を当てはめ、溝の左右の縁に沿う平行四辺形を、溝の口
+    より外（兜の殻の中）まで広げて張る。"""
     grid = depth_map(points, faces)
     ny, nx = len(grid), len(grid[0])
     reach = max(1, int(round(ENVELOPE / STEP_X)))
@@ -168,26 +211,82 @@ def glow_mesh(points, faces):
             surface = min(max(left), max(right))
             if surface - row[i] >= GROOVE_DEPTH:
                 lifted[j][i] = row[i] + (surface - row[i]) * LIFT
-    vertices, index, triangles = [], {}, []
-
-    def vertex(j, i):
-        if (j, i) not in index:
-            index[(j, i)] = len(vertices)
-            vertices.append((X_RANGE[0] + i * STEP_X, Y_RANGE[0] + j * STEP_Y, lifted[j][i]))
-        return index[(j, i)]
-
-    for j in range(ny - 1):
-        for i in range(nx - 1):
-            if None in (lifted[j][i], lifted[j][i + 1], lifted[j + 1][i], lifted[j + 1][i + 1]):
+    # 溝ごとに分ける（上下左右につながった格子の点）。
+    seen = [[False] * nx for _ in range(ny)]
+    regions = []
+    for j in range(ny):
+        for i in range(nx):
+            if lifted[j][i] is None or seen[j][i]:
                 continue
-            a, b, c, d = vertex(j, i), vertex(j, i + 1), vertex(j + 1, i + 1), vertex(j + 1, i)
-            triangles += [(a, b, c), (a, c, d)]
-    xs, ys = [v[0] for v in vertices], [v[1] for v in vertices]
-    centre_x, centre_y = 0.5 * (min(xs) + max(xs)), 0.5 * (min(ys) + max(ys))
+            stack, cells = [(j, i)], []
+            seen[j][i] = True
+            while stack:
+                cj, ci = stack.pop()
+                cells.append((cj, ci))
+                for dj, di in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nj, ni = cj + dj, ci + di
+                    if 0 <= nj < ny and 0 <= ni < nx and lifted[nj][ni] is not None and not seen[nj][ni]:
+                        seen[nj][ni] = True
+                        stack.append((nj, ni))
+            if len(cells) >= MIN_CELLS:
+                regions.append(cells)
+    vertices, triangles, all_x, all_y = [], [], [], []
+    for cells in regions:
+        xs = [X_RANGE[0] + i * STEP_X for _, i in cells]
+        ys = [Y_RANGE[0] + j * STEP_Y for j, _ in cells]
+        zs = [lifted[j][i] for j, i in cells]
+        all_x += xs
+        all_y += ys
+        # 平面 z = a*x + b*y + c（最小二乗）。
+        n = float(len(cells))
+        sx, sy, sz = sum(xs), sum(ys), sum(zs)
+        plane = solve3([[sum(x * x for x in xs), sum(x * y for x, y in zip(xs, ys)), sx],
+                        [sum(x * y for x, y in zip(xs, ys)), sum(y * y for y in ys), sy],
+                        [sx, sy, n]],
+                       [sum(x * z for x, z in zip(xs, zs)), sum(y * z for y, z in zip(ys, zs)), sz]) or [0.0, 0.0, sz / n]
+        # 溝の左右の縁：行ごとの左端・右端に、直線を当てはめる（溝は斜めの平行四辺形）。
+        rows = sorted({j for j, _ in cells})
+        row_y = [Y_RANGE[0] + j * STEP_Y for j in rows]
+        left_line = fit_line(row_y, [X_RANGE[0] + min(i for cj, i in cells if cj == j) * STEP_X for j in rows])
+        right_line = fit_line(row_y, [X_RANGE[0] + max(i for cj, i in cells if cj == j) * STEP_X for j in rows])
+        y0, y1 = min(row_y) - MARGIN, max(row_y) + MARGIN
+        corners = [(left_line[0] * y0 + left_line[1] - MARGIN, y0), (right_line[0] * y0 + right_line[1] + MARGIN, y0),
+                   (right_line[0] * y1 + right_line[1] + MARGIN, y1), (left_line[0] * y1 + left_line[1] - MARGIN, y1)]
+        base = len(vertices)
+        vertices += [(x, y, plane[0] * x + plane[1] * y + plane[2]) for x, y in corners]
+        triangles += [(base, base + 1, base + 2), (base, base + 2, base + 3)]
+        print("GROOVE cells %3d  x %.3f..%.3f  y %.3f..%.3f  z %.3f..%.3f" % (len(cells), min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)))
+    # 広げた四角が、溝の口の外で、兜の表より前へ出ていないか（出ていれば、そこが光って見える）。
+    exposed = 0
+    for a, b, c in triangles:
+        (ax, ay, az), (bx, by, bz), (cx, cy, cz) = vertices[a], vertices[b], vertices[c]
+        det = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy)
+        for j in range(ny):
+            y = Y_RANGE[0] + j * STEP_Y
+            for i in range(nx):
+                x = X_RANGE[0] + i * STEP_X
+                u = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / det
+                v = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / det
+                if u < 0.0 or v < 0.0 or u + v > 1.0 or lifted[j][i] is not None:
+                    continue
+                # 溝の中（壁や、幅の広い溝の端の列）：周り（左右へ溝の幅 2 つ分）の一番前の面より 4 mm 以上へこんだ所。
+                # そこで面が見えるのは正しい。
+                if grid[j][i] is not None:
+                    near = [grid[j][k] for k in range(max(0, i - 2 * reach), min(nx, i + 2 * reach + 1)) if grid[j][k] is not None]
+                    if max(near) - grid[j][i] >= 0.004:
+                        continue
+                z = u * az + v * bz + (1.0 - u - v) * cz
+                if grid[j][i] is None or grid[j][i] < z - 0.002:
+                    exposed += 1
+    print("GLOW grooves %d, grid points where a quad shows outside a groove: %d" % (len(regions), exposed))
+    if exposed:
+        raise SystemExit("光の面が、溝の外で兜の表より前に出ています（MARGIN を小さくしてください）")
+    centre_x, centre_y = 0.5 * (min(all_x) + max(all_x)), 0.5 * (min(all_y) + max(all_y))
     column = int(round((centre_x - X_RANGE[0]) / STEP_X))
     row = int(round((centre_y - Y_RANGE[0]) / STEP_Y))
     front = max(z for z in grid[row][max(0, column - reach):column + reach + 1] if z is not None)
-    info = {"centre": (centre_x, centre_y, front), "half": (0.5 * (max(xs) - min(xs)), 0.5 * (max(ys) - min(ys)))}
+    info = {"centre": (centre_x, centre_y, front),
+            "half": (0.5 * (max(all_x) - min(all_x)), 0.5 * (max(all_y) - min(all_y)))}
     return vertices, triangles, info
 
 
@@ -261,12 +360,88 @@ def main():
     vertices, triangles, info = glow_mesh(points, faces)
     centre, half = info["centre"], info["half"]
     print("GLOW vertices %d triangles %d centre (%.3f, %.3f, %.3f) half (%.3f, %.3f)" % (len(vertices), len(triangles), *centre, *half))
-    if len(triangles) < 50:
+    if len(triangles) < 6:
         raise SystemExit("溝が見つかりません（兜の網目か、調べる範囲を確かめてください）")
     flat = [i for t in triangles for i in t]
 
     # ---- 戦いの体
-    fight.mark()
+    fight_done = False
+    for primitive in fight.glow_primitives():
+        fight.replace(primitive["attributes"]["POSITION"], vertices, "f", "VEC3", True)
+        fight.replace(primitive["attributes"]["NORMAL"], [(0.0, 0.0, 1.0)] * len(vertices), "f", "VEC3")
+        fight.replace(primitive["indices"], flat, "H", "SCALAR")
+        fight_done = True
+    fight.unmark()
+    if not fight_done:
+        fight_add(fight, vertices, flat, centre)
+    fight.save()
+
+    # ---- 登場の役者
+    actor = Model("BossIntroActor")
+    frame, scale, joint, head = fit_actor(actor, points)
+    rows = [apply(frame, v) for v in vertices]
+    facing = apply(frame, (0.0, 0.0, 1.0), 0.0)
+    length = math.sqrt(sum(c * c for c in facing))
+    facing = tuple(c / length for c in facing)
+    actor_slot = skinned(actor, rows, facing, joint, flat, "KnightHelm", GLOW_COLOR, GLOW_STRENGTH)
+    if actor.fresh:
+        head_node = actor.doc["nodes"][actor.doc["skins"][0]["joints"][joint]]
+        to_head = inverse(head)
+        for name, at in (("HelmVisor", centre), ("HelmCore", (0.0, 0.0, 0.0))):
+            actor.doc["nodes"].append({"name": name, "translation": list(apply(to_head, apply(frame, at)))})
+            head_node.setdefault("children", []).append(len(actor.doc["nodes"]) - 1)
+    blade_slot = next(i for i, m in enumerate(actor.doc["materials"]) if m.get("name") == "BladeEdge")
+    actor.save()
+
+    # ---- 落ちている兜（体に付く前、地面に置いてある部品）：序幕で、隙間が一瞬だけ灯る。ふだんは発光 0 の黒い面で、
+    # コードが瞬きの間だけ材質の発光を上書きする（編集中のシーンで光って見えない。溝の中なので、黒い面は見分けられない）。
+    part = Model("BossIntroHelm")
+    part_frame, _, part_joint, _ = fit_actor(part, points, "IntroHelm_KnightHelm")
+    part_facing = apply(part_frame, (0.0, 0.0, 1.0), 0.0)
+    length = math.sqrt(sum(c * c for c in part_facing))
+    part_slot = skinned(part, [apply(part_frame, v) for v in vertices], tuple(c / length for c in part_facing), part_joint,
+                        flat, "IntroHelm_KnightHelm", (0.0, 0.0, 0.0), 0.0)
+    part.save()
+    write_header(actor_slot, blade_slot, part_slot, centre, half, scale)
+    print("WROTE", fight.path.name, actor.path.name, part.path.name, HEADER.name, "actor material slot", actor_slot, "part", part_slot)
+
+
+def skinned(model, rows, facing, joint, flat, helm_name, color, strength):
+    """頭の骨に付いた光の面（役者・落ちている兜）。もうあれば、網目だけを同じ場所へ書き直す。材質の槽の番号を返す。"""
+    primitives = model.glow_primitives()
+    model.fresh = not primitives
+    model.unmark()
+    count = len(rows)
+    if primitives:
+        for primitive in primitives:
+            attributes = primitive["attributes"]
+            model.replace(attributes["POSITION"], rows, "f", "VEC3", True)
+            model.replace(attributes["NORMAL"], [facing] * count, "f", "VEC3")
+            model.replace(attributes["JOINTS_0"], [(joint, 0, 0, 0)] * count, "H", "VEC4")
+            model.replace(attributes["WEIGHTS_0"], [(1.0, 0.0, 0.0, 0.0)] * count, "f", "VEC4")
+            model.replace(primitive["indices"], flat, "H", "SCALAR")
+        return primitives[0]["material"]
+    position = model.add(rows, "f", "VEC3", 34962, True)
+    normal = model.add([facing] * count, "f", "VEC3", 34962)
+    joints = model.add([(joint, 0, 0, 0)] * count, "H", "VEC4", 34962)
+    weights = model.add([(1.0, 0.0, 0.0, 0.0)] * count, "f", "VEC4", 34962)
+    indices = model.add(flat, "H", "SCALAR", 34963)
+    slot = len(model.doc["materials"])
+    model.doc["materials"].append(material("HelmGlow", color, strength))
+    model.doc["meshes"].append({"name": "HelmGlow", "primitives": [{
+        "attributes": {"POSITION": position, "NORMAL": normal, "JOINTS_0": joints, "WEIGHTS_0": weights},
+        "indices": indices, "material": slot}]})
+    helm_node = model.node(helm_name)
+    # 網目のノードは骨と同じ名前にしない（名前でノードを隠す時、先に見つかった骨の方が隠れる）。
+    model.doc["nodes"].append({"name": "HelmGlowMesh", "mesh": len(model.doc["meshes"]) - 1, "skin": 0})
+    glow_node = len(model.doc["nodes"]) - 1
+    parent = next((n for n in model.doc["nodes"] if helm_node in n.get("children", [])), None)
+    (parent["children"] if parent else model.doc["scenes"][0]["nodes"]).append(glow_node)
+    return slot
+
+
+def fight_add(fight, vertices, flat, centre):
+    """戦いの体へ、光の面と場所の印を初めて足す。"""
     position = fight.add(vertices, "f", "VEC3", 34962, True)
     normal = fight.add([(0.0, 0.0, 1.0)] * len(vertices), "f", "VEC3", 34962)
     indices = fight.add(flat, "H", "SCALAR", 34963)
@@ -282,62 +457,9 @@ def main():
     for name, at in (("HelmVisor", centre), ("HelmCore", (0.0, 0.0, 0.0))):
         fight.doc["nodes"].append({"name": name, "translation": list(at)})
         fight.doc["scenes"][0]["nodes"].append(len(fight.doc["nodes"]) - 1)
-    fight.save()
 
-    # ---- 登場の役者
-    actor = Model("BossIntroActor")
-    frame, scale, joint, head = fit_actor(actor, points)
-    actor.mark()
-    position = actor.add([apply(frame, v) for v in vertices], "f", "VEC3", 34962, True)
-    facing = apply(frame, (0.0, 0.0, 1.0), 0.0)
-    length = math.sqrt(sum(c * c for c in facing))
-    normal = actor.add([tuple(c / length for c in facing)] * len(vertices), "f", "VEC3", 34962)
-    joints = actor.add([(joint, 0, 0, 0)] * len(vertices), "H", "VEC4", 34962)
-    weights = actor.add([(1.0, 0.0, 0.0, 0.0)] * len(vertices), "f", "VEC4", 34962)
-    indices = actor.add(flat, "H", "SCALAR", 34963)
-    actor_slot = len(actor.doc["materials"])
-    actor.doc["materials"].append(material("HelmGlow", GLOW_COLOR, GLOW_STRENGTH))
-    actor.doc["meshes"].append({"name": "HelmGlow", "primitives": [{
-        "attributes": {"POSITION": position, "NORMAL": normal, "JOINTS_0": joints, "WEIGHTS_0": weights},
-        "indices": indices, "material": actor_slot}]})
-    helm_node = actor.node("KnightHelm")
-    # 網目のノードは骨と同じ名前にしない（名前でノードを隠す時、先に見つかった骨の方が隠れる）。
-    actor.doc["nodes"].append({"name": "HelmGlowMesh", "mesh": len(actor.doc["meshes"]) - 1, "skin": 0})
-    glow_node = len(actor.doc["nodes"]) - 1
-    parent = next((n for n in actor.doc["nodes"] if helm_node in n.get("children", [])), None)
-    (parent["children"] if parent else actor.doc["scenes"][0]["nodes"]).append(glow_node)
-    head_node = actor.doc["nodes"][actor.doc["skins"][0]["joints"][joint]]
-    to_head = inverse(head)
-    for name, at in (("HelmVisor", centre), ("HelmCore", (0.0, 0.0, 0.0))):
-        actor.doc["nodes"].append({"name": name, "translation": list(apply(to_head, apply(frame, at)))})
-        head_node.setdefault("children", []).append(len(actor.doc["nodes"]) - 1)
-    blade_slot = next(i for i, m in enumerate(actor.doc["materials"]) if m.get("name") == "BladeEdge")
-    actor.save()
 
-    # ---- 落ちている兜（体に付く前、地面に置いてある部品）：序幕で、隙間が一瞬だけ灯る。ふだんは発光 0 の黒い面で、
-    # コードが瞬きの間だけ材質の発光を上書きする（編集中のシーンで光って見えない。溝の中なので、黒い面は見分けられない）。
-    part = Model("BossIntroHelm")
-    part_frame, _, part_joint, _ = fit_actor(part, points, "IntroHelm_KnightHelm")
-    part.mark()
-    position = part.add([apply(part_frame, v) for v in vertices], "f", "VEC3", 34962, True)
-    facing = apply(part_frame, (0.0, 0.0, 1.0), 0.0)
-    length = math.sqrt(sum(c * c for c in facing))
-    normal = part.add([tuple(c / length for c in facing)] * len(vertices), "f", "VEC3", 34962)
-    joints = part.add([(part_joint, 0, 0, 0)] * len(vertices), "H", "VEC4", 34962)
-    weights = part.add([(1.0, 0.0, 0.0, 0.0)] * len(vertices), "f", "VEC4", 34962)
-    indices = part.add(flat, "H", "SCALAR", 34963)
-    part_slot = len(part.doc["materials"])
-    part.doc["materials"].append(material("HelmGlow", (0.0, 0.0, 0.0), 0.0))
-    part.doc["meshes"].append({"name": "HelmGlow", "primitives": [{
-        "attributes": {"POSITION": position, "NORMAL": normal, "JOINTS_0": joints, "WEIGHTS_0": weights},
-        "indices": indices, "material": part_slot}]})
-    part.doc["nodes"].append({"name": "HelmGlowMesh", "mesh": len(part.doc["meshes"]) - 1, "skin": 0})
-    glow_node = len(part.doc["nodes"]) - 1
-    part_helm = part.node("IntroHelm_KnightHelm")
-    parent = next((n for n in part.doc["nodes"] if part_helm in n.get("children", [])), None)
-    (parent["children"] if parent else part.doc["scenes"][0]["nodes"]).append(glow_node)
-    part.save()
-
+def write_header(actor_slot, blade_slot, part_slot, centre, half, scale):
     HEADER.write_bytes(("""#pragma once
 
 #include <cstdint>
@@ -371,7 +493,6 @@ inline constexpr float kActorHelmScale = %.5ff;
 
 } // namespace Project_TD2_2::BossHelmGlowData
 """ % (actor_slot, blade_slot, part_slot, centre[0], centre[1], centre[2], half[0], half[1], scale)).replace("\n", "\r\n").encode("utf-8"))
-    print("WROTE", fight.path.name, actor.path.name, part.path.name, HEADER.name, "actor material slot", actor_slot, "part", part_slot)
 
 
 main()

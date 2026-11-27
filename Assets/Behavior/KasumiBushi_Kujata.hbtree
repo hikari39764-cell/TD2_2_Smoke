@@ -72,7 +72,8 @@
         17,
         19,
         21,
-        23
+        23,
+        95
       ]
     },
     {
@@ -972,6 +973,26 @@
       "name": "霞歩でかわす",
       "params": {
         "move": "霞歩でかわす",
+        "pick": "always"
+      }
+    },
+    {
+      "id": 95,
+      "type": "Score",
+      "name": "避けながら攻撃2（3）",
+      "params": {
+        "score": 3
+      },
+      "children": [
+        96
+      ]
+    },
+    {
+      "id": 96,
+      "type": "Project_TD2_2.BossMove",
+      "name": "避けながら攻撃2",
+      "params": {
+        "move": "避けながら攻撃2",
         "pick": "always"
       }
     }

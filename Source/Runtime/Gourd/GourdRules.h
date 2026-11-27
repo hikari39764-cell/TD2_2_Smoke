@@ -33,7 +33,13 @@ class GourdRules final {
       // 吸い込みで霧以外の物（ボスの斬撃・ナイフ）を吸った時に煙を足す。容量を超える分は捨てる。足した量を返す。
       static float AddSmoke(Gourd& gourd, float amount);
       // ボスの斬撃・ナイフを count 個吸い取った。手応え（止め・振動・視野角・エフェクト）はヒョウタンが次の描画フレームで出す。
-      static void NotifyCatch(Gourd& gourd, int count);
+      // fire：その中に火の刃があった（呑み込みの色）。small：全部ナイフだった（呑み込みを小さく見せる）。
+      static void NotifyCatch(Gourd& gourd, int count, bool fire, bool small);
+      // ボスの斬撃・ナイフが count 個、吸い込みに捕まった（噛んだ。c-e0a9c3）。position は最後に捕まった所、fire は火の刃が
+      // あったか。手応え（短い止め・鋭い振動・口から走る線）はヒョウタンが次の描画フレームで出す。
+      static void NotifyBite(Gourd& gourd, int count, bool fire, HIKARI::GameProjectFloat3 position);
+      // 引き込みの進み（0〜1。引き込んでいる間、毎 tick 呼ぶ。呼ばれない tick は StepSwallow が 0 に戻す）。
+      static void NotePull(Gourd& gourd, float progress);
       // ボスの斬撃・ナイフを口へ引き込んでいる（毎 tick 呼ぶ）。呼ばれなくなってから swallowTailFrames の間まで、
       // 吸い込みをやめていても、口が飲み込み続ける（口の力と見た目）。
       static void NotifySwallowing(Gourd& gourd);

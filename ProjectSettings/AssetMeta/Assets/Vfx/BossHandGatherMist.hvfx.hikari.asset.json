@@ -1,0 +1,14 @@
+{
+  "displayName": "BossHandGatherMist",
+  "guid": "d0dc4d7f0cd491afdc3cfabeb6d05981",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossHandGatherMist.hvfx",
+  "type": "VfxEffect"
+}

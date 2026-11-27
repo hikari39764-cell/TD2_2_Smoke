@@ -1,0 +1,14 @@
+{
+  "displayName": "BossBladeFire",
+  "guid": "10f7fe6797341feada54cb3f0dda2bc1",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossBladeFire.hvfx",
+  "type": "VfxEffect"
+}

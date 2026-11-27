@@ -5,6 +5,7 @@
 
 #include "HIKARI/Project/EnvironmentView.h"
 #include "BossBodyMath.h"
+#include "BossPhaseShiftVisuals.h"
 #include "../Boss/BossMath.h"
 #include "../Boss/BossVfx.h"
 #include "../Common/VfxParameters.h"
@@ -99,10 +100,13 @@ void UpdateEffects(HIKARI::WorldView& world, BossComponent& boss, BossBodyCompon
 
 } // namespace
 
-void BossPhaseTwoField::Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look, float seconds) {
+void BossPhaseTwoField::Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look,
+                               const BossPhaseShiftComponent* shift, float seconds) {
     BossBodyState& state = look.state;
     const bool warm = BossBodyMath::PhaseTwoLook(boss) && boss.state != BossState::Dead;
     state.fieldWarm = Approach(state.fieldWarm, warm ? 1.0f : 0.0f, seconds, look.settings.fieldWarmSeconds);
+    // 変わり目の演出（c-271cba）：太陽を掴んでから、演出が決める下限まで場の色を進める（フェーズ 2 の見た目の前から）。
+    state.fieldWarm = std::max(state.fieldWarm, BossPhaseShiftVisuals::FieldFloor(shift));
     UpdateGrade(world, look);
     UpdateEffects(world, boss, look, seconds);
 }

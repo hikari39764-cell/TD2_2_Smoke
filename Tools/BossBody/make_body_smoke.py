@@ -23,8 +23,9 @@ CENTER_Y = 2.1 * SCALE   # 域の中心（ボスの足元から）。足元の�
 DOMAIN = dict(
     # 分解能 72（1 格 約 7 cm）：104 と見た目はほぼ同じで、解算が約 0.4 ms 軽い。
     domainSize=SIZE, resolution=72, boundary="Open", channel="None", priority=90, combustion=False, castShadows=False,
-    # 走り出し・止まりで煙が少し遅れる（1 にすると急停止で後ろの煙がまとめて前へ返る）。動いている間は後ろへたなびく。
-    inertia=0.5, relativeWind=0.35,
+    # 走り出し・止まりで煙が少し遅れ、動いている間は少しだけ後ろへたなびく。動捕の踏み込み（約 24 m/秒）で、煙が域の
+    # 後ろの面まで吹き寄せられて四角い塊になったので、0.5・0.35 から下げた（0.12 でも 1 m 遅れた。c-3c908c）。
+    inertia=0.08, relativeWind=0.04,
     # 熱い煙（襟）は昇り、冷たい霞（裾）は重さで落ちる。
     buoyancy=0.9, weight=0.45, vorticity=2.2,
     densityDissipation=1.5, temperatureDissipation=1.6,
@@ -97,7 +98,9 @@ def source(name, shape, position, rate, values, order, domain_id):
     def link(input_id, module_id, prop):
         return {"bias": 0.0, "id": f"{layer['id']}.link.{input_id}.{prop}", "inputId": input_id, "scale": 1.0,
                 "target": {"emitterId": layer["id"], "moduleId": module_id, "propertyId": prop}}
-    layer["inputLinks"] = [link("input.amount", layer["modules"]["spawn"]["id"], "rateMultiplier"),
+    # 立ち姿の肩の横に固定の「両の袖口」は input.arms（骨格の体が出ている間は、ゲームが 0 を送る。c-3c908c）。
+    layer["inputLinks"] = [link("input.arms" if name.startswith("Arm ") else "input.amount",
+                                layer["modules"]["spawn"]["id"], "rateMultiplier"),
                            link("input.heat", settings["id"], "temperatureMultiplier")]
     return layer
 
@@ -118,7 +121,8 @@ doc["name"] = "Boss Body Smoke"
 doc["loop"] = True
 doc["durationSeconds"] = 3600.0
 doc["inputs"] = [{"defaultValue": 1.0, "id": "input.amount", "name": "amount", "type": "Float"},
-                 {"defaultValue": 1.0, "id": "input.heat", "name": "heat", "type": "Float"}]
+                 {"defaultValue": 1.0, "id": "input.heat", "name": "heat", "type": "Float"},
+                 {"defaultValue": 1.0, "id": "input.arms", "name": "arms", "type": "Float"}]
 doc["emitters"] = [domain] + [source(name, shape, position, rate, values, i + 1, domain["id"])
                               for i, (name, shape, position, rate, values) in enumerate(SOURCES)]
 path = out_dir / "BossBodySmoke.hvfx"

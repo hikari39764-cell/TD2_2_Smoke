@@ -1,0 +1,14 @@
+{
+  "displayName": "BossShockRingMist",
+  "guid": "d23ce9fd5ed7a272c1b504aeee2a3231",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossShockRingMist.hvfx",
+  "type": "VfxEffect"
+}

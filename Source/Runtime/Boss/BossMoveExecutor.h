@@ -22,6 +22,11 @@ public:
     static void Interrupt(BossComponent& boss);
     // 浮遊（地面から少し浮いて上下に漂う。攻撃するときは低く降りる）。
     static void StepFloat(BossComponent& boss);
+    // 狙いのずれ（c-884095）：剣の技の当たりの区間が始まる aimTwistLeadFrames F 前から、狙いのずれの表をプレイヤーとの
+    // 距離で引いた角度へ
+    // 体をねじる（yaw はプレイヤーの方のまま）。振っている間と向きを止めている間は角度を止め、技の外では 0 へ戻す。
+    // 状態を進める前に毎 tick 呼ぶ。
+    static void StepAimTwist(BossFrame& frame);
     // プレイヤーの方へ毎秒 degreesPerSecond まで向く。
     static void FaceRate(BossFrame& frame, float degreesPerSecond);
     // 後ろへ跳ぶ（後ろへ下がる）。progress は跳ぶ間の進み（0〜1）。boss.stepFrom から、

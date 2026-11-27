@@ -19,6 +19,8 @@ struct BossFrame {
     // 同じ tick に見つかったプレイヤー（いなければ nullptr）。
     Player* player = nullptr;
     HIKARI::GameProjectFloat3 playerCenter{};
+    // プレイヤーの物体（変わり目の演出が置き直す。いなければ空）。
+    HIKARI::GameProjectObjectHandle playerObject{};
     float dt = 1.0f / 60.0f;
     // ヒョウタンが吸い込み中（満杯かどうかは問わない。捕まえられるかは catchRoom も見る）。
     bool absorbing = false;

@@ -1,0 +1,14 @@
+{
+  "displayName": "BossHandGatherFire",
+  "guid": "d4dac52a07fef90ff9314e04202d96da",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossHandGatherFire.hvfx",
+  "type": "VfxEffect"
+}

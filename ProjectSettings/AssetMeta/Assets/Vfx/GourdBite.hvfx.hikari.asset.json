@@ -1,0 +1,14 @@
+{
+  "displayName": "GourdBite",
+  "guid": "03934a60d81b537ce65c61d1e3d5c3a7",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdBite.hvfx",
+  "type": "VfxEffect"
+}

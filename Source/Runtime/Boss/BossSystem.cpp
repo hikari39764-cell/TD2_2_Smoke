@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/GameProjectSession.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BossFeedback.h"
@@ -35,6 +36,7 @@
 #include "../BossBody/BossIntroActor.h"
 #include "../BossBody/BossIntroCamera.h"
 #include "../BossBody/BossIntroEffects.h"
+#include "../BossBody/BossPhaseShiftCamera.h"
 #include "../BossBody/BossPhaseTwoField.h"
 #include "../Combat/Damageable.h"
 #include "../Player/PlayerRules.h"
@@ -46,6 +48,9 @@ namespace {
 constexpr int kCinematicHoldTicks = 2;
 // 体がこの高さ（m）より上にある間は、通った跡の煙を地面に残さない。
 constexpr float kTrailMaxHeight = 0.5f;
+// 変わり目の演出がプレイヤーを置き直す時の、置き場所の頼みの出し元と優先度。
+constexpr uint64_t kShiftPlaceSource = 0x5444325348494654ull;
+constexpr int32_t kShiftPlacePriority = 50;
 
 using ComponentLookup::ForEachOnObject;
 using ComponentLookup::WithFirstOnObject;
@@ -141,15 +146,32 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
         BossIntro::Step(world, boss, *intro);
     }
     BossHealthBars::Step(boss);
-    BossPhaseShift::Step(boss, frame.shift);
+    BossPhaseShift::Step(world, boss, frame.shift);
     // 演出の間（登場・フェーズの変わり目）は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。
     // PlayerSystem が tick ごとに減らす）。変わり目の閃光の後の tick に、プレイヤーを押し出す。
     if (player != nullptr && (BossIntro::Cinematic(intro) || BossPhaseShift::Cinematic(frame.shift)))
         PlayerRules::HoldForCinematic(*player, kCinematicHoldTicks);
-    if (player != nullptr)
-        BossPhaseShift::Push(boss, frame.shift, *player, playerCenter);
+    // 変わり目の演出が舞台を決めた tick：プレイヤーをボスの正面へ置き直す（演出の間は入力が止まっている）。
+    HIKARI::GameProjectFloat3 placeAt{}, placeFacing{};
+    if (BossPhaseShift::TakePlacement(frame.shift, placeAt, placeFacing) && player != nullptr &&
+        frame.playerObject.value != 0u) {
+        HIKARI::GameProjectKinematicTeleport teleport{};
+        teleport.objectHandle = frame.playerObject.value;
+        teleport.sourceId = kShiftPlaceSource;
+        teleport.priority = kShiftPlacePriority;
+        teleport.position = placeAt;
+        teleport.rotation = YawRotation(YawOf(placeFacing));
+        teleport.clearVelocity = 1u;
+        const bool placed = world.GetMotion().RequestTeleport(teleport);
+        PlayerRules::FaceDirection(*player, placeFacing);
+        char message[160]{};
+        std::snprintf(message, sizeof(message), "ShiftPlacePlayer tick=%llu ok=%d at=(%.2f,%.2f,%.2f)",
+                      static_cast<unsigned long long>(boss.tick), static_cast<int>(placed),
+                      static_cast<double>(placeAt.x), static_cast<double>(placeAt.y), static_cast<double>(placeAt.z));
+        BossLog::Write(message);
+    }
     boss.shownBar = BossIntro::BarShown(intro) ? 1.0f : 0.0f;
-    boss.shownCinematic = BossIntro::Cinematic(intro) ? 1.0f : 0.0f;
+    boss.shownCinematic = BossIntro::Cinematic(intro) || BossPhaseShift::Cinematic(frame.shift) ? 1.0f : 0.0f;
     if (BossIntro::Started(intro)) {
         if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
             memory->GetMemory().bossIntroSeen = true;
@@ -165,6 +187,8 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     // この tick に読む命中は、前の tick の終わり（＝この tick の始め）の状態の間に当たったもの。後隙だったなら
     // その技が咎められた（体を動かすと後隙が終わって待機へ戻ることがあるので、先に覚える）。
     const int recoveryRow = boss.state == BossState::Act && boss.phase == BossActPhase::Post ? boss.move : -1;
+    // 狙いのずれのねじりは、状態を進める（刀の当たりを見る）前に決める（この tick の当たりと見た目を同じ向きにする）。
+    BossMoveExecutor::StepAimTwist(frame);
     BossStateMachine::Step(frame, brain, context);
     // 受けたダメージ（気絶値・フェーズ・撃破）は体を動かした後に読む（試作と同じ順で、気絶の長さが 1 F ずれない）。
     if (health != nullptr)
@@ -183,7 +207,7 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     // 規則の剣の向きは、この tick の状態が決まった後に 1 度だけ求める（見た目・記録が読む）。
     // 状態を進めた直後ではなくここに置く：被弾の処理（気絶・撃破）が状態を変えうるので、それを済ませた向きにする。
     boss.swordPose = BossPose::Target(boss);
-    BossTransform::Apply(object, boss, intro);
+    BossTransform::Apply(object, boss, intro, frame.shift);
     Trace(boss, health);
     BossReachProbe::Step(frame);
 }
@@ -211,6 +235,7 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                     Initialize(world, object, boss, intro);
                 // 技のクリップの刀の骨（c-7b1a09）を、技の規則が使う前に読んでおく（クリップごとに初めての時だけ）。
                 BossAnimBody::PrepareSword(world, boss);
+                BossAnimBody::CheckAimFingerprints(boss);
                 ++boss.tick;
                 boss.clockSeconds += frame.fixedDt;
                 boss.floatClock += frame.fixedDt;
@@ -219,10 +244,10 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                 boss.glintFrames = std::max(0, boss.glintFrames - 1);
                 IBossBrain& brain = BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(testBrain_) : treeBrain_;
                 // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
-                auto withHealth = [&](Player* player, Vec3 playerCenter) {
-                    BossFrame bossFrame{world,         boss,           player,           playerCenter,
-                                        frame.fixedDt, sight.inhaling, &sight.catchRoom, sight.mouth,
-                                        sight.hasMouth};
+                auto withHealth = [&](Player* player, Vec3 playerCenter, HIKARI::GameProjectObjectHandle playerObject) {
+                    BossFrame bossFrame{world,         boss,           player,           playerCenter, {},
+                                        frame.fixedDt, sight.inhaling, &sight.catchRoom, sight.mouth,  sight.hasMouth};
+                    bossFrame.playerObject = playerObject;
                     bossFrame.intro = intro;
                     bossFrame.shift = shift;
                     StepBoss(bossFrame, object, Damageable::Of(object.GetHandle().value), sight.gear, brain);
@@ -234,18 +259,28 @@ void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContex
                     if (ran || !playerObject.GetWorldTransform(transform))
                         return;
                     ran = true;
-                    withHealth(&player, transform.position);
+                    withHealth(&player, transform.position, playerObject.GetHandle());
                     BossLockTarget::Step(object, boss, player);
                 });
                 if (!ran)
-                    withHealth(nullptr, {});
+                    withHealth(nullptr, {}, {});
                 // 吸い取った斬撃・ナイフの渡し分を、ボスごとに集めて空にする（渡すのは下でまとめて 1 回）。
                 caught.smoke += boss.caught.smoke;
                 caught.count += boss.caught.count;
                 caught.fireCount += boss.caught.fireCount;
+                caught.knifeCount += boss.caught.knifeCount;
+                caught.bites += boss.caught.bites;
+                caught.fireBites += boss.caught.fireBites;
+                if (boss.caught.bites > 0)
+                    caught.bitePosition = boss.caught.bitePosition;
                 boss.caught = {};
-                for (const auto& wave : boss.waves)
-                    pulling += wave.active && wave.captured ? 1 : 0;
+                for (const auto& wave : boss.waves) {
+                    if (!wave.active || !wave.captured)
+                        continue;
+                    ++pulling;
+                    caught.pull = std::max(caught.pull, static_cast<float>(wave.pullFrame) /
+                                                            static_cast<float>(std::max(1, wave.pullFrames)));
+                }
             });
         });
     });
@@ -297,17 +332,21 @@ void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext
                                         frame.fixedInterpolationAlpha);
                 // フェーズ 2 の場の色・火の粉・焦げた輪（体を出さないフレームも進める。c-857ae3）。
                 if (parts.body != nullptr)
-                    BossPhaseTwoField::Update(world, boss, *parts.body, frame.gameDt);
+                    BossPhaseTwoField::Update(world, boss, *parts.body, parts.shift, frame.gameDt);
                 BossFeedback::Update(world, object, boss, frame);
                 // 演出の効果の手応え：登場だけの分（衝撃の輪・星・見得の張りつめを口へ書く）→ 登場と変わり目の演出の共通の分。
                 if (parts.intro != nullptr)
                     BossIntroEffects::Feedback(world, object, boss, BossBodySettingsOf(parts.body), *parts.intro,
                                                frame.unscaledDt);
                 BossCinematicFx::Feedback(world, object, boss, frame.unscaledDt);
-                // 登場の演出のカメラ（プレイヤーのカメラへ渡す）。
+                // 登場・変わり目の演出のカメラ（プレイヤーのカメラへ渡す）。
                 if (parts.intro != nullptr)
                     ComponentLookup::ForEachGame<Player>(
                         [&](HIKARI::ObjectView, Player& player) { BossIntroCamera::Update(*parts.intro, player); });
+                if (parts.shift != nullptr)
+                    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView, Player& player) {
+                        BossPhaseShiftCamera::Update(*parts.shift, player);
+                    });
                 demand += BossVisuals::GetFluidDomainDemand(boss, parts.body);
             });
         });

@@ -57,6 +57,42 @@ struct BossIntroSettings {
     // エンジンが前の画を捨てるので、切り替わりの画は流れない。既定は掛けない（SmokeArena の場面で 180°）。
     float motionBlurShutterDegrees = 0.0f;
     float motionBlurMaxPixels = 24.0f;
+    // …事件段「Blur:<シャッター角>:<px>」の間だけ、その値へ寄せる（速いカットだけ強く流す）。寄せる長さ (秒)。
+    float motionBlurBlendSeconds = 0.2f;
+    // 被写界深度（c-280b71）：演出の資産の事件段「Focus:<m>[:<強さ>]」（そのカットの始めのピントの距離。視線に沿った m）と
+    // 「Focus><m>[:<強さ>]」（前の段から続く）に従って、ピントの合う距離を決める。段の間は、次に続く段の値へ線形に寄る
+    // （ピント送り）。段が無い間は掛けない。ぼけ方は、ピントの距離に対する割合で決める（寄りのカットほど浅い）：ピントが
+    // 合って見える奥行き、手前・奥がぼけ切るまでの奥行き、ぼけの大きさの上限（1080p の画素。段の「強さ」を掛ける）。
+    // 段の無い所との出入りの長さ (秒)。
+    float focusRangeShare = 0.10f;
+    float focusNearShare = 0.5f;
+    float focusFarShare = 1.4f;
+    float focusNearBlurPixels = 12.0f;
+    float focusFarBlurPixels = 8.0f;
+    float focusFadeSeconds = 0.3f;
+    // 上下の黒帯：演技の間、画をこの横縦比に見せる（2.39 でシネスコ。画面の比より小さければ出さない。0 で出さない）。
+    // 出入りの長さ (秒)。演技が済んだら、ゲームのカメラへ渡す間に引っ込む。
+    float barsAspect = 0.0f;
+    float barsFadeSeconds = 0.9f;
+    // 一度きりの特効（空なら出さない）：煙が鎧に届いて引き起こす瞬間の足元の砂ぼこり、刀が抜けた瞬間の土くれと砂の輪、
+    // 目が灯る瞬間の面頬の前の熱のゆがみ、演技の間じゅう舞台に漂う塵と灰（カメラの手前でぼけて、奥行きを出す）。
+    // それぞれの大きさ（倍率）。
+    HIKARI::GameProjectVfxAssetReference dustEffect{};
+    float dustScale = 1.0f;
+    HIKARI::GameProjectVfxAssetReference debrisEffect{};
+    float debrisScale = 1.0f;
+    HIKARI::GameProjectVfxAssetReference hazeEffect{};
+    float hazeScale = 1.0f;
+    HIKARI::GameProjectVfxAssetReference motesEffect{};
+    float motesAmount = 1.0f;
+    // 剣先の寄りのカット（事件段 Sword.Tip）の間だけ、刀の根元に置く細かい流体の域（BossIntroTipSmoke。空なら置かず、
+    // 舞台の域へ滲ませる：寄りの画では、煙が丸い影に見える）と、地の割れ目から滲み出す煙の濃さ（倍率）。
+    HIKARI::GameProjectVfxAssetReference tipSmokeEffect{};
+    float tipSmokeAmount = 1.0f;
+    // 手を握る拍（事件段 Hand.Fist）の間だけ、右手の所に置く細かい流体の域（BossIntroFistSmoke。空なら出さない）と、
+    // 指の間から押し出される煙の濃さ（倍率）。
+    HIKARI::GameProjectVfxAssetReference fistSmokeEffect{};
+    float fistSmokeAmount = 1.0f;
     // 部品が骨へ飛ぶ道：手甲は吸われる（初めゆっくり、最後に速い。この指数が大きいほど最後が速い）、途中で浮く高さ (m)。
     // 兜は煙に持ち上げられる（ゆっくり動き出してゆっくり止まる）、途中で外へふくらむ幅 (m)。
     float gauntletFlyPower = 2.6f;
@@ -192,7 +228,15 @@ enum class BossIntroCueKind : uint8_t {
     SmokeDisperse,
     SmokeAmbient,
     Omen,
-    HelmGlint
+    HelmGlint,
+    // カメラの効果（c-280b71）：ピント（そのカットの始め／前の段から続く）、動きのぼかしの強い所。
+    Focus,
+    FocusLink,
+    Blur,
+    // 剣先の寄りのカットの間（この段がある演出は、抜刀の煙をこの段に合わせて出す）。
+    SwordTip,
+    // 右手を握り込む間（指の間から煙が押し出される）。
+    HandFist
 };
 
 // 役者（BossIntroActor）が使う事件段の役：片段を流す（Anim.<片段>）、部品が骨へ飛ぶ（Part.<部品>.Fly）、落ちている部品が
@@ -207,6 +251,9 @@ struct BossIntroCue {
     bool left = false;
     BossIntroCueRole role = BossIntroCueRole::None;
     int8_t part = -1;
+    // 名前に付いた数（Focus：距離 m・強さ。Blur：シャッター角・px）。
+    float valueA = 0.0f;
+    float valueB = 1.0f;
 };
 
 // 登場の実行時の状態（保存しない）。
@@ -291,6 +338,37 @@ struct BossIntroState {
     bool skipped = false;
     // 演出の動きのぼかしを頼んで受け付けられたか（変わった時だけ記録に書く）。
     bool motionBlurAccepted = false;
+    // カメラの効果（c-280b71）。ピント：このフレームに拍が入れた距離 (m) と強さ（拍が無ければ focusSeen が false）、
+    // 掛かっている割合（0〜1。実時間で出入りする）、最後に出した距離と強さ、受け付けられたか。
+    bool focusSeen = false;
+    float focusWantDistance = 0.0f;
+    float focusWantStrength = 0.0f;
+    float focusWeight = 0.0f;
+    float focusDistance = 0.0f;
+    float focusStrength = 0.0f;
+    bool focusAccepted = false;
+    // 動きのぼかし：このフレームに拍が入れた値（無ければ負）と、いま出している値（負はまだ決めていない）。
+    float blurWantShutter = -1.0f;
+    float blurWantPixels = -1.0f;
+    float blurShutter = -1.0f;
+    float blurPixels = -1.0f;
+    // 上下の黒帯の出ている割合（0〜1）。
+    float bars = 0.0f;
+    // 一度きりの特効の頼み（拍が立て、描画の前に出す）と、漂う塵の再生。
+    bool dustPending = false;
+    bool debrisPending = false;
+    bool hazePending = false;
+    HIKARI::GameProjectVfxPlaybackHandle motesHandle{};
+    // 刀の根元の細かい煙の域の再生と、置いた所（刀が入る所の、実際の地面。域を置く時に 1 回決める）。
+    HIKARI::GameProjectVfxPlaybackHandle tipSmokeHandle{};
+    HIKARI::GameProjectFloat3 tipGround{};
+    // 手を握る拍の細かい煙の域の再生と、置いた所（世界。拍の始めに決める）。手首から指先までの長さ：拍の始め（開いた
+    // 手）・ならした今の値（負＝まだ読んでいない）、握り込む勢い（0〜1。速く立ち上がり、ゆっくり引く）。
+    HIKARI::GameProjectVfxPlaybackHandle fistSmokeHandle{};
+    HIKARI::GameProjectFloat3 fistAt{};
+    float fistOpen = 0.0f;
+    float fistCurl = -1.0f;
+    float fistSqueeze = 0.0f;
 };
 
 } // namespace Project_TD2_2

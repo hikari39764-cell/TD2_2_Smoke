@@ -197,6 +197,22 @@ struct Player : HIKARI::Component {
     FIELD(float, hitRumbleStagger, 0.5f, "のけぞりの振動の強さ (0〜1、0 は無効)", HIKARI::Range(0.0f, 1.0f))
     FIELD(float, hitRumbleKnockback, 0.9f, "吹っ飛びの振動の強さ (0〜1、0 は無効)", HIKARI::Range(0.0f, 1.0f))
     FIELD(int, hitRumbleFrames, 10, "被弾の振動時間 (F、0 は無効)", HIKARI::Range(0, 120))
+    // 動きのぼかし（c-e0a9c3 の続き）：戦いの間はふだんから少し掛け（カメラの振り・ボスの速い動き・斬撃が流れて見える）、
+    // 食らった瞬間と回避の出だしで一瞬だけ強める。強さはシャッター角 (度) と、ぼかしの長さの上限 (1080p の画素)。
+    // 演出のカメラの間は、ふだんの分を出さない（演出は自分のぼかしを持つ）。
+    FIELD(float, combatBlurShutter, 120.0f, "戦いの間の動きのぼかし：シャッター角 (度、0 は無効)",
+          HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, combatBlurPixels, 12.0f, "…ぼかしの長さの上限 (1080p の画素、0 は無効)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(float, hitBlurShutter, 300.0f, "食らった瞬間の動きのぼかし：シャッター角 (度、0 は無効)",
+          HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, hitBlurPixels, 36.0f, "…ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(int, hitBlurFrames, 12, "…ぼかしが戻るまで (F)", HIKARI::Range(0, 120))
+    FIELD(float, rollCameraFov, 2.5f, "回避の出だしでカメラを引く画角 (度、0 は無効)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(int, rollCameraFovFrames, 16, "…引いたカメラが戻るまで (F)", HIKARI::Range(0, 120))
+    FIELD(float, rollBlurShutter, 220.0f, "回避の出だしの動きのぼかし：シャッター角 (度、0 は無効)",
+          HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, rollBlurPixels, 24.0f, "…ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(int, rollBlurFrames, 14, "…ぼかしが戻るまで (F)", HIKARI::Range(0, 120))
     FIELD(int, downFrames, 40, "ダウン (F)", HIKARI::Range(1, 600))
     FIELD(int, downRollFrame, 14, "ダウン回避開始 (F)", HIKARI::Range(0, 600))
     FIELD(int, getUpFrames, 22, "起き上がり (F)", HIKARI::Range(1, 600))
@@ -353,6 +369,11 @@ struct Player : HIKARI::Component {
     Feedback::CameraShake hitShake{};
     // 吹っ飛びの画角の引き。揺れとは別の送り手で出す（同時に出せるように）。
     Feedback::CameraShake knockbackFov{};
+    // 回避に入った tick に立て、描画フレームの手応え（画角の引き・ぼかし）が使ったら消す。
+    bool pendingRollFeedback = false;
+    Feedback::CameraShake rollFov{};
+    // 一瞬の動きのぼかし（PlayerRules::KickBlur で頼む。戦いの間のふだんの分に重ねて、StepHitFeedback が出す）。
+    Feedback::BlurPulse blurPulse{};
     // いまの吹っ飛びの距離（食らった時に決まる。表の「吹っ飛びの距離 m」が空なら knockbackDistance）と、始めた位置。
     float knockbackDistanceNow = 0.0f;
     HIKARI::GameProjectFloat3 knockbackOrigin{};

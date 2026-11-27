@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "HIKARI/Project/ActionViews.h"
+#include "HIKARI/Project/CameraLensTypes.h"
 #include "FeedbackCamera.h"
 #include "../Common/VectorMath.h"
 
@@ -71,6 +72,57 @@ bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, HIKARI::Ent
     if (shake.ageSeconds >= shake.durationSeconds)
         shake.active = false;
     return modifier.cameraObjectHandle != 0 && world.GetCamera().SubmitModifier(modifier);
+}
+
+bool SubmitMotionBlur(HIKARI::WorldView& world, uint64_t sourceId, int priority, float weight, float shutterDegrees,
+                      float maxPixels) {
+    HIKARI::GameProjectCameraMotionBlurRequest blur{};
+    blur.cameraObjectHandle = 0; // いま画を出しているカメラ
+    blur.sourceId = sourceId;
+    blur.priority = priority;
+    blur.weight = weight;
+    blur.settings.enabled = 1;
+    blur.settings.shutterAngleDegrees = std::clamp(shutterDegrees, 0.0f, 360.0f);
+    blur.settings.maxBlur1080pPixels = std::clamp(maxPixels, 0.0f, 64.0f);
+    return world.GetCamera().SubmitMotionBlur(blur);
+}
+
+// 一瞬のぼかしの、いまの強さ（0〜1。出した瞬間が 1、二乗に弱まる）。
+static float BlurPulseWeight(const BlurPulse& pulse) {
+    if (!pulse.active || !(pulse.durationSeconds > 0.0f))
+        return 0.0f;
+    const float envelope = std::clamp(1.0f - pulse.ageSeconds / pulse.durationSeconds, 0.0f, 1.0f);
+    return envelope * envelope;
+}
+
+void StartBlurPulse(BlurPulse& pulse, const BlurPulseParams& params) {
+    if (params.frames <= 0 || !(params.shutterDegrees > 0.0f) || !(params.maxPixels > 0.0f))
+        return;
+    if (pulse.params.shutterDegrees * BlurPulseWeight(pulse) > params.shutterDegrees)
+        return;
+    pulse.params = params;
+    pulse.ageSeconds = 0.0f;
+    pulse.durationSeconds = static_cast<float>(params.frames) / kFramesPerSecond;
+    pulse.active = true;
+}
+
+bool SubmitBlur(HIKARI::WorldView& world, uint64_t sourceId, int priority, BlurPulse& pulse, float restShutterDegrees,
+                float restPixels, float unscaledDt) {
+    const float weight = BlurPulseWeight(pulse);
+    // 停止中も実時間で戻す。
+    if (pulse.active) {
+        pulse.ageSeconds += std::max(0.0f, unscaledDt);
+        if (pulse.ageSeconds >= pulse.durationSeconds)
+            pulse.active = false;
+    }
+    const bool rest = restShutterDegrees > 0.0f && restPixels > 0.0f;
+    const float restShutter = rest ? restShutterDegrees : 0.0f;
+    const float restLength = rest ? restPixels : 0.0f;
+    const float shutter = std::max(restShutter, restShutter + (pulse.params.shutterDegrees - restShutter) * weight);
+    const float length = std::max(restLength, restLength + (pulse.params.maxPixels - restLength) * weight);
+    if (!(shutter > 0.0f) || !(length > 0.0f))
+        return false;
+    return SubmitMotionBlur(world, sourceId, priority, 1.0f, shutter, length);
 }
 
 bool SubmitCameraOffset(HIKARI::WorldView& world, uint64_t sourceId, int priority,

@@ -20,6 +20,13 @@ inline constexpr uint32_t kSlash = 1u << 3u;
 // 同じ通り道だが、もう流していない。
 inline constexpr uint32_t kIntroSmoke = 1u << 5u;
 inline constexpr uint32_t kIntroStreak = 1u << 4u;
+// 範囲爆発の溜め（c-3c908c）：左手に付いて動く域（BossHandGatherMist／Fire の Gather Domain）も Channel4 で受け、掌へ渦を
+// 巻いて入る細い注入（BossSmoke）だけが届く。通り道は 7 本で埋まっているので、登場の地を走る煙と同じ道を使う（登場の
+// 間は溜めの域が無く、戦いの間は登場の域が無いので、互いに届かない）。
+inline constexpr uint32_t kHandGather = kIntroStreak;
+// 登場の、刀の根元の細かい煙の域（c-280b71。BossIntroTipSmoke。剣先の寄りのカットの間だけ置く）と、手を握る拍の
+// 細かい煙の域（BossIntroFistSmoke）も Channel4 で受ける（その時、地を走る煙の域はもう止まっている。2 つの拍も重ならない）。
+inline constexpr uint32_t kIntroTip = kIntroStreak;
 // ボスの胴の煙の域（BossBodySmoke の Body Domain）は Channel6 で受ける。届くのは、フェーズ 2 の襟と袖口の火の舌の
 // 注入（BossBodyVisuals）だけ（場の霧・場の火・体の障害物・技の力に崩されない。c-857ae3）。
 inline constexpr uint32_t kBodyFire = 1u << 6u;

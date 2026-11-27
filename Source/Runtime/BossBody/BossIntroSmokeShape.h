@@ -6,6 +6,9 @@ namespace Project_TD2_2 {
 
 // 登場の煙（c-e0c500）の、流体へ出す番号と、拍ごとの形の決まり（調整は BossIntroSettings の量・速さで。ここは拍の中の
 // 割合と、点の並べ方）。使うのは BossIntroSmoke.cpp だけ。
+// 番号は、ボスの物体を持ち主にするほかのコードと分け合っている（同じ番号の提出は、後から出した方で置き換わる）：ここは
+// 1396〜1614 と 1640〜1659。火の舌 1600〜1608・胴の骨に付く煙 1620〜1630（BossBodyVisuals）、変わり目 1700〜1799
+// （BossPhaseShiftVisuals）は使わない。
 namespace BossIntroSmokeShape {
 
 // 流体へ出す番号（登場の煙。体の物体が持ち主。ほかの注入と重ねない）。1 つの域が 1 フレームに受けられるのは 32 件まで：
@@ -221,6 +224,140 @@ inline constexpr float kBackdropLift = 2.5f;
 // 見得の霧を一つ所に留めない揺らぎ：壁の点の弧のずれ（度）、力の向き・強さが揺れる速さ（ラジアン/秒）。
 inline constexpr float kBackdropWander = 22.0f;
 inline constexpr float kBackdropWanderSpeed = 0.35f;
+// 剣先の寄りの段（Sword.Tip。c-280b71）がある演出の、抜刀の煙の拍子（段が無い演出は、前の拍子のまま）。
+// 地の割れ目（刀が刺さった所）から出る煙。点は地面より下に沈め、割れ目の線の上を落ち着きなく滑らせる：域（床は地面）
+// に入るのは球の縁＝地面のすぐ上の 1 層の、細い線だけで、球の形は見えない。寄りの間は滲み出し、抜けた瞬間は同じ点から
+// 溢れる（番号も動きも続き）。
+// 割れ目：刀の幅の向きの主な 1 本（点の数と、長さの半分 m）と、根元から斜めへ出る短い 2 本（主な割れ目からの角度 度、
+// 長さ m）。点を沈める深さ (m。点の半径 0.36 と格 0.18 から、0.27 より深いと 1 層目の格に届かず、何も出ない)、点が
+// 割れ目を往復する速さ（ラジアン/秒）。
+inline constexpr int kTipSlitMain = 4;
+inline constexpr float kTipSlitHalf = 0.6f;
+inline constexpr float kTipSlitSideAngle[2] = {55.0f, 215.0f};
+inline constexpr float kTipSlitSideLength = 0.8f;
+inline constexpr float kTipSlitDepth = 0.18f;
+inline constexpr float kTipSlitSlide = 3.1f;
+// 寄りの間の滲み出し：切り替わった所から出始め、刀が抜けるまで濃くなり続ける（出始めが速く、急に出そろわない）。量の
+// 倍率（項目 introSeepAmount に掛ける。沈めた点は縁の重み 0.06 でしか入らないが、入る所が細い線なので、少しで濃く
+// 見える：0.25 より上は、半透明の煙ではなく黒い染みになる）と、刀が抜けて行く終わりの所で足す倍率（進みの 4 乗に掛ける）。
+inline constexpr float kTipSlitGain = 0.05f;
+inline constexpr float kTipSlitSurge = 0.15f;
+// 割れ目の上の空気を温める球（番号 +0..1。煙はほとんど足さない。握り始めから置く）：沈めた点からは温度がほとんど
+// 入らず、冷たい煙は重さで床へ溜まって、墨のように広がる。温めておくと、滲み出した煙が巻きながら自分で立ちのぼる。
+// 主な割れ目に沿って根元からずらす距離 (m)、高さ (m)、半径 (m)、温度（域が光り始める 6 より下）。
+inline constexpr uint64_t kTipWarmId = 1526;
+inline constexpr float kTipWarmAside = 0.35f;
+inline constexpr float kTipWarmHeight = 0.2f;
+inline constexpr float kTipWarmRadius = 0.9f;
+inline constexpr float kTipSeepHeat = 3.0f;
+// 寄りの間、滲み出した煙を刀身に沿って持ち上げる力：中心の高さ (m)、半径 (m)、加速 (m/秒²。段の終わり)。
+inline constexpr float kTipLiftHeight = 0.35f;
+inline constexpr float kTipLiftRadius = 1.1f;
+inline constexpr float kTipLift = 6.0f;
+// 抜けた後：溢れさせる長さ（項目 introDrawBurstSeconds に対する割合。短く溢れて、すぐ霧へ渡す）と、量の倍率（項目
+// introDrawBurstAmount に掛ける。抜けた瞬間が最大で、細って行く）。溢れ終わった根元を薄める半径 (m) と、薄め始めの秒。
+inline constexpr float kTipBurstShare = 0.6f;
+inline constexpr float kTipSpillGain = 2.0f;
+// 抜けてから、割れ目の上を温め続ける秒（溢れた煙が、盛り上がってから風に流れる）。
+inline constexpr float kTipSpillWarm = 0.3f;
+inline constexpr float kTipFadeRadius = 3.2f;
+inline constexpr float kTipFadeIn = 0.5f;
+// 風（番号 +0 根元の低い所、+1 舞台じゅう、+2 は湧き出し。刀のある側の外へ吹く）：根元の力は、中心を根元から風下へずらす距離 (m)・
+// 高さ (m)・半径 (m)。舞台じゅうの力は、主役の足元からの高さ (m) と半径 (m。主役の両脇の、見得の壁の点まで届かせる)。
+// 寄りの間のそよ風の加速 (m/秒²。根元だけ。段の終わり) と、向きに混ぜる「後ろ」の割合（寄りの画を横切る向き）。
+// 抜けた瞬間の突風の加速（根元・舞台じゅう）と、向きに混ぜる「後ろ」の割合（主役の右脇から後ろへ流れて、見得の霧が
+// 立つ所へ広がる）、強まる秒・保つ秒・引く秒、引いた後に残す割合（見得の霧の間も吹く）。
+// 向きが左右へ振れる大きさ（ラジアン）と速さ（ラジアン/秒。2 つの力で位相をずらす：煙が板のまま流れず、ほぐれる）。
+inline constexpr uint64_t kTipWindId = 1574;
+inline constexpr float kTipWindLowAhead = 1.5f;
+inline constexpr float kTipWindLowHeight = 1.0f;
+inline constexpr float kTipWindLowRadius = 5.0f;
+inline constexpr float kTipWindWideHeight = 3.0f;
+inline constexpr float kTipWindWideRadius = 10.0f;
+inline constexpr float kTipWindSeep = 4.0f;
+inline constexpr float kTipWindSeepBack = 0.25f;
+inline constexpr float kTipWindGustLow = 8.0f;
+inline constexpr float kTipWindGustWide = 4.0f;
+inline constexpr float kTipWindGustBack = 1.0f;
+inline constexpr float kTipWindGustIn = 0.2f;
+inline constexpr float kTipWindGustHold = 0.7f;
+inline constexpr float kTipWindGustFall = 0.8f;
+inline constexpr float kTipWindBreeze = 0.2f;
+inline constexpr float kTipWindSway = 0.6f;
+inline constexpr float kTipWindSwaySpeed = 1.3f;
+// 刀の根元の細かい域（BossIntroTipSmoke。格 5 cm）へ入れる、滲み出す煙：番号（+0..7）、点の数と、そのうち主な割れ目の
+// 上の数（残りは斜めの割れ目）、点の半径 (m。格 2 つ)、地面からの高さ (m)、割れ目を往復する速さ（ラジアン/秒）、
+// 点の中心へ 1 秒に足す濃さ（段の終わり。項目 introTipSmokeAmount を掛ける）と、刀が抜けて行く終わりの所で足す倍率
+// （進みの 4 乗に掛ける）、温度（浮力。域が光り始める 6 より下）、上向きの速さ (m/秒)。抜けてから域を置いておく秒。
+inline constexpr uint64_t kTipFineId = 1640;
+inline constexpr int kTipFinePoints = 8;
+inline constexpr int kTipFineMain = 6;
+inline constexpr float kTipFineRadius = 0.09f;
+inline constexpr float kTipFineHeight = 0.05f;
+inline constexpr float kTipFineSlide = 2.0f;
+inline constexpr float kTipFineRate = 450.0f;
+inline constexpr float kTipFineSurge = 1.0f;
+inline constexpr float kTipFineHeat = 5.0f;
+inline constexpr float kTipFineRise = 0.35f;
+inline constexpr float kTipFineLinger = 0.15f;
+// 手を握る拍（Hand.Fist）の煙：番号（+0..3 指の間、+4 拍の終わりに薄める所。細かい域の番号は 1640〜：胴の骨に付く煙
+// 1620〜1630・火の舌 1600〜 と重ねない）、点の半径 (m)、温度、押し出す速さ (m/秒。握り込む勢いが満ちた時)。
+// 握り込む勢い：手首から指先までが縮む速さがこの値 (m/秒) で満ちる。長さをならす速さ（1/秒：動捕の指の細かい震えを
+// 拾わない）、勢いが立ち上がる・引く速さ（1/秒）。握っている深さ：開いた手からこれだけ (m) 縮むと、漏れが満ちる。
+// 点の中心へ 1 秒に足す濃さ（勢いが満ちた時。項目 introFistSmokeAmount を掛ける）と、握っている間に漏れ続ける割合。
+// 域を置く所：拍の始めの指の付け根から、舞台の向きでこれだけずらす（握る間に、手は上・内・後ろへ動く：その道を域の
+// 中に収める。上は、握った拳から立ちのぼる煙の分を 1.4 m ほど空ける：足りないと、箱の上の面で煙が切れる）。拍の終わりに
+// 煙を薄める秒と速さ（1/秒）。
+inline constexpr uint64_t kFistSmokeId = 1650;
+inline constexpr float kFistSmokeRadius = 0.09f;
+inline constexpr float kFistSmokeHeat = 2.5f;
+inline constexpr float kFistSmokeSpeed = 1.8f;
+inline constexpr float kFistClosingFull = 0.45f;
+inline constexpr float kFistCurlFollow = 10.0f;
+inline constexpr float kFistSqueezeRise = 14.0f;
+inline constexpr float kFistSqueezeFall = 5.0f;
+inline constexpr float kFistHeldDepth = 0.18f;
+inline constexpr float kFistSmokeRate = 1000.0f;
+inline constexpr float kFistSmokeTrickle = 0.04f;
+inline constexpr float kFistDomainSide = -0.5f;
+inline constexpr float kFistDomainUp = 1.6f;
+inline constexpr float kFistDomainBack = 0.4f;
+inline constexpr float kFistFadeSeconds = 0.8f;
+inline constexpr float kFistFadeRate = 5.0f;
+// 域を置く時に、刀が入る所の実際の地面を探す光線：どれだけ上から落とすか (m) と、届く長さ (m)。
+inline constexpr float kTipGroundAbove = 1.5f;
+inline constexpr float kTipGroundReach = 4.0f;
+// 湧き出し（番号 +2。根元から四方へ押し広げる）：中心の高さ (m)、半径 (m)、球面を流れ出す速さ (m/秒。抜けた瞬間)、
+// 引き切るまでの秒。
+inline constexpr float kTipSwellHeight = 0.4f;
+inline constexpr float kTipSwellRadius = 1.6f;
+inline constexpr float kTipSwell = 7.0f;
+inline constexpr float kTipSwellSeconds = 0.7f;
+// 煙が広がる先を、先に開けておく球（煙はほとんど足さない。流体は「煙があり得る所」だけを解く：速い煙は、まだ解いて
+// いない所へ入ると消える）：数（根元の周りに並べる）、根元からの距離 (m)、高さ (m)、半径 (m)、温度（少し温かい：
+// 広がった煙が、地面に張り付かずに盛り上がる）、置いておく秒（見得の霧の点が出る前まで：席を空ける）。
+inline constexpr int kTipOpen = 4;
+inline constexpr float kTipOpenAway = 3.0f;
+inline constexpr float kTipOpenHeight = 1.5f;
+inline constexpr float kTipOpenRadius = 3.5f;
+inline constexpr float kTipOpenHeat = 0.6f;
+inline constexpr float kTipOpenSeconds = 0.88f;
+// 見得の黒い霧の出始め：壁の点・地面の点を、地面の下へ沈めておく（深さは割れ目の点と同じ。域へ入るのは地面のすぐ上の
+// 細い線だけ：霧が、主役の周りの地面から立ちのぼる。空中の点から出すと、出始めが黒い球に見える）。沈めておく秒（霧が
+// 出始めてから）と、その後に元の高さへ上げる秒、沈めている間の量の倍率（沈めた点は縁の重みでしか入らない分を補う）。
+// 霧の立つ所の空気を温める球（番号は霧の +15..17：両脇と後ろ。煙はほとんど足さない）：主役からの距離 (m)、高さ (m)、
+// 半径 (m)、温度。
+inline constexpr float kTipWallSunkHold = 0.8f;
+inline constexpr float kTipWallSunkRise = 1.2f;
+inline constexpr float kTipWallSunkGain = 16.0f;
+inline constexpr float kTipWallWarmAway = 3.4f;
+inline constexpr float kTipWallWarmHeight = 1.5f;
+inline constexpr float kTipWallWarmRadius = 3.5f;
+inline constexpr float kTipWallWarmHeat = 3.0f;
+// 刀身が引く煙の幕の量の割合（高い柱になって、主役の頭の上に黒い塊で残るので、控える）。
+inline constexpr float kTipTrailShare = 0.5f;
+// 縁で薄める所を出し始める秒（それまで煙は縁に届かない。刀の幕が終わって、席が空いてから）。
+inline constexpr float kTipEdgeAt = 1.5f;
 inline constexpr int kBurstStreamers = 3;
 inline constexpr float kBurstStreamerGap = 0.04f;
 inline constexpr float kBurstStreamerLife = 0.5f;

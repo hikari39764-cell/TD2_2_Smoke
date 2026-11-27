@@ -22,6 +22,10 @@ constexpr uint64_t kMotionSource = 0x5444325001ull;
 constexpr uint64_t kHitStopSource = 0x5444325003ull;
 constexpr uint64_t kHitCameraSource = 0x5444325004ull;
 constexpr uint64_t kHitFovSource = 0x5444325005ull;
+constexpr uint64_t kRollFovSource = 0x5444325006ull;
+constexpr uint64_t kCombatBlurSource = 0x5444325007ull;
+// 戦いの間の動きのぼかしの優先度。演出のぼかし（登場 320・変わり目 20）と筋斗雲のぼかし（300）より低い。
+constexpr int kCombatBlurPriority = 10;
 constexpr uint64_t kRollFogInstance = 1;
 constexpr uint64_t kRollFireInstance = 2;
 constexpr uint64_t kFireObstacleInstance = 3;
@@ -180,6 +184,7 @@ void StartBufferedAction(HIKARI::WorldView& world, HIKARI::ObjectView object, Pl
         player.staminaAge = 0;
         player.rollBuffer = 0;
         player.rollFogPending = true;
+        player.pendingRollFeedback = true;
         // 打ち切った動作のロックを、ローリングの後へ持ち越さない。
         player.actionLockFrames = 0;
         PlayerRules::EnterState(player, PlayerState::Roll);
@@ -483,6 +488,10 @@ void StepHitFeedback(HIKARI::WorldView& world, Player& player, const HIKARI::Fra
         Feedback::StartCameraShake(player.hitShake, shake);
         const float rumble = knockback ? player.hitRumbleKnockback : player.hitRumbleStagger;
         Feedback::Rumble(world, rumble, rumble, player.hitRumbleFrames);
+        // 食らった瞬間の画の流れ（のけぞりは 7 割）。
+        const float blurScale = knockback ? 1.0f : 0.7f;
+        PlayerRules::KickBlur(player, player.hitBlurShutter * blurScale, player.hitBlurPixels * blurScale,
+                              player.hitBlurFrames);
         if (knockback) {
             // 吹っ飛ばされた瞬間にカメラを少し引き、戻す。
             Feedback::CameraShakeParams fov{};
@@ -506,6 +515,22 @@ void StepHitFeedback(HIKARI::WorldView& world, Player& player, const HIKARI::Fra
         Feedback::Rumble(world, player.knockbackLandRumble, player.knockbackLandRumble,
                          player.knockbackLandShakeFrames);
     }
+    if (player.pendingRollFeedback) {
+        // 回避の出だし：カメラを少し引いて戻し、画を一瞬流す（体が速く抜けた感じ）。
+        player.pendingRollFeedback = false;
+        Feedback::CameraShakeParams fov{};
+        fov.sourceId = kRollFovSource;
+        fov.priority = kPlayerPriority;
+        fov.frames = player.rollCameraFovFrames;
+        fov.fovDegrees = player.rollCameraFov;
+        Feedback::StartCameraShake(player.rollFov, fov);
+        PlayerRules::KickBlur(player, player.rollBlurShutter, player.rollBlurPixels, player.rollBlurFrames);
+    }
+    Feedback::SubmitCameraShake(world, player.rollFov, player.camera, frame.unscaledDt);
+    // 動きのぼかし：戦いの間のふだんの分に、一瞬の分を重ねて 1 つにして出す。演出のカメラの間は、ふだんの分を出さない。
+    const bool cinematic = player.cinematicHold > 0;
+    Feedback::SubmitBlur(world, kCombatBlurSource, kCombatBlurPriority, player.blurPulse,
+                         cinematic ? 0.0f : player.combatBlurShutter, player.combatBlurPixels, frame.unscaledDt);
     Feedback::SubmitCameraShake(world, player.knockbackFov, player.camera, frame.unscaledDt);
     HIKARI::GameProjectFloat3 offset{};
     const bool wasActive = player.hitShake.active;

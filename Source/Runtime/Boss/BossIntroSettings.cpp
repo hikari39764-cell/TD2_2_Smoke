@@ -35,6 +35,41 @@ void BossIntroSettings::Describe(HIKARI::PropertyFields& fields) {
                  motionBlurShutterDegrees, 0.0f, 360.0f);
     fields.Float("introMotionBlurMaxPixels", "演出の動きのぼかし：ぼかしの長さの上限（1080p の画素）",
                  motionBlurMaxPixels, 0.0f, 64.0f);
+    fields.Float("introMotionBlurBlendSeconds",
+                 "演出の動きのぼかし：強い所（事件段 Blur:<角>:<px>）へ寄せる・戻す長さ (秒)", motionBlurBlendSeconds,
+                 0.0f, 3.0f);
+    fields.Float(
+        "introFocusRangeShare",
+        "被写界深度：ピントが合って見える奥行き（ピントの距離に対する割合。事件段 Focus:<m> が無いカットは掛けない）",
+        focusRangeShare, 0.0f, 2.0f);
+    fields.Float("introFocusNearShare", "被写界深度：手前がぼけ切るまでの奥行き（ピントの距離に対する割合）",
+                 focusNearShare, 0.02f, 4.0f);
+    fields.Float("introFocusFarShare", "被写界深度：奥がぼけ切るまでの奥行き（ピントの距離に対する割合）",
+                 focusFarShare, 0.02f, 20.0f);
+    fields.Float("introFocusNearBlurPixels", "被写界深度：手前のぼけの大きさの上限（1080p の画素）",
+                 focusNearBlurPixels, 0.0f, 64.0f);
+    fields.Float("introFocusFarBlurPixels", "被写界深度：奥のぼけの大きさの上限（1080p の画素）", focusFarBlurPixels,
+                 0.0f, 64.0f);
+    fields.Float("introFocusFadeSeconds", "被写界深度：掛かる・外れる長さ (秒)", focusFadeSeconds, 0.0f, 5.0f);
+    fields.Float(
+        "introBarsAspect",
+        "上下の黒帯：演技の間、画をこの横縦比に見せる（2.39 でシネスコ。画面の比より小さければ・0 なら出さない）",
+        barsAspect, 0.0f, 4.0f);
+    fields.Float("introBarsFadeSeconds", "上下の黒帯：出る・引っ込む長さ (秒)", barsFadeSeconds, 0.0f, 5.0f);
+    fields.Vfx("introDustEffect", "特効：煙が鎧を引き起こす瞬間の足元の砂ぼこり（空なら出さない）", dustEffect);
+    fields.Float("introDustScale", "…砂ぼこりの大きさ（倍率）", dustScale, 0.1f, 10.0f);
+    fields.Vfx("introDebrisEffect", "特効：刀が抜けた瞬間の土くれと砂の輪（空なら出さない）", debrisEffect);
+    fields.Float("introDebrisScale", "…土くれと砂の輪の大きさ（倍率）", debrisScale, 0.1f, 10.0f);
+    fields.Vfx("introHazeEffect", "特効：目が灯る瞬間の、面頬の前の熱のゆがみ（空なら出さない）", hazeEffect);
+    fields.Float("introHazeScale", "…熱のゆがみの大きさ（倍率）", hazeScale, 0.1f, 10.0f);
+    fields.Vfx("introMotesEffect", "特効：演技の間、舞台に漂う塵と灰（空なら出さない）", motesEffect);
+    fields.Float("introMotesAmount", "…漂う塵と灰の量（倍率）", motesAmount, 0.0f, 10.0f);
+    fields.Vfx("introTipSmokeEffect", "剣先の寄り：刀の根元に置く細かい流体の域（BossIntroTipSmoke。空なら置かない）",
+               tipSmokeEffect);
+    fields.Float("introTipSmokeAmount", "…地の割れ目から滲み出す煙の濃さ（倍率）", tipSmokeAmount, 0.0f, 10.0f);
+    fields.Vfx("introFistSmokeEffect", "手を握る：右手の所に置く細かい流体の域（BossIntroFistSmoke。空なら出さない）",
+               fistSmokeEffect);
+    fields.Float("introFistSmokeAmount", "…指の間から押し出される煙の濃さ（倍率）", fistSmokeAmount, 0.0f, 10.0f);
     fields.Float("introGauntletFlyPower", "手甲が吸われる道：最後の速さ（大きいほど、初めゆっくりで最後に速い）",
                  gauntletFlyPower, 1.0f, 6.0f);
     fields.Float("introGauntletFlyLift", "手甲が吸われる道：途中で浮く高さ (m)", gauntletFlyLift, 0.0f, 5.0f);

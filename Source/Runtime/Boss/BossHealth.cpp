@@ -219,6 +219,10 @@ void BossHealth::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
         fields.Float("breakRumbleLow", "崩し・気絶の振動：重いモーター (0〜1)", boss.breakRumbleLow, 0.0f, 1.0f);
         fields.Float("breakRumbleHigh", "崩し・気絶の振動：軽いモーター (0〜1)", boss.breakRumbleHigh, 0.0f, 1.0f);
         fields.Int("breakRumbleFrames", "崩し・気絶の振動時間 (F、0 は無効)", boss.breakRumbleFrames, 0, 120);
+        fields.Float("breakBlurShutter", "崩し・気絶の動きのぼかしの一瞬：シャッター角 (度、0 は無効)",
+                     boss.breakBlurShutter, 0.0f, 360.0f);
+        fields.Float("breakBlurPixels", "…ぼかしの長さの上限 (1080p の画素)", boss.breakBlurPixels, 0.0f, 64.0f);
+        fields.Int("breakBlurFrames", "…ぼかしが戻るまで (F)", boss.breakBlurFrames, 0, 120);
         fields.Int("breakFlashFrames", "崩し・気絶の本体の光り (F、0 は無効)", boss.breakFlashFrames, 0, 120);
         fields.Float("breakBlastScale",
                      "崩し・気絶の瞬間に体から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で無効）",

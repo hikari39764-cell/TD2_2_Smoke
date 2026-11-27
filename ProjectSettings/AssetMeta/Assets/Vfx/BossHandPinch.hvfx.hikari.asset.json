@@ -1,0 +1,14 @@
+{
+  "displayName": "BossHandPinch",
+  "guid": "5055787e6a9845bb666a88bda47eabb7",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossHandPinch.hvfx",
+  "type": "VfxEffect"
+}

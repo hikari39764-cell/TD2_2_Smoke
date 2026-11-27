@@ -290,12 +290,12 @@
           "heatPerBurn": 4.0,
           "id": "module.fluidDomain.f6116fb4b06e1c0d844ab3afc1c72fd2",
           "ignitionTemperature": 0.3,
-          "inertia": 0.5,
+          "inertia": 0.08,
           "maxSubsteps": 2,
           "multipleScattering": 0.699999988079071,
           "prewarmSeconds": 1.5,
           "priority": 98,
-          "relativeWind": 0.3499999940395355,
+          "relativeWind": 0.04,
           "resolution": 72,
           "scatteringColor": [
             0.06,
@@ -4437,8 +4437,8 @@
       "inputLinks": [
         {
           "bias": 0.0,
-          "id": "emitter.7b897aee305b1e2c9b853e1c6d790801.link.input.amount.rateMultiplier",
-          "inputId": "input.amount",
+          "id": "emitter.7b897aee305b1e2c9b853e1c6d790801.link.input.arms.rateMultiplier",
+          "inputId": "input.arms",
           "scale": 1.0,
           "target": {
             "emitterId": "emitter.7b897aee305b1e2c9b853e1c6d790801",
@@ -5298,8 +5298,8 @@
       "inputLinks": [
         {
           "bias": 0.0,
-          "id": "emitter.b4ffd4bd7fbe19d2b363d539edc8a1d7.link.input.amount.rateMultiplier",
-          "inputId": "input.amount",
+          "id": "emitter.b4ffd4bd7fbe19d2b363d539edc8a1d7.link.input.arms.rateMultiplier",
+          "inputId": "input.arms",
           "scale": 1.0,
           "target": {
             "emitterId": "emitter.b4ffd4bd7fbe19d2b363d539edc8a1d7",
@@ -8060,6 +8060,12 @@
       "defaultValue": 0.0,
       "id": "input.burn",
       "name": "burn",
+      "type": "Float"
+    },
+    {
+      "defaultValue": 1.0,
+      "id": "input.arms",
+      "name": "arms",
       "type": "Float"
     }
   ],

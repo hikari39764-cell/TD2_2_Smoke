@@ -44,8 +44,10 @@ public:
     static bool HitPlayer(BossFrame& frame, int damage, HIKARI::GameProjectFloat3 direction, bool blow, int move,
                           int strike, const char* source, bool fire, bool* dodged = nullptr);
     // 場の霧へ少しずつ入れる煙を置く（煙の単位）。waitFrames tick 待ってから、frames tick かけて出し切る。
+    // orbitStep が 0 でなければ、出している間、orbitCenter の周りを 1 tick に orbitStep (rad) ずつ回る（弧の形に入る）。
     static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius,
-                           int frames, int waitFrames = 0);
+                           int frames, int waitFrames = 0, HIKARI::GameProjectFloat3 orbitCenter = {},
+                           float orbitStep = 0.0f);
     // 爆発の枠へ 1 つ入れる。枠は輪で使い回し、埋まっていれば一番古いものを上書きする。
     // 爆発の跡に残す煙（blast.leavesFog）は、ここで置く（枠が上書きされても煙は残る）。
     static void AddBlast(BossComponent& boss, const BossBlast& blast);

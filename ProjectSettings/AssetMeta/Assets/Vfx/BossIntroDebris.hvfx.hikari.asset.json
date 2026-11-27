@@ -1,0 +1,14 @@
+{
+  "displayName": "BossIntroDebris",
+  "guid": "2878eaf194e48e44b24d5a1523f9204c",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossIntroDebris.hvfx",
+  "type": "VfxEffect"
+}

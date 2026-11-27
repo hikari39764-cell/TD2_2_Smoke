@@ -276,13 +276,25 @@
               "id": 970
             },
             "animBodyTwoHandMist": 24.0,
+            "burstEffect": {
+              "assetGuid": "ff186fd5bfe37c9aa8df229f4a70a71d",
+              "assetPath": "Assets/Vfx/BossBurstFire.hvfx"
+            },
+            "burstMistEffect": {
+              "assetGuid": "e125c8dff410f1dd43a0d549ce2dd442",
+              "assetPath": "Assets/Vfx/BossBurstMist.hvfx"
+            },
             "kamaeFrames": 20,
             "knifeMistBullet": true,
             "movesPath": "Boss/kasumi_bushi_moves_kujata.csv",
             "raiseFrames": 12,
             "ringEffect": {
-              "assetGuid": "45fbe978d1a9fd41254945306ae724a9",
-              "assetPath": "Assets/Vfx/BossMistRing.hvfx"
+              "assetGuid": "d23ce9fd5ed7a272c1b504aeee2a3231",
+              "assetPath": "Assets/Vfx/BossShockRingMist.hvfx"
+            },
+            "ringFireEffect": {
+              "assetGuid": "bd0ac1d05c32593df580e3b7f304378c",
+              "assetPath": "Assets/Vfx/BossShockRingFire.hvfx"
             },
             "segmentsPath": "Boss/kasumi_bushi_segments_kujata.csv",
             "swingPushForce": 40.0
@@ -292,6 +304,22 @@
         {
           "id": 94,
           "properties": {
+            "bodyBladeFireEffect": {
+              "assetGuid": "10f7fe6797341feada54cb3f0dda2bc1",
+              "assetPath": "Assets/Vfx/BossBladeFire.hvfx"
+            },
+            "bodyGatherFireEffect": {
+              "assetGuid": "d4dac52a07fef90ff9314e04202d96da",
+              "assetPath": "Assets/Vfx/BossHandGatherFire.hvfx"
+            },
+            "bodyGatherMistEffect": {
+              "assetGuid": "d0dc4d7f0cd491afdc3cfabeb6d05981",
+              "assetPath": "Assets/Vfx/BossHandGatherMist.hvfx"
+            },
+            "bodyGatherPinchEffect": {
+              "assetGuid": "5055787e6a9845bb666a88bda47eabb7",
+              "assetPath": "Assets/Vfx/BossHandPinch.hvfx"
+            },
             "bodyHelmFillObject": {
               "$hikariRef": "SceneObject",
               "id": 966
@@ -316,6 +344,19 @@
               "$hikariRef": "SceneObject",
               "id": 960
             },
+            "introBarsAspect": 2.39,
+            "introDebrisEffect": {
+              "assetGuid": "2878eaf194e48e44b24d5a1523f9204c",
+              "assetPath": "Assets/Vfx/BossIntroDebris.hvfx"
+            },
+            "introDustEffect": {
+              "assetGuid": "83c6508d9192ba8b5339f8dd40a97665",
+              "assetPath": "Assets/Vfx/BossIntroDust.hvfx"
+            },
+            "introFistSmokeEffect": {
+              "assetGuid": "1dafc19886d14fd93d63046bb7ecaa9f",
+              "assetPath": "Assets/Vfx/BossIntroFistSmoke.hvfx"
+            },
             "introGauntletLeftObject": {
               "$hikariRef": "SceneObject",
               "id": 963
@@ -323,6 +364,10 @@
             "introGauntletRightObject": {
               "$hikariRef": "SceneObject",
               "id": 962
+            },
+            "introHazeEffect": {
+              "assetGuid": "303b6d4b33c677abefa6b3b6fab7dadd",
+              "assetPath": "Assets/Vfx/BossIntroEyeHaze.hvfx"
             },
             "introHelmObject": {
               "$hikariRef": "SceneObject",
@@ -332,12 +377,20 @@
               "$hikariRef": "SceneObject",
               "id": 964
             },
+            "introMotesEffect": {
+              "assetGuid": "b8862ac414453430affad2f81e139e81",
+              "assetPath": "Assets/Vfx/BossIntroMotes.hvfx"
+            },
             "introMotionBlurMaxPixels": 24.0,
             "introMotionBlurShutter": 180.0,
             "introSequence": {
               "$hikari.assetGuid": "f1fcb6f8cd88f9565d9ff8fc2a704f2c"
             },
-            "introSkipAction": "Gameplay.Jump"
+            "introSkipAction": "Gameplay.Jump",
+            "introTipSmokeEffect": {
+              "assetGuid": "fb452e922ab463d1bb9cc09cb6665cba",
+              "assetPath": "Assets/Vfx/BossIntroTipSmoke.hvfx"
+            }
           },
           "type": "Project_TD2_2.BossIntro"
         },
@@ -600,7 +653,11 @@
         {
           "id": 1,
           "properties": {
-            "enabled": true
+            "enabled": true,
+            "tileEffect": {
+              "assetGuid": "350bd4dff935f6e68daa3de92adb24fe",
+              "assetPath": "Assets/Vfx/ArenaFireTile.hvfx"
+            }
           },
           "type": "Project_TD2_2.BurnField"
         },

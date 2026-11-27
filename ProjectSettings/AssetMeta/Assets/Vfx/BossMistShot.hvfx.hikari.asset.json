@@ -1,0 +1,14 @@
+{
+  "displayName": "BossMistShot",
+  "guid": "575bd3cb4f236a63437967fe0946b5a3",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/BossMistShot.hvfx",
+  "type": "VfxEffect"
+}

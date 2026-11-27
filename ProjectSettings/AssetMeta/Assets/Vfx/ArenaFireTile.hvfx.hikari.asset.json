@@ -1,0 +1,14 @@
+{
+  "displayName": "ArenaFireTile",
+  "guid": "350bd4dff935f6e68daa3de92adb24fe",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/ArenaFireTile.hvfx",
+  "type": "VfxEffect"
+}
