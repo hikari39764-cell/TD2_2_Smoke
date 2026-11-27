@@ -67,16 +67,22 @@ BossGourdSight BossGourdLink::Sense(HIKARI::WorldView& world) {
 
 void BossGourdLink::HandOff(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
                             BossCatchHandoff& caught, int pulling) {
-    if (caught.smoke <= 0.0f && caught.count == 0 && pulling == 0)
+    if (caught.smoke <= 0.0f && caught.count == 0 && pulling == 0 && caught.bites == 0)
         return;
     ComponentLookup::ForEachGame<Gourd>(
         [&](HIKARI::ObjectView, Gourd& gourd) {
             // 引き込みの間と、入りきった直後は、吸い込みをやめていても口が飲み込み続ける。
             GourdRules::NotifySwallowing(gourd);
+            // 噛んだ合図と引き込みの進み（c-e0a9c3）。見せるのはヒョウタン。
+            GourdRules::NotePull(gourd, caught.pull);
+            GourdRules::NotifyBite(gourd, caught.bites, caught.fireBites > 0, caught.bitePosition);
+            caught.bites = 0;
+            caught.fireBites = 0;
+            caught.pull = 0.0f;
             if (caught.smoke <= 0.0f && caught.count == 0)
                 return;
             // 吸った合図は、ヒョウタン自身が次の描画フレームで見せる（ボスはカメラに触れない）。
-            GourdRules::NotifyCatch(gourd, caught.count);
+            GourdRules::NotifyCatch(gourd, caught.count, caught.fireCount > 0, caught.knifeCount >= caught.count);
             // 火の刃を吸い取ったら火弾になる（捕まえた時に空きがあった分。入りきった時に満杯になっていても）。
             GourdRules::NotifyFireCatch(gourd, caught.fireCount);
             const float added = GourdRules::AddSmoke(gourd, caught.smoke);

@@ -121,6 +121,9 @@ public:
     static float GetMaximumFallSpeed(const Player& player);
     // プレイヤーのカメラの物体（無ければ空）。
     static HIKARI::Entity GetCamera(const Player& player);
+    // 一瞬の動きのぼかしを頼む（食らった・回避・斬撃を吸い取った・ボスの爆発など。c-e0a9c3）。プレイヤーのカメラが、戦いの
+    // 間のふだんのぼかしに重ねて出し、frames F で戻る。いま残っているぼかしの方が強ければ、そのまま。
+    static void KickBlur(Player& player, float shutterDegrees, float maxPixels, int frames);
     // 炎上：受けた火のダメージの累計、残り秒、消えた回数、最後に消えた訳。
     static double GetBurnDamageTotal(const Player& player);
     static float GetBurnRemaining(const Player& player);

@@ -235,11 +235,15 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, f
         }
         gourd.catchPulseLeft = std::max(0.0f, gourd.catchPulseLeft - dt);
         const float gulp = gourd.catchPulseSeconds > 0.0f ? gourd.catchPulseLeft / gourd.catchPulseSeconds : 0.0f;
+        // 膨らんで、弾んで戻る（c-e0a9c3）：始めが最大。catchPulseBounce の割合だけ、戻りながら逆へ縮んでから落ち着く。
+        const float bounce = std::clamp(gourd.catchPulseBounce, 0.0f, 1.0f);
+        const float swell = (1.0f - bounce) * gulp * gulp +
+                            bounce * std::exp(-4.0f * (1.0f - gulp)) * std::cos(1.25f * kTau * (1.0f - gulp)) * gulp;
         // 吸い込み中は脈を打つように膨らむ（見た目だけ。口の位置と吸い込みの規則は変えない）。
         const float pulse =
             (1.0f + gourd.absorbPulseScale * gourd.absorbBlend *
                         (0.5f + 0.5f * std::sin(kTau * gourd.absorbPulseFrequency * gourd.absorbSeconds))) *
-            (1.0f + gourd.catchPulseScale * gulp * gulp);
+            (1.0f + gourd.catchPulseScale * (gourd.catchSmall ? gourd.catchSmallScale : 1.0f) * swell);
         transform.scale = {gourd.radius / kMeshRadius * pulse, gourd.height / kMeshHeight,
                            gourd.radius / kMeshRadius * pulse};
         gourd.transformAccepted = object.SetWorldTransform(transform).Accepted();

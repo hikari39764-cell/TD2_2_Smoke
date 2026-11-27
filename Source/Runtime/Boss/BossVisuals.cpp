@@ -43,6 +43,15 @@ const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
     return nullptr;
 }
 
+// 飛んでいる・引き込まれているナイフ（霧の弾）を探す。消えた後は見つからない。
+const BossWave* FindKnife(const BossComponent& boss, uint64_t id) {
+    for (const auto& wave : boss.waves) {
+        if (wave.active && wave.knife && wave.id == id)
+            return &wave;
+    }
+    return nullptr;
+}
+
 // 引き込まれる斬撃の両翼を押し寄せる力の提出 ID（斬撃のエフェクトの枠 1 つに 2 個。ほかのボスの提出と重ねない）と、
 // 力を置く所（刃の中心から、捕まった時の幅のこの割合だけ外）。
 constexpr uint64_t kSqueezeBase = 1300;
@@ -71,6 +80,21 @@ void Squeeze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent&
     }
 }
 
+// 引き込みの尾（c-e0a9c3）：捕まった刃に付いて行き、刃の幅に沿って、通った所に光の粒を残す。amount は出す量（入り切ったら 0）。
+void UpdateTrail(HIKARI::WorldView& world, BossComponent& boss, BossSlashEffect& effect, float amount) {
+    if (boss.absorbTrailEffect.IsEmpty() || (!effect.trail.IsValid() && !(amount > 0.0f)))
+        return;
+    HIKARI::GameProjectVfxParameterOverrides parameters{};
+    VfxParameters::SetColor(parameters, kColorInput,
+                            effect.trailFire ? boss.absorbTrailFireColor : boss.absorbTrailMistColor);
+    VfxParameters::SetFloat(parameters, kAmountInput, amount);
+    // 資産は幅 1 m の刃で作ってある（粒は局所 Y＝刃の幅に沿って生まれる）：刃の向きに合わせ、根の拡大を、いまの刃の幅 (m)
+    // にする（一様に。一様でない拡大は、粒の板まで伸ばして針にする）。細りながら口へ寄る刃の跡が、口へすぼまる光の面になる。
+    const HIKARI::GameProjectTransform transform =
+        Placed(effect.position, std::max(0.05f, effect.scale * boss.slashEffectWidth), effect.rotation);
+    StartOrSend(world, boss, effect.trail, boss.absorbTrailEffect, transform, parameters);
+}
+
 // 飛ぶ斬撃の本体：斬撃 1 つにつき、自前の流体域を持つ三日月の霧のエフェクトを 1 つ飛ばす。
 void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds,
                    float alpha) {
@@ -79,6 +103,7 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
         if (!effect.handle.IsValid())
             continue;
         if (!vfx.IsActive(effect.handle)) {
+            StopHandle(world, effect.trail);
             effect = {};
             continue;
         }
@@ -93,6 +118,9 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
                 // 入りきった後は、口の所で短く消える（元の速さで後ろへ飛んで行かない）。
                 const float progress =
                     static_cast<float>(wave->pullFrame) / static_cast<float>(std::max(1, wave->pullFrames));
+                // 噛まれた瞬間（c-e0a9c3）：刃の光の層を一度膨らませる。
+                if (!effect.captured)
+                    effect.bite = boss.absorbBiteGlow;
                 effect.captured = true;
                 effect.pullProgress = progress;
                 effect.pullAcross = wave->pullAcross;
@@ -103,6 +131,8 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
                 // 霧の源は、入りきる時に 0 になるように絞っていく（終わりまで出し続けると、端の霧が口へ届く前に補われる）。
                 effect.fly = boss.absorbPullFly * (1.0f - std::clamp(progress, 0.0f, 1.0f));
                 effect.pinch = Lerp(1.0f, boss.absorbPullPinch, std::clamp(progress, 0.0f, 1.0f));
+                effect.trailFire = wave->fire;
+                UpdateTrail(world, boss, effect, 1.0f);
             }
             if (wave->struck && !effect.struck) {
                 // プレイヤーに当たった：刃を出すのをやめて砕けさせ、勢いを落としてその場で散らす
@@ -123,13 +153,18 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
             effect.fadeSeconds -= seconds;
             if (effect.fadeSeconds <= 0.0f) {
                 StopHandle(world, effect.handle);
+                StopHandle(world, effect.trail);
                 effect = {};
                 continue;
             }
             effect.position = Add(effect.position, Mul(effect.velocity, seconds));
+            // 入り切った後の尾：出すのをやめ、残った粒が消えるのを待つ。
+            UpdateTrail(world, boss, effect, 0.0f);
         }
         if (!effect.flying)
             effect.glow = std::max(0.0f, effect.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
+        effect.bite =
+            std::max(0.0f, effect.bite - boss.absorbBiteGlow * seconds / std::max(0.001f, boss.absorbBiteGlowSeconds));
         effect.impactSeconds = std::max(0.0f, effect.impactSeconds - seconds);
         SendSlash(world, boss, effect);
         if (effect.captured)
@@ -194,7 +229,8 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
         boss.ringScale = ring->radius / std::max(0.01f, boss.ringEffectRadius);
         boss.ringCenter = {ring->position.x, boss.ground.y + boss.ringHeight, ring->position.z};
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = boss.ringEffect;
+        // 火を残す輪（フェーズ 2）は炎の輪、ほかは霞の輪（c-3c908c）。
+        play.asset = ring->fire && !boss.ringFireEffect.IsEmpty() ? boss.ringFireEffect : boss.ringEffect;
         play.transform = Placed(boss.ringCenter, boss.ringScale);
         play.randomSeed = static_cast<uint32_t>(ring->id);
         play.parameters = RingParameters(true, 1.0f);
@@ -220,12 +256,37 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
     Send(world, boss, boss.ringVfx, Placed(boss.ringCenter, boss.ringScale), RingParameters(flying, glow));
 }
 
+// 叩きつけの爆発（c-3c908c）：範囲爆発の叩きつけは、見えている左手の真下の地面から出す（骨格の体が出ていなければ足元）。
+// 火の剣気が狙った所で爆ぜる時は、その真下の地面から小さく出す。剣が燃えている技は火、ほかは霞。再生は覚えておき、域が
+// 消えるまで流体域の枠に数える（GetFluidDomainDemand）。
+void PlayBurst(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComponent* look, const BossBlast& blast) {
+    const auto& asset = blast.fire || boss.burstMistEffect.IsEmpty() ? boss.burstEffect : boss.burstMistEffect;
+    if (asset.IsEmpty())
+        return;
+    Vec3 at{blast.position.x, boss.ground.y, blast.position.z};
+    if (blast.atHand && look != nullptr && look->anim.leftHandSeen)
+        at = {look->anim.leftHandWorld.x, boss.ground.y, look->anim.leftHandWorld.z};
+    HIKARI::GameProjectVfxPlayRequest play{};
+    play.asset = asset;
+    play.transform = Placed(at, blast.burstScale);
+    play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
+    boss.burstVfx[boss.burstCursor++ % boss.burstVfx.size()] = Start(world, boss, play);
+}
+
 // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
-void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss) {
+void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComponent* look) {
+    for (auto& handle : boss.burstVfx) {
+        if (handle.IsValid() && !world.GetVfx().IsActive(handle))
+            handle = {};
+    }
     for (auto& blast : boss.blasts) {
         if (!blast.effectPending)
             continue;
         blast.effectPending = false;
+        if (blast.burst) {
+            PlayBurst(world, boss, look, blast);
+            continue;
+        }
         if (blast.playerHit && blast.fire) {
             // 火がプレイヤーに当たった：火球と光の輪は出さない。攻撃の向きへ体を突き抜ける炎（場の火の域の流体）と、
             // 同じ向きへ飛ぶ火花を出す。
@@ -248,7 +309,97 @@ void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss) {
     }
 }
 
+HIKARI::GameProjectVfxParameterOverrides MistShotParameters(const BossMistShotEffect& shot) {
+    HIKARI::GameProjectVfxParameterOverrides parameters{};
+    VfxParameters::SetFloat(parameters, kFlyInput, shot.fly);
+    VfxParameters::SetFloat(parameters, kGlowInput, shot.glow);
+    return parameters;
+}
+
+// 霧の弾の本体を 1 発ぶん出す（c-e0a9c3 の続き）。出せたら true。枠が無い時は、消えかけ（無ければ一番遠くまで飛んだもの）を
+// 止めて false（止めた域もそのフレームの間は流体域の数に入るので、次のフレームにもう一度試す）。
+bool StartMistShot(HIKARI::WorldView& world, BossComponent& boss, const BossWave& wave) {
+    BossMistShotEffect* slot = nullptr;
+    BossMistShotEffect* oldest = nullptr;
+    for (auto& shot : boss.mistShots) {
+        if (!shot.handle.IsValid()) {
+            slot = &shot;
+            break;
+        }
+        if (oldest == nullptr || shot.flying < oldest->flying ||
+            (shot.flying == oldest->flying && shot.travelled > oldest->travelled))
+            oldest = &shot;
+    }
+    if (slot == nullptr) {
+        StopHandle(world, oldest->handle);
+        *oldest = {};
+        return false;
+    }
+    *slot = {};
+    slot->waveId = wave.id;
+    slot->flying = true;
+    slot->position = wave.position;
+    slot->rotation = BasisRotation(wave.direction, wave.across);
+    HIKARI::GameProjectVfxPlayRequest play{};
+    play.asset = boss.mistShotEffect;
+    play.transform = Placed(slot->position, boss.mistShotScale, slot->rotation);
+    play.randomSeed = static_cast<uint32_t>(wave.id);
+    play.parameters = MistShotParameters(*slot);
+    slot->handle = StartMoving(world, boss, play, Mul(wave.direction, wave.speed));
+    return true;
+}
+
+// 出ている霧の弾の本体を進める。飛んでいる間はエフェクト側の速度に任せ（何も送らない）、捕まったら規則の位置へ毎フレーム
+// 置いて細らせ、弾が消えたら煙を出すのをやめ、その場で尾が消えるのを待ってから止める。
+void UpdateMistShots(HIKARI::WorldView& world, BossComponent& boss, float seconds, float alpha) {
+    const auto vfx = world.GetVfx();
+    for (auto& shot : boss.mistShots) {
+        if (!shot.handle.IsValid())
+            continue;
+        if (!vfx.IsActive(shot.handle)) {
+            shot = {};
+            continue;
+        }
+        const BossWave* wave = shot.flying ? FindKnife(boss, shot.waveId) : nullptr;
+        if (wave != nullptr && !wave->captured) {
+            shot.position = wave->position;
+            shot.travelled = wave->travelled;
+            continue;
+        }
+        if (wave != nullptr) {
+            // 吸い込みに捕まった：細くしながら口へ引き込む。煙は、入りきる時に 0 になるように絞る。
+            const float progress = std::clamp(
+                static_cast<float>(wave->pullFrame) / static_cast<float>(std::max(1, wave->pullFrames)), 0.0f, 1.0f);
+            if (!shot.captured)
+                boss.vfxAccepted = vfx.SetVelocity(shot.handle, {}) && boss.vfxAccepted;
+            shot.captured = true;
+            // 向きは放った時のまま（口へ向けて回さない）：尾の煙は域の格子の中に残っているので、域を回すと、尾が棒のように
+            // 振り回されて見える。位置だけ口へ寄せ、細らせる（域ごと縮むので、尾が口へ吸い寄せられて見える）。
+            shot.position = Lerp(wave->previousPosition, wave->position, std::clamp(alpha, 0.0f, 1.0f));
+            shot.scale = Lerp(1.0f, std::clamp(boss.absorbPullEndScale, 0.01f, 1.0f), progress);
+            shot.fly = 1.0f - progress;
+        } else {
+            if (shot.flying) {
+                shot.flying = false;
+                shot.fly = 0.0f;
+                shot.fadeSeconds = shot.captured ? boss.absorbPullFadeSeconds : boss.mistShotFadeSeconds;
+                boss.vfxAccepted = vfx.SetVelocity(shot.handle, {}) && boss.vfxAccepted;
+            }
+            shot.fadeSeconds -= seconds;
+            if (shot.fadeSeconds <= 0.0f) {
+                StopHandle(world, shot.handle);
+                shot = {};
+                continue;
+            }
+            shot.glow = std::max(0.0f, shot.glow - seconds / std::max(0.001f, boss.mistShotGlowFadeSeconds));
+        }
+        Send(world, boss, shot.handle, Placed(shot.position, boss.mistShotScale * shot.scale, shot.rotation),
+             MistShotParameters(shot));
+    }
+}
+
 // ナイフ：刃と光点のエフェクトを飛ばし、尾は場の霧へ霞を入れるエフェクトで出す。どちらもエフェクト側の速度で進める。
+// 霧の弾（knifeMistBullet）で、本体のエフェクト（mistShotEffect）がある時は、それを 1 発に 1 つ飛ばす（上の 2 つは出さない）。
 void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
@@ -278,17 +429,19 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
         }
         if (!wave.active || !wave.knife || boss.waveVfxId[i] == wave.id)
             continue;
+        // 霧の弾（knifeMistBullet）：刃と尾を出さず、本体のエフェクトを 1 発に 1 つ飛ばす（枠が空かなければ次のフレームに）。
+        if (boss.knifeMistBullet) {
+            if (boss.mistShotEffect.IsEmpty() || StartMistShot(world, boss, wave))
+                boss.waveVfxId[i] = wave.id;
+            continue;
+        }
         boss.waveVfxId[i] = wave.id;
         const Vec3 velocity = Mul(wave.direction, wave.speed);
-        // 霧の弾（左手の技。c-4be37e）：刃を出さず、尾の霞を弾の大きさにして霧の芯を灯す。
-        const bool mist = boss.knifeMistBullet;
         HIKARI::GameProjectVfxPlayRequest tail{};
         tail.asset = boss.swordEffect;
-        tail.transform = Placed(wave.position, mist ? boss.knifeMistScale : 1.0f);
-        tail.parameters = Parameters(boss, boss.knifeEffectAmount, mist ? boss.knifeMistCore : 0.0f);
+        tail.transform = Placed(wave.position, 1.0f);
+        tail.parameters = Parameters(boss, boss.knifeEffectAmount, 0.0f);
         handle = StartMoving(world, boss, tail, velocity);
-        if (mist)
-            continue;
         // 刃のエフェクトには入力が無い（霞の尾の入力を渡すと、知らない入力として再生を断られる）。
         HIKARI::GameProjectVfxPlayRequest blade{};
         blade.asset = boss.knifeEffect;
@@ -350,14 +503,22 @@ size_t BossVisuals::GetFluidDomainDemand(const BossComponent& boss, const BossBo
     size_t live = boss.ringVfx.IsValid() ? 1 : 0;
     for (const auto& effect : boss.slashEffects)
         live += effect.handle.IsValid() ? 1 : 0;
+    size_t bursts = 0;
+    for (const auto& handle : boss.burstVfx)
+        bursts += handle.IsValid() ? 1 : 0;
+    // 霧の弾の本体も、1 発が流体域を 1 つ使う（爆発と同じく、斬撃の枠の上限とは別に数える）。
+    for (const auto& shot : boss.mistShots)
+        bursts += shot.handle.IsValid() ? 1 : 0;
     // 剣を振っている間は、振り抜いた瞬間に出す斬撃の分を先に取っておく（出すフレームに枠が空いているように）。
     // 回し蹴りも、炎の輪を出す前（前隙・攻撃中）から先に取っておく。
     const BossMove* move = BossRules::GetMove(boss, boss.move);
     const bool kicking =
         boss.state == BossState::Act && move != nullptr && move->type == BossMoveType::Kick && !boss.ringVfx.IsValid();
-    // 胴の煙は出し続ける域なので、斬撃の枠の上限とは別に数える。
-    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0)) +
-           (look != nullptr && look->state.smokeVfx.IsValid() ? 1 : 0);
+    // 胴の煙と、燃える刀身の流体の炎は、出し続ける域なので、斬撃の枠の上限とは別に数える。
+    return std::min(kBossSlashEffectCapacity + 1, live + (boss.swordSmoke ? 1 : 0) + (kicking ? 1 : 0)) + bursts +
+           (look != nullptr && look->state.smokeVfx.IsValid() ? 1 : 0) +
+           (look != nullptr && look->state.accents.bladeFireVfx.IsValid() ? 1 : 0) +
+           (look != nullptr && look->state.accents.gatherVfx.IsValid() ? 1 : 0);
 }
 
 void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
@@ -365,8 +526,9 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
                          float alpha) {
     UpdateSlashes(world, object, boss, seconds, alpha);
     UpdateRing(world, boss, seconds);
-    PlayBlasts(world, boss);
+    PlayBlasts(world, boss, look);
     UpdateKnives(world, boss, alpha);
+    UpdateMistShots(world, boss, seconds, alpha);
     UpdateSwordHaze(world, boss, look, phaseShift);
 }
 
@@ -375,8 +537,14 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
         StopHandle(world, handle);
     for (auto& handle : boss.knifeVfx)
         StopHandle(world, handle);
+    for (auto& shot : boss.mistShots) {
+        StopHandle(world, shot.handle);
+        shot = {};
+    }
     StopHandle(world, boss.ringVfx);
     boss.ringVfxId = 0;
+    for (auto& handle : boss.burstVfx)
+        StopHandle(world, handle);
     for (auto& effect : boss.slashEffects) {
         StopHandle(world, effect.handle);
         effect = {};
@@ -385,6 +553,21 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
 }
 
 void BossVisuals::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
+    if (fields.Section("手応え：斬撃・霧の弾を放った瞬間のカメラ")) {
+        fields.Float("releaseCameraAmplitude", "カメラの揺れ幅 (m、0 は揺らさない)", boss.releaseCameraAmplitude, 0.0f,
+                     0.5f);
+        fields.Float("releaseCameraFov", "視野角の打ち込み (度。負で狭まり、0 は無効)", boss.releaseCameraFov, -10.0f,
+                     10.0f);
+        fields.Int("releaseCameraFrames", "カメラが戻るまで (F、0 は無効)", boss.releaseCameraFrames, 0, 120);
+        fields.Float("releaseCameraFrequency", "揺れの周波数 (Hz)", boss.releaseCameraFrequency, 0.0f, 60.0f);
+        fields.Float("releaseCameraNear", "この距離 (m) より近くで放った時は、そのままの強さ", boss.releaseCameraNear,
+                     0.0f, 100.0f);
+        fields.Float("releaseCameraRange", "この距離 (m) で 0 になるように弱める", boss.releaseCameraRange, 0.1f,
+                     200.0f);
+        fields.Float("releaseKnifeScale", "霧の弾（ナイフ）の時の強さ（倍）", boss.releaseKnifeScale, 0.0f, 2.0f);
+        fields.Float("releaseRumble", "パッドの振動 (0〜1、0 は無効)", boss.releaseRumble, 0.0f, 1.0f);
+        fields.Int("releaseRumbleFrames", "振動の長さ (F、0 は無効)", boss.releaseRumbleFrames, 0, 120);
+    }
     if (fields.Section("見た目（霞の色とエフェクト）")) {
         fields.Vfx("slashEffect", "飛ぶ斬撃のエフェクト（三日月の霧。自前の流体域を持つ）", boss.slashEffect);
         fields.Float("slashEffectWidth", "斬撃のエフェクトが作られている幅 (m。判定サイズ ÷ これ が大きさの倍率)",
@@ -443,17 +626,23 @@ void BossVisuals::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) 
             "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
         fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", boss.knifeEffectAmount, 0.0f, 20.0f);
         fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", boss.knifeEffect);
-        fields.Bool("knifeMistBullet",
-                    "投げナイフを霧の弾にする（刃を出さず、尾の霞を弾の大きさで、霧の芯を灯して飛ばす）",
+        fields.Bool("knifeMistBullet", "投げナイフを霧の弾にする（刃と尾を出さず、下の本体のエフェクトを飛ばす）",
                     boss.knifeMistBullet);
-        fields.Float("knifeMistScale", "…霧の弾の大きさ（尾の霞の倍率）", boss.knifeMistScale, 0.1f, 10.0f);
-        fields.Float("knifeMistCore", "…霧の弾の芯の明るさ（尾の霞のエフェクトの霧の芯）", boss.knifeMistCore, 0.0f,
-                     10.0f);
+        fields.Vfx("mistShotEffect",
+                   "霧の弾の本体のエフェクト（弾に付いて動く細かい流体域：尾の煙・頭の光・軌跡の帯・熱の揺らぎ）",
+                   boss.mistShotEffect);
+        fields.Float("mistShotScale", "…弾の大きさ（倍）", boss.mistShotScale, 0.1f, 10.0f);
+        fields.Float("mistShotFadeSeconds", "…弾が消えた後に、尾の煙が残る時間 (秒)", boss.mistShotFadeSeconds, 0.0f,
+                     5.0f);
+        fields.Float("mistShotGlowFadeSeconds", "…弾が消えた後に、芯の光が消えるまで (秒)",
+                     boss.mistShotGlowFadeSeconds, 0.01f, 5.0f);
         fields.Float("swingPushForce",
                      "振りで場の霧を揺らす力（m/s²。当たりの窓の間、刃が進む向きへ押す。0 は押さない）",
                      boss.swingPushForce, 0.0f, 400.0f);
         fields.Float("swingPushRadius", "…力が届く半径 (m)", boss.swingPushRadius, 0.1f, 10.0f);
         fields.Vfx("ringEffect", "回し蹴りの霞の輪のエフェクト（広がる炎の輪。自前の流体域を持つ）", boss.ringEffect);
+        fields.Vfx("ringFireEffect", "…火を残す技（フェーズ 2）の輪のエフェクト（空なら上と同じ）",
+                   boss.ringFireEffect);
         fields.Float("ringEffectRadius", "…エフェクトが作られている半径 (m。輪の半径 ÷ これ が大きさの倍率)",
                      boss.ringEffectRadius, 0.5f, 50.0f);
         fields.Float("ringFadeSeconds", "…輪が消えた後、炎が消えるまで残す時間 (秒)", boss.ringFadeSeconds, 0.0f, 3.0f);
@@ -464,6 +653,31 @@ void BossVisuals::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) 
                      0.0f, 5.0f);
         fields.Float("ringPush", "霞の輪が足元の霧を外へ押す速さ (m/秒、0 は押さない)", boss.ringPush, 0.0f, 100.0f);
         fields.Float("ringPushRadius", "…押す 1 点の半径 (m)", boss.ringPushRadius, 0.1f, 20.0f);
+        fields.Vfx("burstEffect",
+                   "範囲爆発：叩きつけの爆発のエフェクト（火。剣が燃えている技で出す。自前の流体域を持つ）",
+                   boss.burstEffect);
+        fields.Vfx("burstMistEffect", "…霞の爆発（剣が燃えていない技で出す。空なら火と同じ）", boss.burstMistEffect);
+        fields.Float("burstScale", "…爆発の大きさ（倍）", boss.burstScale, 0.1f, 5.0f);
+        fields.Float(
+            "crossBurstScale",
+            "…火の剣気が狙った所で爆ぜる時の爆発の大きさ（叩きつけの爆発に対する倍率。0 は今までの小さな爆発）",
+            boss.crossBurstScale, 0.0f, 2.0f);
+        fields.Float("burstPush", "…爆発が足元の霧を外へ押す速さ (m/秒、0 は押さない)", boss.burstPush, 0.0f, 100.0f);
+        fields.Float("burstPushRadius", "…押しが届く半径 (m)", boss.burstPushRadius, 0.1f, 50.0f);
+        fields.Float("burstCameraAmplitude", "…爆発の瞬間のカメラの揺れ幅 (m、0 は揺らさない)",
+                     boss.burstCameraAmplitude, 0.0f, 2.0f);
+        fields.Int("burstCameraFrames", "…揺れの長さ (F)", boss.burstCameraFrames, 0, 120);
+        fields.Float("burstCameraFrequency", "…揺れの周波数 (Hz)", boss.burstCameraFrequency, 0.0f, 60.0f);
+        fields.Float("burstRumbleLow", "…パッドの振動：重いモーター (0〜1)", boss.burstRumbleLow, 0.0f, 1.0f);
+        fields.Float("burstRumbleHigh", "…パッドの振動：軽いモーター (0〜1)", boss.burstRumbleHigh, 0.0f, 1.0f);
+        fields.Int("burstRumbleFrames", "…振動の長さ (F、0 は無効)", boss.burstRumbleFrames, 0, 120);
+        fields.Float("burstBlurShutter", "…爆発の瞬間の動きのぼかし：シャッター角 (度、0 は無効)",
+                     boss.burstBlurShutter, 0.0f, 360.0f);
+        fields.Float("burstBlurPixels", "…ぼかしの長さの上限 (1080p の画素)", boss.burstBlurPixels, 0.0f, 64.0f);
+        fields.Int("burstBlurFrames", "…ぼかしが戻るまで (F)", boss.burstBlurFrames, 0, 120);
+        fields.Note(
+            "叩きつけの爆発は、見えている左手の真下の地面から出ます。2 つとも空のシーンでは、今までの小さな爆ぜです。"
+            "炎・煙・光・火花の形は、エフェクト BossBurstFire／BossBurstMist の層で調整します。");
         fields.Note(
             "飛ぶ斬撃が通った跡の残り煙は、エフェクトではなく場の霧の域へ直接入れます（Emit。域は増やしません）。");
     }

@@ -169,24 +169,62 @@ struct Gourd : HIKARI::Component {
                       "せん。HUD の煙の条は、物体変数 Gourd.Blocked（吸えないまま吸い込んでいる秒数）"
                       "を読んで短く光ります（Flow の項目）。地面や画面に予告は出しません。"))
     // ボスの斬撃・ナイフを吸い取った瞬間の手応え（c-d330c0）。止め・手柄の振動・視野角の引き。
-    FIELD(int, catchHitStopFrames, 3, "ボスの斬撃を吸い取った時の止め (F、0 は無効)", HIKARI::Range(0, 30),
+    FIELD(int, catchHitStopFrames, 7, "ボスの斬撃を吸い取った時の止め (F、0 は無効)", HIKARI::Range(0, 30),
           HIKARI::Group("吸い取りの手応え"))
-    FIELD(float, catchHitStopScale, 0.05f, "…止め中の時間倍率", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, catchHitStopScale, 0.03f, "…止め中の時間倍率", HIKARI::Range(0.0f, 1.0f))
     // 続けて吸い取った時（X 字の 2 本・ナイフの扇が順に入る）、止めを重ねない間隔。この間の吸い取りは、止め以外の
     // 手応え（エフェクト・振動・画角・膨らみ）だけ出す。
     FIELD(int, catchHitStopCooldownFrames, 20, "…続けて吸い取った時に、止めを重ねない間隔 (F)", HIKARI::Range(0, 240))
-    FIELD(float, catchRumbleLow, 0.5f, "…振動：重いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
-    FIELD(float, catchRumbleHigh, 0.8f, "…振動：軽いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
-    FIELD(int, catchRumbleFrames, 6, "…振動時間 (F、0 は無効)", HIKARI::Range(0, 120))
-    FIELD(float, catchFovDegrees, 1.5f, "…視野角の引き (度。正で広がり、0 は無効)", HIKARI::Range(-10.0f, 10.0f))
-    FIELD(int, catchFovFrames, 8, "…視野角が戻るまで (F)", HIKARI::Range(0, 120))
-    // 吸い取った瞬間に口の位置で一度だけ出すエフェクト（口へ縮む歪みの輪・冷たい白の閃き・口へ飛び込む光の粒）。
-    // 空なら何も出さない。
-    FIELD(HIKARI::VfxAsset, catchEffect, (HIKARI::VfxAsset{"a3d5c1e09b7f4e28b6140f2d8c9e7a51"}),
+    FIELD(float, catchRumbleLow, 0.9f, "…振動：重いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, catchRumbleHigh, 0.6f, "…振動：軽いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, catchRumbleFrames, 12, "…振動時間 (F、0 は無効)", HIKARI::Range(0, 120))
+    FIELD(float, catchFovDegrees, 3.5f, "…視野角の引き (度。正で広がり、0 は無効)", HIKARI::Range(-10.0f, 10.0f))
+    FIELD(int, catchFovFrames, 14, "…視野角が戻るまで (F)", HIKARI::Range(0, 120))
+    FIELD(float, catchKickDistance, 0.11f, "…カメラが口の向きと逆へ押される距離 (m、0 は無効)",
+          HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, catchShakeAmplitude, 0.022f, "…カメラの揺れ幅 (m、0 は無効)", HIKARI::Range(0.0f, 0.2f))
+    // 呑み込んだ瞬間の動きのぼかしの一瞬（カメラの押しと揺れが、画の流れになって見える。カメラの元の設定へ戻る）。
+    FIELD(float, catchBlurShutter, 300.0f, "…動きのぼかしの一瞬：シャッター角 (度、0 は無効)",
+          HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, catchBlurPixels, 40.0f, "…ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(int, catchBlurFrames, 12, "…ぼかしが戻るまで (F)", HIKARI::Range(0, 120))
+    // 吸い取った瞬間に口の位置で一度だけ出すエフェクト（内へ絞る輪 → 閃き → 外へ弾ける輪と火花 → 口元の余韻。色は
+    // 入力 input.color：霞の刃・ナイフは catchMistColor、火の刃は catchFireColor）。空なら何も出さない。
+    FIELD(HIKARI::VfxAsset, catchEffect, (HIKARI::VfxAsset{"b1f5a11c3053118f0c418f38f3a29ec0"}),
           "吸い取った瞬間に口で出すエフェクト（空なら出さない）")
+    FIELD(HIKARI::Color, catchMistColor, (HIKARI::Color{0.62f, 0.86f, 1.0f, 1.0f}), "…霞の刃・ナイフを吸い取った時の色")
+    FIELD(HIKARI::Color, catchFireColor, (HIKARI::Color{1.0f, 0.5f, 0.16f, 1.0f}), "…火の刃を吸い取った時の色")
+    FIELD(float, catchEffectGlow, 2.2f, "…エフェクトの明るさ（色に掛ける倍率）", HIKARI::Range(0.0f, 16.0f))
+    FIELD(float, catchSmallScale, 0.5f, "…ナイフを吸い取った時の、口のエフェクトと膨らみの大きさ（斬撃を 1 として）",
+          HIKARI::Range(0.05f, 2.0f))
     // 吸い取った時、飲み込んだようにヒョウタンが一度膨らんで戻る（膨らむ割合と、戻るまでの秒）。
-    FIELD(float, catchPulseScale, 0.4f, "吸い取った時にヒョウタンが膨らむ割合（0 は無効）", HIKARI::Range(0.0f, 2.0f))
-    FIELD(float, catchPulseSeconds, 0.18f, "…膨らみが戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, catchPulseScale, 0.7f, "吸い取った時にヒョウタンが膨らむ割合（0 は無効）", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, catchPulseSeconds, 0.36f, "…膨らみが戻るまで (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, catchPulseBounce, 0.35f, "…戻る時の弾み（0 は弾まずに戻る。1 に近いほど、逆へ縮んでから落ち着く）",
+          HIKARI::Range(0.0f, 1.0f))
+    // 噛む（c-e0a9c3）：斬撃・ナイフが吸い込みに捕まった瞬間。短い止め・鋭い振動・口から捕まえた所へ走る火花の線。
+    // 続けて捕まった分は、止めを重ねない（catchHitStopCooldownFrames と同じ間隔）。
+    FIELD(int, biteHitStopFrames, 4, "捕まえた瞬間（噛む）の止め (F、0 は無効)", HIKARI::Range(0, 30))
+    FIELD(float, biteHitStopScale, 0.04f, "…止め中の時間倍率", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, biteRumbleLow, 0.35f, "…振動：重いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, biteRumbleHigh, 1.0f, "…振動：軽いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, biteRumbleFrames, 5, "…振動時間 (F、0 は無効)", HIKARI::Range(0, 120))
+    // カメラの打ち込み：一瞬だけ視野角を狭め（負で狭まる）、小さく揺らす。
+    FIELD(float, biteFovDegrees, -1.6f, "…視野角の打ち込み (度。負で狭まり、0 は無効)", HIKARI::Range(-10.0f, 10.0f))
+    FIELD(float, biteShakeAmplitude, 0.009f, "…カメラの揺れ幅 (m、0 は無効)", HIKARI::Range(0.0f, 0.2f))
+    FIELD(int, biteCameraFrames, 6, "…カメラが戻るまで (F)", HIKARI::Range(0, 120))
+    FIELD(HIKARI::VfxAsset, biteEffect, (HIKARI::VfxAsset{"03934a60d81b537ce65c61d1e3d5c3a7"}),
+          "…口から捕まえた所へ走る線のエフェクト（+X が捕まえた所の向き。空なら出さない）")
+    // 引き込む（c-e0a9c3）：捕まえた斬撃が口へ入るまで、視野角をさらに狭め、震えと振動を強めていく（入り切る直前が最大）。
+    FIELD(float, pullFovDegrees, 2.5f, "引き込みの間に、さらに狭める視野角 (度、0 は無効)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, pullShakeAmplitude, 0.01f, "…カメラの細かい震え (m、0 は無効)", HIKARI::Range(0.0f, 0.2f))
+    FIELD(
+        float, pullRumble, 0.6f, "…振動の強さ（入り切る直前。0〜1、0 は無効）", HIKARI::Range(0.0f, 1.0f),
+        HIKARI::Tip("吸い取りは 3 拍です。噛む：斬撃・ナイフが吸い込みに捕まった瞬間に、短い止めと鋭い振動が 1 つ出て、"
+                    "口から捕まえた所へ火花の線が走り、刃の光が一度膨らみます（膨らみはボスの項目 absorbBiteGlow）。"
+                    "引き込む：口へ入るまで、刃の通った所に光の尾が残り（ボスの項目 absorbTrailEffect）、"
+                    "視野角が狭まり、震えと振動が強まります。呑み込む：入り切った瞬間に、止め・重い振動・"
+                    "カメラの押し・口のエフェクト・ヒョウタンの膨らみと弾みが出ます。"))
     // 捕まえた斬撃を飲み込む口の力（c-3341a7）：斬撃のエフェクトの域（Channel3）だけに届き、口へ寄せて消す。
     // 消した霧は煙に数えない（斬撃の煙は、ボスの項目 waveAbsorbSmoke の決まった量で入る）。
     // 口元の吸い口：半径の面から swallowStrength m/s で吸い込む（外の霧は、距離の 2 乗に反比例する速さで口へ流れる。
@@ -269,6 +307,20 @@ struct Gourd : HIKARI::Component {
     uint64_t catchPulseObserved = 0;
     float catchPulseLeft = 0.0f;
     Feedback::CameraShake catchShake{};
+    Feedback::CameraShake biteShake{};
+    // 最後に吸い取ったのが火の刃か（呑み込みの色）、ナイフだけか（呑み込みを小さく見せる）。
+    bool catchFire = false;
+    bool catchSmall = false;
+    // 噛んだ数の累計（ボスの規則が増やす）と、手応えを出し終えた分、最後に捕まえた所、それが火の刃か、次の止めを
+    // 出せるまでの残り（実時間の秒）。
+    uint64_t biteCount = 0;
+    uint64_t biteObserved = 0;
+    HIKARI::GameProjectFloat3 bitePosition{};
+    bool biteFire = false;
+    float biteStopCooldown = 0.0f;
+    // 引き込みの進み（0〜1。規則が毎 tick 入れる）と、見た目がならした値。
+    float pullProgress = 0.0f;
+    float pullBlend = 0.0f;
     float absorbBlend = 0.0f;
     // 実際に吸えている速さ（煙／秒、ならした値）。口の演出の強さに使う。
     float intakeRate = 0.0f;

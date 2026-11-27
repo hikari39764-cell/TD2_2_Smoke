@@ -99,7 +99,7 @@ inline HIKARI::GameProjectVfxParameterOverrides SlashParameters(const BossSlashE
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kFlyInput, effect.flying ? effect.fly : 0.0f);
     VfxParameters::SetFloat(parameters, kImpactInput, effect.impactSeconds > 0.0f ? 1.0f : 0.0f);
-    VfxParameters::SetFloat(parameters, kGlowInput, effect.glow);
+    VfxParameters::SetFloat(parameters, kGlowInput, effect.glow * (1.0f + effect.bite));
     return parameters;
 }
 

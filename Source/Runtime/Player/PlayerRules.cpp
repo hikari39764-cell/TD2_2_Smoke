@@ -336,6 +336,14 @@ float PlayerRules::GetMaximumFallSpeed(const Player& player) { return player.max
 
 HIKARI::Entity PlayerRules::GetCamera(const Player& player) { return player.camera; }
 
+void PlayerRules::KickBlur(Player& player, float shutterDegrees, float maxPixels, int frames) {
+    Feedback::BlurPulseParams params{};
+    params.frames = frames;
+    params.shutterDegrees = shutterDegrees;
+    params.maxPixels = maxPixels;
+    Feedback::StartBlurPulse(player.blurPulse, params);
+}
+
 double PlayerRules::GetBurnDamageTotal(const Player& player) { return player.burnDamageTotal; }
 
 float PlayerRules::GetBurnRemaining(const Player& player) { return player.burnRemaining; }

@@ -104,17 +104,34 @@ float GourdRules::AddSmoke(Gourd& gourd, float amount) {
     return gourd.storedSmoke - before;
 }
 
-void GourdRules::NotifyCatch(Gourd& gourd, int count) {
-    if (count > 0)
-        gourd.catchCount += static_cast<uint64_t>(count);
+void GourdRules::NotifyCatch(Gourd& gourd, int count, bool fire, bool small) {
+    if (count <= 0)
+        return;
+    gourd.catchCount += static_cast<uint64_t>(count);
+    gourd.catchFire = fire;
+    gourd.catchSmall = small;
 }
+
+void GourdRules::NotifyBite(Gourd& gourd, int count, bool fire, HIKARI::GameProjectFloat3 position) {
+    if (count <= 0)
+        return;
+    gourd.biteCount += static_cast<uint64_t>(count);
+    gourd.biteFire = fire;
+    gourd.bitePosition = position;
+}
+
+void GourdRules::NotePull(Gourd& gourd, float progress) { gourd.pullProgress = std::clamp(progress, 0.0f, 1.0f); }
 
 void GourdRules::NotifySwallowing(Gourd& gourd) {
     // StepSwallow が次の tick の始めに 1 減らすので、1 足しておく（呼ばれている間は 0 にならない）。
     gourd.swallowFrames = std::max(0, gourd.swallowTailFrames) + 1;
 }
 
-void GourdRules::StepSwallow(Gourd& gourd) { gourd.swallowFrames = std::max(0, gourd.swallowFrames - 1); }
+void GourdRules::StepSwallow(Gourd& gourd) {
+    gourd.swallowFrames = std::max(0, gourd.swallowFrames - 1);
+    // 引き込みの進みは、ボスの規則がこの tick に入れ直さなければ 0（引き込んでいない）。
+    gourd.pullProgress = 0.0f;
+}
 
 bool GourdRules::IsSwallowing(const Gourd& gourd) { return gourd.swallowFrames > 0; }
 

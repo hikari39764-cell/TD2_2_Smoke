@@ -1,0 +1,14 @@
+{
+  "displayName": "GourdSwallow",
+  "guid": "b1f5a11c3053118f0c418f38f3a29ec0",
+  "importSettings": {
+    "cookVfx": true,
+    "outputFormat": "HVFXC",
+    "sourceFormat": ".hvfx"
+  },
+  "importerId": "VfxAssetImporter",
+  "importerVersion": 28,
+  "metaVersion": 1,
+  "sourcePath": "Assets/Vfx/GourdSwallow.hvfx",
+  "type": "VfxEffect"
+}

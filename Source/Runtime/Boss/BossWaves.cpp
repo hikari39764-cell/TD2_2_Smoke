@@ -29,6 +29,8 @@ constexpr float kResidueStep = 2.0f;
 constexpr float kOwedSmokeShare = 0.25f;
 // 回し蹴りの輪が消えた所に残り煙を置く点の数（試作と同じ 6 か所）。
 constexpr int kRingResiduePoints = 6;
+// …その 1 点の半径（斬撃が消えた所の煙の半径 depositRadius に対する割合。円に沿って滑らせるので細くする）。
+constexpr float kRingResidueRadiusShare = 0.6f;
 // 引き込みの前半のこの割合の間に、三日月の端（ナイフは刃先）を口へ向け終える。
 constexpr float kPullTurnShare = 0.5f;
 // 爆発の跡の煙の半径の下限 (m)。注入の量の換算（FluidEmit::EmitVolume）は 0 より大きい半径が要る。
@@ -60,6 +62,18 @@ void LogWave(const BossComponent& boss, const BossWave& wave, const char* event)
         static_cast<double>(wave.direction.y), static_cast<double>(wave.direction.z),
         static_cast<double>(wave.across.x), static_cast<double>(wave.across.y), static_cast<double>(wave.across.z));
     BossLog::Write(message);
+}
+
+// 斬撃・霧の弾を放った瞬間の手応え（カメラの打ち込み。c-e0a9c3 の続き）の強さを覚える：放った所がプレイヤーから
+// releaseCameraNear (m) より遠いと弱まり、releaseCameraRange (m) で 0。描画フレームの BossFeedback が使う。
+void NoteRelease(const BossFrame& frame, const BossWave& wave, float scale) {
+    BossComponent& boss = frame.boss;
+    if (frame.player == nullptr)
+        return;
+    const float distance = Length(Sub(frame.playerCenter, wave.position));
+    const float span = std::max(0.1f, boss.releaseCameraRange - boss.releaseCameraNear);
+    const float falloff = std::clamp((boss.releaseCameraRange - distance) / span, 0.0f, 1.0f);
+    boss.releaseFeedbackPending = std::max(boss.releaseFeedbackPending, scale * falloff);
 }
 
 // 吸い込みの扇（プレイヤーの向きの前、片側 absorbCatchAngle 度、absorbCatchRange m 以内）に斬撃・ナイフの刃が
@@ -128,6 +142,10 @@ void Capture(BossFrame& frame, BossWave& wave) {
     wave.burnWidth = 0.0f;
     wave.crossPending = false;
     wave.smokeOwed = 0.0f;
+    // ヒョウタンの「噛む」手応えへ渡す（BossGourdLink::HandOff。c-e0a9c3）。
+    ++boss.caught.bites;
+    boss.caught.fireBites += wave.fire ? 1 : 0;
+    boss.caught.bitePosition = wave.position;
     LogWave(boss, wave, "WaveCaptured");
 }
 
@@ -189,12 +207,16 @@ void StepRing(BossFrame& frame, BossWave& wave) {
     if (wave.radius < wave.maxRadius)
         return;
     // 消えた所に残り煙（最大半径の kickResidueRadiusShare 倍の円に 6 か所、斬撃 2 m ぶんの kickResidueScale 倍ずつ）。
+    // 6 つの点は、出している間に円に沿って隣の点の所まで滑る（球が 6 つ並ばず、霧の輪になる。c-3c908c）。
+    const Vec3 center{wave.position.x, boss.ground.y + boss.depositHeight, wave.position.z};
+    const float orbitStep =
+        kTau / static_cast<float>(kRingResiduePoints) / static_cast<float>(std::max(1, boss.depositFrames));
     for (int k = 0; k < kRingResiduePoints; ++k) {
         const float angle = kTau * static_cast<float>(k) / static_cast<float>(kRingResiduePoints);
-        const Vec3 at = Add(wave.position, Mul(Vec3{std::sin(angle), 0.0f, std::cos(angle)},
-                                               wave.maxRadius * boss.kickResidueRadiusShare));
-        BossWaves::AddDeposit(boss, {at.x, boss.ground.y + boss.depositHeight, at.z},
-                              boss.residuePerTwoMeters * boss.kickResidueScale, boss.depositRadius, boss.depositFrames);
+        const Vec3 at = Add(
+            center, Mul(Vec3{std::sin(angle), 0.0f, std::cos(angle)}, wave.maxRadius * boss.kickResidueRadiusShare));
+        BossWaves::AddDeposit(boss, at, boss.residuePerTwoMeters * boss.kickResidueScale,
+                              boss.depositRadius * kRingResidueRadiusShare, boss.depositFrames, 0, center, orbitStep);
     }
     if (const BossMove* move = BossRules::GetMove(boss, wave.move))
         BossBurnMarks::RingEnded(frame, *move, wave);
@@ -305,6 +327,7 @@ uint64_t BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) 
     BossGourdRead::LeanSlash(frame, wave);
     // 火は放った行そのものの値（連撃が参照した「縦振り」の行の火は持ってこない）。
     BossBurnMarks::ArmWave(boss, *move, wave);
+    NoteRelease(frame, wave, 1.0f);
     LogWave(boss, wave, "WaveRelease");
     return wave.id;
 }
@@ -337,6 +360,7 @@ void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim
         wave.blow = strike.blow;
         wave.absorbSmoke = boss.knifeAbsorbSmoke;
         BossBurnMarks::ArmWave(boss, *move, wave);
+        NoteRelease(frame, wave, boss.releaseKnifeScale);
         LogWave(boss, wave, "KnifeRelease");
     }
 }
@@ -448,9 +472,12 @@ void BossWaves::Step(BossFrame& frame) {
             if (const BossMove* move = BossRules::GetMove(boss, wave.move))
                 BossBurnMarks::WaveLanded(frame, *move, wave);
         }
-        // 斬撃は霞：通った跡に煙が残る（2 m 進むごとに residuePerTwoMeters）。ナイフは消えた所だけ。
+        // 斬撃は霞：通った跡に煙が残る（2 m 進むごとに residuePerTwoMeters）。
         // 煙は刃の waveResidueLag 後ろへ入れる。そこまで進む前の分は貯めておき、後から少しずつ足す。
-        if (!wave.knife) {
+        // ナイフ・霧の弾は、飛んだ跡の真下の地面近くへ薄く残し（2 m 進むごとに knifeTrailResidue）、消えた所にも残す。
+        if (wave.knife) {
+            wave.smokeRate = (wave.travelled - before) / kResidueStep * boss.knifeTrailResidue / frame.dt;
+        } else {
             const float smoke = (wave.travelled - before) / kResidueStep * boss.residuePerTwoMeters;
             if (wave.travelled < boss.waveResidueLag) {
                 wave.smokeOwed += smoke;
@@ -473,7 +500,8 @@ void BossWaves::Step(BossFrame& frame) {
     }
 }
 
-void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames) {
+void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames,
+                           Vec3 orbitCenter, float orbitStep) {
     if (smoke <= 0.0f)
         return;
     const float perFrameShare = 1.0f / static_cast<float>(std::max(1, frames));
@@ -506,6 +534,8 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
     target->smokeLeft = smoke;
     target->smokePerFrame = smoke * perFrameShare;
     target->waitFrames = std::max(0, waitFrames);
+    target->orbitCenter = orbitCenter;
+    target->orbitStep = orbitStep;
 }
 
 void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
@@ -513,6 +543,8 @@ void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
     ++boss.caught.count;
     if (wave.fire)
         ++boss.caught.fireCount;
+    if (wave.knife)
+        ++boss.caught.knifeCount;
 }
 
 float BossWaves::GetPullingSmoke(const BossComponent& boss) {
@@ -564,6 +596,10 @@ void BossWaves::StepDeposits(BossComponent& boss) {
         const float amount = std::min(deposit.smokeLeft, deposit.smokePerFrame);
         deposit.smokeLeft -= amount;
         deposit.rate = amount * kFramesPerSecond;
+        if (deposit.orbitStep != 0.0f) {
+            const Vec3 arm = RotateY(Sub(deposit.position, deposit.orbitCenter), deposit.orbitStep);
+            deposit.position = Add(deposit.orbitCenter, arm);
+        }
     }
 }
 
@@ -602,6 +638,13 @@ void BossWaves::DescribeAbsorb(HIKARI::PropertyFields& fields, BossComponent& bo
         fields.Float("absorbPullSqueeze", "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)",
                      boss.absorbPullSqueeze, 0.0f, 5000.0f);
         fields.Float("absorbPullSqueezeRadius", "…その力の半径 (m)", boss.absorbPullSqueezeRadius, 0.1f, 20.0f);
+        fields.Float("absorbBiteGlow", "噛む：捕まった瞬間に、刃の光の層を膨らませる量（0 は膨らませない）",
+                     boss.absorbBiteGlow, 0.0f, 4.0f);
+        fields.Float("absorbBiteGlowSeconds", "…膨らみが引くまで (秒)", boss.absorbBiteGlowSeconds, 0.01f, 2.0f);
+        fields.Vfx("absorbTrailEffect", "引き込み：刃が通った所に残す光の尾のエフェクト（空なら出さない）",
+                   boss.absorbTrailEffect);
+        fields.Float3("absorbTrailMistColor", "…霞の刃・ナイフの尾の色と明るさ", boss.absorbTrailMistColor);
+        fields.Float3("absorbTrailFireColor", "…火の刃の尾の色と明るさ", boss.absorbTrailFireColor);
     }
 }
 

@@ -24,6 +24,9 @@ constexpr uint64_t kCameraSource = 0x5444324801ull;
 constexpr int kCameraPriority = 305;
 // 吸い込み中の振動は毎フレーム延長する。入力が切れた後に残る長さ。
 constexpr float kRumbleRefreshSeconds = 0.1f;
+// 引き込みの寄り（c-e0a9c3）：規則の進み（tick ごと）へ寄せる速さ（1/秒）。入り切ったら、すぐ戻す。
+constexpr float kPullRiseRate = 14.0f;
+constexpr float kPullFallRate = 9.0f;
 
 void UpdateEffect(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, bool absorbing,
                   const HIKARI::FrameContext& frame) {
@@ -79,8 +82,16 @@ void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& go
     const float step = std::max(0.0f, frame.unscaledDt) * kFramesPerSecond /
                        static_cast<float>(std::max(1, gourd.absorbFovEaseFrames));
     gourd.absorbBlend = std::clamp(gourd.absorbBlend + (absorbing ? step : -step), 0.0f, 1.0f);
-    gourd.absorbSeconds = gourd.absorbBlend > 0.0f ? gourd.absorbSeconds + std::max(0.0f, frame.unscaledDt) : 0.0f;
-    if (gourd.absorbBlend <= 0.0f || (gourd.absorbFovDegrees <= 0.0f && gourd.absorbShakeAmplitude <= 0.0f))
+    // 引き込みの寄り（c-e0a9c3）：捕まえた斬撃が口へ入るまで、さらに寄せて、震えを強める（吸い込みをやめていても）。
+    const float pullTarget = std::clamp(gourd.pullProgress, 0.0f, 1.0f);
+    const float pullStep =
+        std::max(0.0f, frame.unscaledDt) * (pullTarget > gourd.pullBlend ? kPullRiseRate : kPullFallRate);
+    gourd.pullBlend = pullTarget > gourd.pullBlend ? std::min(pullTarget, gourd.pullBlend + pullStep)
+                                                   : std::max(pullTarget, gourd.pullBlend - pullStep);
+    const float pull = gourd.pullBlend * gourd.pullBlend;
+    const bool moving = gourd.absorbBlend > 0.0f || pull > 0.0f;
+    gourd.absorbSeconds = moving ? gourd.absorbSeconds + std::max(0.0f, frame.unscaledDt) : 0.0f;
+    if (!moving)
         return;
     HIKARI::GameProjectCameraModifier modifier{};
     modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, gourd.camera);
@@ -90,10 +101,11 @@ void UpdateCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& go
     modifier.priority = kCameraPriority;
     // 寄りと戻りの両端をなめらかにして、視野角の切り替わりを感じさせない。
     const float eased = gourd.absorbBlend * gourd.absorbBlend * (3.0f - 2.0f * gourd.absorbBlend);
-    modifier.verticalFovOffsetRadians = -gourd.absorbFovDegrees * kRadiansPerDegree * eased;
+    modifier.verticalFovOffsetRadians =
+        -(gourd.absorbFovDegrees * eased + gourd.pullFovDegrees * pull) * kRadiansPerDegree;
     // 引き込まれる力を、細かい震えで伝える。視点と注視点を一緒にずらし、画面を傾けない。
     const float phase = kTau * gourd.absorbShakeFrequency * gourd.absorbSeconds;
-    const float shake = gourd.absorbShakeAmplitude * eased;
+    const float shake = gourd.absorbShakeAmplitude * eased + gourd.pullShakeAmplitude * pull;
     modifier.localPositionOffset = {std::sin(phase) * shake, std::sin(phase * kShakeVerticalRatio) * shake, 0.0f};
     modifier.localTargetOffset = modifier.localPositionOffset;
     world.GetCamera().SubmitModifier(modifier);
@@ -109,6 +121,10 @@ void UpdateRumble(HIKARI::WorldView& world, Gourd& gourd, bool absorbing) {
         // 満杯の合図。これ以降は振動を止め、吸っても増えないことを手で分からせる。
         world.GetInput().SetGamepadVibration(gourd.fullRumble, gourd.fullRumble,
                                              static_cast<float>(gourd.fullRumbleFrames) / kFramesPerSecond);
+    } else if (gourd.pullBlend > 0.0f && gourd.pullRumble > 0.0f) {
+        // 引き込みの間：口へ近づくほど強く（入り切った瞬間の重い振動へつなぐ）。
+        world.GetInput().SetGamepadVibration(gourd.pullRumble * gourd.pullBlend,
+                                             0.5f * gourd.pullRumble * gourd.pullBlend, kRumbleRefreshSeconds);
     } else if (absorbing && !full && !GourdRules::IsBlocked(gourd) && gourd.absorbRumble > 0.0f) {
         world.GetInput().SetGamepadVibration(gourd.absorbRumble, 0.0f, kRumbleRefreshSeconds);
     }

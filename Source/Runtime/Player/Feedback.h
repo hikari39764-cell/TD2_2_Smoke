@@ -54,6 +54,37 @@ void StartCameraShake(CameraShake& shake, const CameraShakeParams& params);
 bool SubmitCameraShake(HIKARI::WorldView& world, CameraShake& shake, HIKARI::Entity preferredCamera, float unscaledDt,
                        HIKARI::GameProjectFloat3* offsetOut = nullptr);
 
+struct BlurPulseParams {
+    int frames = 0;
+    float shutterDegrees = 0.0f;
+    float maxPixels = 0.0f;
+};
+
+// 一瞬の動きのぼかし（瞬間の反動を、画の流れで伝える。c-e0a9c3）。出した瞬間から frames F の間、実時間で二乗に弱まる。
+struct BlurPulse {
+    bool active = false;
+    float ageSeconds = 0.0f;
+    float durationSeconds = 0.0f;
+    BlurPulseParams params{};
+};
+
+// 一瞬のぼかしを始める。frames が 0 以下か、シャッター角・長さのどちらかが 0 以下なら始めない。いま残っているぼかしの
+// 方が強い（シャッター角が大きい）間も始めない（弱い合図で、強い合図の余韻を切らない）。
+void StartBlurPulse(BlurPulse& pulse, const BlurPulseParams& params);
+
+// 動きのぼかしの要求を 1 つ、いま画を出しているカメラへ出す。weight は、カメラの元の設定（無効なら 0°）からの補間
+// （エンジンは、同じカメラへ出た要求のうち、優先度の一番高い 1 つだけを使う）。シャッター角 (度) と、ぼかしの長さの上限
+// (1080p の画素) は範囲へ収める。出せたら true。
+bool SubmitMotionBlur(HIKARI::WorldView& world, uint64_t sourceId, int priority, float weight, float shutterDegrees,
+                      float maxPixels);
+
+// ふだんの動きのぼかし（rest：シャッター角 (度) と長さの上限 (1080p の画素)。どちらかが 0 なら無し）に、一瞬のぼかしを
+// 重ねて、このフレームの分を、いま画を出しているカメラへ出して時間を進める。エンジンは優先度の一番高い 1 つだけを使い、
+// カメラの元の設定（無効＝0°）から混ぜるので、ふだんの分と一瞬の分は 1 つにまとめて出す（一瞬の分が弱まると、ふだんの
+// 強さへ戻る）。出す物が無ければ何も出さずに false。
+bool SubmitBlur(HIKARI::WorldView& world, uint64_t sourceId, int priority, BlurPulse& pulse, float restShutterDegrees,
+                float restPixels, float unscaledDt);
+
 // カメラの位置と注視点を、カメラの局所の向きへ一緒にずらす（このフレームだけ）。続けて出す揺れは、呼ぶ側が位相を進めて
 // 毎フレーム出す。出せたら true。
 bool SubmitCameraOffset(HIKARI::WorldView& world, uint64_t sourceId, int priority,
