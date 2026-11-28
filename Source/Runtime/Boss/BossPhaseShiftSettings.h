@@ -211,6 +211,8 @@ struct BossPhaseShiftState {
     bool slashed = false;
     bool placePending = false;
     HIKARI::GameProjectFloat3 placeAt{};
+    // 置いた次の tick に、足が地面より下に埋まっていないかを 1 度だけ見る頼み（c-7d3039）。
+    bool placeCheckPending = false;
     // 舞台を決めた時の太陽の向き（太陽へ向かう。読めなければ sunValid が偽）。
     HIKARI::GameProjectFloat3 sunDirection{0.0f, 1.0f, 0.0f};
     bool sunValid = false;

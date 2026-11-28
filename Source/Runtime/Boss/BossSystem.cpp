@@ -51,6 +51,8 @@ constexpr float kTrailMaxHeight = 0.5f;
 // 変わり目の演出がプレイヤーを置き直す時の、置き場所の頼みの出し元と優先度。
 constexpr uint64_t kShiftPlaceSource = 0x5444325348494654ull;
 constexpr int32_t kShiftPlacePriority = 50;
+// 置いた次の tick に、足がこれより深く地面の下にあれば中心を持ち上げる (m)。
+constexpr float kStandTolerance = 0.02f;
 
 using ComponentLookup::ForEachOnObject;
 using ComponentLookup::WithFirstOnObject;
@@ -127,6 +129,34 @@ void Trace(const BossComponent& boss, const Damageable* health) {
     BossLog::Write(message);
 }
 
+// 変わり目の置き直しの次の tick に、プレイヤーの足が地面より下に埋まっていたら、中心を地面＋半高へ持ち上げる（c-7d3039。
+// 置き直しの後に 1 度だけ。ほかの経路には使わない）。位置の x・z・向きはそのまま。
+void KeepPlayerAboveGround(HIKARI::WorldView& world, const BossComponent& boss,
+                           HIKARI::GameProjectObjectHandle playerObject) {
+    const HIKARI::ObjectView object = world.FindObject(playerObject);
+    HIKARI::GameProjectTransform transform{};
+    if (!object.IsValid() || !object.GetWorldTransform(transform))
+        return;
+    const BossPhaseShift::PlayerStand stand =
+        BossPhaseShift::MeasurePlayerStand(world, playerObject, transform.position, boss.ground.y);
+    const float feet = transform.position.y - stand.halfHeight;
+    if (!stand.groundFound || feet >= stand.ground - kStandTolerance)
+        return;
+    HIKARI::GameProjectKinematicTeleport teleport{};
+    teleport.objectHandle = playerObject.value;
+    teleport.sourceId = kShiftPlaceSource;
+    teleport.priority = kShiftPlacePriority;
+    teleport.position = {transform.position.x, stand.ground + stand.halfHeight, transform.position.z};
+    teleport.rotation = transform.rotation;
+    teleport.clearVelocity = 0u;
+    const bool placed = world.GetMotion().RequestTeleport(teleport);
+    char message[200]{};
+    std::snprintf(message, sizeof(message), "ShiftPlaceFix tick=%llu ok=%d feet=%.3f ground=%.3f lift=%.3f",
+                  static_cast<unsigned long long>(boss.tick), static_cast<int>(placed), static_cast<double>(feet),
+                  static_cast<double>(stand.ground), static_cast<double>(stand.ground + stand.halfHeight - transform.position.y));
+    BossLog::Write(message);
+}
+
 // ボス 1 体の 1 tick：プレイヤーを見る → 登場・HP の条・変わり目を進める → 状態を進める → 受けた当たりを読む →
 // 通った跡の煙 → 斬撃 → 規則の剣の向き → 体の物体の置き場所。
 void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, const BossGearSight& gear,
@@ -151,10 +181,21 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     // PlayerSystem が tick ごとに減らす）。変わり目の閃光の後の tick に、プレイヤーを押し出す。
     if (player != nullptr && (BossIntro::Cinematic(intro) || BossPhaseShift::Cinematic(frame.shift)))
         PlayerRules::HoldForCinematic(*player, kCinematicHoldTicks);
+    // 置き直しの次の tick：足が地面の下に埋まっていないかを 1 度だけ見る（置く場所が高低のある所でも、碰撞体の大きさが
+    // 変わっても、埋まったまま立たないように）。
+    if (BossPhaseShift::TakePlaceCheck(frame.shift) && player != nullptr && frame.playerObject.value != 0u)
+        KeepPlayerAboveGround(world, boss, frame.playerObject);
     // 変わり目の演出が舞台を決めた tick：プレイヤーをボスの正面へ置き直す（演出の間は入力が止まっている）。
     HIKARI::GameProjectFloat3 placeAt{}, placeFacing{};
     if (BossPhaseShift::TakePlacement(frame.shift, placeAt, placeFacing) && player != nullptr &&
         frame.playerObject.value != 0u) {
+        // 置く高さ：演出が決めた placeAt の y は「ボスの足元＋playerLift」（足元の高さ）。物体の位置は碰撞体の中心なので、
+        // 置く所の地面に半高を足して中心の高さにする（x・z・向きは変えない）。
+        const float lift = placeAt.y - boss.ground.y;
+        const BossPhaseShift::PlayerStand stand =
+            BossPhaseShift::MeasurePlayerStand(world, frame.playerObject, placeAt, boss.ground.y);
+        placeAt.y = stand.ground + stand.halfHeight + lift;
+        BossPhaseShift::NotePlaced(frame.shift);
         HIKARI::GameProjectKinematicTeleport teleport{};
         teleport.objectHandle = frame.playerObject.value;
         teleport.sourceId = kShiftPlaceSource;
@@ -164,10 +205,13 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
         teleport.clearVelocity = 1u;
         const bool placed = world.GetMotion().RequestTeleport(teleport);
         PlayerRules::FaceDirection(*player, placeFacing);
-        char message[160]{};
-        std::snprintf(message, sizeof(message), "ShiftPlacePlayer tick=%llu ok=%d at=(%.2f,%.2f,%.2f)",
+        char message[240]{};
+        std::snprintf(message, sizeof(message),
+                      "ShiftPlacePlayer tick=%llu ok=%d at=(%.2f,%.2f,%.2f) ground=%.3f half=%.3f src=%s/%s",
                       static_cast<unsigned long long>(boss.tick), static_cast<int>(placed),
-                      static_cast<double>(placeAt.x), static_cast<double>(placeAt.y), static_cast<double>(placeAt.z));
+                      static_cast<double>(placeAt.x), static_cast<double>(placeAt.y), static_cast<double>(placeAt.z),
+                      static_cast<double>(stand.ground), static_cast<double>(stand.halfHeight),
+                      stand.groundFound ? "ray" : "boss", stand.halfHeightRead ? "ray" : "fallback");
         BossLog::Write(message);
     }
     boss.shownBar = BossIntro::BarShown(intro) ? 1.0f : 0.0f;

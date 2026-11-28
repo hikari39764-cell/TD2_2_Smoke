@@ -29,7 +29,7 @@ void BossPhaseShiftSettings::Describe(HIKARI::PropertyFields& fields) {
     fields.Bool("shiftPlacePlayer", "プレイヤーをボスの正面へ置き直す", placePlayer);
     fields.Float("shiftPlayerDistance", "…ボスの正面のこの距離 (m)", playerDistance, 2.0f, 60.0f);
     fields.Float("shiftPlayerArenaMargin", "…場の縁からの内側の余白 (m)", playerArenaMargin, 0.0f, 20.0f);
-    fields.Float("shiftPlayerLift", "…置く高さ（ボスの足元の高さに足す m。落ちて地面に立つ）", playerLift, 0.0f, 5.0f);
+    fields.Float("shiftPlayerLift", "…置く高さ（置く所の地面から足元までの m。ここから落ちて地面に立つ。置く中心の高さは、これにプレイヤーの碰撞体の半分の高さを足した所）", playerLift, 0.0f, 5.0f);
     fields.Float("shiftSettleSeconds", "渡し：最後のカメラからゲームのカメラへ混ぜる長さ (秒)", settleSeconds, 0.0f,
                  5.0f);
     fields.Float("shiftCameraFocusHeight", "渡し：ゲームのカメラが見ておく、ボスの足元からの高さ (m)",

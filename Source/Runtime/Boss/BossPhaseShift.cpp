@@ -7,6 +7,7 @@
 #include <cstring>
 #include <string_view>
 
+#include "HIKARI/Project/ActionViews.h"
 #include "HIKARI/Project/EnvironmentView.h"
 #include "HIKARI/Project/SequenceView.h"
 #include "BossFrame.h"
@@ -34,6 +35,14 @@ constexpr float kShowEndLead = 0.1f;
 constexpr float kTotalMarginSeconds = 3.0f;
 // 太陽がこの高さ（向きの Y）より低い時は、太陽で向きを決めない（夜・地平の下）。
 constexpr float kSunMinY = 0.02f;
+// プレイヤーを置く所の地面・プレイヤーの碰撞体を探す向下射線の、始まりを基準の高さより上にする量と、届く長さ (m)。
+constexpr float kRayAbove = 5.0f;
+constexpr float kRayReach = 40.0f;
+// プレイヤーの碰撞体の半分の高さを射線で読めなかった時の値 (m)。場面の Player の ColliderComponent（Capsule、height 1.7）の半分。
+constexpr float kPlayerHalfHeightFallback = 0.85f;
+// 読んだ半分の高さとして受け入れる範囲 (m)。
+constexpr float kHalfHeightMin = 0.05f;
+constexpr float kHalfHeightMax = 3.0f;
 
 // 事件段の名前 → 拍。Anim は「Anim.<クリップ>」、ほかは「Shift.<拍>」。
 constexpr std::array<std::string_view, kBossShiftCueCount> kCueNames{
@@ -136,6 +145,8 @@ void ChooseStage(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftCo
         const float disc = b * b - c;
         if (disc > 0.0f)
             distance = std::min(distance, std::max(2.0f, -b + std::sqrt(disc)));
+        // placeAt の y は足元の高さ（ボスの足元＋playerLift）。物体の位置は碰撞体の中心なので、置く所の地面と碰撞体の半分の高さから
+        // 中心の高さを決めるのは、置き直しを実行する BossSystem（MeasurePlayerStand）。
         state.placeAt = Add(origin, Add(Mul(front, distance), Vec3{0.0f, s.playerLift, 0.0f}));
         state.placePending = true;
     }
@@ -330,6 +341,46 @@ void BossPhaseShift::Step(HIKARI::WorldView& world, BossComponent& boss, BossPha
         return;
     default: return;
     }
+}
+
+BossPhaseShift::PlayerStand BossPhaseShift::MeasurePlayerStand(HIKARI::WorldView& world,
+                                                              HIKARI::GameProjectObjectHandle player,
+                                                              HIKARI::GameProjectFloat3 at, float fallbackGround) {
+    PlayerStand stand{};
+    stand.ground = fallbackGround;
+    stand.halfHeight = kPlayerHalfHeightFallback;
+    const HIKARI::PhysicsQueryView queries = world.GetPhysicsQueries();
+    // 置く所の地面。
+    HIKARI::GameProjectPhysicsRaycastQuery down{};
+    down.origin = {at.x, at.y + kRayAbove, at.z};
+    down.direction = {0.0f, -1.0f, 0.0f};
+    down.maxDistance = kRayReach;
+    down.filter.ignoredObjectHandle = player.value;
+    down.filter.includeTriggers = 0;
+    HIKARI::GameProjectPhysicsHit hit{};
+    if (queries.Raycast(down, hit) && std::isfinite(hit.position.y)) {
+        stand.ground = hit.position.y;
+        stand.groundFound = true;
+    }
+    // プレイヤーの碰撞体の半分の高さ：今の位置の上から撃って、碰撞体の頂点までの高さ。
+    HIKARI::GameProjectTransform now{};
+    const HIKARI::ObjectView object = world.FindObject(player);
+    if (object.IsValid() && object.GetWorldTransform(now)) {
+        HIKARI::GameProjectPhysicsRaycastQuery top{};
+        top.origin = {now.position.x, now.position.y + kRayAbove, now.position.z};
+        top.direction = {0.0f, -1.0f, 0.0f};
+        top.maxDistance = kRayReach;
+        top.filter.includeTriggers = 0;
+        HIKARI::GameProjectPhysicsHit topHit{};
+        if (queries.Raycast(top, topHit) && topHit.objectHandle == player.value && std::isfinite(topHit.position.y)) {
+            const float half = topHit.position.y - now.position.y;
+            if (half >= kHalfHeightMin && half <= kHalfHeightMax) {
+                stand.halfHeight = half;
+                stand.halfHeightRead = true;
+            }
+        }
+    }
+    return stand;
 }
 
 bool BossPhaseShift::TakePlacement(BossPhaseShiftComponent* shift, HIKARI::GameProjectFloat3& at,

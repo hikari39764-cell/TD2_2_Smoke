@@ -41,6 +41,31 @@ public:
     // プレイヤーを置き直す頼み（舞台を決めた tick に立つ）を取る。取ったら true（at：置く所、facing：向く向き）。
     static bool TakePlacement(BossPhaseShiftComponent* shift, HIKARI::GameProjectFloat3& at,
                               HIKARI::GameProjectFloat3& facing);
+    // プレイヤーを置く所の地面と、プレイヤーの碰撞体の半分の高さ（c-7d3039）。
+    // 物体の位置は碰撞体の中心なので、地面に playerLift だけを足して置くと、半高の分だけ地面に埋まる。
+    // 地面：at の x・z の上から向下射線を撃つ（プレイヤー自身は無視）。当たらなければ fallbackGround（ボスの足元）。
+    // 半高：プレイヤーの今の位置の上から向下射線を撃ち、プレイヤーの碰撞体の頂点に当たったら、その高さと物体の位置の差
+    // （場面の碰撞体の大きさを二重に持たない）。当たらなければ既定値 kPlayerHalfHeightFallback（場面の Player の
+    // ColliderComponent：Capsule、height 1.7）。
+    struct PlayerStand {
+        float ground = 0.0f;
+        float halfHeight = 0.0f;
+        bool groundFound = false;
+        bool halfHeightRead = false;
+    };
+    static PlayerStand MeasurePlayerStand(HIKARI::WorldView& world, HIKARI::GameProjectObjectHandle player,
+                                          HIKARI::GameProjectFloat3 at, float fallbackGround);
+    // 置いた次の tick に足が地面より下に埋まっていないかを 1 度だけ見る頼みを立てる／取る（取ったら true）。
+    static void NotePlaced(BossPhaseShiftComponent* shift) {
+        if (shift != nullptr)
+            shift->state.placeCheckPending = true;
+    }
+    static bool TakePlaceCheck(BossPhaseShiftComponent* shift) {
+        if (shift == nullptr || !shift->state.placeCheckPending)
+            return false;
+        shift->state.placeCheckPending = false;
+        return true;
+    }
     // 事件段の時刻（無ければ start が負）。
     static const BossShiftCueTime& Cue(const BossPhaseShiftComponent& shift, BossShiftCue cue) {
         return shift.state.cues[static_cast<size_t>(cue)];
