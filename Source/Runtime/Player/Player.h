@@ -8,9 +8,6 @@
 
 namespace Project_TD2_2 {
 
-// 新しいゲーム層の型名（TD2_2.Player）。旧い System をこの部品に結ぶのに使う。
-inline constexpr std::string_view kPlayerType = "TD2_2.Player";
-inline constexpr std::string_view kPlayerSystem = "Project_TD2_2.PlayerSystem";
 // ゲーム全体の値（Params）の名前。UI の型紙の変数名と同じ（HUD が読む）。
 inline constexpr std::string_view kPlayerHealthVariable = "Player.Health";
 inline constexpr std::string_view kPlayerMaxHealthVariable = "Player.MaxHealth";
@@ -103,16 +100,16 @@ struct PlayerExternalRequests {
 
 // プレイヤー（新しいゲーム層の部品）。調整値は FIELD、規則は PlayerRules、進めるのは PlayerSystem。
 struct Player : HIKARI::Component {
-    HIKARI_COMPONENT(Player)
+    HIKARI_COMPONENT(Player, "プレイヤー")
 
     FIELD(float, maxHealth, 100.0f, "最大 HP", HIKARI::Range(1.0f, 10000.0f), HIKARI::Group("移動と体力"))
     // ふだんの歩き。走る（Gameplay.Sprint を押している間）は sprintSpeed（c-ff3e98。元は歩き 5.2、走りは無し）。
     FIELD(float, moveSpeed, 3.8f, "歩く速さ (m/s)", HIKARI::Range(0.0f, 50.0f))
     FIELD(float, sprintSpeed, 5.2f, "走る速さ (m/s、Shift／L3 を押している間)", HIKARI::Range(0.0f, 50.0f))
     // 走っている間に使う精力（/秒）。走っている間は回復せず、止めてから staminaDelayFrames 待って回復する。
-    FIELD(float, sprintStaminaPerSecond, 12.0f, "走っている間のスタミナ消費 (/s)", HIKARI::Range(0.0f, 1000.0f),
-          HIKARI::Tip("走っている間はスタミナが回復しません。尽きたら、走る入力を離して押し直すまで歩きます。"
-                      "ロックオン中に走ると、体は進む向きを向きます。砲撃・吸い込み・回復の間は走りません。"))
+    FIELD(float, sprintStaminaPerSecond, 12.0f, "走っている間のスタミナ消費 (/s)", HIKARI::Range(0.0f, 1000.0f))
+    NOTE("走っている間はスタミナが回復しません。尽きたら、走る入力を離して押し直すまで歩きます。"
+         "ロックオン中に走ると、体は進む向きを向きます。砲撃・吸い込み・回復の間は走りません。")
     // 通常・回復中に向きを変える速さ。試作の 12 rad/秒。
     FIELD(float, turnSpeed, 688.0f, "振り向きの速さ (度/s、688 ≒ 12 rad/s)", HIKARI::Range(1.0f, 5000.0f))
     FIELD(float, maxStamina, 100.0f, "最大スタミナ", HIKARI::Range(1.0f, 10000.0f))
@@ -125,24 +122,24 @@ struct Player : HIKARI::Component {
     FIELD(float, moveDecelSeconds, 0.06f, "入力を離して止まるまで (秒、0 で一瞬)", HIKARI::Range(0.0f, 2.0f))
     // 立ち止まっていても滑り落ちない坂の傾きの上限（度）。これより急な坂では、今までどおり重力で滑る。
     FIELD(float, standSlopeDegrees, 30.0f, "立ち止まっても滑らない坂の傾き (度、これより急なら滑る)",
-          HIKARI::Range(0.0f, 89.0f),
-          HIKARI::Tip("入力が無く止まっている間だけ、この傾きまでの地面の上では重力で坂を滑り落ちません。"
-                      "歩き・ローリング・被弾・押されて動く時の重力はそのままです。"))
+          HIKARI::Range(0.0f, 89.0f))
+    NOTE("入力が無く止まっている間だけ、この傾きまでの地面の上では重力で坂を滑り落ちません。"
+         "歩き・ローリング・被弾・押されて動く時の重力はそのままです。")
     // 終わり際の硬直を短くして次の行動へ早く移れるようにする（c-a0a892。元の値は調整ガイド）。
-    FIELD(int, rollFrames, 26, "全体 (F)", HIKARI::Range(1, 600), HIKARI::Group("ローリング"),
-          HIKARI::Tip("移動 F は全体 F までに制限します。無敵は 0F から指定した F 数です。"))
+    FIELD(int, rollFrames, 26, "全体 (F)", HIKARI::Range(1, 600), HIKARI::Group("ローリング"))
+    NOTE("移動 F は全体 F までに制限します。無敵は 0F から指定した F 数です。")
     FIELD(int, rollMoveFrames, 22, "移動 (F)", HIKARI::Range(1, 600))
     FIELD(float, rollDistance, 4.2f, "距離 (m)", HIKARI::Range(0.0f, 30.0f))
     // 進んだ距離 = rollDistance × (1 − (1 − 進み)^rollEasePower)。1 で等速、大きいほど出だしが速い。
     FIELD(
         float, rollEasePower, 1.6f, "出だしの速さ（1 は等速、大きいほど初め速くあとゆっくり）",
-        HIKARI::Range(1.0f, 5.0f),
-        HIKARI::Tip("方向入力が無いとき、ロックオン中は対象から離れる向き、そうでなければ今の向きの後ろへ転がります。"))
+        HIKARI::Range(1.0f, 5.0f))
+    NOTE("方向入力が無いとき、ロックオン中は対象から離れる向き、そうでなければ今の向きの後ろへ転がります。")
     FIELD(int, rollInvincibleFrames, 14, "無敵 (F)", HIKARI::Range(0, 600))
     // この経過 F 以降（移動の後）は、砲撃・吸い込みでローリングの残りを打ち切れる。
-    FIELD(int, rollActionCancelFrame, 22, "砲撃・吸い込みで打ち切れる最初の経過 F", HIKARI::Range(0, 600),
-          HIKARI::Tip("打ち切れる F より前に押した砲撃・吸い込みは、それぞれの先行入力の長さだけ覚えておき、"
-                      "打ち切れる F に始まります。"))
+    FIELD(int, rollActionCancelFrame, 22, "砲撃・吸い込みで打ち切れる最初の経過 F", HIKARI::Range(0, 600))
+    NOTE("打ち切れる F より前に押した砲撃・吸い込みは、それぞれの先行入力の長さだけ覚えておき、"
+         "打ち切れる F に始まります。")
     FIELD(float, rollStamina, 25.0f, "スタミナ消費", HIKARI::Range(0.0f, 1000.0f))
     FIELD(float, rollFogRadius, 1.0f, "霧を押す半径 (m)", HIKARI::Range(0.01f, 10.0f))
     FIELD(float, rollFogStrength, 3.0f, "霧を押す強さ (m/s)", HIKARI::Range(0.0f, 100.0f))
@@ -153,21 +150,19 @@ struct Player : HIKARI::Component {
     // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
     FIELD(
         float, fireObstacleRadius, 0.4f, "火が体をよける半径 (m。0 でよけない)", HIKARI::Range(0.0f, 5.0f),
-        HIKARI::Group("場の火"),
-        HIKARI::Tip(
-            "場の火（燃える地面）が体をよけて割れ、体の動きに引かれます。霧の側は FluidObstacleComponent が受け持ちます。"))
+        HIKARI::Group("場の火"))
+    NOTE("場の火（燃える地面）が体をよけて割れ、体の動きに引かれます。霧の側は FluidObstacleComponent が受け持ちます。")
     FIELD(float, fireObstacleHeight, 1.7f, "火が体をよける高さ (m)", HIKARI::Range(0.0f, 10.0f))
-    FIELD(int, staggerFrames, 26, "のけぞり全体 (F)", HIKARI::Range(3, 600), HIKARI::Group("被弾"),
-          HIKARI::Tip("三歩の時間は全体 F の中に収めます。三歩目は残りの F 数です。"))
+    FIELD(int, staggerFrames, 26, "のけぞり全体 (F)", HIKARI::Range(3, 600), HIKARI::Group("被弾"))
+    NOTE("三歩の時間は全体 F の中に収めます。三歩目は残りの F 数です。")
     FIELD(int, staggerStepOneFrames, 9, "一歩目 (F)", HIKARI::Range(1, 600))
     FIELD(int, staggerStepTwoFrames, 9, "二歩目 (F)", HIKARI::Range(1, 600))
     FIELD(float, staggerStepOne, 0.75f, "一歩目の距離 (m)", HIKARI::Range(0.0f, 10.0f))
     FIELD(float, staggerStepTwo, 0.3f, "二歩目の距離 (m)", HIKARI::Range(0.0f, 10.0f))
     FIELD(float, staggerStepThree, 0.12f, "三歩目の距離 (m)", HIKARI::Range(0.0f, 10.0f))
     FIELD(int, staggerHitStopFrames, 5, "のけぞりヒットストップ (F)", HIKARI::Range(0, 60))
-    FIELD(float, knockbackDistance, 6.0f, "吹っ飛び距離 (m)", HIKARI::Range(0.0f, 30.0f),
-          HIKARI::Tip(
-              "吹っ飛びの距離は、ボスの技の表の「吹っ飛びの距離 m」が空ならこの値です。総距離と F は変わりません。"))
+    FIELD(float, knockbackDistance, 6.0f, "吹っ飛び距離 (m)", HIKARI::Range(0.0f, 30.0f))
+    NOTE("吹っ飛びの距離は、ボスの技の表の「吹っ飛びの距離 m」が空ならこの値です。総距離と F は変わりません。")
     FIELD(int, knockbackFrames, 30, "吹っ飛び (F)", HIKARI::Range(1, 600))
     // 進んだ距離 = knockbackDistance × (1 − (1 − 進み)^knockbackEasePower)。ローリングと同じ形で、前が速く後ろが遅い。
     FIELD(float, knockbackEasePower, 2.2f, "吹っ飛びの出だしの速さ（1 は等速、大きいほど前が速く後ろがゆっくり）",
@@ -219,23 +214,22 @@ struct Player : HIKARI::Component {
     // 起き上がりのこの F 目から、ローリングで起き上がりを打ち切って転がれる（0 は起き上がり始めから）。
     FIELD(int, getUpRollFrame, 0, "起き上がり回避開始 (F。ここからローリングで打ち切れる)", HIKARI::Range(0, 600))
     // 炎上：付いてから消えるまでの秒数と、燃える地面の外で減る HP（/秒）。燃える地面の上では BurnField の値で減る。
-    FIELD(float, burnSeconds, 4.0f, "燃えている長さ (秒)", HIKARI::Range(0.1f, 30.0f), HIKARI::Group("炎上"),
-          HIKARI::Tip(
-              "燃える地面に立ち続ける・火の刃や爆発を食らうと燃え、HP が少しずつ減ります（のけぞり・ヒットストップ・"
-              "揺れは起こしません。吹っ飛び・ダウン中も減ります）。ローリング・吸い込みで消え、時間が来ても消えます。"
-              "燃える地面の上にいる間は、その地面の減り方で減り、残りの秒数が満タンに戻ります。"))
+    FIELD(float, burnSeconds, 4.0f, "燃えている長さ (秒)", HIKARI::Range(0.1f, 30.0f), HIKARI::Group("炎上"))
+    NOTE("燃える地面に立ち続ける・火の刃や爆発を食らうと燃え、HP が少しずつ減ります（のけぞり・ヒットストップ・"
+         "揺れは起こしません。吹っ飛び・ダウン中も減ります）。ローリング・吸い込みで消え、時間が来ても消えます。"
+         "燃える地面の上にいる間は、その地面の減り方で減り、残りの秒数が満タンに戻ります。")
     FIELD(float, burnDamagePerSecond, 6.0f, "燃える地面の外で減る HP (/秒)", HIKARI::Range(0.0f, 1000.0f))
-    FIELD(int, maxHealCharges, 4, "回復回数", HIKARI::Range(0, 99), HIKARI::Group("回復"),
-          HIKARI::Tip("回復発生は全体 F までに制限します。使用回数は動作開始時に消費します。"))
+    FIELD(int, maxHealCharges, 4, "回復回数", HIKARI::Range(0, 99), HIKARI::Group("回復"))
+    NOTE("回復発生は全体 F までに制限します。使用回数は動作開始時に消費します。")
     FIELD(float, healAmount, 40.0f, "HP 回復量", HIKARI::Range(0.0f, 10000.0f))
     FIELD(int, healFrames, 60, "回復動作全体 (F)", HIKARI::Range(1, 600))
     FIELD(int, healApplyFrame, 36, "HP 回復発生 (F)", HIKARI::Range(1, 600))
     FIELD(float, healMoveSpeed, 1.5f, "回復中の移動 (m/s)", HIKARI::Range(0.0f, 50.0f))
     FIELD(HIKARI::Entity, lockTarget, {}, "ロック対象", HIKARI::Group("ロックオン"))
-    FIELD(HIKARI::Entity, camera, {}, "ゲームカメラ",
-          HIKARI::Tip("ロックオン中、カメラは対象の向きへ回ります。回る速さに上限があるので、"
-                      "対象が背後へ現れても振り回されません。対象との距離に合わせて、近い時は少し引いて上げ、見上げを"
-                      "足します（大きいボスの頭と振りかぶった刀が入るように）。遠い時は前に近い見せ方です。"))
+    FIELD(HIKARI::Entity, camera, {}, "ゲームカメラ")
+    NOTE("ロックオン中、カメラは対象の向きへ回ります。回る速さに上限があるので、"
+         "対象が背後へ現れても振り回されません。対象との距離に合わせて、近い時は少し引いて上げ、見上げを"
+         "足します（大きいボスの頭と振りかぶった刀が入るように）。遠い時は前に近い見せ方です。")
     // ロックオン中のカメラ。対象の向きへ lockYawSeconds でならして回り、回る速さは lockYawMaxSpeed まで。
     FIELD(float, lockYawSeconds, 0.16f, "対象の向きへ回るならし (秒、小さいほど素早く追う)", HIKARI::Range(0.0f, 2.0f))
     FIELD(float, lockYawMaxSpeed, 300.0f, "回る速さの上限 (度/s)", HIKARI::Range(10.0f, 2000.0f))
@@ -252,10 +246,9 @@ struct Player : HIKARI::Component {
     // c-880340：距離に合わせた見せ方。対象との水平の距離が lockNearDistance 以下で「近い」の値、lockFarDistance 以上で
     // 「遠い」の値、その間はなめらかに（smoothstep）混ぜる。混ぜる割合そのものも lockFramingSeconds でならす。
     FIELD(float, lockNearDistance, 3.0f, "近い：この距離まで (m)", HIKARI::Range(0.0f, 50.0f),
-          HIKARI::Group("ロックオン：距離に合わせた見せ方"),
-          HIKARI::Tip(
-              "対象との水平の距離が「近い」以下で近い時の値、「遠い」以上で遠い時の値、その間はなめらかに混ぜます。"
-              "見上げは視点を動かさず、見る向きだけを上げます（プレイヤーが画面の下の方に残ります）。"))
+          HIKARI::Group("ロックオン：距離に合わせた見せ方"))
+    NOTE("対象との水平の距離が「近い」以下で近い時の値、「遠い」以上で遠い時の値、その間はなめらかに混ぜます。"
+         "見上げは視点を動かさず、見る向きだけを上げます（プレイヤーが画面の下の方に残ります）。")
     FIELD(float, lockFarDistance, 15.0f, "遠い：この距離から (m)", HIKARI::Range(0.0f, 100.0f))
     FIELD(float, lockFramingSeconds, 0.8f, "見せ方が変わるならし (秒)", HIKARI::Range(0.0f, 3.0f))
     // 軸から視点までの距離 (m)・軸を上げる高さ (m)・見せるだけの見上げ（視点はそのまま見る向きだけ上げる。度）。
@@ -269,11 +262,10 @@ struct Player : HIKARI::Component {
     // 近くで回り過ぎない：対象が lockTurnNearDistance 以下で「近い」のならし・速さの上限、lockTurnFarDistance 以上で
     // lockYawSeconds・lockYawMaxSpeed。その間はなめらかに混ぜる。
     FIELD(float, lockTurnNearDistance, 2.5f, "近い：この距離まで (m)", HIKARI::Range(0.0f, 50.0f),
-          HIKARI::Group("ロックオン：近くで回り過ぎない・消えた時"),
-          HIKARI::Tip(
-              "対象が近いほど向きが速く変わるので、近い時は追うならしを長く、回る速さの上限を低くします。"
-              "対象が隠れている間は向きを保ち、一瞬で離れた所へ現れた時と対象を切り替えた時は、ゆっくり向き直します"
-              "（切ると前の動き）。"))
+          HIKARI::Group("ロックオン：近くで回り過ぎない・消えた時"))
+    NOTE("対象が近いほど向きが速く変わるので、近い時は追うならしを長く、回る速さの上限を低くします。"
+         "対象が隠れている間は向きを保ち、一瞬で離れた所へ現れた時と対象を切り替えた時は、ゆっくり向き直します"
+         "（切ると前の動き）。")
     FIELD(float, lockTurnFarDistance, 7.0f, "普段の追い：この距離から (m)", HIKARI::Range(0.0f, 100.0f))
     FIELD(float, lockYawSecondsNear, 0.4f, "近い時の追うならし (秒)", HIKARI::Range(0.0f, 3.0f))
     FIELD(float, lockYawMaxSpeedNear, 160.0f, "近い時の回る速さの上限 (度/s)", HIKARI::Range(10.0f, 2000.0f))
@@ -286,17 +278,15 @@ struct Player : HIKARI::Component {
     // ロックの印（見る点に出す小さいひし形）。大きさは 1920×1080 の画面での画素、不透明度 0 で出さない。
     FIELD(
         float, lockMarkerSize, 14.0f, "大きさ (画素、1920×1080 の画面で)", HIKARI::Range(0.0f, 100.0f),
-        HIKARI::Group("ロックオン：印"),
-        HIKARI::Tip(
-            "ロック中、見る点に小さいひし形を出します（どれをロックしているかが分かるように。攻撃の予告ではありません）。"))
+        HIKARI::Group("ロックオン：印"))
+    NOTE("ロック中、見る点に小さいひし形を出します（どれをロックしているかが分かるように。攻撃の予告ではありません）。")
     FIELD(float, lockMarkerOpacity, 0.75f, "不透明度 (0 で出さない)", HIKARI::Range(0.0f, 1.0f))
     FIELD(HIKARI::Color, lockMarkerColor, (HIKARI::Color{1.0f, 0.93f, 0.82f, 1.0f}), "色")
     // カメラ。姿勢は PlayerCamera が作る（Gameplay Camera の CameraFollow の値は使わない。画角だけカメラの値）。
     // 軸＝体の中心から cameraPivotHeight 上の点。視点は軸から cameraDistance 後ろ、cameraPitch だけ見下ろす。
-    FIELD(float, cameraDistance, 6.0f, "軸から視点までの距離 (m)", HIKARI::Range(0.5f, 30.0f), HIKARI::Group("カメラ"),
-          HIKARI::Tip(
-              "カメラの姿勢はここの値で決まります（Gameplay Camera の CameraFollow の値は使いません。"
-              "画角だけ Gameplay Camera の値です）。軸＝体の中心から少し上の点で、視点は軸の後ろ・上にあります。"))
+    FIELD(float, cameraDistance, 6.0f, "軸から視点までの距離 (m)", HIKARI::Range(0.5f, 30.0f), HIKARI::Group("カメラ"))
+    NOTE("カメラの姿勢はここの値で決まります（Gameplay Camera の CameraFollow の値は使いません。"
+         "画角だけ Gameplay Camera の値です）。軸＝体の中心から少し上の点で、視点は軸の後ろ・上にあります。")
     FIELD(float, cameraPivotHeight, 0.95f, "軸の高さ（体の中心から上へ m）", HIKARI::Range(-5.0f, 10.0f))
     FIELD(float, cameraPitch, 16.0f, "始めの見下ろし角度 (度)", HIKARI::Range(-80.0f, 80.0f))
     // 肩越し。視点と注視点を一緒に横へずらす（負で左。プレイヤーが画面の中心より少し右に見える）。

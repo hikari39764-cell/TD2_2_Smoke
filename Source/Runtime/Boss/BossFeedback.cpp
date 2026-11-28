@@ -29,11 +29,11 @@ void KickBlur(float shutterDegrees, float maxPixels, int frames) {
 }
 
 void RequestBodyFlash(HIKARI::ObjectView object, int frames) {
-    if (Damageable* health = Damageable::Of(object.GetHandle().value))
+    if (Damageable* health = ComponentLookup::GameOnObject<Damageable>(object))
         health->RequestFlash(frames);
 }
 
-void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss) {
+void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss) {
     const uint64_t owner = object.GetHandle().value;
     const uint64_t stopToken = Feedback::RequestHitStop(world, kBreakHitStopSource ^ owner, Feedback::kBreakPriority,
                                                         boss.breakHitStopFrames, boss.breakHitStopScale);
@@ -70,7 +70,7 @@ void Trigger(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent&
 
 } // namespace
 
-void BossFeedback::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+void BossFeedback::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
                           const HIKARI::FrameContext& frame) {
     if (boss.breakFeedbackPending) {
         boss.breakFeedbackPending = false;

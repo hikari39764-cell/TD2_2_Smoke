@@ -12,6 +12,7 @@
 #include "BossHelmGlowData.h"
 #include "BossBodyMath.h"
 #include "../Boss/BossFrame.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -62,11 +63,11 @@ std::string_view NameOf(const BossIntroCue& cue) {
     return {begin, static_cast<size_t>(std::find(begin, std::end(cue.clip.name), '\0') - begin)};
 }
 
-uint64_t ObjectId(const BossIntroSettings& s, size_t part) {
+HIKARI::Entity ObjectId(const BossIntro& s, size_t part) {
     switch (static_cast<BossIntroPart>(part)) {
-    case BossIntroPart::GauntletRight: return s.gauntletRightObject;
-    case BossIntroPart::GauntletLeft: return s.gauntletLeftObject;
-    default: return s.helmObject;
+    case BossIntroPart::GauntletRight: return s.introGauntletRightObject;
+    case BossIntroPart::GauntletLeft: return s.introGauntletLeftObject;
+    default: return s.introHelmObject;
     }
 }
 
@@ -146,19 +147,19 @@ float Progress(const BossIntroCue& cue, float t) {
 
 // 部品を骨へ寄せる偏移（落ちている物体の空間。進み u は 0〜1）。手甲は吸われる（最後に速い）＋途中で浮く。兜は煙に
 // 持ち上げられる（ゆっくり動き出してゆっくり止まる）＋途中で横へふくらむ。
-HIKARI::GameProjectTransform FlyOffset(const BossIntroSettings& s, size_t part,
+HIKARI::GameProjectTransform FlyOffset(const BossIntro& s, size_t part,
                                        const HIKARI::GameProjectTransform& rest,
                                        const HIKARI::GameProjectTransform& bone, float u) {
     const bool helm = static_cast<BossIntroPart>(part) == BossIntroPart::Helm;
-    const float e = helm ? Smooth(u) : std::pow(u, std::max(1.0f, s.gauntletFlyPower));
+    const float e = helm ? Smooth(u) : std::pow(u, std::max(1.0f, s.introGauntletFlyPower));
     const Vec3 delta = Sub(bone.position, rest.position);
     Vec3 world = Mul(delta, e);
     const float arc = std::sin(kPi * u);
     if (helm) {
         const Vec3 side = Normalize(Cross({0.0f, 1.0f, 0.0f}, delta), {1.0f, 0.0f, 0.0f});
-        world = Add(world, Mul(side, s.helmFlyBulge * arc));
+        world = Add(world, Mul(side, s.introHelmFlyBulge * arc));
     } else {
-        world.y += s.gauntletFlyLift * arc * (1.0f - u);
+        world.y += s.introGauntletFlyLift * arc * (1.0f - u);
     }
     const Quat inverse = Conjugate(rest.rotation);
     const float scale = std::max(kTiny, rest.scale.x);
@@ -170,11 +171,11 @@ HIKARI::GameProjectTransform FlyOffset(const BossIntroSettings& s, size_t part,
 }
 
 // 演出の灯を点ける・消す（同じ頼みは出さない）。明るさと置き場所は、演出の資産の物体の轨が書く。
-void SwitchLight(HIKARI::WorldView& world, const BossIntroComponent& intro, int8_t& asked, bool on) {
+void SwitchLight(HIKARI::WorldView& world, const BossIntro& intro, int8_t& asked, bool on) {
     const int8_t want = on ? 1 : 0;
-    if (asked == want || intro.settings.keyLightObject == 0u)
+    if (asked == want || !intro.introKeyLightObject.IsAlive())
         return;
-    const HIKARI::ObjectView light = world.FindSceneObject(intro.settings.keyLightObject);
+    const HIKARI::ObjectView light = world.FindObject(HIKARI::Extend::HandleOf(intro.introKeyLightObject));
     if (!light.IsValid())
         return;
     HIKARI::GameProjectLightPatch patch{};
@@ -192,7 +193,7 @@ void ClearOffset(const HIKARI::AnimationView& animation, uint64_t object, const 
 }
 
 // 部品 1 つ：落ちている物体と、役者の側の同じ部品の、どちらを見せるか。落ちている間は、痙攣の片段と、骨へ寄せる偏移。
-void DrivePart(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::ObjectView actor, size_t part, float t,
+void DrivePart(HIKARI::WorldView& world, BossIntro& intro, HIKARI::ObjectView actor, size_t part, float t,
                bool started) {
     const PartDef& def = kParts[part];
     BossIntroState& state = intro.state;
@@ -217,7 +218,7 @@ void DrivePart(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::Obje
                          ? Progress(*twitch, t)
                          : 0.0f;
     ShowSkin(actor, a.skinShown[part], def, attached);
-    const HIKARI::ObjectView object = world.FindSceneObject(ObjectId(intro.settings, part));
+    const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(ObjectId(intro, part)));
     if (!object.IsValid())
         return;
     const uint64_t handle = object.GetHandle().value;
@@ -250,7 +251,7 @@ void DrivePart(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::Obje
         ClearOffset(animation, handle, def, a.offsetSet[part]);
         return;
     }
-    const HIKARI::GameProjectTransform offset = FlyOffset(intro.settings, part, rest, BoneOf(a, part), u);
+    const HIKARI::GameProjectTransform offset = FlyOffset(intro, part, rest, BoneOf(a, part), u);
     if (animation.SetNodeParentLocalTransformOffset(handle, def.bone, offset))
         a.offsetSet[part] = true;
     a.partAt[part] = Add(rest.position, Rotate(rest.rotation, Mul(offset.position, rest.scale.x)));
@@ -258,12 +259,12 @@ void DrivePart(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::Obje
 
 } // namespace
 
-bool BossIntroActor::Find(HIKARI::WorldView& world, BossIntroComponent& intro) {
+bool BossIntroActor::Find(HIKARI::WorldView& world, BossIntro& intro) {
     BossIntroActorState& a = intro.state.actor;
     a = {};
     a.searched = true;
-    const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject);
-    if (intro.settings.actorObject == 0u || !actor.IsValid() || !world.GetAnimation().IsValid()) {
+    const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject));
+    if (!intro.introActorObject.IsAlive() || !actor.IsValid() || !world.GetAnimation().IsValid()) {
         BossLog::Warn("[BossIntro] 役者の物体が無いか、動画の機能（Animation）が切ってあります。登場をしません");
         return false;
     }
@@ -271,7 +272,7 @@ bool BossIntroActor::Find(HIKARI::WorldView& world, BossIntroComponent& intro) {
     return true;
 }
 
-void BossIntroActor::ReadCues(BossIntroComponent& intro) {
+void BossIntroActor::ReadCues(BossIntro& intro) {
     BossIntroState& state = intro.state;
     for (int k = 0; k < state.cueCount; ++k) {
         BossIntroCue& cue = state.cues[static_cast<size_t>(k)];
@@ -300,11 +301,11 @@ void BossIntroActor::ReadCues(BossIntroComponent& intro) {
     }
 }
 
-void BossIntroActor::Drive(HIKARI::WorldView& world, const BossBodySettings& body, BossIntroComponent& intro,
+void BossIntroActor::Drive(HIKARI::WorldView& world, const BossBody& body, BossIntro& intro,
                            const HIKARI::GameProjectTransform* stage, float t, bool started) {
     BossIntroState& state = intro.state;
     BossIntroActorState& a = state.actor;
-    const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject);
+    const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject));
     if (!a.ready || !actor.IsValid())
         return;
     if (stage != nullptr)
@@ -317,7 +318,7 @@ void BossIntroActor::Drive(HIKARI::WorldView& world, const BossBodySettings& bod
         a.skinShown = {-1, -1, -1};
         (void)animation.SetEvaluationEnabled(handle, 1u);
         // 草摺を外してある間（BossBody.bodyTassetCount が 0）は、役者の草摺も出さない。
-        if (body.tassetCount <= 0)
+        if (body.bodyTassetCount <= 0)
             for (const std::string_view node : kTassetNodes)
                 (void)actor.GetModel().SetNodeVisibility(node, false);
     }
@@ -363,19 +364,19 @@ void BossIntroActor::Drive(HIKARI::WorldView& world, const BossBodySettings& bod
         DrivePart(world, intro, actor, part, t, started);
 }
 
-void BossIntroActor::HoldKeyLight(HIKARI::WorldView& world, BossIntroComponent& intro) {
+void BossIntroActor::HoldKeyLight(HIKARI::WorldView& world, BossIntro& intro) {
     const BossIntroActorState& a = intro.state.actor;
-    if (!a.keyLightSeen || intro.settings.keyLightObject == 0u)
+    if (!a.keyLightSeen || !intro.introKeyLightObject.IsAlive())
         return;
-    const HIKARI::ObjectView light = world.FindSceneObject(intro.settings.keyLightObject);
+    const HIKARI::ObjectView light = world.FindObject(HIKARI::Extend::HandleOf(intro.introKeyLightObject));
     if (!light.IsValid())
         return;
     (void)light.SetWorldTransform(a.keyLightAt);
     if (!a.keyLightLevelSeen)
         return;
     // 演技の最後の明るさから、なめらかに 0 へ（役者を替える時には 0 にそろえる。替える時に灯を消しても、光が跳ねない）。
-    const BossIntroSettings& s = intro.settings;
-    const float fade = std::min(s.settleLightFadeSeconds, s.settleSwapSeconds);
+    const BossIntro& s = intro;
+    const float fade = std::min(s.introSettleLightFadeSeconds, s.introSettleSwapSeconds);
     constexpr float kTicksPerSecond = 60.0f; // 一息の段の frame は、固定の tick（1 秒 60）で数える
     const float seconds = static_cast<float>(intro.state.frame) / kTicksPerSecond;
     const float u = fade > 0.0f ? std::clamp(seconds / fade, 0.0f, 1.0f) : 1.0f;
@@ -385,19 +386,19 @@ void BossIntroActor::HoldKeyLight(HIKARI::WorldView& world, BossIntroComponent& 
     (void)light.GetLight().ApplyPatch(patch);
 }
 
-void BossIntroActor::Hide(HIKARI::WorldView& world, BossIntroComponent& intro) {
+void BossIntroActor::Hide(HIKARI::WorldView& world, BossIntro& intro) {
     BossIntroActorState& a = intro.state.actor;
     if (!a.ready)
         return;
     SwitchLight(world, intro, a.lightOn, false);
     const HIKARI::AnimationView animation = world.GetAnimation();
-    if (const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject); actor.IsValid()) {
+    if (const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject)); actor.IsValid()) {
         HideAll(actor, a.actorShown, kActorRoot);
         // 見えない間は、姿を評価しない。
         (void)animation.SetEvaluationEnabled(actor.GetHandle().value, 0u);
     }
     for (size_t part = 0; part < kParts.size(); ++part) {
-        const HIKARI::ObjectView object = world.FindSceneObject(ObjectId(intro.settings, part));
+        const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(ObjectId(intro, part)));
         if (!object.IsValid())
             continue;
         HideAll(object, a.partShown[part], kParts[part].root);
@@ -407,17 +408,17 @@ void BossIntroActor::Hide(HIKARI::WorldView& world, BossIntroComponent& intro) {
     a.socketsValid = false;
 }
 
-void BossIntroActor::Restore(HIKARI::WorldView& world, BossIntroComponent& intro) {
+void BossIntroActor::Restore(HIKARI::WorldView& world, BossIntro& intro) {
     BossIntroActorState& a = intro.state.actor;
     const HIKARI::AnimationView animation = world.GetAnimation();
     SwitchLight(world, intro, a.lightOn, false);
-    if (const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject); actor.IsValid()) {
+    if (const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject)); actor.IsValid()) {
         (void)actor.GetModel().ClearAllNodeVisibility();
         if (a.layerSet)
             (void)animation.ClearMaskedPoseLayer(actor.GetHandle().value, 0.0f);
     }
     for (size_t part = 0; part < kParts.size(); ++part) {
-        const HIKARI::ObjectView object = world.FindSceneObject(ObjectId(intro.settings, part));
+        const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(ObjectId(intro, part)));
         if (!object.IsValid())
             continue;
         (void)object.GetModel().ClearAllNodeVisibility();
@@ -428,11 +429,11 @@ void BossIntroActor::Restore(HIKARI::WorldView& world, BossIntroComponent& intro
     a = {};
 }
 
-void BossIntroActor::SetHelmGlow(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::GameProjectFloat3 color,
+void BossIntroActor::SetHelmGlow(HIKARI::WorldView& world, BossIntro& intro, HIKARI::GameProjectFloat3 color,
                                  float strength) {
     BossIntroActorState& a = intro.state.actor;
-    const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject);
-    if (intro.settings.actorObject == 0u || !actor.IsValid())
+    const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject));
+    if (!intro.introActorObject.IsAlive() || !actor.IsValid())
         return;
     const bool lit = strength > 0.001f && a.attached[static_cast<size_t>(BossIntroPart::Helm)];
     const int8_t want = lit ? 1 : 0;
@@ -460,14 +461,14 @@ void BossIntroActor::SetHelmGlow(HIKARI::WorldView& world, BossIntroComponent& i
     }
 }
 
-void BossIntroActor::SetHelmPartGlint(HIKARI::WorldView& world, BossIntroComponent& intro,
+void BossIntroActor::SetHelmPartGlint(HIKARI::WorldView& world, BossIntro& intro,
                                       HIKARI::GameProjectFloat3 color, float strength) {
     BossIntroActorState& a = intro.state.actor;
     const bool lit = strength > 0.001f && a.ready && !a.attached[static_cast<size_t>(BossIntroPart::Helm)];
     if (!lit && !a.helmPartLit)
         return;
-    const HIKARI::ObjectView helm = world.FindSceneObject(intro.settings.helmObject);
-    if (intro.settings.helmObject == 0u || !helm.IsValid())
+    const HIKARI::ObjectView helm = world.FindObject(HIKARI::Extend::HandleOf(intro.introHelmObject));
+    if (!intro.introHelmObject.IsAlive() || !helm.IsValid())
         return;
     if (lit) {
         (void)helm.GetModel().SetMaterialColorOverride(BossHelmGlowData::kPartMaterial, {0.0f, 0.0f, 0.0f}, 1.0f, color,
@@ -479,11 +480,11 @@ void BossIntroActor::SetHelmPartGlint(HIKARI::WorldView& world, BossIntroCompone
     }
 }
 
-void BossIntroActor::SetBladeEdge(HIKARI::WorldView& world, BossIntroComponent& intro, HIKARI::GameProjectFloat3 color,
+void BossIntroActor::SetBladeEdge(HIKARI::WorldView& world, BossIntro& intro, HIKARI::GameProjectFloat3 color,
                                   float strength) {
     BossIntroActorState& a = intro.state.actor;
-    const HIKARI::ObjectView actor = world.FindSceneObject(intro.settings.actorObject);
-    if (intro.settings.actorObject == 0u || !actor.IsValid())
+    const HIKARI::ObjectView actor = world.FindObject(HIKARI::Extend::HandleOf(intro.introActorObject));
+    if (!intro.introActorObject.IsAlive() || !actor.IsValid())
         return;
     if (strength > 0.001f) {
         (void)actor.GetModel().SetMaterialColorOverride(BossHelmGlowData::kActorBladeEdgeMaterial,
@@ -495,7 +496,7 @@ void BossIntroActor::SetBladeEdge(HIKARI::WorldView& world, BossIntroComponent& 
     }
 }
 
-bool BossIntroActor::Pose(const BossIntroComponent& intro, BossBodyPose& pose) {
+bool BossIntroActor::Pose(const BossIntro& intro, BossBodyPose& pose) {
     const BossIntroActorState& a = intro.state.actor;
     if (!a.socketsValid)
         return false;
@@ -505,7 +506,7 @@ bool BossIntroActor::Pose(const BossIntroComponent& intro, BossBodyPose& pose) {
     return true;
 }
 
-bool BossIntroActor::BodyTransform(const BossComponent& boss, const BossIntroComponent& intro,
+bool BossIntroActor::BodyTransform(const Boss& boss, const BossIntro& intro,
                                    HIKARI::GameProjectTransform& body) {
     const BossIntroActorState& a = intro.state.actor;
     if (!a.socketsValid)
@@ -518,7 +519,7 @@ bool BossIntroActor::BodyTransform(const BossComponent& boss, const BossIntroCom
     return true;
 }
 
-HIKARI::GameProjectFloat3 BossIntroActor::SwordEntry(const BossIntroComponent& intro) {
+HIKARI::GameProjectFloat3 BossIntroActor::SwordEntry(const BossIntro& intro) {
     const BossIntroActorState& a = intro.state.actor;
     return a.swordEntryValid ? a.swordEntry : intro.state.origin;
 }

@@ -23,7 +23,7 @@ enum class BossBrainMoment {
 
 // 行動ツリーを 1 回進める間、木の節が読み書きするもの。参照はその 1 回の間だけ有効。
 struct BossThought {
-    BossComponent& boss;
+    Boss& boss;
     BossBrainMoment moment = BossBrainMoment::Idle;
     BossSituation situation;
     // 後隙の最後の tick（技を頼まなければ、この tick で待機へ戻る）。

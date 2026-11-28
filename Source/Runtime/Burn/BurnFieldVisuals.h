@@ -27,7 +27,7 @@ struct BurnBody {
 class BurnFieldVisuals final {
 public:
     // 描画フレームごとに呼ぶ。seconds はそのフレームのゲーム時間。
-    static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field,
+    static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField& field,
                        const BurnBody& body, float seconds);
 };
 

@@ -1,6 +1,7 @@
 #include "FlowHud.h"
 
 #include <algorithm>
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -46,27 +47,27 @@ bool Rect(const HIKARI::UiView& ui, uint64_t id, int order, float x, float y, fl
 float Ratio(float value, float maximum) { return maximum > 0.0f ? std::clamp(value / maximum, 0.0f, 1.0f) : 0.0f; }
 
 // 煙の条の色。満杯で吸おうとした直後（Gourd.Blocked が 0〜smokeBlockedFlashSeconds の間）は、光る色から元の色へ戻す。
-HIKARI::GameProjectFloat3 SmokeColor(const FlowComponent& flow, const FlowHudValues& values, bool fireShot) {
-    const HIKARI::GameProjectFloat3 base = fireShot ? flow.fireSmokeColor : flow.smokeColor;
+HIKARI::GameProjectFloat3 SmokeColor(const Flow& flow, const FlowHudValues& values, bool fireShot) {
+    const HIKARI::GameProjectFloat3 base = fireShot ? ToGP(flow.fireSmokeColor) : ToGP(flow.smokeColor);
     const float flash = flow.smokeBlockedFlashSeconds;
     if (!(values.gourdBlocked > 0.0f) || !(flash > 0.0f) || values.gourdBlocked >= flash)
         return base;
     const float k = 1.0f - values.gourdBlocked / flash;
-    const HIKARI::GameProjectFloat3 lit = flow.smokeBlockedColor;
+    const HIKARI::GameProjectFloat3 lit = ToGP(flow.smokeBlockedColor);
     return {base.x + (lit.x - base.x) * k, base.y + (lit.y - base.y) * k, base.z + (lit.z - base.z) * k};
 }
 
 // 底の上に、割合だけの長さの中身を重ねる。
-bool Bar(const HIKARI::UiView& ui, const FlowComponent& flow, uint64_t backId, uint64_t fillId, float x, float y,
+bool Bar(const HIKARI::UiView& ui, const Flow& flow, uint64_t backId, uint64_t fillId, float x, float y,
          float width, float height, float ratio, HIKARI::GameProjectFloat3 color) {
-    const bool back = Rect(ui, backId, kOrderBack, x, y, width, height, flow.backColor, flow.backOpacity);
+    const bool back = Rect(ui, backId, kOrderBack, x, y, width, height, ToGP(flow.backColor), flow.backOpacity);
     const bool fill = Rect(ui, fillId, kOrderFill, x, y, width * ratio, height, color, 1.0f);
     return back && fill;
 }
 
 } // namespace
 
-bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values) {
+bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const Flow& flow, const FlowHudValues& values) {
     // 一番下の煙から上へ、回復の印、スタミナ、HP の順に積む。
     const float smokeY = flow.playerBarBottom - flow.smokeBarHeight;
     const float healY = smokeY - flow.barGap - flow.healSquareSize;
@@ -74,9 +75,9 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
     const float healthY = staminaY - flow.barGap - flow.healthBarHeight;
     bool accepted = Bar(ui, flow, kIdPlayerBack, kIdHealth, flow.playerBarX, healthY, flow.playerBarWidth,
                         flow.healthBarHeight, Ratio(values.playerHealth, values.playerMaxHealth),
-                        values.playerBurn > 0.0f ? flow.burningHealthColor : flow.healthColor);
+                        values.playerBurn > 0.0f ? ToGP(flow.burningHealthColor) : ToGP(flow.healthColor));
     accepted = Bar(ui, flow, kIdStaminaBack, kIdStamina, flow.playerBarX, staminaY, flow.playerBarWidth,
-                   flow.staminaBarHeight, Ratio(values.playerStamina, values.playerMaxStamina), flow.staminaColor) &&
+                   flow.staminaBarHeight, Ratio(values.playerStamina, values.playerMaxStamina), ToGP(flow.staminaColor)) &&
                accepted;
     // 火弾の間は、煙の条の色を変え、すぐ下に残り時間の細い条を出す（文字は出さない）。
     const bool fireShot = values.fireShotSeconds > 0.0f;
@@ -86,19 +87,19 @@ bool FlowHud::DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, co
     if (fireShot) {
         accepted = Bar(ui, flow, kIdFireShotBack, kIdFireShot, flow.playerBarX,
                        flow.playerBarBottom + flow.fireShotBarGap, flow.playerBarWidth, flow.fireShotBarHeight,
-                       Ratio(values.fireShotSeconds, values.fireShotDuration), flow.fireSmokeColor) &&
+                       Ratio(values.fireShotSeconds, values.fireShotDuration), ToGP(flow.fireSmokeColor)) &&
                    accepted;
     }
     for (int index = 0; index < values.healCharges; ++index) {
         const float x = flow.playerBarX + static_cast<float>(index) * (flow.healSquareSize + flow.barGap);
         accepted = Rect(ui, kIdHealSquare + static_cast<uint64_t>(index), kOrderFill, x, healY, flow.healSquareSize,
-                        flow.healSquareSize, flow.healColor, 1.0f) &&
+                        flow.healSquareSize, ToGP(flow.healColor), 1.0f) &&
                    accepted;
     }
     return accepted;
 }
 
-bool FlowHud::DrawBoss(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values) {
+bool FlowHud::DrawBoss(const HIKARI::UiView& ui, const Flow& flow, const FlowHudValues& values) {
     const float x = (kReferenceWidth - flow.bossBarWidth) * 0.5f;
     // 2 本目は、1 本目が空になった時から bossRefillSeconds 秒かけて左から満ちる（その間の HP は満ちた値なので、満ちた
     // 長さで切る。満ちきった後は HP の割合のまま）。
@@ -107,14 +108,14 @@ bool FlowHud::DrawBoss(const HIKARI::UiView& ui, const FlowComponent& flow, cons
     if (second && flow.bossRefillSeconds > 0.0f)
         ratio = std::min(ratio, std::clamp(values.bossPhaseSeconds / flow.bossRefillSeconds, 0.0f, 1.0f));
     return Bar(ui, flow, kIdBossBack, kIdBoss, x, flow.bossBarTop, flow.bossBarWidth, flow.bossBarHeight, ratio,
-               second ? flow.bossPhaseTwoColor : flow.bossPhaseOneColor);
+               second ? ToGP(flow.bossPhaseTwoColor) : ToGP(flow.bossPhaseOneColor));
 }
 
-bool FlowHud::DrawFade(const HIKARI::UiView& ui, const FlowComponent& flow, float fade) {
+bool FlowHud::DrawFade(const HIKARI::UiView& ui, const Flow& flow, float fade) {
     if (fade <= 0.0f)
         return true;
     const bool lost = flow.phase == FlowPhase::Lost;
-    return Rect(ui, kIdFade, kOrderFade, 0.0f, 0.0f, 1.0f, 1.0f, lost ? flow.loseColor : flow.winColor,
+    return Rect(ui, kIdFade, kOrderFade, 0.0f, 0.0f, 1.0f, 1.0f, lost ? ToGP(flow.loseColor) : ToGP(flow.winColor),
                 fade * (lost ? flow.loseOpacity : flow.winOpacity), HIKARI::kGameProjectUiFillViewport);
 }
 

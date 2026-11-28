@@ -14,7 +14,7 @@ namespace Project_TD2_2 {
 namespace {
 
 void StartRequested(BossFrame& frame, int chain) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     BossTableLoader::Load(frame.world, boss);
     // 連段の続きでない新しい技の前に、たまった体勢を決める（怯み・ひざまずきが先）。
     if (chain == 0 && BossHealth::ResolvePoise(frame)) {
@@ -43,7 +43,7 @@ void StartRequested(BossFrame& frame, int chain) {
 } // namespace
 
 void BossStateMachine::Step(BossFrame& frame, IBossBrain& brain, BossBrainContext& context) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     switch (boss.state) {
     case BossState::Dead: ++boss.stateFrame; return;
     case BossState::Stunned:
@@ -57,7 +57,7 @@ void BossStateMachine::Step(BossFrame& frame, IBossBrain& brain, BossBrainContex
     case BossState::Idle:
         // 戦いが始まるまで（Flow が止めている間）は、歩かず技も出さない。
         // 登場が済むまでも同じ。
-        if (boss.held || BossIntro::Holding(frame.intro)) {
+        if (boss.held || BossIntroRules::Holding(frame.intro)) {
             boss.velocity = {};
             return;
         }
@@ -69,7 +69,7 @@ void BossStateMachine::Step(BossFrame& frame, IBossBrain& brain, BossBrainContex
         }
         BossMoveExecutor::StepIdle(frame);
         // 変わり目の演出の後、少しの間は技を選ばない（構えたまま横へ歩く。次の技は行動ツリーが決める）。
-        if (boss.requestedMove < 0 && !BossPhaseShift::Calm(frame.shift))
+        if (boss.requestedMove < 0 && !BossPhaseShiftRules::Calm(frame.shift))
             brain.OnIdle(context);
         if (boss.requestedMove >= 0)
             StartRequested(frame, 0);

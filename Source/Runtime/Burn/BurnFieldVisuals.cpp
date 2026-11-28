@@ -9,6 +9,7 @@
 #include "../Common/FluidChannels.h"
 #include "../Common/VectorMath.h"
 #include "../Common/VfxParameters.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -48,7 +49,7 @@ constexpr float kTileFlameMinimum = 0.9f;
 constexpr float kTileAreaShareMinimum = 0.25f;
 
 // 升目の炎の層を全部止める（升目を確保し直す前）。
-void StopTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field) {
+void StopTileFlames(HIKARI::WorldView& world, BurnField& field) {
     for (BurnTile& tile : field.tiles) {
         if (tile.flame.IsValid())
             world.GetVfx().Stop(tile.flame);
@@ -58,7 +59,7 @@ void StopTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field) {
 }
 
 // 升目（タイル）の大きさを決め、持ち越しと作業場所を、その数に合わせる（大きさが変わった時だけ確保し直す）。
-void LayoutTiles(HIKARI::WorldView& world, BurnFieldComponent& field) {
+void LayoutTiles(HIKARI::WorldView& world, BurnField& field) {
     const BurnMap& map = field.map;
     const int side = std::max(map.Width(), map.Height());
     const int wanted = std::max(1, static_cast<int>(std::lround(field.emitterTile / map.CellSize())));
@@ -75,7 +76,7 @@ void LayoutTiles(HIKARI::WorldView& world, BurnFieldComponent& field) {
 }
 
 // 燃えているセルを、入っている升目ごとに足し合わせる（升目の中心からの相対位置で）。燃えている升目の数を返す。
-int SumTiles(BurnFieldComponent& field) {
+int SumTiles(BurnField& field) {
     const BurnMap& map = field.map;
     std::fill(field.tileSums.begin(), field.tileSums.end(), BurnTileSum{});
     const float tileSize = static_cast<float>(field.tileCells) * map.CellSize();
@@ -111,7 +112,7 @@ struct TileShape {
 
 // 足し合わせから、かたまりの重心と、広がり（分散）の長い方の向き・長さ・幅を出す。一様な帯の分散は 幅² ÷ 12。
 // 向きの符号は前のフレーム（tile の軸）に揃える（行き来の向きがフレームごとにひっくり返らないように）。
-TileShape ShapeOf(const BurnFieldComponent& field, const BurnTileSum& sum, const BurnTile& tile, int tx, int tz) {
+TileShape ShapeOf(const BurnField& field, const BurnTileSum& sum, const BurnTile& tile, int tx, int tz) {
     const BurnMap& map = field.map;
     const float tileSize = static_cast<float>(field.tileCells) * map.CellSize();
     const HIKARI::GameProjectFloat3 corner = map.CellCenter(tx * field.tileCells, tz * field.tileCells);
@@ -143,8 +144,8 @@ TileShape ShapeOf(const BurnFieldComponent& field, const BurnTileSum& sum, const
 // 流体の火は格子が粗く（約 34 cm）、炎の舌の形が出ないので、形はここで見せる。置く所は升目の火のかたまりの重心、
 // 局所 X を長い方へ向け、長さ・幅に合わせて根を伸ばす。量は、燃えている面積と消えかけ（fadeSeconds）で決め、燃え始めに
 // 上げ、消えた後は下げてから止める（吸って消した所も、ふっと消える）。
-void UpdateTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field, bool anyBurning, float seconds) {
-    if (field.tileEffect.IsEmpty()) {
+void UpdateTileFlames(HIKARI::WorldView& world, BurnField& field, bool anyBurning, float seconds) {
+    if (!field.tileEffect.IsSet()) {
         StopTileFlames(world, field);
         return;
     }
@@ -198,7 +199,7 @@ void UpdateTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field, bool 
             continue;
         }
         HIKARI::GameProjectVfxPlayRequest play{};
-        play.asset = field.tileEffect;
+        play.asset = VfxPlayback::Reference(field.tileEffect);
         play.transform = tile.flameTransform;
         play.parameters = parameters;
         play.randomSeed = static_cast<uint32_t>(index) * 2654435761u + 1u;
@@ -209,7 +210,7 @@ void UpdateTileFlames(HIKARI::WorldView& world, BurnFieldComponent& field, bool 
 
 // 何フレームに 1 回ずつ入れるか。足りなければすぐ広げ、狭めるのは、1 つ狭い間隔でも上限の 85 % に収まる時だけ
 // （境目で間隔が行き来すると、升目の番が入れ替わり、入る間隔が乱れる）。
-int HoldStride(BurnFieldComponent& field, int limit) {
+int HoldStride(BurnField& field, int limit) {
     const int needed = std::max(1, (field.burningTiles + limit - 1) / limit);
     int stride = std::max(needed, field.emitterStride);
     while (stride > needed &&
@@ -221,7 +222,7 @@ int HoldStride(BurnFieldComponent& field, int limit) {
 
 // 燃えている升目に番を割り振る。番を持っている升目はそのまま（1 つの番が上限を超えた分だけ外す）、燃え始めた升目と
 // 番の外れた升目を、いちばん空いている番へ入れる。どの番も上限以下なので、1 フレームに入れる数は上限を超えない。
-void AssignPhases(BurnFieldComponent& field, int stride, int limit) {
+void AssignPhases(BurnField& field, int stride, int limit) {
     std::vector<int>& counts = field.phaseCounts;
     counts.assign(static_cast<size_t>(stride), 0);
     for (size_t index = 0; index < field.tiles.size(); ++index) {
@@ -244,7 +245,7 @@ void AssignPhases(BurnFieldComponent& field, int stride, int limit) {
 
 // 塊を、場の火の域の流体で見せる。当たった所や刀の点火は小さな火球、煙の刃が当たった所は霞の塊
 // （ボスの演出が AddBlast で積む）。
-void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field) {
+void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField& field) {
     const uint32_t count = std::min<uint32_t>(field.blastCount, kBlastsPerFrame);
     if (count == 0)
         return;
@@ -300,7 +301,7 @@ void RenderBlasts(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField
 
 // 火の刃が当たった所：攻撃の向きへ速さのある熱い燃料を、体の手前から向こうへ動かしながら数フレーム入れる
 // （同じ番号で動かすので、エンジンが通った線に沿って燃料を広げ、炎が体を突き抜ける舌になる）。
-void RenderJet(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field, float seconds) {
+void RenderJet(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField& field, float seconds) {
     BurnJet& jet = field.jet;
     if (!(jet.remaining > 0.0f))
         return;
@@ -336,7 +337,7 @@ void RenderJet(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldCom
 // 炎上の間：体の周りを回る 2 つの点（上と下、向かい合わせ）から、燃料を同じ番号で入れ続ける。体は火の域の障害物なので、
 // 体の中へ入れた燃料は流れず、炎が見えない。体の外側を回して入れると、エンジンが点の通った線に沿って燃料を広げ、
 // 炎が体を巻いて立ちのぼり、動けば尾を引く。ローリング・吸い込みで消えた瞬間は、残った炎を外へ散らす。
-void RenderBody(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field, const BurnBody& body) {
+void RenderBody(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField& field, const BurnBody& body) {
     if (!body.found)
         return;
     const HIKARI::FluidView fluid = world.GetFluid();
@@ -376,7 +377,7 @@ void RenderBody(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldCo
 
 } // namespace
 
-void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnFieldComponent& field,
+void BurnFieldVisuals::Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BurnField& field,
                               const BurnBody& body, float seconds) {
     const BurnMap& map = field.map;
     field.fluidAccepted = true;

@@ -4,7 +4,6 @@
 #include <cstdio>
 
 #include "HIKARI/Project/ActionViews.h"
-#include "HIKARI/Project/GameProjectSession.h"
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BossFeedback.h"
 #include "BossGourdLink.h"
@@ -54,32 +53,32 @@ constexpr int32_t kShiftPlacePriority = 50;
 // 置いた次の tick に、足がこれより深く地面の下にあれば中心を持ち上げる (m)。
 constexpr float kStandTolerance = 0.02f;
 
-using ComponentLookup::ForEachOnObject;
-using ComponentLookup::WithFirstOnObject;
 using GameSession::IsPlaying;
 using namespace BossMath;
 
 // 同じ物体の見た目の部品：登場・変わり目の演出・体の見た目（無ければ nullptr：その見た目を出さない）。
 struct BossLookParts {
-    BossIntroComponent* intro = nullptr;
-    BossPhaseShiftComponent* shift = nullptr;
-    BossBodyComponent* body = nullptr;
+    BossIntro* intro = nullptr;
+    BossPhaseShift* shift = nullptr;
+    BossBody* body = nullptr;
 };
 
-// 同じ物体の見た目の部品を集めて callback(const BossLookParts&) に渡す（参照はクエリのコールバックの中だけで使う）。
+// 同じ物体の見た目の部品を集めて callback(const BossLookParts&) に渡す（参照はコールバックの中だけで使う）。
 template <class Callback>
-void WithLookParts(HIKARI::WorldView& world, HIKARI::ObjectView object, Callback&& callback) {
-    WithFirstOnObject<BossIntroComponent>(world, kBossIntroType, object, [&](BossIntroComponent* intro) {
-        WithFirstOnObject<BossPhaseShiftComponent>(
-            world, kBossPhaseShiftType, object, [&](BossPhaseShiftComponent* shift) {
-                WithFirstOnObject<BossBodyComponent>(world, kBossBodyType, object, [&](BossBodyComponent* body) {
-                    callback(BossLookParts{intro, shift, body});
-                });
-            });
-    });
+void WithLookParts(HIKARI::ObjectView object, Callback&& callback) {
+    callback(BossLookParts{ComponentLookup::GameOnObject<BossIntro>(object),
+                           ComponentLookup::GameOnObject<BossPhaseShift>(object),
+                           ComponentLookup::GameOnObject<BossBody>(object)});
 }
 
-void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, BossIntroComponent* intro) {
+// 場面にボスの部品があるか。旧い System はボスの部品に結んであり、ボスの居ない場面では動かなかった。
+bool HasBoss() {
+    bool found = false;
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView, Boss&) { found = true; });
+    return found;
+}
+
+void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss, BossIntro* intro) {
     HIKARI::GameProjectTransform transform{};
     object.GetWorldTransform(transform);
     boss.ground = {transform.position.x, transform.position.y - boss.bodyHalfHeight, transform.position.z};
@@ -91,20 +90,20 @@ void Initialize(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCompone
     boss.state = BossState::Idle;
     boss.initialized = true;
     // 登場（同じ物体の登場の部品。無ければ登場をしない）は Play の間に 1 度だけ：やり直し（シーンの読み直し）の後は、
-    // Play session が覚えている。
+    // Play の覚え書き（シーンをまたぐ SessionMemory）が覚えている。
     if (intro != nullptr) {
-        auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession());
-        BossIntro::Begin(boss, *intro, memory != nullptr && memory->GetMemory().bossIntroSeen);
+        const SessionMemory* memory = CurrentSessionMemory();
+        BossIntroRules::Begin(boss, *intro, memory != nullptr && memory->bossIntroSeen);
         // 役者（骨格の動画で演じる体）を探す。いなければ登場をしない。登場をしない時は、役者と落ちている部品を隠す。
         if (!BossIntroActor::Find(world, *intro))
-            BossIntro::Cancel(*intro);
-        if (!BossIntro::Holding(intro))
+            BossIntroRules::Cancel(*intro);
+        if (!BossIntroRules::Holding(intro))
             BossIntroActor::Hide(world, *intro);
     }
     BossTableLoader::Load(world, boss);
 }
 
-void Trace(const BossComponent& boss, const Damageable* health) {
+void Trace(const Boss& boss, const Damageable* health) {
     if (!TraceInterval::Due(boss.traceEveryFrames, boss.tick))
         return;
     // 規則の剣の構え（握り・向き）。姿勢の切り替えでどれだけ跳ぶかを tick ごとに見るための確かめ用。
@@ -131,14 +130,14 @@ void Trace(const BossComponent& boss, const Damageable* health) {
 
 // 変わり目の置き直しの次の tick に、プレイヤーの足が地面より下に埋まっていたら、中心を地面＋半高へ持ち上げる（c-7d3039。
 // 置き直しの後に 1 度だけ。ほかの経路には使わない）。位置の x・z・向きはそのまま。
-void KeepPlayerAboveGround(HIKARI::WorldView& world, const BossComponent& boss,
+void KeepPlayerAboveGround(HIKARI::WorldView& world, const Boss& boss,
                            HIKARI::GameProjectObjectHandle playerObject) {
     const HIKARI::ObjectView object = world.FindObject(playerObject);
     HIKARI::GameProjectTransform transform{};
     if (!object.IsValid() || !object.GetWorldTransform(transform))
         return;
-    const BossPhaseShift::PlayerStand stand =
-        BossPhaseShift::MeasurePlayerStand(world, playerObject, transform.position, boss.ground.y);
+    const BossPhaseShiftRules::PlayerStand stand =
+        BossPhaseShiftRules::MeasurePlayerStand(world, playerObject, transform.position, boss.ground.y);
     const float feet = transform.position.y - stand.halfHeight;
     if (!stand.groundFound || feet >= stand.ground - kStandTolerance)
         return;
@@ -162,8 +161,8 @@ void KeepPlayerAboveGround(HIKARI::WorldView& world, const BossComponent& boss,
 void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, const BossGearSight& gear,
               IBossBrain& brain) {
     HIKARI::WorldView& world = frame.world;
-    BossComponent& boss = frame.boss;
-    BossIntroComponent* intro = frame.intro;
+    Boss& boss = frame.boss;
+    BossIntro* intro = frame.intro;
     Player* player = frame.player;
     const Vec3 playerCenter = frame.playerCenter;
     BossObserver::Observe(world, boss, player, playerCenter, gear, frame.dt);
@@ -172,30 +171,30 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
     boss.lookTargetSeen = player != nullptr;
     if (intro != nullptr) {
         if (player != nullptr)
-            BossIntro::Face(boss, *intro, playerCenter);
-        BossIntro::Step(world, boss, *intro);
+            BossIntroRules::Face(boss, *intro, playerCenter);
+        BossIntroRules::Step(world, boss, *intro);
     }
     BossHealthBars::Step(boss);
-    BossPhaseShift::Step(world, boss, frame.shift);
+    BossPhaseShiftRules::Step(world, boss, frame.shift);
     // 演出の間（登場・フェーズの変わり目）は、プレイヤーの入力を止めて無敵にする（毎 tick 入れ直す。
     // PlayerSystem が tick ごとに減らす）。変わり目の閃光の後の tick に、プレイヤーを押し出す。
-    if (player != nullptr && (BossIntro::Cinematic(intro) || BossPhaseShift::Cinematic(frame.shift)))
+    if (player != nullptr && (BossIntroRules::Cinematic(intro) || BossPhaseShiftRules::Cinematic(frame.shift)))
         PlayerRules::HoldForCinematic(*player, kCinematicHoldTicks);
     // 置き直しの次の tick：足が地面の下に埋まっていないかを 1 度だけ見る（置く場所が高低のある所でも、碰撞体の大きさが
     // 変わっても、埋まったまま立たないように）。
-    if (BossPhaseShift::TakePlaceCheck(frame.shift) && player != nullptr && frame.playerObject.value != 0u)
+    if (BossPhaseShiftRules::TakePlaceCheck(frame.shift) && player != nullptr && frame.playerObject.value != 0u)
         KeepPlayerAboveGround(world, boss, frame.playerObject);
     // 変わり目の演出が舞台を決めた tick：プレイヤーをボスの正面へ置き直す（演出の間は入力が止まっている）。
     HIKARI::GameProjectFloat3 placeAt{}, placeFacing{};
-    if (BossPhaseShift::TakePlacement(frame.shift, placeAt, placeFacing) && player != nullptr &&
+    if (BossPhaseShiftRules::TakePlacement(frame.shift, placeAt, placeFacing) && player != nullptr &&
         frame.playerObject.value != 0u) {
-        // 置く高さ：演出が決めた placeAt の y は「ボスの足元＋playerLift」（足元の高さ）。物体の位置は碰撞体の中心なので、
+        // 置く高さ：演出が決めた placeAt の y は「ボスの足元＋shiftPlayerLift」（足元の高さ）。物体の位置は碰撞体の中心なので、
         // 置く所の地面に半高を足して中心の高さにする（x・z・向きは変えない）。
         const float lift = placeAt.y - boss.ground.y;
-        const BossPhaseShift::PlayerStand stand =
-            BossPhaseShift::MeasurePlayerStand(world, frame.playerObject, placeAt, boss.ground.y);
+        const BossPhaseShiftRules::PlayerStand stand =
+            BossPhaseShiftRules::MeasurePlayerStand(world, frame.playerObject, placeAt, boss.ground.y);
         placeAt.y = stand.ground + stand.halfHeight + lift;
-        BossPhaseShift::NotePlaced(frame.shift);
+        BossPhaseShiftRules::NotePlaced(frame.shift);
         HIKARI::GameProjectKinematicTeleport teleport{};
         teleport.objectHandle = frame.playerObject.value;
         teleport.sourceId = kShiftPlaceSource;
@@ -214,11 +213,11 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
                       stand.groundFound ? "ray" : "boss", stand.halfHeightRead ? "ray" : "fallback");
         BossLog::Write(message);
     }
-    boss.shownBar = BossIntro::BarShown(intro) ? 1.0f : 0.0f;
-    boss.shownCinematic = BossIntro::Cinematic(intro) || BossPhaseShift::Cinematic(frame.shift) ? 1.0f : 0.0f;
-    if (BossIntro::Started(intro)) {
-        if (auto* memory = dynamic_cast<ISessionMemory*>(world.GetGameSession()))
-            memory->GetMemory().bossIntroSeen = true;
+    boss.shownBar = BossIntroRules::BarShown(intro) ? 1.0f : 0.0f;
+    boss.shownCinematic = BossIntroRules::Cinematic(intro) || BossPhaseShiftRules::Cinematic(frame.shift) ? 1.0f : 0.0f;
+    if (BossIntroRules::Started(intro)) {
+        if (SessionMemory* memory = CurrentSessionMemory())
+            memory->bossIntroSeen = true;
     }
     BossMoveExecutor::StepFloat(boss);
     BossBrainContext context{boss, object.GetHandle()};
@@ -258,175 +257,164 @@ void StepBoss(BossFrame& frame, HIKARI::ObjectView object, Damageable* health, c
 
 } // namespace
 
-void BossSystem::OnWorldAttached(HIKARI::WorldView&) { treeBrain_.Attach(); }
+namespace BossSystem {
 
-void BossSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
+void FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, BossBrains& brains) {
+    if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f || !HasBoss())
         return;
+    // 行動ツリーの節の登録は、ボスの居る場面の最初の tick に 1 度だけ（旧 OnWorldAttached）。
+    if (!brains.attached) {
+        brains.attached = true;
+        brains.tree.Attach();
+    }
     // プレイヤーのヒョウタンと砲撃を見る（吸い込み中か・捕まえられる空き・口・ボスが見る道具）。
     BossGourdSight sight = BossGourdLink::Sense(world);
     BossCatchHandoff caught;
     // 口へ引き込んでいる途中の斬撃・ナイフの数（ある間は、ヒョウタンが口の吸う力と見た目を保つ）。
     int pulling = 0;
-    world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object,
-                                                                                      BossComponent& boss) {
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
         // 同じ物体の登場・変わり目の演出の部品（無ければ nullptr：その演出をしない）。演出の規則は、ボスの tick の中で
         // 前と同じ順に呼ぶ。
-        WithFirstOnObject<BossIntroComponent>(world, kBossIntroType, object, [&](BossIntroComponent* intro) {
-            WithFirstOnObject<
-                BossPhaseShiftComponent>(world, kBossPhaseShiftType, object, [&](BossPhaseShiftComponent* shift) {
-                if (!boss.initialized)
-                    Initialize(world, object, boss, intro);
-                // 技のクリップの刀の骨（c-7b1a09）を、技の規則が使う前に読んでおく（クリップごとに初めての時だけ）。
-                BossAnimBody::PrepareSword(world, boss);
-                BossAnimBody::CheckAimFingerprints(boss);
-                ++boss.tick;
-                boss.clockSeconds += frame.fixedDt;
-                boss.floatClock += frame.fixedDt;
-                boss.swordSmoke = false;
-                boss.bodySmokeRate = 0.0f;
-                boss.glintFrames = std::max(0, boss.glintFrames - 1);
-                IBossBrain& brain = BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(testBrain_) : treeBrain_;
-                // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
-                auto withHealth = [&](Player* player, Vec3 playerCenter, HIKARI::GameProjectObjectHandle playerObject) {
-                    BossFrame bossFrame{world,         boss,           player,           playerCenter, {},
-                                        frame.fixedDt, sight.inhaling, &sight.catchRoom, sight.mouth,  sight.hasMouth};
-                    bossFrame.playerObject = playerObject;
-                    bossFrame.intro = intro;
-                    bossFrame.shift = shift;
-                    StepBoss(bossFrame, object, Damageable::Of(object.GetHandle().value), sight.gear, brain);
-                };
-                // プレイヤーは 1 人。いなくても体と斬撃は動く（当たる相手がいないだけ）。
-                bool ran = false;
-                ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView playerObject, Player& player) {
-                    HIKARI::GameProjectTransform transform{};
-                    if (ran || !playerObject.GetWorldTransform(transform))
-                        return;
-                    ran = true;
-                    withHealth(&player, transform.position, playerObject.GetHandle());
-                    BossLockTarget::Step(object, boss, player);
-                });
-                if (!ran)
-                    withHealth(nullptr, {}, {});
-                // 吸い取った斬撃・ナイフの渡し分を、ボスごとに集めて空にする（渡すのは下でまとめて 1 回）。
-                caught.smoke += boss.caught.smoke;
-                caught.count += boss.caught.count;
-                caught.fireCount += boss.caught.fireCount;
-                caught.knifeCount += boss.caught.knifeCount;
-                caught.bites += boss.caught.bites;
-                caught.fireBites += boss.caught.fireBites;
-                if (boss.caught.bites > 0)
-                    caught.bitePosition = boss.caught.bitePosition;
-                boss.caught = {};
-                for (const auto& wave : boss.waves) {
-                    if (!wave.active || !wave.captured)
-                        continue;
-                    ++pulling;
-                    caught.pull = std::max(caught.pull, static_cast<float>(wave.pullFrame) /
-                                                            static_cast<float>(std::max(1, wave.pullFrames)));
-                }
-            });
+        BossIntro* intro = ComponentLookup::GameOnObject<BossIntro>(object);
+        BossPhaseShift* shift = ComponentLookup::GameOnObject<BossPhaseShift>(object);
+        if (!boss.initialized)
+            Initialize(world, object, boss, intro);
+        // 技のクリップの刀の骨（c-7b1a09）を、技の規則が使う前に読んでおく（クリップごとに初めての時だけ）。
+        BossAnimBody::PrepareSword(world, boss);
+        BossAnimBody::CheckAimFingerprints(boss);
+        ++boss.tick;
+        boss.clockSeconds += frame.fixedDt;
+        boss.floatClock += frame.fixedDt;
+        boss.swordSmoke = false;
+        boss.bodySmokeRate = 0.0f;
+        boss.glintFrames = std::max(0, boss.glintFrames - 1);
+        IBossBrain& brain = BossTestBrain::Wants(boss) ? static_cast<IBossBrain&>(brains.test) : brains.tree;
+        // 参照はクエリのコールバックの中だけで使うので、プレイヤー → 同じ物体の Damageable の順に入れ子で処理する。
+        auto withHealth = [&](Player* player, Vec3 playerCenter, HIKARI::GameProjectObjectHandle playerObject) {
+            BossFrame bossFrame{world,         boss,           player,           playerCenter, {},
+                                frame.fixedDt, sight.inhaling, &sight.catchRoom, sight.mouth,  sight.hasMouth};
+            bossFrame.playerObject = playerObject;
+            bossFrame.intro = intro;
+            bossFrame.shift = shift;
+            StepBoss(bossFrame, object, ComponentLookup::GameOnObject<Damageable>(object), sight.gear, brain);
+        };
+        // プレイヤーは 1 人。いなくても体と斬撃は動く（当たる相手がいないだけ）。
+        bool ran = false;
+        ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView playerObject, Player& player) {
+            HIKARI::GameProjectTransform transform{};
+            if (ran || !playerObject.GetWorldTransform(transform))
+                return;
+            ran = true;
+            withHealth(&player, transform.position, playerObject.GetHandle());
+            BossLockTarget::Step(object, boss, player);
         });
+        if (!ran)
+            withHealth(nullptr, {}, {});
+        // 吸い取った斬撃・ナイフの渡し分を、ボスごとに集めて空にする（渡すのは下でまとめて 1 回）。
+        caught.smoke += boss.caught.smoke;
+        caught.count += boss.caught.count;
+        caught.fireCount += boss.caught.fireCount;
+        caught.knifeCount += boss.caught.knifeCount;
+        caught.bites += boss.caught.bites;
+        caught.fireBites += boss.caught.fireBites;
+        if (boss.caught.bites > 0)
+            caught.bitePosition = boss.caught.bitePosition;
+        boss.caught = {};
+        for (const auto& wave : boss.waves) {
+            if (!wave.active || !wave.captured)
+                continue;
+            ++pulling;
+            caught.pull = std::max(caught.pull, static_cast<float>(wave.pullFrame) /
+                                                    static_cast<float>(std::max(1, wave.pullFrames)));
+        }
     });
     BossGourdLink::HandOff(world, caught, pulling);
 }
 
-void BossSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr || !IsPlaying(world, frame))
-        return;
-    // 演出を飛ばす入力を覚える（c-164cab：入力は Update で読み、固定 tick の BossIntro・BossPhaseShift が使う）。
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
-            if (!boss.initialized)
-                return;
-            // 登場の演出（同じ物体の登場の部品）。
-            WithFirstOnObject<BossIntroComponent>(world, kBossIntroType, object, [&](BossIntroComponent* intro) {
-                if (BossIntro::Cinematic(intro) && !intro->settings.skipAction.empty() &&
-                    GameSession::ReadAction(world.GetInput(), intro->settings.skipAction).pressed)
-                    intro->state.skipRequested = true;
-            });
-            // フェーズの変わり目の演出（同じ物体の変わり目の演出の部品。項目で飛ばせなくできる）。
-            WithFirstOnObject<BossPhaseShiftComponent>(
-                world, kBossPhaseShiftType, object, [&](BossPhaseShiftComponent* shift) {
-                    if (BossPhaseShift::Cinematic(shift) && shift->settings.skippable &&
-                        !shift->settings.skipAction.empty() &&
-                        GameSession::ReadAction(world.GetInput(), shift->settings.skipAction).pressed)
-                        shift->state.skipRequested = true;
-                });
-        });
-}
-
-void BossSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    // 編集中（Play の外）：登場の演出の資産のプレビューだけ（c-e0c500。ほかの見た目・規則は動かさない）。
-    if (world.GetGameSession() == nullptr) {
-        BossBodyVisuals::UpdatePreviews(world);
-        return;
-    }
+void Update(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
+    // 演出を飛ばす入力を覚える（c-164cab：入力は Update で読み、固定 tick の BossIntro・BossPhaseShift が使う）。
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
+        if (!boss.initialized)
+            return;
+        // 登場の演出（同じ物体の登場の部品）。
+        BossIntro* intro = ComponentLookup::GameOnObject<BossIntro>(object);
+        if (BossIntroRules::Cinematic(intro) && !intro->introSkipAction.empty() &&
+            GameSession::ReadAction(world.GetInput(), intro->introSkipAction).pressed)
+            intro->state.skipRequested = true;
+        // フェーズの変わり目の演出（同じ物体の変わり目の演出の部品。項目で飛ばせなくできる）。
+        BossPhaseShift* shift = ComponentLookup::GameOnObject<BossPhaseShift>(object);
+        if (BossPhaseShiftRules::Cinematic(shift) && shift->shiftSkippable && !shift->shiftSkipAction.empty() &&
+            GameSession::ReadAction(world.GetInput(), shift->shiftSkipAction).pressed)
+            shift->state.skipRequested = true;
+    });
+}
+
+void LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+    if (!IsPlaying(world, frame) || !HasBoss())
+        return;
     size_t demand = 0;
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
-            if (!boss.initialized)
-                return;
-            WithLookParts(world, object, [&](const BossLookParts& parts) {
-                BossVisuals::Update(world, object, boss, parts.body, parts.shift, frame.gameDt,
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
+        if (!boss.initialized)
+            return;
+        WithLookParts(object, [&](const BossLookParts& parts) {
+            BossVisuals::Update(world, object, boss, parts.body, parts.shift, frame.gameDt,
+                                frame.fixedInterpolationAlpha);
+            BossBodyVisuals::Update(world, object, boss, parts.body, parts.intro, parts.shift, frame.gameDt,
                                     frame.fixedInterpolationAlpha);
-                BossBodyVisuals::Update(world, object, boss, parts.body, parts.intro, parts.shift, frame.gameDt,
-                                        frame.fixedInterpolationAlpha);
-                // フェーズ 2 の場の色・火の粉・焦げた輪（体を出さないフレームも進める。c-857ae3）。
-                if (parts.body != nullptr)
-                    BossPhaseTwoField::Update(world, boss, *parts.body, parts.shift, frame.gameDt);
-                BossFeedback::Update(world, object, boss, frame);
-                // 演出の効果の手応え：登場だけの分（衝撃の輪・星・見得の張りつめを口へ書く）→ 登場と変わり目の演出の共通の分。
-                if (parts.intro != nullptr)
-                    BossIntroEffects::Feedback(world, object, boss, BossBodySettingsOf(parts.body), *parts.intro,
-                                               frame.unscaledDt);
-                BossCinematicFx::Feedback(world, object, boss, frame.unscaledDt);
-                // 登場・変わり目の演出のカメラ（プレイヤーのカメラへ渡す）。
-                if (parts.intro != nullptr)
-                    ComponentLookup::ForEachGame<Player>(
-                        [&](HIKARI::ObjectView, Player& player) { BossIntroCamera::Update(*parts.intro, player); });
-                if (parts.shift != nullptr)
-                    ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView, Player& player) {
-                        BossPhaseShiftCamera::Update(*parts.shift, player);
-                    });
-                demand += BossVisuals::GetFluidDomainDemand(boss, parts.body);
-            });
+            // フェーズ 2 の場の色・火の粉・焦げた輪（体を出さないフレームも進める。c-857ae3）。
+            if (parts.body != nullptr)
+                BossPhaseTwoField::Update(world, boss, *parts.body, parts.shift, frame.gameDt);
+            BossFeedback::Update(world, object, boss, frame);
+            // 演出の効果の手応え：登場だけの分（衝撃の輪・星・見得の張りつめを口へ書く）→ 登場と変わり目の演出の共通の分。
+            if (parts.intro != nullptr)
+                BossIntroEffects::Feedback(world, object, boss, BossBodySettingsOf(parts.body), *parts.intro,
+                                           frame.unscaledDt);
+            BossCinematicFx::Feedback(world, object, boss, frame.unscaledDt);
+            // 登場・変わり目の演出のカメラ（プレイヤーのカメラへ渡す）。
+            if (parts.intro != nullptr)
+                ComponentLookup::ForEachGame<Player>(
+                    [&](HIKARI::ObjectView, Player& player) { BossIntroCamera::Update(*parts.intro, player); });
+            if (parts.shift != nullptr)
+                ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView, Player& player) {
+                    BossPhaseShiftCamera::Update(*parts.shift, player);
+                });
+            demand += BossVisuals::GetFluidDomainDemand(boss, parts.body);
         });
+    });
     // 斬撃のエフェクトが使う流体域の分だけ、砲撃の炎の枠を譲ってもらう（毎フレーム入れ直す）。
     BossGourdLink::ReserveFluidDomains(world, demand);
 }
 
-void BossSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+void PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
     const float smokePerVolume = BossGourdLink::SmokePerVolume(world);
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
-            if (!boss.initialized)
-                return;
-            WithLookParts(world, object, [&](const BossLookParts& parts) {
-                BossSmoke::Render(world, object, boss, parts.body, smokePerVolume);
-                // 登場の黒い煙・落ちている兜の瞬き（同じ物体の登場の部品）。
-                if (parts.intro != nullptr)
-                    BossIntroEffects::Render(world, object, boss, BossBodySettingsOf(parts.body), *parts.intro,
-                                             frame.gameDt);
-            });
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
+        if (!boss.initialized)
+            return;
+        WithLookParts(object, [&](const BossLookParts& parts) {
+            BossSmoke::Render(world, object, boss, parts.body, smokePerVolume);
+            // 登場の黒い煙・落ちている兜の瞬き（同じ物体の登場の部品）。
+            if (parts.intro != nullptr)
+                BossIntroEffects::Render(world, object, boss, BossBodySettingsOf(parts.body), *parts.intro,
+                                         frame.gameDt);
         });
+    });
 }
 
-void BossSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
-            BossVisuals::Stop(world, boss);
-            WithLookParts(world, object, [&](const BossLookParts& parts) {
-                BossBodyVisuals::Stop(world, boss, parts.body, parts.shift);
-                if (parts.body != nullptr)
-                    BossPhaseTwoField::Stop(world, *parts.body);
-            });
-            BossWaves::Clear(boss);
+void OnWorldDetached(HIKARI::WorldView& world) {
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
+        BossVisuals::Stop(world, boss);
+        WithLookParts(object, [&](const BossLookParts& parts) {
+            BossBodyVisuals::Stop(world, boss, parts.body, parts.shift);
+            if (parts.body != nullptr)
+                BossPhaseTwoField::Stop(world, *parts.body);
         });
+        BossWaves::Clear(boss);
+    });
 }
 
+} // namespace BossSystem
 } // namespace Project_TD2_2

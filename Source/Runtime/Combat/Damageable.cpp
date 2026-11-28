@@ -11,31 +11,11 @@ using namespace HIKARI;
 
 constexpr float kFramesPerSecond = 60.0f;
 
-// Play 中に始まった Damageable（古い System から物体で引くための表。ボスとヒョウタン砲撃が移れば消す）。
-std::vector<Damageable*>& Started() {
-    static std::vector<Damageable*> started;
-    return started;
-}
-
 float Seconds(int frames) { return static_cast<float>(std::max(frames, 0)) / kFramesPerSecond; }
 
 } // namespace
 
-void Damageable::OnStart() {
-    EnsureStarted();
-    Started().push_back(this);
-}
-
-void Damageable::OnDestroy() { std::erase(Started(), this); }
-
-Damageable::~Damageable() { std::erase(Started(), this); }
-
-Damageable* Damageable::Of(uint64_t objectHandle) {
-    for (Damageable* damageable : Started())
-        if (damageable->Self().Raw() == objectHandle)
-            return damageable;
-    return nullptr;
-}
+void Damageable::OnStart() { EnsureStarted(); }
 
 void Damageable::EnsureStarted() {
     if (started_)

@@ -14,7 +14,7 @@ public:
     // 攻撃中の 1 tick。
     static void Act(BossFrame& frame, const BossMove& move, const BossSegmentProgress& g, float progress);
     // 後隙の 1 tick。progress は後隙の進み（0〜1）。
-    static void Post(BossComponent& boss, const BossMove& move, float progress);
+    static void Post(Boss& boss, const BossMove& move, float progress);
 };
 
 } // namespace Project_TD2_2

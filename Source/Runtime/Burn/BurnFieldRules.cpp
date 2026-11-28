@@ -2,7 +2,7 @@
 
 namespace Project_TD2_2 {
 
-void BurnFieldRules::Initialize(HIKARI::ObjectView object, BurnFieldComponent& field) {
+void BurnFieldRules::Initialize(HIKARI::ObjectView object, BurnField& field) {
     if (field.initialized)
         return;
     field.initialized = true;

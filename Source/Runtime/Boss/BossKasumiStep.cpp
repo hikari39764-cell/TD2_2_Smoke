@@ -11,6 +11,7 @@
 #include "BossMoveExecutor.h"
 #include "BossWaves.h"
 #include "../Burn/BurnField.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -30,7 +31,7 @@ constexpr std::array<BossStepDirection, 6> kBasicDirections = {
     BossStepDirection::Left,         BossStepDirection::Right,    BossStepDirection::LeftForward,
     BossStepDirection::RightForward, BossStepDirection::LeftBack, BossStepDirection::RightBack};
 
-void Log(const BossComponent& boss, const char* event, const char* extra) {
+void Log(const Boss& boss, const char* event, const char* extra) {
     char message[448]{};
     std::snprintf(message, sizeof(message), "%s tick=%llu %s", event, static_cast<unsigned long long>(boss.tick),
                   extra);
@@ -48,7 +49,7 @@ struct StepFrame {
 };
 
 StepFrame FrameOf(const BossFrame& frame, float distance) {
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     StepFrame f;
     f.forward = Forward(boss.yaw);
     if (frame.player != nullptr) {
@@ -56,7 +57,7 @@ StepFrame FrameOf(const BossFrame& frame, float distance) {
         f.forward = FlatNormalize(offset, f.forward);
         const float radius = FlatLength(offset);
         const float half = radius > 1e-3f ? std::clamp(distance / (2.0f * radius), 0.0f, 1.0f) : 0.0f;
-        const float bend = std::clamp(boss.kasumiStep.orbit, 0.0f, 1.0f) * std::asin(half);
+        const float bend = std::clamp(boss.kasumiStepOrbit, 0.0f, 1.0f) * std::asin(half);
         f.bendCos = std::cos(bend);
         f.bendSin = std::sin(bend);
     }
@@ -82,8 +83,8 @@ struct Candidates {
 };
 
 // 表の向き（弾の側以外）の水平の単位ベクトル。
-Vec3 DirectionOf(const BossComponent& boss, const StepFrame& f, BossStepDirection key) {
-    const float angle = std::clamp(boss.kasumiStep.diagonalDegrees, 0.0f, 90.0f) * kRadiansPerDegree;
+Vec3 DirectionOf(const Boss& boss, const StepFrame& f, BossStepDirection key) {
+    const float angle = std::clamp(boss.kasumiStepDiagonalDegrees, 0.0f, 90.0f) * kRadiansPerDegree;
     const float across = std::cos(angle), along = std::sin(angle);
     switch (key) {
     case BossStepDirection::Right: return Sideways(f, Mul(f.left, -1.0f), f.forward);
@@ -97,7 +98,7 @@ Vec3 DirectionOf(const BossComponent& boss, const StepFrame& f, BossStepDirectio
 
 // 弾の線から離れる側：線に直交する向き（離れる側が先）と、線から離れつつ撃つ人から遠ざかる斜め後ろ。線の上にほぼ
 // 乗っている時はどちらの側か乱数で決める。弾の線をまだ見ていなければ左右。
-void PushAwayFromShot(BossComponent& boss, const StepFrame& f, Candidates& out) {
+void PushAwayFromShot(Boss& boss, const StepFrame& f, Candidates& out) {
     const BossPlayerWatch& watch = boss.watch;
     const Vec3 aim = watch.shotLineSeen ? FlatNormalize(watch.shotDirection, f.forward) : Mul(f.forward, -1.0f);
     const Vec3 normal{aim.z, 0.0f, -aim.x};
@@ -105,7 +106,7 @@ void PushAwayFromShot(BossComponent& boss, const StepFrame& f, Candidates& out) 
     const float side = std::abs(offset) > kShotCenterBand ? (offset > 0.0f ? 1.0f : -1.0f)
                        : BossRandom(boss) < 0.5f          ? 1.0f
                                                           : -1.0f;
-    const float angle = std::clamp(boss.kasumiStep.diagonalDegrees, 0.0f, 90.0f) * kRadiansPerDegree;
+    const float angle = std::clamp(boss.kasumiStepDiagonalDegrees, 0.0f, 90.0f) * kRadiansPerDegree;
     for (const float s : {side, -side}) {
         out.Push(BossStepDirection::AwayFromShot, Sideways(f, Mul(normal, s), Mul(aim, -1.0f)));
         out.Push(BossStepDirection::AwayFromShot, Add(Mul(normal, s * std::cos(angle)), Mul(aim, std::sin(angle))));
@@ -114,17 +115,17 @@ void PushAwayFromShot(BossComponent& boss, const StepFrame& f, Candidates& out) 
 
 // 行き先へ降りられないわけ（降りられれば nullptr）：戦場の縁・プレイヤーの近く・燃えている地面。
 const char* Blocked(BossFrame& frame, Vec3 from, Vec3 to) {
-    const BossComponent& boss = frame.boss;
-    const BossKasumiStepSettings& s = boss.kasumiStep;
-    if (FlatLength(Sub(to, boss.arenaCenter)) > std::max(0.0f, boss.arenaRadius - s.edgeMargin))
+    const Boss& boss = frame.boss;
+    const Boss& s = boss;
+    if (FlatLength(Sub(to, ToGP(boss.arenaCenter))) > std::max(0.0f, boss.arenaRadius - s.kasumiStepEdgeMargin))
         return "edge";
-    if (frame.player != nullptr && FlatLength(Sub(to, PlayerGround(frame))) < s.playerGap)
+    if (frame.player != nullptr && FlatLength(Sub(to, PlayerGround(frame))) < s.kasumiStepPlayerGap)
         return "player";
-    if (BurnField::IsBurning(frame.world, to) || BurnField::IsBurning(frame.world, Lerp(from, to, 0.5f)))
+    if (BurnFieldAccess::IsBurning(frame.world, to) || BurnFieldAccess::IsBurning(frame.world, Lerp(from, to, 0.5f)))
         return "fire";
-    for (int k = 0; k < kFireProbePoints && s.fireClearance > 0.0f; ++k) {
+    for (int k = 0; k < kFireProbePoints && s.kasumiStepFireClearance > 0.0f; ++k) {
         const float angle = 2.0f * kPi * static_cast<float>(k) / static_cast<float>(kFireProbePoints);
-        if (BurnField::IsBurning(frame.world, Add(to, Mul(Forward(angle), s.fireClearance))))
+        if (BurnFieldAccess::IsBurning(frame.world, Add(to, Mul(Forward(angle), s.kasumiStepFireClearance))))
             return "fire";
     }
     return nullptr;
@@ -148,7 +149,7 @@ struct Choice {
 
 // 表の向きを乱数で決めた所から順に確かめ、だめなら基本の 6 向き、それもだめなら最初の候補を戦場の内へ縮めて使う。
 Choice Choose(BossFrame& frame, const BossMove& move, float distance) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const StepFrame f = FrameOf(frame, distance);
     Candidates candidates;
     const int listed = move.kasumiStep.directionCount;
@@ -182,8 +183,8 @@ Choice Choose(BossFrame& frame, const BossMove& move, float distance) {
     choice.blocked = true;
     choice.candidate = candidates.items[0];
     choice.to = Add(boss.ground, Mul(choice.candidate.direction, distance));
-    const Vec3 fromCenter = Sub(choice.to, boss.arenaCenter);
-    const float limit = std::max(0.0f, boss.arenaRadius - boss.kasumiStep.edgeMargin);
+    const Vec3 fromCenter = Sub(choice.to, ToGP(boss.arenaCenter));
+    const float limit = std::max(0.0f, boss.arenaRadius - boss.kasumiStepEdgeMargin);
     if (FlatLength(fromCenter) > limit) {
         const Vec3 inside = Mul(FlatNormalize(fromCenter), limit);
         choice.to = {boss.arenaCenter.x + inside.x, boss.ground.y, boss.arenaCenter.z + inside.z};
@@ -192,37 +193,37 @@ Choice Choose(BossFrame& frame, const BossMove& move, float distance) {
 }
 
 // 続けてかわした回数を数え、使い切ったら、しばらくかわさない。
-void NoteDodge(BossComponent& boss) {
-    const BossKasumiStepSettings& s = boss.kasumiStep;
+void NoteDodge(Boss& boss) {
+    const Boss& s = boss;
     BossKasumiStepState& state = boss.kasumiStepState;
-    if (boss.clockSeconds - state.lastDodgeSeconds > s.dodgeChainSeconds)
+    if (boss.clockSeconds - state.lastDodgeSeconds > s.kasumiStepDodgeChainSeconds)
         state.dodges = 0;
     ++state.dodges;
     state.lastDodgeSeconds = boss.clockSeconds;
-    if (state.dodges < std::max(1, s.dodgeMax))
+    if (state.dodges < std::max(1, s.kasumiStepDodgeMax))
         return;
     state.dodges = 0;
-    state.lockedUntilSeconds = boss.clockSeconds + std::max(0.0f, s.dodgeLockSeconds);
+    state.lockedUntilSeconds = boss.clockSeconds + std::max(0.0f, s.kasumiStepDodgeLockSeconds);
     char extra[96]{};
-    std::snprintf(extra, sizeof(extra), "seconds=%.2f until=%.2f", static_cast<double>(s.dodgeLockSeconds),
+    std::snprintf(extra, sizeof(extra), "seconds=%.2f until=%.2f", static_cast<double>(s.kasumiStepDodgeLockSeconds),
                   static_cast<double>(state.lockedUntilSeconds));
     Log(boss, "DodgeSpent", extra);
 }
 
 // 着地した tick：足元の霧を押す（爆発の押しを小さくしたもの。見た目のエフェクトと吸える煙は出さない）。
-void Land(BossComponent& boss) {
+void Land(Boss& boss) {
     BossKasumiStepState& state = boss.kasumiStepState;
     state.landed = true;
-    if (boss.kasumiStep.landPush > 0.0f)
+    if (boss.kasumiStepLandPush > 0.0f)
         BossWaves::AddBlast(
-            boss, {.pushPending = true, .leavesFog = false, .scale = boss.kasumiStep.landPush, .position = state.to});
+            boss, {.pushPending = true, .leavesFog = false, .scale = boss.kasumiStepLandPush, .position = state.to});
     char extra[160]{};
     std::snprintf(extra, sizeof(extra), "at=(%.3f,%.3f) moved=%.3f", static_cast<double>(boss.ground.x),
                   static_cast<double>(boss.ground.z), static_cast<double>(FlatLength(Sub(boss.ground, state.from))));
     Log(boss, "KasumiLand", extra);
 }
 
-bool Stepping(const BossComponent& boss) {
+bool Stepping(const Boss& boss) {
     const auto& moves = boss.table.GetMoves();
     return boss.state == BossState::Act && boss.move >= 0 && static_cast<size_t>(boss.move) < moves.size() &&
            moves[static_cast<size_t>(boss.move)].type == BossMoveType::KasumiStep;
@@ -269,14 +270,14 @@ void BossKasumiStep::Read(std::string_view directions, std::string_view distance
 void BossKasumiStep::Begin(BossFrame& frame, const BossMove& move) {
     if (move.type != BossMoveType::KasumiStep)
         return;
-    BossComponent& boss = frame.boss;
-    const BossKasumiStepSettings& s = boss.kasumiStep;
+    Boss& boss = frame.boss;
+    const Boss& s = boss;
     BossKasumiStepState& state = boss.kasumiStepState;
-    const float distance = move.kasumiStep.distance > 0.0f ? move.kasumiStep.distance : s.distance;
+    const float distance = move.kasumiStep.distance > 0.0f ? move.kasumiStep.distance : s.kasumiStepDistance;
     const Choice choice = Choose(frame, move, distance);
     state.from = boss.ground;
     state.to = choice.to;
-    state.height = move.kasumiStep.height >= 0.0f ? move.kasumiStep.height : s.height;
+    state.height = move.kasumiStep.height >= 0.0f ? move.kasumiStep.height : s.kasumiStepHeight;
     state.direction = static_cast<int>(choice.candidate.key);
     state.dodge = choice.candidate.key == BossStepDirection::AwayFromShot;
     state.landed = false;
@@ -297,32 +298,32 @@ void BossKasumiStep::Begin(BossFrame& frame, const BossMove& move) {
 }
 
 void BossKasumiStep::Act(BossFrame& frame, float progress) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossKasumiStepState& state = boss.kasumiStepState;
     const float u = std::clamp(progress, 0.0f, 1.0f);
-    const float eased = 1.0f - std::pow(1.0f - u, std::max(1.0f, boss.kasumiStep.easePower));
+    const float eased = 1.0f - std::pow(1.0f - u, std::max(1.0f, boss.kasumiStepEasePower));
     boss.ground = Lerp(state.from, state.to, eased);
     boss.height = state.height * std::sin(u * kPi);
-    BossMoveExecutor::FaceRate(frame, boss.kasumiStep.turnRate);
+    BossMoveExecutor::FaceRate(frame, boss.kasumiStepTurnRate);
     if (u >= 1.0f && !state.landed)
         Land(boss);
 }
 
-void BossKasumiStep::Post(BossComponent& boss) { boss.height = 0.0f; }
+void BossKasumiStep::Post(Boss& boss) { boss.height = 0.0f; }
 
-bool BossKasumiStep::Guarding(const BossComponent& boss) {
-    return boss.kasumiStep.guardFrames > 0 && Stepping(boss) && boss.kasumiStepState.dodge &&
-           boss.phase == BossActPhase::Act && boss.stateFrame <= boss.kasumiStep.guardFrames;
+bool BossKasumiStep::Guarding(const Boss& boss) {
+    return boss.kasumiStepGuardFrames > 0 && Stepping(boss) && boss.kasumiStepState.dodge &&
+           boss.phase == BossActPhase::Act && boss.stateFrame <= boss.kasumiStepGuardFrames;
 }
 
-bool BossKasumiStep::CanDodge(const BossComponent& boss) {
+bool BossKasumiStep::CanDodge(const Boss& boss) {
     return boss.clockSeconds >= boss.kasumiStepState.lockedUntilSeconds;
 }
 
-bool BossKasumiStep::Spent(const BossComponent& boss) { return !CanDodge(boss); }
+bool BossKasumiStep::Spent(const Boss& boss) { return !CanDodge(boss); }
 
-bool BossKasumiStep::Allows(const BossComponent& boss, const BossMove& move) {
-    return move.type != BossMoveType::KasumiStep || !boss.kasumiStep.restWhileSpent || !Spent(boss);
+bool BossKasumiStep::Allows(const Boss& boss, const BossMove& move) {
+    return move.type != BossMoveType::KasumiStep || !boss.kasumiStepRestWhileSpent || !Spent(boss);
 }
 
 const char* BossKasumiStep::DirectionKey(BossStepDirection direction) {

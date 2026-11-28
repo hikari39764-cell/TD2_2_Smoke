@@ -67,9 +67,9 @@ using GameSession::ReadAction;
 
 // CloudMount と、同じ物体の Player の組ごとに callback(object, mount, player) を呼ぶ。Player が無ければ何もしない。
 template <class Callback>
-void ForEachRider(HIKARI::WorldView& world, Callback&& callback) {
+void ForEachRider(Callback&& callback) {
     ComponentLookup::ForEachGame<CloudMount>([&](HIKARI::ObjectView object, CloudMount& mount) {
-        ForEachOnObject<Player>(world, kPlayerType, object,
+        ForEachOnObject<Player>(object,
                                 [&](HIKARI::ObjectView, Player& player) { callback(object, mount, player); });
     });
 }
@@ -443,7 +443,7 @@ void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMou
                                                          guardRadius);
     const float facing = mount.speedFxFacing;
     const float amount = strength * facing;
-    if (amount > 0.0f && mount.speedFxHasCenter && !mount.speedFxProfile.empty()) {
+    if (amount > 0.0f && mount.speedFxHasCenter && mount.speedFxProfile.IsSet()) {
         HIKARI::GameProjectActionPostFrameRequest request{};
         request.sourceId = kSpeedFxSource;
         request.priority = kSpeedFxPriority;
@@ -451,7 +451,7 @@ void SubmitSpeedFx(HIKARI::WorldView& world, HIKARI::ObjectView object, CloudMou
         request.channelMasks[kSpeedFxFrameSlot] = kSpeedFxFrameMask;
         request.values[kSpeedFxGuardSlot] = {guardU, guardV, guardRadius, guard ? 1.0f : 0.0f};
         request.channelMasks[kSpeedFxGuardSlot] = kSpeedFxGuardMask;
-        mount.speedFxAccepted = world.GetPresentationVfx().SubmitActionPostProfile(mount.speedFxProfile, request);
+        mount.speedFxAccepted = world.GetPresentationVfx().SubmitActionPostProfile(std::string_view(mount.speedFxProfile.guid), request);
         if (mount.speedFxAccepted)
             ++mount.speedFxSubmits;
         if (mount.speedFxAccepted && !wasAccepted) {
@@ -501,7 +501,7 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
     if (!IsPlaying(world, frame))
         return;
     const auto input = world.GetInput();
-    ForEachRider(world, [&](HIKARI::ObjectView, CloudMount& mount, Player& player) {
+    ForEachRider([&](HIKARI::ObjectView, CloudMount& mount, Player& player) {
         // 演出の間（ボスの登場）は乗れない。
         if (ReadAction(input, "Gameplay.Mount").pressed && !PlayerRules::IsCinematicHeld(player))
             mount.mountPressed = true;
@@ -527,7 +527,7 @@ void CloudMountSystem::Update(HIKARI::WorldView& world, const HIKARI::FrameConte
 void CloudMountSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
+    ForEachRider([&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         StepState(world, object, mount, player, frame.fixedTickIndex);
     });
 }
@@ -535,7 +535,7 @@ void CloudMountSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::Fr
 void CloudMountSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
+    ForEachRider([&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         StepFlight(world, object, mount, player, frame);
     });
 }
@@ -543,7 +543,7 @@ void CloudMountSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::Frame
 void CloudMountSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!IsPlaying(world, frame))
         return;
-    ForEachRider(world, [&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
+    ForEachRider([&](HIKARI::ObjectView object, CloudMount& mount, Player& player) {
         CloudMountVisuals::Update(world, object, mount, player, frame);
         SubmitCameraEffects(world, mount, player, frame);
         SubmitSpeedFx(world, object, mount, player, frame);

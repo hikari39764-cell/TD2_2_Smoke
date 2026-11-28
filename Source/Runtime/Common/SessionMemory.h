@@ -1,8 +1,7 @@
 #pragma once
 
-// Play の間、シーンの読み直し（やり直し）をまたいで覚えておくこと。World と一緒に消えるシステム・部品には置けないので、
-// プロジェクトの Play session（IGameProjectSession の実装）が持つ。読む側は world.GetGameSession() を
-// ISessionMemory へ dynamic_cast して取る（Play の外では取れない）。
+// Play の間、シーンの読み直し（やり直し）をまたいで覚えておくこと。シーンと一緒に消える部品・システムには置けないので、
+// シーンをまたぐシステム（HIKARI_PERSIST。SessionMemory.cpp）が持つ。
 namespace Project_TD2_2 {
 
 struct SessionMemory {
@@ -10,10 +9,7 @@ struct SessionMemory {
     bool bossIntroSeen = false;
 };
 
-class ISessionMemory {
-public:
-    virtual ~ISessionMemory() = default;
-    virtual SessionMemory& GetMemory() noexcept = 0;
-};
+// いまの Play の覚え書き。Play が始まっていない・終わった後は nullptr。
+SessionMemory* CurrentSessionMemory() noexcept;
 
 } // namespace Project_TD2_2

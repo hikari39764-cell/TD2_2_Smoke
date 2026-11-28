@@ -10,6 +10,7 @@
 #include "BossMath.h"
 #include "BossWaves.h"
 #include "../Burn/BurnField.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -127,9 +128,9 @@ bool Applies(const BossBurnMark& mark, int strike, int phase) {
            (mark.strike == 0 || mark.strike == strike + 1);
 }
 
-Vec3 Floor(const BossComponent& boss, Vec3 point) { return {point.x, boss.ground.y, point.z}; }
+Vec3 Floor(const Boss& boss, Vec3 point) { return {point.x, boss.ground.y, point.z}; }
 
-void LogPaint(const BossComponent& boss, const BossMove& move, int strike, const BossBurnMark& mark,
+void LogPaint(const Boss& boss, const BossMove& move, int strike, const BossBurnMark& mark,
               const char* geometry) {
     char message[384]{};
     std::snprintf(message, sizeof(message), "Paint %s tick=%llu move=%s strike=%d width=%.3f seconds=%.3f%s%s",
@@ -141,7 +142,7 @@ void LogPaint(const BossComponent& boss, const BossMove& move, int strike, const
 
 void PaintPool(BossFrame& frame, const BossMove& move, int strike, const BossBurnMark& mark, Vec3 center) {
     const float radius = mark.width * 0.5f;
-    BurnField::PaintDisc(frame.world, center, radius, mark.seconds);
+    BurnFieldAccess::PaintDisc(frame.world, center, radius, mark.seconds);
     char geometry[128]{};
     std::snprintf(geometry, sizeof(geometry), "center=(%.3f,%.3f) radius=%.3f", static_cast<double>(center.x),
                   static_cast<double>(center.z), static_cast<double>(radius));
@@ -151,11 +152,11 @@ void PaintPool(BossFrame& frame, const BossMove& move, int strike, const BossBur
 // 交差：center で、2 本の線分が中点で交わる X。toward はボスから狙った所への向き。
 void PaintCross(BossFrame& frame, const BossMove& move, int strike, const BossBurnMark& mark, Vec3 center,
                 Vec3 toward) {
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     const float half = boss.burnCrossLength * 0.5f;
     for (const float sign : {1.0f, -1.0f}) {
         const Vec3 along = Mul(RotateY(toward, sign * kCrossDegrees * kRadiansPerDegree), half);
-        BurnField::PaintSegment(frame.world, Sub(center, along), Add(center, along), mark.width, mark.seconds);
+        BurnFieldAccess::PaintSegment(frame.world, Sub(center, along), Add(center, along), mark.width, mark.seconds);
     }
     char geometry[160]{};
     std::snprintf(geometry, sizeof(geometry), "center=(%.3f,%.3f) length=%.3f yaw=%.4f", static_cast<double>(center.x),
@@ -230,7 +231,7 @@ bool BossBurnMarks::StrikeLeaves(const BossMove& move, int strike, int phase) {
     return false;
 }
 
-void BossBurnMarks::LightBlade(BossComponent& boss, const BossMove& move) {
+void BossBurnMarks::LightBlade(Boss& boss, const BossMove& move) {
     // 火を残すのが 1 撃だけの技も、技の間ずっと燃やす（どの技が火の技かを、プレイヤーが構えから読めるように）。
     boss.bladeLit = false;
     for (int k = 0; k < move.burnMarkCount; ++k)
@@ -242,7 +243,7 @@ void BossBurnMarks::LightBlade(BossComponent& boss, const BossMove& move) {
     BossLog::Write(message);
 }
 
-void BossBurnMarks::ArmWave(const BossComponent& boss, const BossMove& move, BossWave& wave) {
+void BossBurnMarks::ArmWave(const Boss& boss, const BossMove& move, BossWave& wave) {
     // ナイフの strike は扇の何本目か、輪は一撃しかないので、どちらも技の 1 撃目として見る。
     const int strike = wave.knife || wave.ring ? 0 : wave.strike;
     wave.fire = StrikeLeaves(move, strike, boss.lastPhaseNumber);
@@ -261,7 +262,7 @@ void BossBurnMarks::ArmWave(const BossComponent& boss, const BossMove& move, Bos
 }
 
 void BossBurnMarks::Released(BossFrame& frame, const BossMove& move, int strike) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (const BossBurnMark* cross = Find(move, BossBurnShape::Cross, strike, boss.lastPhaseNumber)) {
         // 狙った所（プレイヤーの足元。いなければボスの前、線の長さの半分）。
         const Vec3 forward = Forward(boss.yaw);
@@ -297,13 +298,13 @@ void BossBurnMarks::Released(BossFrame& frame, const BossMove& move, int strike)
 }
 
 void BossBurnMarks::DashLanded(BossFrame& frame, const BossMove& move) {
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     // 突進は 1 撃目の前の動きなので、1 撃目の火として見る。
     const BossBurnMark* mark = Find(move, BossBurnShape::Trail, 0, boss.lastPhaseNumber);
     if (mark == nullptr)
         return;
     const Vec3 from = Floor(boss, boss.dashFrom), to = Floor(boss, boss.dashTo);
-    BurnField::PaintSegment(frame.world, from, to, mark->width, mark->seconds);
+    BurnFieldAccess::PaintSegment(frame.world, from, to, mark->width, mark->seconds);
     char geometry[192]{};
     std::snprintf(geometry, sizeof(geometry), "from=(%.3f,%.3f) to=(%.3f,%.3f) length=%.3f",
                   static_cast<double>(from.x), static_cast<double>(from.z), static_cast<double>(to.x),
@@ -315,13 +316,13 @@ void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave&
     if (!wave.crossPending)
         return;
     wave.crossPending = false;
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     // 狙った所まで届かずに消えた斬撃（遠すぎた）は、消えた所で爆ぜる。
     const Vec3 center = wave.travelled >= wave.crossReach ? wave.crossCenter : Floor(boss, wave.position);
     // 外れても地面で爆ぜる（当たった時は HitPlayer が同じ爆発を出しているので足さない）。
     if (!wave.struck) {
         // 爆発のエフェクトがあるシーンでは、叩きつけの爆発を小さく出す（c-3c908c）。
-        const bool burst = !boss.burstEffect.IsEmpty() && boss.crossBurstScale > 0.0f;
+        const bool burst = !!boss.burstEffect.IsSet() && boss.crossBurstScale > 0.0f;
         boss.burstFeedbackPending = burst;
         boss.burstFeedbackScale = boss.crossBurstScale;
         BossWaves::AddBlast(boss, {.pushPending = true,
@@ -342,7 +343,7 @@ void BossBurnMarks::WaveLanded(BossFrame& frame, const BossMove& move, BossWave&
 void BossBurnMarks::RingEnded(BossFrame& frame, const BossMove& move, const BossWave& wave) {
     if (!(wave.burnWidth > 0.0f))
         return;
-    BurnField::PaintRing(frame.world, wave.position, wave.maxRadius, wave.burnWidth, wave.burnSeconds);
+    BurnFieldAccess::PaintRing(frame.world, wave.position, wave.maxRadius, wave.burnWidth, wave.burnSeconds);
     BossBurnMark mark;
     mark.shape = BossBurnShape::Ring;
     mark.width = wave.burnWidth;

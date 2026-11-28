@@ -21,6 +21,7 @@
 #include "../Common/ComponentLookup.h"
 #include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -59,10 +60,10 @@ constexpr float kPivotFollowScale = 2.0f;
 // 戦いの間、胴の煙の域の軸（腰）と向き（背骨）を、体（根）がこのフレームに動いた分だけ先に運ぶ（胴の煙を置く前に呼ぶ）。
 // 踏み込み・かわし・向き変えで、軸が体から遅れない：なめらかに追うのは、体の中での腰と背骨の動きだけになる。変わり目の
 // 演出で体を据えている間は運ばない（前のまま、世界の中でなめらかに追う）。body は、胴の煙を付ける体の置き場所。
-void CarrySmokeTilt(BossBodyComponent& look, const BossPhaseShiftComponent* phaseShift,
+void CarrySmokeTilt(BossBody& look, const BossPhaseShift* phaseShift,
                     const HIKARI::GameProjectTransform& body) {
     BossAnimBodyState& anim = look.anim;
-    if (anim.smokePivotValid && anim.smokeBodyValid && !BossPhaseShift::Pinned(phaseShift)) {
+    if (anim.smokePivotValid && anim.smokeBodyValid && !BossPhaseShiftRules::Pinned(phaseShift)) {
         const HIKARI::GameProjectQuaternion turn =
             BossMath::Multiply(body.rotation, BossMath::Conjugate(anim.smokeBodyRotation));
         anim.smokePivot = BossMath::Add(body.position,
@@ -76,14 +77,14 @@ void CarrySmokeTilt(BossBodyComponent& look, const BossPhaseShiftComponent* phas
 
 // 胴の煙の域を倒す向きと重みを進める：向きは腰 → 胸をなめらかに追う。重みは、変わり目の演出で体を据えている間は 1、
 // 戦いの間（骨格の体が出ている間）は smokeTiltCombat。
-void StepSmokeTilt(BossBodyComponent& look, const BossPhaseShiftComponent* phaseShift, bool animated, float seconds) {
+void StepSmokeTilt(BossBody& look, const BossPhaseShift* phaseShift, bool animated, float seconds) {
     BossAnimBodyState& anim = look.anim;
-    const BossBodySettings& s = look.settings;
+    const BossBody& s = look;
     const float dt = std::max(0.0f, seconds);
     const bool seen = animated && anim.hipsSeen;
-    const bool pinned = BossPhaseShift::Pinned(phaseShift);
+    const bool pinned = BossPhaseShiftRules::Pinned(phaseShift);
     const float step = dt * kTiltWeightRate;
-    const float target = !seen ? 0.0f : pinned ? 1.0f : std::clamp(s.smokeTiltCombat, 0.0f, 1.0f);
+    const float target = !seen ? 0.0f : pinned ? 1.0f : std::clamp(s.bodySmokeTiltCombat, 0.0f, 1.0f);
     anim.smokeTiltWeight = anim.smokeTiltWeight < target ? std::min(target, anim.smokeTiltWeight + step)
                                                          : std::max(target, anim.smokeTiltWeight - step);
     if (!seen) {
@@ -92,8 +93,8 @@ void StepSmokeTilt(BossBodyComponent& look, const BossPhaseShiftComponent* phase
     }
     // 域が細かく動くと、エンジンがその加速度を煙へ逆向きに入れ、煙全体が揺れ続ける。動捕の細かい揺れは追わず、
     // 体が大きく動いた時だけ速く追う（戦いの間は、技の屈みに間に合うよう smokeTiltCombatFollow で）。
-    const float calm = std::max(0.0f, s.smokeCalmFollow);
-    const float busy = std::max(calm, pinned ? s.smokeTiltFollow : s.smokeTiltCombatFollow);
+    const float calm = std::max(0.0f, s.bodySmokeCalmFollow);
+    const float busy = std::max(calm, pinned ? s.bodySmokeTiltFollow : s.bodySmokeTiltCombatFollow);
     const auto follow = [dt](float rate) { return 1.0f - std::exp(-dt * rate); };
     if (!anim.smokePivotValid) {
         anim.smokePivot = anim.hipsWorld;
@@ -134,19 +135,19 @@ void StepSmokeTilt(BossBodyComponent& look, const BossPhaseShiftComponent* phase
 // 胴の煙の域を、腰を軸にして背骨の向き（腰 → 胸）へ倒す。feet は倒す前の域の置き場所（足元。向きは体の向き）。
 // 域の中の煙は域と一緒に回り（エンジンの局所空間の域）、浮力は世界の上向きのまま：後ろへ反る・屈む体に、煙の柱が
 // 付いて行く。
-void TiltSmoke(const BossBodyComponent& look, HIKARI::GameProjectTransform& feet) {
-    const BossBodySettings& s = look.settings;
-    const float weight = look.anim.smokeTiltWeight * std::clamp(s.smokeTilt, 0.0f, 1.0f);
+void TiltSmoke(const BossBody& look, HIKARI::GameProjectTransform& feet) {
+    const BossBody& s = look;
+    const float weight = look.anim.smokeTiltWeight * std::clamp(s.bodySmokeTilt, 0.0f, 1.0f);
     if (!(weight > 0.0f) || !look.anim.smokePivotValid)
         return;
-    const HIKARI::GameProjectFloat3 up{0.0f, s.smokeHipsHeight, 0.0f};
+    const HIKARI::GameProjectFloat3 up{0.0f, s.bodySmokeHipsHeight, 0.0f};
     const HIKARI::GameProjectFloat3 rest = BossMath::Rotate(feet.rotation, kSpineRest);
     const HIKARI::GameProjectFloat3 axis = BossMath::Cross(rest, look.anim.smokeSpine);
     const float sine = BossMath::Length(axis);
     HIKARI::GameProjectQuaternion rotation = feet.rotation;
     if (sine > 1.0e-4f) {
         const float angle = std::min(BossMath::AngleBetween(rest, look.anim.smokeSpine),
-                                     std::max(0.0f, s.smokeTiltMaxDegrees) * BossMath::kRadiansPerDegree) *
+                                     std::max(0.0f, s.bodySmokeTiltMaxDegrees) * BossMath::kRadiansPerDegree) *
                             weight;
         const float half = std::sin(angle * 0.5f) / sine;
         rotation =
@@ -161,26 +162,26 @@ void TiltSmoke(const BossBodyComponent& look, HIKARI::GameProjectTransform& feet
 
 // フェーズ 2 の燃える胴の強さ（0〜1）を進める：フェーズ 2 で付き、撃破で消える。気絶の間は弱める。一定の速さで寄せる
 // （火の大きさが急に跳ばない）。
-void StepFire(const BossComponent& boss, BossBodyComponent& look, const BossPhaseShiftComponent* phaseShift,
+void StepFire(const Boss& boss, BossBody& look, const BossPhaseShift* phaseShift,
               float seconds) {
-    const BossBodySettings& s = look.settings;
+    const BossBody& s = look;
     float target = 0.0f;
     if (BossBodyMath::PhaseTwoLook(boss) && boss.state != BossState::Dead)
-        target = boss.state == BossState::Stunned ? std::clamp(s.fireStunnedShare, 0.0f, 1.0f) : 1.0f;
+        target = boss.state == BossState::Stunned ? std::clamp(s.bodyFireStunnedShare, 0.0f, 1.0f) : 1.0f;
     // 変わり目の演出（c-8dd296）：閃光より前から、内から火が回る。
     target = std::max(target, BossPhaseShiftVisuals::FireFloor(phaseShift));
     float& fire = look.state.fire;
-    const float step = s.fireRiseSeconds > 0.0f ? std::max(0.0f, seconds) / s.fireRiseSeconds : 1.0f;
+    const float step = s.bodyFireRiseSeconds > 0.0f ? std::max(0.0f, seconds) / s.bodyFireRiseSeconds : 1.0f;
     fire = fire < target ? std::min(target, fire + step) : std::max(target, fire - step);
 }
 
 // 胴の煙：体の足元に付けて出し続ける。量と熱さは、気絶・フェーズで変える。
-void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look,
-                 const BossIntroComponent* intro, const BossPhaseShiftComponent* phaseShift,
+void UpdateSmoke(HIKARI::WorldView& world, Boss& boss, BossBody& look,
+                 const BossIntro* intro, const BossPhaseShift* phaseShift,
                  const HIKARI::GameProjectTransform& body) {
     using namespace BossVfx;
-    const BossBodySettings& s = look.settings;
-    if (s.smokeEffect.IsEmpty())
+    const BossBody& s = look;
+    if (!s.bodySmokeEffect.IsSet())
         return;
     // 体の物体の原点は体の中心なので、足元まで下げる（エフェクトの原点＝足元）。域の大きさは拡大の影響を受けない。
     HIKARI::GameProjectTransform transform{};
@@ -199,72 +200,72 @@ void UpdateSmoke(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponen
     // フェーズ 2 の燃える胴（c-857ae3）：火の強さに合わせて、熱さを smokeHeatPhaseTwo へ寄せ、量を変え、火の粉と
     // 熱のゆがみを出す。フェーズ 1 は火の強さが 0 なので、いままでと同じ値を送る。
     const float fire = look.state.fire;
-    const float amount = s.smokeAmount * rise * (stunned ? s.smokeAmountStunned : accents.smokeAmount) *
-                         BossMath::Lerp(1.0f, s.smokeAmountPhaseTwo, fire) *
+    const float amount = s.bodySmokeAmount * rise * (stunned ? s.bodySmokeAmountStunned : accents.smokeAmount) *
+                         BossMath::Lerp(1.0f, s.bodySmokeAmountPhaseTwo, fire) *
                          BossPhaseShiftVisuals::SmokeScale(phaseShift);
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
     // 立ち姿の位置に固定の「両の袖口」の源は、骨格の体が出ている間は止める（腕の煙は、骨に付いて行く煙が出す）。
     VfxParameters::SetFloat(parameters, kSmokeArmsInput, look.anim.active && look.anim.hipsSeen ? 0.0f : amount);
     VfxParameters::SetFloat(parameters, kSmokeHeatInput,
-                            BossMath::Lerp(stunned ? 1.0f : accents.smokeHeat, s.smokeHeatPhaseTwo, fire));
+                            BossMath::Lerp(stunned ? 1.0f : accents.smokeHeat, s.bodySmokeHeatPhaseTwo, fire));
     VfxParameters::SetFloat(parameters, kSmokeBurnInput,
-                            s.fireBurn * fire * BossPhaseShiftVisuals::BurnBoost(phaseShift));
-    StartOrSend(world, boss, look.state.smokeVfx, s.smokeEffect, transform, parameters);
+                            s.bodyFireBurn * fire * BossPhaseShiftVisuals::BurnBoost(phaseShift));
+    StartOrSend(world, boss, look.state.smokeVfx, VfxPlayback::Reference(s.bodySmokeEffect), transform, parameters);
 }
 
 // 火の舌を 1 つ入れる：胴の煙の域だけに届く燃料（燃え始める温度より熱くして入れるので、すぐ燃える）。燃料は昇りながら
 // 燃えて熱と煤になり、熱い煤が光る（燃焼の値は胴の煙の資産の域）。冷めた煤は薄い黒い煙になって昇る。
-void EmitTongue(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossBodyComponent& look,
+void EmitTongue(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss, const BossBody& look,
                 uint64_t id, HIKARI::GameProjectFloat3 at, float share, float radiusScale = 1.0f) {
-    const BossBodySettings& s = look.settings;
-    const float strength = s.fireTongueDensity * share * look.state.fire;
+    const BossBody& s = look;
+    const float strength = s.bodyFireTongueDensity * share * look.state.fire;
     if (strength <= 0.0f)
         return;
     HIKARI::GameProjectFluidInteraction emit{};
     emit.kind = HIKARI::GameProjectFluidInteractionKind::Fuel;
     emit.position = at;
     // extents.x は半径、extents.y は温度。
-    emit.extents = {std::max(0.02f, s.fireTongueRadius * s.bodyScale * radiusScale), s.fireTongueHeat, 0.0f};
-    emit.direction = {0.0f, s.fireTongueRise, 0.0f};
+    emit.extents = {std::max(0.02f, s.bodyFireTongueRadius * s.bodyScale * radiusScale), s.bodyFireTongueHeat, 0.0f};
+    emit.direction = {0.0f, s.bodyFireTongueRise, 0.0f};
     emit.strength = std::min(10000.0f, strength);
     emit.channels = FluidChannels::kBodyFire;
     boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, emit).Accepted() && boss.fluidAccepted;
 }
 
 // 籠手の筒の口（手首 0 〜 肘の側 1 の割合 along）。筒は手首から局所 -Z へ伸びる。
-HIKARI::GameProjectFloat3 CuffMouth(const BossBodySettings& s, const BossBodyPlacement& cuff, float along) {
-    const float length = s.cuffModelLength * cuff.scale * cuff.lengthScale * along;
+HIKARI::GameProjectFloat3 CuffMouth(const BossBody& s, const BossBodyPlacement& cuff, float along) {
+    const float length = s.bodyCuffModelLength * cuff.scale * cuff.lengthScale * along;
     return BossMath::Add(cuff.position, BossMath::Rotate(cuff.rotation, {0.0f, 0.0f, -length}));
 }
 
 // フェーズ 2 の火の舌：襟の両脇と両の袖口から、燃料を上へ吹き出す（見える鎧の口に付けて動かす）。霧へ沈んでいる間は
 // 入れない（地面の下で燃えない）。
-void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                       const BossBodyComponent& look, const BossPhaseShiftComponent* phaseShift,
+void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
+                       const BossBody& look, const BossPhaseShift* phaseShift,
                        const BossBodyPose& pose) {
-    const BossBodySettings& s = look.settings;
+    const BossBody& s = look;
     const BossBodyState& state = look.state;
     // 変わり目の演出を飛ばしたフレームも入れない（籠手が一度に移るので、移った線に沿って火を引かない）。
     if (state.fire <= 0.0f || BossPhaseShiftVisuals::HoldTongues(phaseShift) ||
-        BossPose::RootHeight(boss) < -BossBodyMath::kTiny || s.smokeEffect.IsEmpty())
+        BossPose::RootHeight(boss) < -BossBodyMath::kTiny || !s.bodySmokeEffect.IsSet())
         return;
     // 襟：左右に 2 本ずつ（前後へ fireCollarSpread ずらす）。左は右を左右に反転した所。
-    const float spread = 0.5f * s.fireCollarSpread;
+    const float spread = 0.5f * s.bodyFireCollarSpread;
     for (uint64_t k = 0; k < 4u; ++k) {
         const float side = k < 2u ? 1.0f : -1.0f;
         const float along = (k % 2u) == 0u ? spread : -spread;
         const HIKARI::GameProjectFloat3 local =
-            BossMath::Mul({s.fireCollar.x * side, s.fireCollar.y, s.fireCollar.z + along}, pose.torso.scale);
+            BossMath::Mul({s.bodyFireCollar.x * side, s.bodyFireCollar.y, s.bodyFireCollar.z + along}, pose.torso.scale);
         EmitTongue(world, object, boss, look, kFireTongueBase + k,
                    BossMath::Add(pose.torso.position, BossMath::Rotate(pose.torso.rotation, local)), 1.0f);
     }
-    EmitTongue(world, object, boss, look, kFireTongueBase + 4u, CuffMouth(s, pose.rightCuff, s.fireCuffAlong),
-               s.fireCuffShare);
-    EmitTongue(world, object, boss, look, kFireTongueBase + 5u, CuffMouth(s, pose.leftCuff, s.fireCuffAlong),
-               s.fireCuffShare);
+    EmitTongue(world, object, boss, look, kFireTongueBase + 4u, CuffMouth(s, pose.rightCuff, s.bodyFireCuffAlong),
+               s.bodyFireCuffShare);
+    EmitTongue(world, object, boss, look, kFireTongueBase + 5u, CuffMouth(s, pose.leftCuff, s.bodyFireCuffAlong),
+               s.bodyFireCuffShare);
     // 腰の周り（前の左右と後ろ）：胴の煙の柱の中を、下から火が上がる。骨格の体が出ている間は腰の骨の所、そうでなければ
     // 胴の中心から下げた所。
-    if (s.fireHemShare > 0.0f) {
+    if (s.bodyFireHemShare > 0.0f) {
         const HIKARI::GameProjectFloat3 hips =
             look.anim.active && look.anim.hipsSeen
                 ? look.anim.hipsWorld
@@ -272,10 +273,10 @@ void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
         const HIKARI::GameProjectFloat3 around[3] = {{0.75f, 0.0f, 0.65f}, {-0.75f, 0.0f, 0.65f}, {0.0f, 0.0f, -1.0f}};
         for (uint64_t k = 0; k < 3u; ++k) {
             const HIKARI::GameProjectFloat3 local = BossMath::Mul(
-                {around[k].x * s.fireHemRing, -s.fireHemDrop, around[k].z * s.fireHemRing}, pose.torso.scale);
+                {around[k].x * s.bodyFireHemRing, -s.bodyFireHemDrop, around[k].z * s.bodyFireHemRing}, pose.torso.scale);
             EmitTongue(world, object, boss, look, kFireTongueBase + 6u + k,
-                       BossMath::Add(hips, BossMath::Rotate(pose.torso.rotation, local)), s.fireHemShare,
-                       s.fireHemRadius);
+                       BossMath::Add(hips, BossMath::Rotate(pose.torso.rotation, local)), s.bodyFireHemShare,
+                       s.bodyFireHemRadius);
         }
     }
 }
@@ -283,7 +284,7 @@ void UpdateFireTongues(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss
 // 骨に付いて行く煙（c-271cba）：骨格の体が出ている間、背骨（腰 → 胸）と両腕（肩 → 肘 → 袖口）に沿う点から、胴の煙の域へ
 // 煙を入れる。同じ ID の注入は、前のフレームの所から今の所まで掃いて入るので、腕を振っても煙が帯になって付いて行く。
 // amount は胴の煙と同じ倍率（登場・気絶・変わり目の演出）。
-void EmitBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, uint64_t id,
+void EmitBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss, uint64_t id,
                    HIKARI::GameProjectFloat3 at, HIKARI::GameProjectFloat3 velocity, float strength, float radius) {
     if (!(strength > 0.0f))
         return;
@@ -298,15 +299,15 @@ void EmitBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
     boss.fluidAccepted = world.GetFluid().Submit(object.GetHandle(), id, emit).Accepted() && boss.fluidAccepted;
 }
 
-void UpdateBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                     const BossBodyComponent& look, const BossPhaseShiftComponent* phaseShift,
+void UpdateBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
+                     const BossBody& look, const BossPhaseShift* phaseShift,
                      const BossBodyPose& pose) {
-    const BossBodySettings& s = look.settings;
-    if (!look.anim.active || !look.anim.hipsSeen || s.smokeEffect.IsEmpty())
+    const BossBody& s = look;
+    if (!look.anim.active || !look.anim.hipsSeen || !s.bodySmokeEffect.IsSet())
         return;
     const bool stunned = boss.state == BossState::Stunned;
     // 座り込みの間（胴の煙を薄くする間）も、骨の煙は半分までしか薄くしない（鎧と手をつなぐ煙は残す）。
-    const float amount = (stunned ? s.smokeAmountStunned : 1.0f) *
+    const float amount = (stunned ? s.bodySmokeAmountStunned : 1.0f) *
                          BossMath::Lerp(0.5f, 1.0f, BossPhaseShiftVisuals::SmokeScale(phaseShift));
     using BossMath::Add;
     using BossMath::Lerp;
@@ -315,31 +316,31 @@ void UpdateBoneSmoke(HIKARI::WorldView& world, HIKARI::ObjectView object, BossCo
     // 背骨：腰から胸へ。
     const HIKARI::GameProjectFloat3 hips = look.anim.hipsWorld;
     const HIKARI::GameProjectFloat3 chest = pose.torso.position;
-    const float spineRadius = s.spineSmokeRadius * s.bodyScale;
+    const float spineRadius = s.bodySpineSmokeRadius * s.bodyScale;
     uint64_t id = kBoneSmokeBase;
     for (float u : kSpineShares)
-        EmitBoneSmoke(world, object, boss, id++, Lerp(hips, chest, u), {0.0f, kSpineRise, 0.0f}, s.spineSmoke * amount,
+        EmitBoneSmoke(world, object, boss, id++, Lerp(hips, chest, u), {0.0f, kSpineRise, 0.0f}, s.bodySpineSmoke * amount,
                       spineRadius);
     // 両腕：肩 → 肘 → 袖口。肘は、袖口（前腕 → 手の 3/4）と手から戻す。
-    const float armRadius = s.armSmokeRadius * s.bodyScale;
+    const float armRadius = s.bodyArmSmokeRadius * s.bodyScale;
     const auto arm = [&](const BossBodyPlacement& shoulder, const BossBodyPlacement& cuff,
                          const BossBodyPlacement& hand) {
         const HIKARI::GameProjectFloat3 elbow = Sub(Mul(cuff.position, 4.0f), Mul(hand.position, 3.0f));
         const HIKARI::GameProjectFloat3 upper = BossMath::Normalize(Sub(elbow, shoulder.position));
         const HIKARI::GameProjectFloat3 fore = BossMath::Normalize(Sub(cuff.position, elbow));
         for (float u : kUpperArmShares)
-            EmitBoneSmoke(world, object, boss, id++, Lerp(shoulder.position, elbow, u), Mul(upper, s.armSmokeFlow),
-                          s.armSmoke * amount, armRadius);
+            EmitBoneSmoke(world, object, boss, id++, Lerp(shoulder.position, elbow, u), Mul(upper, s.bodyArmSmokeFlow),
+                          s.bodyArmSmoke * amount, armRadius);
         for (float u : kForeArmShares)
-            EmitBoneSmoke(world, object, boss, id++, Lerp(elbow, cuff.position, u), Mul(fore, s.armSmokeFlow),
-                          s.armSmoke * amount, armRadius);
+            EmitBoneSmoke(world, object, boss, id++, Lerp(elbow, cuff.position, u), Mul(fore, s.bodyArmSmokeFlow),
+                          s.bodyArmSmoke * amount, armRadius);
     };
     arm(pose.sode[0], pose.rightCuff, pose.rightHand);
     arm(pose.sode[1], pose.leftCuff, pose.leftHand);
 }
 
 // 左手の所作（手の光の演出 BossBodyAccents が読む）：投げナイフの間だけ Knife。
-void StepLeftGesture(const BossComponent& boss, BossBodyComponent& look) {
+void StepLeftGesture(const Boss& boss, BossBody& look) {
     const BossMove* move = BossBodyMath::CurrentMove(boss);
     look.state.leftGesture = move != nullptr && move->type == BossMoveType::Knife ? BossBodyLeftGesture::Knife
                                                                                   : BossBodyLeftGesture::Balance;
@@ -347,14 +348,14 @@ void StepLeftGesture(const BossComponent& boss, BossBodyComponent& look) {
 
 } // namespace
 
-void BossBodyVisuals::NoteTick(BossComponent& boss, HIKARI::GameProjectFloat3 position) {
+void BossBodyVisuals::NoteTick(Boss& boss, HIKARI::GameProjectFloat3 position) {
     boss.tickFrom = boss.ticksSeen > 0 ? boss.tickTo : position;
     boss.tickTo = position;
     boss.ticksSeen = std::min(boss.ticksSeen + 1, 2);
 }
 
-void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                             BossBodyComponent* look, BossIntroComponent* intro, BossPhaseShiftComponent* phaseShift,
+void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
+                             BossBody* look, BossIntro* intro, BossPhaseShift* phaseShift,
                              float seconds, float alpha) {
     // 体の見た目の部品が無い間と、撃破の後に体が縮んで消える間は、体も体に付く効果も出さない。
     const bool vanishing = boss.state == BossState::Dead && boss.stateFrame > boss.deadVanishDelayFrames;
@@ -366,11 +367,11 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     // 体の位置は tick ごとに変わるので、描画のフレームでは前の tick との間を補間した所に置く（ナレッジ k-c2a8a4。
     // エンジンが体を描くのと同じ）。向きは tick の値のまま（1 tick に変わる角度は小さい）。
     HIKARI::GameProjectFloat3 shift{};
-    if (look->settings.interpolate && boss.ticksSeen >= 2)
+    if (look->bodyInterpolate && boss.ticksSeen >= 2)
         shift = BossMath::Mul(BossMath::Sub(boss.tickFrom, boss.tickTo), 1.0f - std::clamp(alpha, 0.0f, 1.0f));
     body.position = BossMath::Add(body.position, shift);
     if (intro != nullptr)
-        BossIntroVisuals::Advance(world, look->settings, *intro, seconds);
+        BossIntroVisuals::Advance(world, *look, *intro, seconds);
     // 体に付く効果（胴の煙・気配・衝撃の輪）は見た目の体に付ける（登場の間は演技の体の根と向き。c-e0c500。変わり目の演出の
     // 間は骨格の体の腰の真上。c-271cba）。
     const HIKARI::GameProjectTransform shown =
@@ -382,7 +383,7 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
     UpdateSmoke(world, boss, *look, intro, phaseShift, shown);
     StepLeftGesture(boss, *look);
     // 体は骨格の体（戦いの間）か登場の役者が描く。ここは体に付く効果の置き場所を、その骨から受け取る（c-db1a15）。
-    BossBodyPose pose = BossBodyRig::Base(boss, look->settings, body);
+    BossBodyPose pose = BossBodyRig::Base(boss, *look, body);
     // 演出の効果の毎フレームの頼みを 0 に戻してから、登場と変わり目の演出が、このフレームの分を書く。
     BossCinematicFx::BeginFrame(boss);
     // 登場の間は、体に付く効果の置き場所（兜・刀・胴）を、演じている役者の骨のものに直す。
@@ -408,28 +409,24 @@ void BossBodyVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object
 void BossBodyVisuals::UpdatePreviews(HIKARI::WorldView& world) {
     // 演出ワークスペースがボスの登場の資産を流している間だけ、役者をその時刻の姿にする（流していない時は、触った
     // ものを元へ戻す＝ふだんの編集の見た目）。胴の煙・効果は出さない。
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType), [&](HIKARI::ObjectView object, BossComponent& boss) {
-            ComponentLookup::WithFirstOnObject<BossIntroComponent>(
-                world, kBossIntroType, object, [&](BossIntroComponent* intro) {
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss& boss) {
+            ComponentLookup::WithFirstOnObject<BossIntro>(object, [&](BossIntro* intro) {
                     if (intro == nullptr)
                         return;
-                    ComponentLookup::WithFirstOnObject<BossBodyComponent>(
-                        world, kBossBodyType, object, [&](const BossBodyComponent* look) {
+                    ComponentLookup::WithFirstOnObject<BossBody>(object, [&](const BossBody* look) {
                             BossIntroVisuals::Preview(world, BossBodySettingsOf(look), *intro);
                         });
                 });
             // 変わり目の演出の資産のプレビュー（c-271cba）：骨格の体をその時刻の姿にする。
-            ComponentLookup::WithFirstOnObject<BossPhaseShiftComponent>(
-                world, kBossPhaseShiftType, object, [&](BossPhaseShiftComponent* shift) {
+            ComponentLookup::WithFirstOnObject<BossPhaseShift>(object, [&](BossPhaseShift* shift) {
                     if (shift != nullptr)
                         BossPhaseShiftVisuals::Preview(world, boss, *shift);
                 });
         });
 }
 
-void BossBodyVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent* look,
-                           BossPhaseShiftComponent* phaseShift) {
+void BossBodyVisuals::Stop(HIKARI::WorldView& world, Boss& boss, BossBody* look,
+                           BossPhaseShift* phaseShift) {
     BossPhaseShiftVisuals::Stop(world, phaseShift);
     if (look == nullptr)
         return;

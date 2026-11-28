@@ -14,17 +14,17 @@ class BossHealthBars final {
 public:
     // 最初の同期：Damageable の最大 HP と HP を 1 本目の値にする（シーンを読み直すと部品から作り直すので、
     // やり直しの後も 1 本目から）。
-    static void Prepare(BossComponent& boss, const BossPhaseShiftComponent* shift, Damageable& health);
+    static void Prepare(Boss& boss, const BossPhaseShift* shift, Damageable& health);
     // 固定 tick の始め：変わり目の残りを 1 F 進める（0 になった tick から待機の行動を許す）。
-    static void Step(BossComponent& boss);
+    static void Step(Boss& boss);
     // 1 本目が空なら変わり目に入って true：いまの技を打ち切って待機へ（剣気の扱いは .cpp）、気絶値を 0 に戻し、
     // フェーズを 2 にして 2 本目を満たす（余ったダメージは持ち越さない）。rawDamage はこの tick に受けた量（ログ用）。
-    static bool CheckEmptied(BossComponent& boss, const BossPhaseShiftComponent* shift, Damageable& health,
+    static bool CheckEmptied(Boss& boss, const BossPhaseShift* shift, Damageable& health,
                              double rawDamage);
     // 2 本ぶんの残りの割合（%。2 本の合計に対する）。技の表の「HP60%以下」は、前と同じくボス全体の HP で見る。
-    static double TotalPercent(const BossComponent& boss, const Damageable& health);
-    // 物体変数へ出す値（いまの条の HP と最大・フェーズ・フェーズに入ってからの秒）を写す。
-    static void Publish(BossComponent& boss, const Damageable& health);
+    static double TotalPercent(const Boss& boss, const Damageable& health);
+    // ゲーム全体の値（Params）へ出す値（いまの条の HP と最大・フェーズ・フェーズに入ってからの秒）を写す。
+    static void Publish(Boss& boss, const Damageable& health);
 };
 
 } // namespace Project_TD2_2

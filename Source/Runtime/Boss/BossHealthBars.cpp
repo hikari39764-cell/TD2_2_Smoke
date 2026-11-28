@@ -15,7 +15,7 @@ namespace {
 constexpr float kMinBarHealth = 1.0f;
 
 // 条の値。項目が 0 の時は、シーンで決めたボス全体の HP（Damageable の最大 HP）を割合で分ける。
-float BarHealth(const BossComponent& boss, int phase) {
+float BarHealth(const Boss& boss, int phase) {
     const float set = phase >= 2 ? boss.phaseTwoHealth : boss.phaseOneHealth;
     if (set > 0.0f)
         return std::max(kMinBarHealth, set);
@@ -25,7 +25,7 @@ float BarHealth(const BossComponent& boss, int phase) {
 
 } // namespace
 
-void BossHealthBars::Prepare(BossComponent& boss, const BossPhaseShiftComponent* shift, Damageable& health) {
+void BossHealthBars::Prepare(Boss& boss, const BossPhaseShift* shift, Damageable& health) {
     if (boss.healthBarsReady)
         return;
     boss.healthBarsReady = true;
@@ -38,11 +38,11 @@ void BossHealthBars::Prepare(BossComponent& boss, const BossPhaseShiftComponent*
     char message[160]{};
     std::snprintf(message, sizeof(message), "HealthBars tick=%llu first=%.3f second=%.3f shiftFrames=%d",
                   static_cast<unsigned long long>(boss.tick), static_cast<double>(BarHealth(boss, 1)),
-                  static_cast<double>(BarHealth(boss, 2)), BossPhaseShift::TotalFrames(boss, shift));
+                  static_cast<double>(BarHealth(boss, 2)), BossPhaseShiftRules::TotalFrames(boss, shift));
     BossLog::Write(message);
 }
 
-void BossHealthBars::Step(BossComponent& boss) {
+void BossHealthBars::Step(Boss& boss) {
     if (boss.phaseShiftLeft <= 0 || --boss.phaseShiftLeft > 0)
         return;
     char message[128]{};
@@ -51,7 +51,7 @@ void BossHealthBars::Step(BossComponent& boss) {
     BossLog::Write(message);
 }
 
-bool BossHealthBars::CheckEmptied(BossComponent& boss, const BossPhaseShiftComponent* shift,
+bool BossHealthBars::CheckEmptied(Boss& boss, const BossPhaseShift* shift,
                                   Damageable& health, double rawDamage) {
     if (boss.lastPhaseNumber >= 2 || health.IsAlive() || boss.state == BossState::Dead)
         return false;
@@ -70,7 +70,7 @@ bool BossHealthBars::CheckEmptied(BossComponent& boss, const BossPhaseShiftCompo
     const float before = boss.shownHealth;
     boss.lastPhaseNumber = 2;
     // 変わり目の長さは、変わり目の演出（c-8dd296）の拍の合計（演出を切った時は phaseShiftFrames）。
-    boss.phaseShiftLeft = std::max(1, BossPhaseShift::TotalFrames(boss, shift));
+    boss.phaseShiftLeft = std::max(1, BossPhaseShiftRules::TotalFrames(boss, shift));
     boss.phaseStartSeconds = boss.clockSeconds;
     // 2 本目を満たす。余ったダメージは持ち越さない（Damageable は 0 で止めているので、そのまま満たせばよい）。
     health.Refill(BarHealth(boss, 2));
@@ -86,7 +86,7 @@ bool BossHealthBars::CheckEmptied(BossComponent& boss, const BossPhaseShiftCompo
     return true;
 }
 
-double BossHealthBars::TotalPercent(const BossComponent& boss, const Damageable& health) {
+double BossHealthBars::TotalPercent(const Boss& boss, const Damageable& health) {
     const double first = BarHealth(boss, 1);
     const double second = BarHealth(boss, 2);
     const double left =
@@ -95,7 +95,7 @@ double BossHealthBars::TotalPercent(const BossComponent& boss, const Damageable&
     return left * 100.0 / (first + second);
 }
 
-void BossHealthBars::Publish(BossComponent& boss, const Damageable& health) {
+void BossHealthBars::Publish(Boss& boss, const Damageable& health) {
     boss.shownHealth = health.Health();
     boss.shownMaxHealth = health.maxHealth;
     boss.shownPhase = boss.lastPhaseNumber;

@@ -13,6 +13,7 @@
 #include "../Common/FluidChannels.h"
 #include "../Common/VfxParameters.h"
 #include "../Common/VfxPlayback.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -23,19 +24,19 @@ using namespace BossVfx;
 // 剣に沿って場の火の域へ入れる燃料の番号（BossSmoke の注入・押しの番号と重ならない所）。
 
 // 剣先の霞・ナイフの尾の入力。lit は剣が燃えている間（霞を炎の色にする）。
-HIKARI::GameProjectVfxParameterOverrides Parameters(const BossComponent& boss, float amount, float ember,
+HIKARI::GameProjectVfxParameterOverrides Parameters(const Boss& boss, float amount, float ember,
                                                     bool lit = false) {
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
     VfxParameters::SetFloat(parameters, kEmberInput, lit ? ember : 0.0f);
     VfxParameters::SetFloat(parameters, kMistInput, lit ? 0.0f : ember);
-    VfxParameters::SetColor(parameters, kColorInput, lit ? boss.bladeLitColor : boss.hazeColor);
+    VfxParameters::SetColor(parameters, kColorInput, lit ? ToGP(boss.bladeLitColor) : ToGP(boss.hazeColor));
     return parameters;
 }
 
 // 当たった斬撃は、当たった tick に終わる（active が落ちる）。砕けさせる見た目のために、当たって終わった斬撃も探す
 // （枠は次の斬撃が新しい id で使うまで、終わった時のデータを持っている）。
-const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
+const BossWave* FindWave(const Boss& boss, uint64_t id) {
     for (const auto& wave : boss.waves) {
         if ((wave.active || wave.struck) && !wave.knife && !wave.ring && wave.id == id)
             return &wave;
@@ -44,7 +45,7 @@ const BossWave* FindWave(const BossComponent& boss, uint64_t id) {
 }
 
 // 飛んでいる・引き込まれているナイフ（霧の弾）を探す。消えた後は見つからない。
-const BossWave* FindKnife(const BossComponent& boss, uint64_t id) {
+const BossWave* FindKnife(const Boss& boss, uint64_t id) {
     for (const auto& wave : boss.waves) {
         if (wave.active && wave.knife && wave.id == id)
             return &wave;
@@ -59,7 +60,7 @@ constexpr float kSqueezeReachShare = 0.3f;
 
 // 引き込みの間、域に残った三日月の両翼の霧を、刃の中心（口へ向かっている）へ押し寄せる。域は根と一緒に動くが、
 // 中の霧は捕まった時の幅のまま残るので、押さないと、口の左右に大きな翼が残る。斬撃のエフェクトの域だけに届く。
-void Squeeze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, const BossSlashEffect& effect,
+void Squeeze(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss, const BossSlashEffect& effect,
              size_t slot) {
     if (!(boss.absorbPullSqueeze > 0.0f) || !(boss.absorbPullSqueezeRadius > 0.0f) || !(effect.pullWidth > 0.0f))
         return;
@@ -81,22 +82,22 @@ void Squeeze(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent&
 }
 
 // 引き込みの尾（c-e0a9c3）：捕まった刃に付いて行き、刃の幅に沿って、通った所に光の粒を残す。amount は出す量（入り切ったら 0）。
-void UpdateTrail(HIKARI::WorldView& world, BossComponent& boss, BossSlashEffect& effect, float amount) {
-    if (boss.absorbTrailEffect.IsEmpty() || (!effect.trail.IsValid() && !(amount > 0.0f)))
+void UpdateTrail(HIKARI::WorldView& world, Boss& boss, BossSlashEffect& effect, float amount) {
+    if (!boss.absorbTrailEffect.IsSet() || (!effect.trail.IsValid() && !(amount > 0.0f)))
         return;
     HIKARI::GameProjectVfxParameterOverrides parameters{};
     VfxParameters::SetColor(parameters, kColorInput,
-                            effect.trailFire ? boss.absorbTrailFireColor : boss.absorbTrailMistColor);
+                            effect.trailFire ? ToGP(boss.absorbTrailFireColor) : ToGP(boss.absorbTrailMistColor));
     VfxParameters::SetFloat(parameters, kAmountInput, amount);
     // 資産は幅 1 m の刃で作ってある（粒は局所 Y＝刃の幅に沿って生まれる）：刃の向きに合わせ、根の拡大を、いまの刃の幅 (m)
     // にする（一様に。一様でない拡大は、粒の板まで伸ばして針にする）。細りながら口へ寄る刃の跡が、口へすぼまる光の面になる。
     const HIKARI::GameProjectTransform transform =
         Placed(effect.position, std::max(0.05f, effect.scale * boss.slashEffectWidth), effect.rotation);
-    StartOrSend(world, boss, effect.trail, boss.absorbTrailEffect, transform, parameters);
+    StartOrSend(world, boss, effect.trail, VfxPlayback::Reference(boss.absorbTrailEffect), transform, parameters);
 }
 
 // 飛ぶ斬撃の本体：斬撃 1 つにつき、自前の流体域を持つ三日月の霧のエフェクトを 1 つ飛ばす。
-void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss, float seconds,
+void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss, float seconds,
                    float alpha) {
     const auto vfx = world.GetVfx();
     for (auto& effect : boss.slashEffects) {
@@ -170,7 +171,7 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
         if (effect.captured)
             Squeeze(world, object, boss, effect, static_cast<size_t>(&effect - boss.slashEffects.data()));
     }
-    if (boss.slashEffect.IsEmpty())
+    if (!boss.slashEffect.IsSet())
         return;
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
@@ -210,7 +211,7 @@ void UpdateSlashes(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComp
 
 // 回し蹴りの霞の輪：広がる炎の輪のエフェクトを 1 つ出し、輪の半径に合わせて根の大きさを変える。
 // 輪が消えたら燃料を止め、炎が消えるまで待ってから止める（域ごと急に消さない）。
-void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
+void UpdateRing(HIKARI::WorldView& world, Boss& boss, float seconds) {
     if (boss.ringVfx.IsValid() && !world.GetVfx().IsActive(boss.ringVfx))
         boss.ringVfx = {};
     const BossWave* ring = nullptr;
@@ -218,7 +219,7 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
         if (wave.active && wave.ring)
             ring = &wave;
     }
-    if (ring != nullptr && ring->id != boss.ringVfxId && !boss.ringEffect.IsEmpty()) {
+    if (ring != nullptr && ring->id != boss.ringVfxId && !!boss.ringEffect.IsSet()) {
         // 前の輪が残っていたら止め、次のフレームで出す（止めた域もそのフレームの間は流体域の数に入る）。
         if (boss.ringVfx.IsValid()) {
             StopHandle(world, boss.ringVfx);
@@ -230,7 +231,7 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
         boss.ringCenter = {ring->position.x, boss.ground.y + boss.ringHeight, ring->position.z};
         HIKARI::GameProjectVfxPlayRequest play{};
         // 火を残す輪（フェーズ 2）は炎の輪、ほかは霞の輪（c-3c908c）。
-        play.asset = ring->fire && !boss.ringFireEffect.IsEmpty() ? boss.ringFireEffect : boss.ringEffect;
+        play.asset = ring->fire && !!boss.ringFireEffect.IsSet() ? VfxPlayback::Reference(boss.ringFireEffect) : VfxPlayback::Reference(boss.ringEffect);
         play.transform = Placed(boss.ringCenter, boss.ringScale);
         play.randomSeed = static_cast<uint32_t>(ring->id);
         play.parameters = RingParameters(true, 1.0f);
@@ -259,8 +260,8 @@ void UpdateRing(HIKARI::WorldView& world, BossComponent& boss, float seconds) {
 // 叩きつけの爆発（c-3c908c）：範囲爆発の叩きつけは、見えている左手の真下の地面から出す（骨格の体が出ていなければ足元）。
 // 火の剣気が狙った所で爆ぜる時は、その真下の地面から小さく出す。剣が燃えている技は火、ほかは霞。再生は覚えておき、域が
 // 消えるまで流体域の枠に数える（GetFluidDomainDemand）。
-void PlayBurst(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComponent* look, const BossBlast& blast) {
-    const auto& asset = blast.fire || boss.burstMistEffect.IsEmpty() ? boss.burstEffect : boss.burstMistEffect;
+void PlayBurst(HIKARI::WorldView& world, Boss& boss, const BossBody* look, const BossBlast& blast) {
+    const auto& asset = blast.fire || !boss.burstMistEffect.IsSet() ? VfxPlayback::Reference(boss.burstEffect) : VfxPlayback::Reference(boss.burstMistEffect);
     if (asset.IsEmpty())
         return;
     Vec3 at{blast.position.x, boss.ground.y, blast.position.z};
@@ -274,7 +275,7 @@ void PlayBurst(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComp
 }
 
 // 当たった所の爆発の光（一度きりのエフェクト。入力は無い）。
-void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComponent* look) {
+void PlayBlasts(HIKARI::WorldView& world, Boss& boss, const BossBody* look) {
     for (auto& handle : boss.burstVfx) {
         if (handle.IsValid() && !world.GetVfx().IsActive(handle))
             handle = {};
@@ -290,9 +291,9 @@ void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss, const BossBodyCom
         if (blast.playerHit && blast.fire) {
             // 火がプレイヤーに当たった：火球と光の輪は出さない。攻撃の向きへ体を突き抜ける炎（場の火の域の流体）と、
             // 同じ向きへ飛ぶ火花を出す。
-            BurnField::AddJet(world, blast.position, blast.direction, blast.scale);
+            BurnFieldAccess::AddJet(world, blast.position, blast.direction, blast.scale);
             HIKARI::GameProjectVfxPlayRequest sparks{};
-            sparks.asset = boss.fireHitEffect;
+            sparks.asset = VfxPlayback::Reference(boss.fireHitEffect);
             sparks.transform = Placed(blast.position, blast.scale,
                                       BasisRotation(blast.direction, Cross({0.0f, 1.0f, 0.0f}, blast.direction)));
             sparks.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
@@ -300,10 +301,10 @@ void PlayBlasts(HIKARI::WorldView& world, BossComponent& boss, const BossBodyCom
             continue;
         }
         // 塊そのものは流体で出す：剣が燃えている技で当てた所は場の火の域の火球、ほかは場の霧へ弾ける霞の塊。
-        BurnField::AddBlast(world, blast.position, boss.hitBlastRadius * blast.scale,
+        BurnFieldAccess::AddBlast(world, blast.position, boss.hitBlastRadius * blast.scale,
                             blast.fire ? BurnBlastKind::Hit : BurnBlastKind::Smoke);
         // その上に重ねるエフェクト（当たった所は光・衝撃の輪・火花）。
-        const auto& asset = !blast.fire && !boss.mistBlastEffect.IsEmpty() ? boss.mistBlastEffect : boss.blastEffect;
+        const auto& asset = !blast.fire && !!boss.mistBlastEffect.IsSet() ? VfxPlayback::Reference(boss.mistBlastEffect) : VfxPlayback::Reference(boss.blastEffect);
         if (!asset.IsEmpty())
             boss.vfxAccepted = VfxPlayback::PlayOneShot(world, asset, blast.position, blast.scale) && boss.vfxAccepted;
     }
@@ -318,7 +319,7 @@ HIKARI::GameProjectVfxParameterOverrides MistShotParameters(const BossMistShotEf
 
 // 霧の弾の本体を 1 発ぶん出す（c-e0a9c3 の続き）。出せたら true。枠が無い時は、消えかけ（無ければ一番遠くまで飛んだもの）を
 // 止めて false（止めた域もそのフレームの間は流体域の数に入るので、次のフレームにもう一度試す）。
-bool StartMistShot(HIKARI::WorldView& world, BossComponent& boss, const BossWave& wave) {
+bool StartMistShot(HIKARI::WorldView& world, Boss& boss, const BossWave& wave) {
     BossMistShotEffect* slot = nullptr;
     BossMistShotEffect* oldest = nullptr;
     for (auto& shot : boss.mistShots) {
@@ -341,7 +342,7 @@ bool StartMistShot(HIKARI::WorldView& world, BossComponent& boss, const BossWave
     slot->position = wave.position;
     slot->rotation = BasisRotation(wave.direction, wave.across);
     HIKARI::GameProjectVfxPlayRequest play{};
-    play.asset = boss.mistShotEffect;
+    play.asset = VfxPlayback::Reference(boss.mistShotEffect);
     play.transform = Placed(slot->position, boss.mistShotScale, slot->rotation);
     play.randomSeed = static_cast<uint32_t>(wave.id);
     play.parameters = MistShotParameters(*slot);
@@ -351,7 +352,7 @@ bool StartMistShot(HIKARI::WorldView& world, BossComponent& boss, const BossWave
 
 // 出ている霧の弾の本体を進める。飛んでいる間はエフェクト側の速度に任せ（何も送らない）、捕まったら規則の位置へ毎フレーム
 // 置いて細らせ、弾が消えたら煙を出すのをやめ、その場で尾が消えるのを待ってから止める。
-void UpdateMistShots(HIKARI::WorldView& world, BossComponent& boss, float seconds, float alpha) {
+void UpdateMistShots(HIKARI::WorldView& world, Boss& boss, float seconds, float alpha) {
     const auto vfx = world.GetVfx();
     for (auto& shot : boss.mistShots) {
         if (!shot.handle.IsValid())
@@ -400,7 +401,7 @@ void UpdateMistShots(HIKARI::WorldView& world, BossComponent& boss, float second
 
 // ナイフ：刃と光点のエフェクトを飛ばし、尾は場の霧へ霞を入れるエフェクトで出す。どちらもエフェクト側の速度で進める。
 // 霧の弾（knifeMistBullet）で、本体のエフェクト（mistShotEffect）がある時は、それを 1 発に 1 つ飛ばす（上の 2 つは出さない）。
-void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
+void UpdateKnives(HIKARI::WorldView& world, Boss& boss, float alpha) {
     for (size_t i = 0; i < boss.waves.size(); ++i) {
         const BossWave& wave = boss.waves[i];
         auto& handle = boss.waveVfx[i];
@@ -431,20 +432,20 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
             continue;
         // 霧の弾（knifeMistBullet）：刃と尾を出さず、本体のエフェクトを 1 発に 1 つ飛ばす（枠が空かなければ次のフレームに）。
         if (boss.knifeMistBullet) {
-            if (boss.mistShotEffect.IsEmpty() || StartMistShot(world, boss, wave))
+            if (!boss.mistShotEffect.IsSet() || StartMistShot(world, boss, wave))
                 boss.waveVfxId[i] = wave.id;
             continue;
         }
         boss.waveVfxId[i] = wave.id;
         const Vec3 velocity = Mul(wave.direction, wave.speed);
         HIKARI::GameProjectVfxPlayRequest tail{};
-        tail.asset = boss.swordEffect;
+        tail.asset = VfxPlayback::Reference(boss.swordEffect);
         tail.transform = Placed(wave.position, 1.0f);
         tail.parameters = Parameters(boss, boss.knifeEffectAmount, 0.0f);
         handle = StartMoving(world, boss, tail, velocity);
         // 刃のエフェクトには入力が無い（霞の尾の入力を渡すと、知らない入力として再生を断られる）。
         HIKARI::GameProjectVfxPlayRequest blade{};
-        blade.asset = boss.knifeEffect;
+        blade.asset = VfxPlayback::Reference(boss.knifeEffect);
         blade.transform = Placed(wave.position, 1.0f, BasisRotation(wave.direction, wave.across));
         knife = StartMoving(world, boss, blade, velocity);
     }
@@ -453,7 +454,7 @@ void UpdateKnives(HIKARI::WorldView& world, BossComponent& boss, float alpha) {
 // 剣に火が付いた瞬間に、剣先へ小さな火球を出す。剣に沿って燃料を入れ続けることはしない：ふだんの剣は模型が無く
 // 見えないので、剣の炎は、ボスのそばの空中に斜めに浮いた火に見え、振った後も淡い煙の弧が空に残る
 // （剣が燃えていることは、剣先の橙の光で見せる。斬撃の炎は、斬撃のエフェクトが出す）。
-void UpdateIgniteFlash(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComponent* phaseShift, bool lit) {
+void UpdateIgniteFlash(HIKARI::WorldView& world, Boss& boss, BossPhaseShift* phaseShift, bool lit) {
     // フェーズの変わり目の演出で刀が初めて灯る時（閃光・飛ばした時）は火球を出さない：刀身の火は演出が灯し、飛ばした時は
     // 規則の剣先（構え直す前の所）に火球が残って燃えて見える。
     const bool byShift = lit && phaseShift != nullptr && phaseShift->state.beat != BossShiftBeat::None &&
@@ -464,14 +465,14 @@ void UpdateIgniteFlash(HIKARI::WorldView& world, BossComponent& boss, BossPhaseS
         const BossSwordPoints sword = boss.swordSmoke
                                           ? BossSwordPoints{boss.swordInner, boss.swordInner, boss.swordOuter}
                                           : BossPose::SwordPoints(boss, boss.swordPose);
-        BurnField::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
+        BurnFieldAccess::AddBlast(world, sword.outer, boss.igniteFlashRadius, BurnBlastKind::Hit);
     }
     boss.bladeWasLit = lit;
 }
 
 // 剣先の霞：構えでは剣先に集まり、振っている間は剣先が弧を描く（動く注入は通った線に沿って広がる）。
-void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss, const BossBodyComponent* look,
-                     BossPhaseShiftComponent* phaseShift) {
+void UpdateSwordHaze(HIKARI::WorldView& world, Boss& boss, const BossBody* look,
+                     BossPhaseShift* phaseShift) {
     const bool swinging = boss.swordSmoke;
     const bool kamae = boss.glintFrames > 0 && boss.state == BossState::Act;
     // 火を残す技の間は、前隙の最初から剣が燃えている（技を出す前の 1 枚の画面で見分けられる）。
@@ -493,13 +494,13 @@ void UpdateSwordHaze(HIKARI::WorldView& world, BossComponent& boss, const BossBo
     // ボスの上の空中に浮いた塊に、振った後は空に残る弧に見える（斬撃の炎は、斬撃のエフェクトが出す）。
     if (lit)
         amount = 0.0f;
-    StartOrSend(world, boss, boss.swordVfx, boss.swordEffect, Placed(position, 1.0f),
+    StartOrSend(world, boss, boss.swordVfx, VfxPlayback::Reference(boss.swordEffect), Placed(position, 1.0f),
                 Parameters(boss, amount, ember, lit));
 }
 
 } // namespace
 
-size_t BossVisuals::GetFluidDomainDemand(const BossComponent& boss, const BossBodyComponent* look) {
+size_t BossVisuals::GetFluidDomainDemand(const Boss& boss, const BossBody* look) {
     size_t live = boss.ringVfx.IsValid() ? 1 : 0;
     for (const auto& effect : boss.slashEffects)
         live += effect.handle.IsValid() ? 1 : 0;
@@ -521,8 +522,8 @@ size_t BossVisuals::GetFluidDomainDemand(const BossComponent& boss, const BossBo
            (look != nullptr && look->state.accents.gatherVfx.IsValid() ? 1 : 0);
 }
 
-void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                         const BossBodyComponent* look, BossPhaseShiftComponent* phaseShift, float seconds,
+void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
+                         const BossBody* look, BossPhaseShift* phaseShift, float seconds,
                          float alpha) {
     UpdateSlashes(world, object, boss, seconds, alpha);
     UpdateRing(world, boss, seconds);
@@ -532,7 +533,7 @@ void BossVisuals::Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Bo
     UpdateSwordHaze(world, boss, look, phaseShift);
 }
 
-void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
+void BossVisuals::Stop(HIKARI::WorldView& world, Boss& boss) {
     for (auto& handle : boss.waveVfx)
         StopHandle(world, handle);
     for (auto& handle : boss.knifeVfx)
@@ -550,137 +551,6 @@ void BossVisuals::Stop(HIKARI::WorldView& world, BossComponent& boss) {
         effect = {};
     }
     StopHandle(world, boss.swordVfx);
-}
-
-void BossVisuals::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("手応え：斬撃・霧の弾を放った瞬間のカメラ")) {
-        fields.Float("releaseCameraAmplitude", "カメラの揺れ幅 (m、0 は揺らさない)", boss.releaseCameraAmplitude, 0.0f,
-                     0.5f);
-        fields.Float("releaseCameraFov", "視野角の打ち込み (度。負で狭まり、0 は無効)", boss.releaseCameraFov, -10.0f,
-                     10.0f);
-        fields.Int("releaseCameraFrames", "カメラが戻るまで (F、0 は無効)", boss.releaseCameraFrames, 0, 120);
-        fields.Float("releaseCameraFrequency", "揺れの周波数 (Hz)", boss.releaseCameraFrequency, 0.0f, 60.0f);
-        fields.Float("releaseCameraNear", "この距離 (m) より近くで放った時は、そのままの強さ", boss.releaseCameraNear,
-                     0.0f, 100.0f);
-        fields.Float("releaseCameraRange", "この距離 (m) で 0 になるように弱める", boss.releaseCameraRange, 0.1f,
-                     200.0f);
-        fields.Float("releaseKnifeScale", "霧の弾（ナイフ）の時の強さ（倍）", boss.releaseKnifeScale, 0.0f, 2.0f);
-        fields.Float("releaseRumble", "パッドの振動 (0〜1、0 は無効)", boss.releaseRumble, 0.0f, 1.0f);
-        fields.Int("releaseRumbleFrames", "振動の長さ (F、0 は無効)", boss.releaseRumbleFrames, 0, 120);
-    }
-    if (fields.Section("見た目（霞の色とエフェクト）")) {
-        fields.Vfx("slashEffect", "飛ぶ斬撃のエフェクト（三日月の霧。自前の流体域を持つ）", boss.slashEffect);
-        fields.Float("slashEffectWidth", "斬撃のエフェクトが作られている幅 (m。判定サイズ ÷ これ が大きさの倍率)",
-                     boss.slashEffectWidth, 0.5f, 50.0f);
-        fields.Float("slashFadeSeconds", "斬撃が消えた後、霧が消えるまで飛ばし続ける時間 (秒)", boss.slashFadeSeconds,
-                     0.0f, 3.0f);
-        fields.Float("slashImpactSeconds", "当たった瞬間に刃が砕けて散る時間 (秒)", boss.slashImpactSeconds, 0.0f,
-                     2.0f);
-        fields.Float("slashHitSpeedScale", "当たった後の霧が進む速さ（元の速さに対する割合。小さいほどその場で散る）",
-                     boss.slashHitSpeedScale, 0.0f, 1.0f);
-        fields.Float("slashGlowFadeSeconds", "刃が消える・当たる時に、光る刃口や炎の層が縮んで消えるまでの時間 (秒)",
-                     boss.slashGlowFadeSeconds, 0.0f, 1.0f);
-        fields.Note(
-            "斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
-            "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。");
-        fields.Vfx("mistBlastEffect", "霞の刃が当たった所のエフェクト（青白い光と火花。空なら炎の刃と同じ）",
-                   boss.mistBlastEffect);
-        fields.Float("wavePartPush", "飛ぶ斬撃が、真下の場の霧を左右へ割る速さ (m/s。0 で割らない)", boss.wavePartPush,
-                     0.0f, 40.0f);
-        fields.Float("wavePartRadius", "…割る押しの半径 (m)", boss.wavePartRadius, 0.1f, 6.0f);
-        fields.Vfx("slashSmokeEffect", "火を残さない斬撃のエフェクト（煙の刃。空なら炎の刃で出す）",
-                   boss.slashSmokeEffect);
-        fields.Float("bladeLitEmber", "火を残す技の間の、剣先の熾火の強さ (倍)", boss.bladeLitEmber, 0.0f, 20.0f);
-        fields.Color3("bladeLitColor", "…剣先の霞の色", boss.bladeLitColor);
-        fields.Float("igniteFlashRadius", "剣に火が付く瞬間の火球の半径 (m。0 は出さない)", boss.igniteFlashRadius,
-                     0.0f, 5.0f);
-        fields.Float("hitBlastRadius", "当たった所の火球・煙の塊の半径 (m)", boss.hitBlastRadius, 0.1f, 10.0f);
-        fields.Note("火を残す技（技の表の「残す火」）は、出す前から剣が燃え、斬撃は炎の刃になります。"
-                    "残さない技は、剣は霞のまま、斬撃は暗い煙の刃です。"
-                    "剣の炎・当たった所の火球・煙の塊は、場の火の域（ArenaFireField）の流体です。");
-        fields.Vfx("blastEffect", "当たった所の爆発のエフェクト（光・火花・爆炎）", boss.blastEffect);
-        fields.Vfx(
-            "fireHitEffect",
-            "火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。体を突き抜ける炎は BurnField の jet の項目）",
-            boss.fireHitEffect);
-        fields.Float("slashHitFadeSeconds", "当たった斬撃の炎を消すまでの時間 (秒。爆発の光に隠してすぐ消す)",
-                     boss.slashHitFadeSeconds, 0.0f, 1.0f);
-        fields.Float("blastPush", "爆発が足元の霧を外へ押す速さ (m/秒、0 は無効)", boss.blastPush, 0.0f, 100.0f);
-        fields.Float("blastPushRadius", "爆発が霧を押す半径 (m)", boss.blastPushRadius, 0.1f, 50.0f);
-        fields.Float("knifeBlastScale", "ナイフが当たった時の爆発の大きさ（斬撃に対する倍率）", boss.knifeBlastScale,
-                     0.0f, 2.0f);
-        fields.Note(
-            "爆発は、斬撃・ナイフ・剣がプレイヤーに当たった所に出ます。霧は地面に沿って外へ押すだけで、煙は足しません"
-            "（場の霧はほとんど消えないので、足すとプレイヤーの周りに溜まって画面を塞ぎます）。"
-            "光・火花・爆炎の形は BossSlashBurst で調整します。");
-        fields.Vfx("swordEffect", "剣先の霞・ナイフの尾のエフェクト（流体注入）", boss.swordEffect);
-        fields.Color3("hazeColor", "剣先の霞・ナイフの尾の色（霞の刃と同じ青白。火を残す技の間は bladeLitColor）",
-                      boss.hazeColor);
-        fields.Float("swordEffectAmount", "振っている剣の霞の濃さ（倍）", boss.swordEffectAmount, 0.0f, 20.0f);
-        fields.Float("kamaeEffectAmount", "構えで剣先に集まる霞の濃さ（倍）", boss.kamaeEffectAmount, 0.0f, 20.0f);
-        fields.Float("swordEmberScale", "振っている剣先の火の粉の光の大きさ（倍、0 は出さない）", boss.swordEmberScale,
-                     0.0f, 10.0f);
-        fields.Float("kamaeEmberScale", "構えで剣先に灯る火の粉の光の大きさ（倍）", boss.kamaeEmberScale, 0.0f, 10.0f);
-        fields.Note(
-            "剣先の霞（煙）は場の霧に入って残ります。濃くすると技のたびにボスの頭上へ溜まり、長く戦うと視界を塞ぎます。"
-            "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。");
-        fields.Float("knifeEffectAmount", "ナイフの尾の霞の濃さ（倍）", boss.knifeEffectAmount, 0.0f, 20.0f);
-        fields.Vfx("knifeEffect", "投げナイフのエフェクト（刃と光点）", boss.knifeEffect);
-        fields.Bool("knifeMistBullet", "投げナイフを霧の弾にする（刃と尾を出さず、下の本体のエフェクトを飛ばす）",
-                    boss.knifeMistBullet);
-        fields.Vfx("mistShotEffect",
-                   "霧の弾の本体のエフェクト（弾に付いて動く細かい流体域：尾の煙・頭の光・軌跡の帯・熱の揺らぎ）",
-                   boss.mistShotEffect);
-        fields.Float("mistShotScale", "…弾の大きさ（倍）", boss.mistShotScale, 0.1f, 10.0f);
-        fields.Float("mistShotFadeSeconds", "…弾が消えた後に、尾の煙が残る時間 (秒)", boss.mistShotFadeSeconds, 0.0f,
-                     5.0f);
-        fields.Float("mistShotGlowFadeSeconds", "…弾が消えた後に、芯の光が消えるまで (秒)",
-                     boss.mistShotGlowFadeSeconds, 0.01f, 5.0f);
-        fields.Float("swingPushForce",
-                     "振りで場の霧を揺らす力（m/s²。当たりの窓の間、刃が進む向きへ押す。0 は押さない）",
-                     boss.swingPushForce, 0.0f, 400.0f);
-        fields.Float("swingPushRadius", "…力が届く半径 (m)", boss.swingPushRadius, 0.1f, 10.0f);
-        fields.Vfx("ringEffect", "回し蹴りの霞の輪のエフェクト（広がる炎の輪。自前の流体域を持つ）", boss.ringEffect);
-        fields.Vfx("ringFireEffect", "…火を残す技（フェーズ 2）の輪のエフェクト（空なら上と同じ）",
-                   boss.ringFireEffect);
-        fields.Float("ringEffectRadius", "…エフェクトが作られている半径 (m。輪の半径 ÷ これ が大きさの倍率)",
-                     boss.ringEffectRadius, 0.5f, 50.0f);
-        fields.Float("ringFadeSeconds", "…輪が消えた後、炎が消えるまで残す時間 (秒)", boss.ringFadeSeconds, 0.0f, 3.0f);
-        fields.Float("ringHeight", "…輪の高さ（地面から m）", boss.ringHeight, 0.0f, 10.0f);
-        fields.Note("炎の輪は流体域を 1 つ使います。回し蹴りの間は、砲撃の炎の枠がその分だけ減ります。"
-                    "炎・煙の濃さや色は、エフェクト BossKickRing の Fire Domain と各層で調整します。");
-        fields.Float("ringBurstScale", "回し蹴りの足元の爆ぜの大きさ（当たった所の爆発の倍率）", boss.ringBurstScale,
-                     0.0f, 5.0f);
-        fields.Float("ringPush", "霞の輪が足元の霧を外へ押す速さ (m/秒、0 は押さない)", boss.ringPush, 0.0f, 100.0f);
-        fields.Float("ringPushRadius", "…押す 1 点の半径 (m)", boss.ringPushRadius, 0.1f, 20.0f);
-        fields.Vfx("burstEffect",
-                   "範囲爆発：叩きつけの爆発のエフェクト（火。剣が燃えている技で出す。自前の流体域を持つ）",
-                   boss.burstEffect);
-        fields.Vfx("burstMistEffect", "…霞の爆発（剣が燃えていない技で出す。空なら火と同じ）", boss.burstMistEffect);
-        fields.Float("burstScale", "…爆発の大きさ（倍）", boss.burstScale, 0.1f, 5.0f);
-        fields.Float(
-            "crossBurstScale",
-            "…火の剣気が狙った所で爆ぜる時の爆発の大きさ（叩きつけの爆発に対する倍率。0 は今までの小さな爆発）",
-            boss.crossBurstScale, 0.0f, 2.0f);
-        fields.Float("burstPush", "…爆発が足元の霧を外へ押す速さ (m/秒、0 は押さない)", boss.burstPush, 0.0f, 100.0f);
-        fields.Float("burstPushRadius", "…押しが届く半径 (m)", boss.burstPushRadius, 0.1f, 50.0f);
-        fields.Float("burstCameraAmplitude", "…爆発の瞬間のカメラの揺れ幅 (m、0 は揺らさない)",
-                     boss.burstCameraAmplitude, 0.0f, 2.0f);
-        fields.Int("burstCameraFrames", "…揺れの長さ (F)", boss.burstCameraFrames, 0, 120);
-        fields.Float("burstCameraFrequency", "…揺れの周波数 (Hz)", boss.burstCameraFrequency, 0.0f, 60.0f);
-        fields.Float("burstRumbleLow", "…パッドの振動：重いモーター (0〜1)", boss.burstRumbleLow, 0.0f, 1.0f);
-        fields.Float("burstRumbleHigh", "…パッドの振動：軽いモーター (0〜1)", boss.burstRumbleHigh, 0.0f, 1.0f);
-        fields.Int("burstRumbleFrames", "…振動の長さ (F、0 は無効)", boss.burstRumbleFrames, 0, 120);
-        fields.Float("burstBlurShutter", "…爆発の瞬間の動きのぼかし：シャッター角 (度、0 は無効)",
-                     boss.burstBlurShutter, 0.0f, 360.0f);
-        fields.Float("burstBlurPixels", "…ぼかしの長さの上限 (1080p の画素)", boss.burstBlurPixels, 0.0f, 64.0f);
-        fields.Int("burstBlurFrames", "…ぼかしが戻るまで (F)", boss.burstBlurFrames, 0, 120);
-        fields.Note(
-            "叩きつけの爆発は、見えている左手の真下の地面から出ます。2 つとも空のシーンでは、今までの小さな爆ぜです。"
-            "炎・煙・光・火花の形は、エフェクト BossBurstFire／BossBurstMist の層で調整します。");
-        fields.Note(
-            "飛ぶ斬撃が通った跡の残り煙は、エフェクトではなく場の霧の域へ直接入れます（Emit。域は増やしません）。");
-    }
 }
 
 } // namespace Project_TD2_2

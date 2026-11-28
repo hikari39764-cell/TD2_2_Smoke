@@ -8,9 +8,7 @@
 
 namespace Project_TD2_2 {
 
-inline constexpr std::string_view kGourdType = "TD2_2.Gourd";
-inline constexpr std::string_view kGourdSystem = "Project_TD2_2.GourdSystem";
-// 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
+// ゲーム全体の値（Params）の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
 inline constexpr std::string_view kGourdSmokeVariable = "Gourd.Smoke";
 inline constexpr std::string_view kGourdCapacityVariable = "Gourd.Capacity";
 // 火弾の残り秒数（火弾でなければ 0）。HUD が読む。
@@ -23,19 +21,19 @@ inline constexpr std::string_view kGourdBlockedVariable = "Gourd.Blocked";
 enum class GourdAbsorbPhase { Idle, Windup, Absorbing, Recovery };
 
 struct Gourd : HIKARI::Component {
-    HIKARI_COMPONENT(Gourd)
+    HIKARI_COMPONENT(Gourd, "ヒョウタン")
 
     FIELD(bool, enabled, true, "有効", HIKARI::Group("追従と外形"))
     FIELD(HIKARI::Entity, player, {}, "追従するプレイヤー")
     FIELD(HIKARI::Entity, camera, {}, "照準用カメラ（制御視点が無い時）")
     FIELD(HIKARI::Vec3, shoulderOffset, (HIKARI::Vec3{0.65f, 0.45f, -0.1f}), "肩からの位置（右・上・前 m）")
     FIELD(
-        float, followFrequency, 14.0f, "ばね追従の速さ (/s)", HIKARI::Range(0.1f, 100.0f),
-        HIKARI::Tip("砲撃の反動から戻る速さも、このばね追従の速さを使います。反動の距離と F 数は砲撃側で調整します。"))
+        float, followFrequency, 14.0f, "ばね追従の速さ (/s)", HIKARI::Range(0.1f, 100.0f))
+    NOTE("砲撃の反動から戻る速さも、このばね追従の速さを使います。反動の距離と F 数は砲撃側で調整します。")
     FIELD(float, teleportDistance, 10.0f, "瞬間移動とみなす距離 (m)", HIKARI::Range(1.0f, 1000.0f))
     FIELD(float, height, 0.5f, "高さ (m)", HIKARI::Range(0.02f, 10.0f))
-    FIELD(float, radius, 0.18f, "半径 (m)", HIKARI::Range(0.01f, 5.0f),
-          HIKARI::Tip("カプセルの +Y 側が口。基準メッシュは高さ 0.5 m・半径 0.18 m、物理の当たりは付けません。"))
+    FIELD(float, radius, 0.18f, "半径 (m)", HIKARI::Range(0.01f, 5.0f))
+    NOTE("カプセルの +Y 側が口。基準メッシュは高さ 0.5 m・半径 0.18 m、物理の当たりは付けません。")
     FIELD(float, absorbRadius, 1.0f, "口元で煙を回収する半径 (m)", HIKARI::Range(0.01f, 10.0f),
           HIKARI::Group("霧の吸い込み"))
     FIELD(float, absorbStrength, 28.0f, "口元の吸入速度 (m/s。周りの霧を口へ引き寄せる主役)",
@@ -54,34 +52,35 @@ struct Gourd : HIKARI::Component {
     FIELD(float, gatherLift, 0.3f, "足元に集まった霧を口へ持ち上げる力の倍率", HIKARI::Range(0.0f, 5.0f))
     FIELD(float, gatherAbsorption, 2.0f, "扇の中の霧が、口へ運ばれながら消える率 (/s、0 は消さない)",
           HIKARI::Range(0.0f, 100.0f))
-    FIELD(float, gatherSmokeShare, 0.25f, "扇の中で消えた霧のうち、煙に数える割合", HIKARI::Range(0.0f, 1.0f),
-          HIKARI::Tip("gatherAbsorption を上げるほど、吸った所の霧が早く薄くなって穴が見えます。"
-                      "ヒョウタンが満ちる速さは gatherSmokeShare で合わせます（口元まで届いた霧は全部"
-                      "数えます）。穴が戻る速さは、場の霧（ArenaGroundFog）の補充と消散で決まります。"))
+    FIELD(float, gatherSmokeShare, 0.25f, "扇の中で消えた霧のうち、煙に数える割合", HIKARI::Range(0.0f, 1.0f))
+    NOTE("gatherAbsorption を上げるほど、吸った所の霧が早く薄くなって穴が見えます。"
+         "ヒョウタンが満ちる速さは gatherSmokeShare で合わせます（口元まで届いた霧は全部数えます）。"
+         "穴が戻る速さは、場の霧（ArenaGroundFog）の補充と消散で決まります。")
     FIELD(float, absorbForwardDistance, 1.3f, "霧を集める中心の前方距離 (m)", HIKARI::Range(0.0f, 10.0f))
     FIELD(float, absorbHeightOffset, -0.45f, "霧を集める中心の高さ（プレイヤー原点から m）",
-          HIKARI::Range(-10.0f, 10.0f),
-          HIKARI::Tip("近くの霧は口元の吸入が引き寄せます（流れが口で終わるので行き過ぎない）。"
-                      "扇の流れは 3 m より奥の霧を軽く押すだけにします。"
-                      "扇の流れ・持ち上げ・足元の全周の力を強くすると、霧がプレイヤーを通り過ぎて空へ噴き上がります。"))
+          HIKARI::Range(-10.0f, 10.0f))
+    NOTE("近くの霧は口元の吸入が引き寄せます（流れが口で終わるので行き過ぎない）。扇の流れは 3 m より奥の霧を"
+         "軽く押すだけにします。扇の流れ・持ち上げ・足元の全周の力を強くすると、霧がプレイヤーを通り過ぎて空へ噴き上がります。")
     FIELD(float, absorbCatchRadius, 1.1f, "口の上へ抜けた霧を回収する半径 (m、0 は無効)", HIKARI::Range(0.0f, 10.0f))
     FIELD(float, absorbCatchHeight, 0.7f, "回収する中心の、口からの高さ (m)", HIKARI::Range(0.0f, 5.0f))
-    FIELD(float, absorbCatchRate, 30.0f, "口の上で霧を消す率 (/s)", HIKARI::Range(0.0f, 1000.0f),
-          HIKARI::Tip("持ち上げた霧が口を通り過ぎて空へ噴き上がらないように、口の少し上で消して煙に数えます。"
-                      "霧が口の上まで噴き上がる時は、この半径か率を上げるか、持ち上げる力の倍率を下げます。"))
+    FIELD(float, absorbCatchRate, 30.0f, "口の上で霧を消す率 (/s)", HIKARI::Range(0.0f, 1000.0f))
+    NOTE("持ち上げた霧が口を通り過ぎて空へ噴き上がらないように、口の少し上で消して煙に数えます。"
+         "霧が口の上まで噴き上がる時は、この半径か率を上げるか、持ち上げる力の倍率を下げます。")
     // 満杯の間は吸えない（霧・火・斬撃・ナイフのどれも。c-d07c33）。入にすると、満杯でも吸える前の扱いに戻る。
-    FIELD(bool, absorbWhenFull, false, "満杯でも吸える（既定は切：満杯の間は霧・火・斬撃・ナイフのどれも吸えない）",
-          HIKARI::Tip("切（既定）：満杯の間は、吸い込みを構えても場の霧・場の火を消さず、"
-                      "ボスの斬撃・ナイフは当たります（火弾にもなりません）。空きが少しでもあれば吸え、"
-                      "入りきらない煙は捨てます。斬撃・ナイフは、口へ引き込み中の分の煙も先に数えるので、"
-                      "1 本で満杯になる時は、続けて来た次の 1 本が当たります（引き込み中の分は最後まで入ります）。"
-                      "入にすると、満杯でも吸えて煙だけが増えない前の扱いに戻ります。"
-                      "砲撃の煙のコスト（GourdShot.smokeCost）が 0 のシーンでは、"
-                      "切だとずっと満杯で何も吸えません。口元の吸入が周り全体の霧を口へ引き寄せ、"
-                      "前方の扇の流れが遠くの霧を渦を巻かせて運びます。吸入速度と半径を上げると吸う速さ（煙／秒）"
-                      "も上がります。既定は濃い霧の中で約 60／秒です。プレイヤーの向きの前方の扇から、"
-                      "場の霧を輪から輪へ口の前まで運び、口元だけで回収します。運ぶ力だけでは煙量は増えません。"
-                      "奥の輪は扇の両端まで 5 本、いちばん手前の輪は 3 本の流れです。"))
+    FIELD(bool, absorbWhenFull, false, "満杯でも吸える（既定は切：満杯の間は霧・火・斬撃・ナイフのどれも吸えない）")
+    NOTE("切（既定）：満杯の間は、吸い込みを構えても場の霧・場の火を消さず、ボスの斬撃・ナイフは当たります"
+         "（火弾にもなりません）。空きが少しでもあれば吸え、入りきらない煙は捨てます。斬撃・ナイフは、"
+         "口へ引き込み中の分の煙も先に数えるので、1 本で満杯になる時は、続けて来た次の 1 本が当たります"
+         "（引き込み中の分は最後まで入ります）。入にすると、満杯でも吸えて煙だけが増えない前の扱いに戻ります。"
+         "砲撃の煙のコスト（GourdShot.smokeCost）が 0 のシーンでは、切だとずっと満杯で何も吸えません。")
+    NOTE("口元の吸入が周り全体の霧を口へ引き寄せ、前方の扇の流れが遠"
+         "くの霧を渦を巻かせて運びます。"
+         "吸入速度と半径を上げると吸う速さ（煙／秒）も上がります。既"
+         "定は濃い霧の中で約 60／秒です。")
+    NOTE("プレイヤーの向きの前方の扇から、場の霧を輪から輪へ口の前ま"
+         "で運び、口元だけで回収します。"
+         "運ぶ力だけでは煙量は増えません。奥の輪は扇の両端まで 5 "
+         "本、いちばん手前の輪は 3 本の流れです。")
     // 吸ってすぐ次の行動へ移れるように、構えと後隙は短く、その間も歩ける（c-28900b。元の値は調整ガイド）。
     FIELD(int, absorbWindupFrames, 5, "構えの前隙 (F。吸う力はまだ出ない)", HIKARI::Range(0, 600),
           HIKARI::Group("吸い込みの操作"))
@@ -94,42 +93,42 @@ struct Gourd : HIKARI::Component {
     FIELD(float, absorbMoveScale, 0.7f, "構え・吸い込み・後隙の間の歩行倍率（歩く速さに掛ける。0.7 で約 2.7 m/秒）",
           HIKARI::Range(0.0f, 1.0f))
     FIELD(float, absorbTurnSpeed, 720.0f, "構え・吸い込み・後隙の間に向きを変えられる速さ (度/秒)",
-          HIKARI::Range(0.0f, 3600.0f),
-          HIKARI::Tip("構え・吸い込み・後隙の間は歩けて、入力した方向へ向きを変えられます（ロックオン中でも）。"
-                      "吸う向きはプレイヤーの向きです。ローリングはいつでも出せて、吸い込みを後隙なしで打ち切ります。"
-                      "構えと吸っている間は回復と砲撃を始められません（先行入力は残り、後隙に入った所で出ます）。"
-                      "後隙は砲撃と回復でも打ち切れます。ローリング・砲撃の後隙・起き上がりなどの間に押した吸い込みは、"
-                      "先行入力の長さだけ覚えておき、動けるようになった最初の F に構えます。軽く押しただけでも、"
-                      "最低の長さは吸います。"))
+          HIKARI::Range(0.0f, 3600.0f))
+    NOTE("構え・吸い込み・後隙の間は歩けて、入力した方向へ向きを変えられます（ロックオン中でも）。"
+         "吸う向きはプレイヤーの向きです。ローリングはいつでも出せて、吸い込みを後隙なしで打ち切ります。"
+         "構えと吸っている間は回復と砲撃を始められません（先行入力は残り、後隙に入った所で出ます）。"
+         "後隙は砲撃と回復でも打ち切れます。")
+    NOTE("ローリング・砲撃の後隙・起き上がりなどの間に押した吸い込みは、先行入力の長さだけ覚えておき、"
+         "動けるようになった最初の F に構えます。軽く押しただけでも、最低の長さは吸います。")
     FIELD(float, capacity, 100.0f, "煙の容量", HIKARI::Range(0.0f, 100000.0f), HIKARI::Group("煙の残量"))
     FIELD(float, initialSmoke, 100.0f, "開始時の煙量", HIKARI::Range(0.0f, 100000.0f))
     FIELD(
         float, smokePerVolume, 4.0f, "吸った密度・体積から煙量への倍率（小さいほど満杯までに多くの霧を使う）",
-        HIKARI::Range(0.0f, 100000.0f),
-        HIKARI::Tip(
-            "回読は 1〜3 フレーム遅れます。満杯の間は霧を消しません（「満杯でも吸える」を入れると、吸い込みは続き、超過分は捨てます）。"))
+        HIKARI::Range(0.0f, 100000.0f))
+    NOTE("回読は 1〜3 "
+         "フレーム遅れます。満杯の間は霧を消しません（「満杯でも吸える」を入れると、"
+         "吸い込みは続き、超過分は捨てます）。")
     // 火弾：場の火・火の刃を吸うと、しばらく撃つ弾が火弾になる（c-ad360d。威力は GourdShot.fireShotDamageScale）。
     // 吸い込みで消した場の火の面積が fireShotTriggerArea に届くたびと、火の刃を吸い取るたびに、残りを fireShotDuration へ戻す。
     FIELD(float, fireShotDuration, 8.0f, "火弾の長さ (秒。火を吸うたびに残りをこの長さへ戻す。0 は火弾にしない)",
           HIKARI::Range(0.0f, 600.0f), HIKARI::Group("火弾（火を吸った後）"))
     FIELD(float, fireShotTriggerArea, 0.5f, "場の火をこれだけ吸うたびに火弾の残りを戻す (m²)",
-          HIKARI::Range(0.0f, 1000.0f),
-          HIKARI::Tip("吸い込みで場の火を消すか、ボスの火の刃（火を残す斬撃・ナイフ）を吸い取ると、"
-                      "しばらく撃つ弾が火弾になります（威力の倍率は砲撃の「火弾の威力の倍率」）。"
-                      "霞の刃では火弾になりません。吸い続けている間は残りが長さへ戻り続け、長さを超えては積まれません。"
-                      "満杯の間は火も火の刃も吸えないので、火弾になりません（「満杯でも吸える」が入っている時だけ、"
-                      "満杯でも火を吸えて火弾になります）。残りは固定 tick で減り、"
-                      "ヒットストップの間は減りません。"))
+          HIKARI::Range(0.0f, 1000.0f))
+    NOTE("吸い込みで場の火を消すか、ボスの火の刃（火を残す斬撃・ナイフ）を吸い取ると、しばらく撃つ弾が火弾に"
+         "なります（威力の倍率は砲撃の「火弾の威力の倍率」）。霞の刃では火弾になりません。"
+         "吸い続けている間は残りが長さへ戻り続け、長さを超えては積まれません。"
+         "満杯の間は火も火の刃も吸えないので、火弾になりません（「満杯でも吸える」が入っている時だけ、"
+         "満杯でも火を吸えて火弾になります）。"
+         "残りは固定 tick で減り、ヒットストップの間は減りません。")
     FIELD(HIKARI::VfxAsset, absorbEffect, (HIKARI::VfxAsset{"5f8903664eb0a5691bcc566b125bc81e"}),
           "口の流体エフェクト（吸い込みの霧の筋）", HIKARI::Group("吸い込みの演出と手応え"))
     FIELD(float, absorbEffectScale, 1.0f, "口のエフェクトの源の大きさ倍率（0 は無効）", HIKARI::Range(0.0f, 8.0f))
     FIELD(float, absorbFullIntake, 40.0f, "口の演出が最大になる吸う速さ (煙／秒)", HIKARI::Range(0.1f, 1000.0f))
     FIELD(float, absorbIdleEffect, 0.35f, "吸える霧が無い時の口の演出の強さ (0〜1)", HIKARI::Range(0.0f, 1.0f))
     FIELD(float, absorbFullEffect, 0.2f, "満杯で吸えない時の口の演出の強さ (0〜1、0 は何も出さない)",
-          HIKARI::Range(0.0f, 1.0f),
-          HIKARI::Tip("既定では霧を光らせません（抑えた見た目）。光らせる時は、下の温度を上げ、"
-                      "場の霧（ArenaGroundFog）と口のエフェクトの域の emissionIntensity"
-                      " も 0 より大きくします。"))
+          HIKARI::Range(0.0f, 1.0f))
+    NOTE("既定では霧を光らせません（抑えた見た目）。光らせる時は、下の温度を上げ、場の霧（ArenaGroundFog）と"
+         "口のエフェクトの域の emissionIntensity も 0 より大きくします。")
     FIELD(float, absorbGlowHeat, 0.0f, "吸われていく霧を温める温度（高いほど霧が明るく光る。0 は無効）",
           HIKARI::Range(0.0f, 20.0f))
     FIELD(float, absorbGlowRadius, 1.3f, "口元で煙を温める半径 (m)", HIKARI::Range(0.1f, 10.0f))
@@ -158,16 +157,18 @@ struct Gourd : HIKARI::Component {
     FIELD(float, blockedPuffRadius, 1.8f, "…噴きの半径 (m)", HIKARI::Range(0.05f, 10.0f))
     FIELD(float, blockedPuffReach, 0.6f, "…噴きの中心の、口からの前方距離 (m)", HIKARI::Range(0.0f, 5.0f))
     FIELD(float, blockedPuffEffect, 1.0f, "…噴きの間の口のエフェクトの濃さ（input.on。噴きの残りに比例して戻る）",
-          HIKARI::Range(0.0f, 4.0f),
-          HIKARI::Tip("エフェクト資産の +X は口の向く先。入力 input.on は吸い込みの強さ（0〜1）で、"
-                      "実際に吸えている速さに合わせて上がります。霧の無い所で吸うと弱く、"
-                      "満杯で吸えない間は「満杯で吸えない時の口の演出の強さ」です。使っていない間は域を消して、"
-                      "同時に描ける流体の域の枠を空けます。満杯で吸えない時（吸い込みを始めた時か、"
-                      "吸っている間に満杯になった時）は 1 回、ヒョウタンが跳ね、口のエフェクトの霧が濃くなって、"
-                      "口の前の霧（場の霧と口のエフェクトの域）と一緒に口から押し戻され、満杯の振動が出ます。"
-                      "満杯で吸えない間は、吸い込みの視野角の寄り・カメラの震え・ヒョウタンの脈・吸い込みの振動は出しま"
-                      "せん。HUD の煙の条は、物体変数 Gourd.Blocked（吸えないまま吸い込んでいる秒数）"
-                      "を読んで短く光ります（Flow の項目）。地面や画面に予告は出しません。"))
+          HIKARI::Range(0.0f, 4.0f))
+    NOTE("エフェクト資産の +X は口の向く先。入力 input.on "
+         "は吸い込みの強さ（0〜1）で、実際に吸えている"
+         "速さに合わせて上がります。霧の無い所で吸うと弱く、満杯で吸"
+         "えない間は「満杯で吸えない時の口の演出の強さ」です。使っていない間は"
+         "域を消して、同時に描ける流体の域の枠を空けます。")
+    NOTE("満杯で吸えない時（吸い込みを始めた時か、吸っている間に満杯になった時）は 1 回、ヒョウタンが跳ね、"
+         "口のエフェクトの霧が濃くなって、口の前の霧（場の霧と口のエフェクトの域）と一緒に口から押し戻され、"
+         "満杯の振動が出ます。満杯で吸えない間は、吸い込みの視野角の寄り・カメラの震え・ヒョウタンの脈・"
+         "吸い込みの振動は出しません。HUD の煙の条は、"
+         "ゲーム全体の値 Gourd.Blocked（吸えないまま吸い込んでいる秒数）を読んで短く光ります（Flow の項目）。"
+         "地面や画面に予告は出しません。")
     // ボスの斬撃・ナイフを吸い取った瞬間の手応え（c-d330c0）。止め・手柄の振動・視野角の引き。
     FIELD(int, catchHitStopFrames, 7, "ボスの斬撃を吸い取った時の止め (F、0 は無効)", HIKARI::Range(0, 30),
           HIKARI::Group("吸い取りの手応え"))
@@ -219,12 +220,12 @@ struct Gourd : HIKARI::Component {
     FIELD(float, pullFovDegrees, 2.5f, "引き込みの間に、さらに狭める視野角 (度、0 は無効)", HIKARI::Range(0.0f, 20.0f))
     FIELD(float, pullShakeAmplitude, 0.01f, "…カメラの細かい震え (m、0 は無効)", HIKARI::Range(0.0f, 0.2f))
     FIELD(
-        float, pullRumble, 0.6f, "…振動の強さ（入り切る直前。0〜1、0 は無効）", HIKARI::Range(0.0f, 1.0f),
-        HIKARI::Tip("吸い取りは 3 拍です。噛む：斬撃・ナイフが吸い込みに捕まった瞬間に、短い止めと鋭い振動が 1 つ出て、"
-                    "口から捕まえた所へ火花の線が走り、刃の光が一度膨らみます（膨らみはボスの項目 absorbBiteGlow）。"
-                    "引き込む：口へ入るまで、刃の通った所に光の尾が残り（ボスの項目 absorbTrailEffect）、"
-                    "視野角が狭まり、震えと振動が強まります。呑み込む：入り切った瞬間に、止め・重い振動・"
-                    "カメラの押し・口のエフェクト・ヒョウタンの膨らみと弾みが出ます。"))
+        float, pullRumble, 0.6f, "…振動の強さ（入り切る直前。0〜1、0 は無効）", HIKARI::Range(0.0f, 1.0f))
+    NOTE("吸い取りは 3 拍です。噛む：斬撃・ナイフが吸い込みに捕まった瞬間に、短い止めと鋭い振動が 1 つ出て、"
+         "口から捕まえた所へ火花の線が走り、刃の光が一度膨らみます（膨らみはボスの項目 absorbBiteGlow）。"
+         "引き込む：口へ入るまで、刃の通った所に光の尾が残り（ボスの項目 absorbTrailEffect）、"
+         "視野角が狭まり、震えと振動が強まります。呑み込む：入り切った瞬間に、止め・重い振動・"
+         "カメラの押し・口のエフェクト・ヒョウタンの膨らみと弾みが出ます。")
     // 捕まえた斬撃を飲み込む口の力（c-3341a7）：斬撃のエフェクトの域（Channel3）だけに届き、口へ寄せて消す。
     // 消した霧は煙に数えない（斬撃の煙は、ボスの項目 waveAbsorbSmoke の決まった量で入る）。
     // 口元の吸い口：半径の面から swallowStrength m/s で吸い込む（外の霧は、距離の 2 乗に反比例する速さで口へ流れる。
@@ -234,10 +235,10 @@ struct Gourd : HIKARI::Component {
           HIKARI::Range(0.0f, 2000.0f))
     FIELD(float, swallowAbsorption, 40.0f, "…半径の中の霧を消す率 (/s)", HIKARI::Range(0.0f, 400.0f))
     // 最後の斬撃が入りきった後も、口が飲み込み続ける長さ (F。残った霧を消し、口の見た目を保つ)。
-    FIELD(int, swallowTailFrames, 24, "…最後の斬撃が入った後も飲み込み続ける長さ (F)", HIKARI::Range(0, 240),
-          HIKARI::Tip("捕まえたボスの斬撃は、口へ引き込まれて入りきった瞬間に、"
-                      "止め・振動・画角・膨らみ・エフェクトが出ます（引き込みの速さと動きはボスの項目 absorbPu"
-                      "ll…）。飲み込む口の力は、斬撃の霧だけに届き、場の霧には触りません。消した霧は煙に数えません。"))
+    FIELD(int, swallowTailFrames, 24, "…最後の斬撃が入った後も飲み込み続ける長さ (F)", HIKARI::Range(0, 240))
+    NOTE("捕まえたボスの斬撃は、口へ引き込まれて入りきった瞬間に、止め・振動・画角・膨らみ・エフェクトが出ます"
+         "（引き込みの速さと動きはボスの項目 absorbPull…）。飲み込む口の力は、斬撃の霧だけに届き、場の霧には"
+         "触りません。消した霧は煙に数えません。")
     FIELD(int, traceEveryFrames, 0, "状態ログ間隔（0 は無効）", HIKARI::Range(0, 7200), HIKARI::Group("検証"))
 
     void Update(float dt) override;

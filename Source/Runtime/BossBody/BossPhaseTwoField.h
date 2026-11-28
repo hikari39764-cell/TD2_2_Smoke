@@ -16,10 +16,10 @@ class BossPhaseTwoField final {
 public:
     // 毎フレーム呼ぶ（体を出さないフレームも。撃破で戻すため）。look は同じ物体の体の見た目の部品。seconds はゲームの時間。
     // shift は同じ物体の変わり目の演出の部品（無ければ nullptr）：演出の間は、演出が決める下限まで場の色を進める。
-    static void Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look,
-                       const BossPhaseShiftComponent* shift, float seconds);
+    static void Update(HIKARI::WorldView& world, Boss& boss, BossBody& look,
+                       const BossPhaseShift* shift, float seconds);
     // 出し続けているエフェクトを止め、場の色を元へ戻す。
-    static void Stop(HIKARI::WorldView& world, BossBodyComponent& look);
+    static void Stop(HIKARI::WorldView& world, BossBody& look);
 };
 
 } // namespace Project_TD2_2

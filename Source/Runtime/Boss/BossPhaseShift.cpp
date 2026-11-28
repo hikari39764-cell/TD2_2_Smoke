@@ -13,6 +13,7 @@
 #include "BossFrame.h"
 #include "BossMath.h"
 #include "BossPose.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -61,7 +62,7 @@ const char* BeatName(BossShiftBeat beat) {
     return "Unknown";
 }
 
-void Log(const BossComponent& boss, const BossPhaseShiftComponent& shift, const char* what, const char* extra) {
+void Log(const Boss& boss, const BossPhaseShift& shift, const char* what, const char* extra) {
     char message[320]{};
     std::snprintf(message, sizeof(message), "Shift%s tick=%llu beat=%s %s", what,
                   static_cast<unsigned long long>(boss.tick), BeatName(shift.state.beat), extra);
@@ -74,16 +75,16 @@ void StopSequence(HIKARI::WorldView& world, BossPhaseShiftState& state) {
 }
 
 // 演出の後：フェーズ 2 の見た目を出し、変わり目を次の tick で終える（BossHealthBars::Step）。技を選ばない間を数え始める。
-void Finish(BossComponent& boss, BossPhaseShiftComponent& shift) {
+void Finish(Boss& boss, BossPhaseShift& shift) {
     BossPhaseShiftState& state = shift.state;
     state.beat = BossShiftBeat::Done;
     state.frame = 0;
     boss.phaseTwoLookPending = false;
-    state.calmLeft = std::max(0, shift.settings.calmFrames);
+    state.calmLeft = std::max(0, shift.shiftCalmFrames);
     boss.phaseShiftLeft = std::min(boss.phaseShiftLeft, 1);
 }
 
-void Enter(BossComponent& boss, BossPhaseShiftComponent& shift, BossShiftBeat beat) {
+void Enter(Boss& boss, BossPhaseShift& shift, BossShiftBeat beat) {
     shift.state.beat = beat;
     shift.state.frame = 0;
     if (beat == BossShiftBeat::Done)
@@ -92,7 +93,7 @@ void Enter(BossComponent& boss, BossPhaseShiftComponent& shift, BossShiftBeat be
 }
 
 // 一閃：フェーズ 2 の見た目へ切り替え、HP の条を満たし始める（Flow.bossRefillSeconds で満ちる）。
-void Slash(BossComponent& boss, BossPhaseShiftComponent& shift) {
+void Slash(Boss& boss, BossPhaseShift& shift) {
     BossPhaseShiftState& state = shift.state;
     if (state.slashed)
         return;
@@ -103,25 +104,25 @@ void Slash(BossComponent& boss, BossPhaseShiftComponent& shift) {
 }
 
 // 舞台を決める：足元を場の縁から内側へ寄せ、太陽（無ければプレイヤーの側）で向きを決める。ボスをそこへ置き直す。
-void ChooseStage(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComponent& shift) {
-    const BossPhaseShiftSettings& s = shift.settings;
+void ChooseStage(HIKARI::WorldView& world, Boss& boss, BossPhaseShift& shift) {
+    const BossPhaseShift& s = shift;
     BossPhaseShiftState& state = shift.state;
     Vec3 origin = boss.ground;
     const Vec3 off{origin.x - boss.arenaCenter.x, 0.0f, origin.z - boss.arenaCenter.z};
     const float radius = FlatLength(off);
-    const float limit = std::max(0.0f, boss.arenaRadius - s.stageEdgeMargin);
+    const float limit = std::max(0.0f, boss.arenaRadius - s.shiftStageEdgeMargin);
     if (radius > limit && radius > kTiny) {
         origin.x = boss.arenaCenter.x + off.x * (limit / radius);
         origin.z = boss.arenaCenter.z + off.z * (limit / radius);
     }
     float yaw = state.yaw;
     const char* by = "player";
-    if (s.faceSun) {
+    if (s.shiftFaceSun) {
         HIKARI::GameProjectEnvironmentState environment{};
         if (world.GetEnvironment().GetState(environment).Succeeded() && environment.sunDirection.y > kSunMinY &&
             std::abs(environment.sunDirection.x) + std::abs(environment.sunDirection.z) > kTiny) {
             const float sunYaw = std::atan2(environment.sunDirection.x, environment.sunDirection.z);
-            yaw = WrapPi(sunYaw - s.sunStageYawDegrees * kRadiansPerDegree);
+            yaw = WrapPi(sunYaw - s.shiftSunStageYawDegrees * kRadiansPerDegree);
             by = "sun";
             state.sunDirection = Normalize(environment.sunDirection);
             state.sunValid = true;
@@ -134,20 +135,20 @@ void ChooseStage(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftCo
     boss.yaw = yaw;
     // 体の補間（前の tick との間）をやめる：舞台へ置き直したのは切り替えなので、間を滑らせない。
     boss.ticksSeen = 0;
-    if (s.placePlayer) {
+    if (s.shiftPlacePlayer) {
         // プレイヤー：ボスの正面の playerDistance m。場の縁の内側（arenaRadius - playerArenaMargin）に収める。
         const Vec3 front = Forward(yaw);
-        float distance = s.playerDistance;
-        const float edge = std::max(0.0f, boss.arenaRadius - s.playerArenaMargin);
+        float distance = s.shiftPlayerDistance;
+        const float edge = std::max(0.0f, boss.arenaRadius - s.shiftPlayerArenaMargin);
         const Vec3 from{origin.x - boss.arenaCenter.x, 0.0f, origin.z - boss.arenaCenter.z};
         const float b = Dot(from, front);
         const float c = Dot(from, from) - edge * edge;
         const float disc = b * b - c;
         if (disc > 0.0f)
             distance = std::min(distance, std::max(2.0f, -b + std::sqrt(disc)));
-        // placeAt の y は足元の高さ（ボスの足元＋playerLift）。物体の位置は碰撞体の中心なので、置く所の地面と碰撞体の半分の高さから
+        // placeAt の y は足元の高さ（ボスの足元＋shiftPlayerLift）。物体の位置は碰撞体の中心なので、置く所の地面と碰撞体の半分の高さから
         // 中心の高さを決めるのは、置き直しを実行する BossSystem（MeasurePlayerStand）。
-        state.placeAt = Add(origin, Add(Mul(front, distance), Vec3{0.0f, s.playerLift, 0.0f}));
+        state.placeAt = Add(origin, Add(Mul(front, distance), Vec3{0.0f, s.shiftPlayerLift, 0.0f}));
         state.placePending = true;
     }
     char extra[200]{};
@@ -159,29 +160,29 @@ void ChooseStage(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftCo
 }
 
 // 演技を始める：資産を流し（カメラの舞台の印は骨格の体の物体）、事件段を読む。断られたら演出をやめて済みへ。
-void StartShow(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComponent& shift) {
-    const BossPhaseShiftSettings& s = shift.settings;
+void StartShow(HIKARI::WorldView& world, Boss& boss, BossPhaseShift& shift) {
+    const BossPhaseShift& s = shift;
     BossPhaseShiftState& state = shift.state;
     state.sequence = {};
     HIKARI::GameProjectSequencePlayOptions options{};
-    options.playbackRate = std::clamp(s.playbackRate, 0.01f, 8.0f);
+    options.playbackRate = std::clamp(s.shiftPlaybackRate, 0.01f, 8.0f);
     options.priority = kSequencePriority;
     options.holdAtEnd = 1u;
     HIKARI::GameProjectSequenceBinding binding{};
-    const HIKARI::ObjectView body = world.FindSceneObject(boss.animBody.object);
-    if (boss.animBody.object != 0u && body.IsValid() && !s.stageSlot.empty()) {
-        std::strncpy(binding.slotName, s.stageSlot.c_str(), sizeof(binding.slotName) - 1);
+    const HIKARI::ObjectView body = world.FindObject(HIKARI::Extend::HandleOf(boss.animBodyObject));
+    if (boss.animBodyObject.IsAlive() && body.IsValid() && !s.shiftStageSlot.empty()) {
+        std::strncpy(binding.slotName, s.shiftStageSlot.c_str(), sizeof(binding.slotName) - 1);
         binding.object = body.GetHandle();
         options.bindings = &binding;
         options.bindingCount = 1u;
     }
-    if (!s.sequence.empty())
-        state.sequence = world.GetSequence().Play(s.sequence, options);
+    if (!!s.shiftSequence.IsSet())
+        state.sequence = world.GetSequence().Play(std::string_view(s.shiftSequence.guid), options);
     HIKARI::GameProjectSequencePlaybackSnapshot snapshot{};
     if (!state.sequence.IsValid() || !world.GetSequence().GetSnapshot(state.sequence, snapshot)) {
         char message[200]{};
         std::snprintf(message, sizeof(message), "[BossPhaseShift] 演出の資産を流せません（%s）。演出をしません",
-                      s.sequence.empty() ? "空" : s.sequence.c_str());
+                      !s.shiftSequence.IsSet() ? "空" : s.shiftSequence.guid);
         BossLog::Warn(message);
         Slash(boss, shift);
         Enter(boss, shift, BossShiftBeat::Done);
@@ -189,7 +190,7 @@ void StartShow(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComp
     }
     state.showTicks = std::max(1, static_cast<int>(std::ceil((snapshot.durationSeconds + kShowMarginSeconds) *
                                                              kTicksPerSecond / options.playbackRate)));
-    BossPhaseShift::ReadCues(world, state.sequence, shift);
+    BossPhaseShiftRules::ReadCues(world, state.sequence, shift);
     Enter(boss, shift, BossShiftBeat::Show);
     char extra[160]{};
     std::snprintf(extra, sizeof(extra), "handle=%llu seconds=%.2f bound=%d anim=%.2f+%.2f",
@@ -201,17 +202,17 @@ void StartShow(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComp
 
 } // namespace
 
-int BossPhaseShift::TotalFrames(const BossComponent& boss, const BossPhaseShiftComponent* shift) {
-    if (shift == nullptr || !shift->settings.enabled)
+int BossPhaseShiftRules::TotalFrames(const Boss& boss, const BossPhaseShift* shift) {
+    if (shift == nullptr || !shift->shiftEnabled)
         return std::max(1, boss.phaseShiftFrames);
-    const BossPhaseShiftSettings& s = shift->settings;
+    const BossPhaseShift& s = *shift;
     const float seconds =
-        s.clipSeconds / std::clamp(s.playbackRate, 0.01f, 8.0f) + s.settleSeconds + kTotalMarginSeconds;
+        s.shiftClipSeconds / std::clamp(s.shiftPlaybackRate, 0.01f, 8.0f) + s.shiftSettleSeconds + kTotalMarginSeconds;
     return std::max(1, static_cast<int>(std::ceil(seconds * kTicksPerSecond)));
 }
 
-HIKARI::GameProjectTransform BossPhaseShift::StageTransform(const BossComponent& boss,
-                                                            const BossPhaseShiftComponent& shift) {
+HIKARI::GameProjectTransform BossPhaseShiftRules::StageTransform(const Boss& boss,
+                                                            const BossPhaseShift& shift) {
     HIKARI::GameProjectTransform transform{};
     transform.position = Add(shift.state.origin, Vec3{0.0f, boss.bodyHalfHeight, 0.0f});
     transform.rotation = YawRotation(shift.state.yaw);
@@ -219,14 +220,14 @@ HIKARI::GameProjectTransform BossPhaseShift::StageTransform(const BossComponent&
     return transform;
 }
 
-void BossPhaseShift::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSequencePlaybackHandle handle,
-                              BossPhaseShiftComponent& shift) {
+void BossPhaseShiftRules::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSequencePlaybackHandle handle,
+                              BossPhaseShift& shift) {
     BossPhaseShiftState& state = shift.state;
     state.cues.fill({});
     std::array<HIKARI::GameProjectSequenceEventClip, HIKARI::kGameProjectSequenceMaximumEventClips> clips{};
     const uint32_t total = world.GetSequence().GetEventClips(handle, clips.data(), static_cast<uint32_t>(clips.size()));
     const size_t count = std::min(static_cast<size_t>(total), clips.size());
-    const std::string anim = "Anim." + shift.settings.clip;
+    const std::string anim = "Anim." + shift.shiftClip;
     for (size_t k = 0; k < count; ++k) {
         const std::string_view name{clips[k].name};
         for (size_t c = 0; c < kBossShiftCueCount; ++c) {
@@ -238,10 +239,10 @@ void BossPhaseShift::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSeque
     // クリップの段が無ければ、0 秒から設定の長さで流す。
     BossShiftCueTime& clip = state.cues[static_cast<size_t>(BossShiftCue::Anim)];
     if (clip.start < 0.0f || clip.length <= 0.0f)
-        clip = {0.0f, std::max(0.1f, shift.settings.clipSeconds)};
+        clip = {0.0f, std::max(0.1f, shift.shiftClipSeconds)};
 }
 
-float BossPhaseShift::CueProgress(const BossPhaseShiftComponent& shift, BossShiftCue cue, float seconds) {
+float BossPhaseShiftRules::CueProgress(const BossPhaseShift& shift, BossShiftCue cue, float seconds) {
     const BossShiftCueTime& time = Cue(shift, cue);
     if (time.start < 0.0f || seconds < time.start)
         return 0.0f;
@@ -250,12 +251,12 @@ float BossPhaseShift::CueProgress(const BossPhaseShiftComponent& shift, BossShif
     return std::clamp((seconds - time.start) / time.length, 0.0f, 1.0f);
 }
 
-bool BossPhaseShift::CueStarted(const BossPhaseShiftComponent& shift, BossShiftCue cue, float seconds) {
+bool BossPhaseShiftRules::CueStarted(const BossPhaseShift& shift, BossShiftCue cue, float seconds) {
     const BossShiftCueTime& time = Cue(shift, cue);
     return time.start >= 0.0f && seconds >= time.start;
 }
 
-void BossPhaseShift::Begin(BossComponent& boss, BossPhaseShiftComponent* shift, HIKARI::GameProjectFloat3 playerCenter,
+void BossPhaseShiftRules::Begin(Boss& boss, BossPhaseShift* shift, HIKARI::GameProjectFloat3 playerCenter,
                            bool hasPlayer, float rootBefore) {
     // 演出が無い・切った時は、フェーズ 2 の見た目をすぐ出す（待たない）。
     boss.phaseTwoLookPending = false;
@@ -263,7 +264,7 @@ void BossPhaseShift::Begin(BossComponent& boss, BossPhaseShiftComponent* shift, 
         return;
     BossPhaseShiftState& state = shift->state;
     state = {};
-    if (!shift->settings.enabled)
+    if (!shift->shiftEnabled)
         return;
     state.origin = boss.ground;
     // 狙いのずれのねじり（c-884095）は演出へ持ち込まない：骨格の体は BodyYaw で置くので、残っていると舞台へ置き直した
@@ -286,7 +287,7 @@ void BossPhaseShift::Begin(BossComponent& boss, BossPhaseShiftComponent* shift, 
     Log(boss, *shift, "Begin", extra);
 }
 
-void BossPhaseShift::Step(HIKARI::WorldView& world, BossComponent& boss, BossPhaseShiftComponent* shift) {
+void BossPhaseShiftRules::Step(HIKARI::WorldView& world, Boss& boss, BossPhaseShift* shift) {
     if (shift == nullptr)
         return;
     BossPhaseShiftState& state = shift->state;
@@ -336,16 +337,17 @@ void BossPhaseShift::Step(HIKARI::WorldView& world, BossComponent& boss, BossPha
         return;
     }
     case BossShiftBeat::Settle:
-        if (state.frame >= std::max(0, static_cast<int>(std::lround(shift->settings.settleSeconds * kTicksPerSecond))))
+        if (state.frame >= std::max(0, static_cast<int>(std::lround(shift->shiftSettleSeconds * kTicksPerSecond))))
             Enter(boss, *shift, BossShiftBeat::Done);
         return;
     default: return;
     }
 }
 
-BossPhaseShift::PlayerStand BossPhaseShift::MeasurePlayerStand(HIKARI::WorldView& world,
-                                                              HIKARI::GameProjectObjectHandle player,
-                                                              HIKARI::GameProjectFloat3 at, float fallbackGround) {
+BossPhaseShiftRules::PlayerStand BossPhaseShiftRules::MeasurePlayerStand(HIKARI::WorldView& world,
+                                                                         HIKARI::GameProjectObjectHandle player,
+                                                                         HIKARI::GameProjectFloat3 at,
+                                                                         float fallbackGround) {
     PlayerStand stand{};
     stand.ground = fallbackGround;
     stand.halfHeight = kPlayerHalfHeightFallback;
@@ -383,7 +385,7 @@ BossPhaseShift::PlayerStand BossPhaseShift::MeasurePlayerStand(HIKARI::WorldView
     return stand;
 }
 
-bool BossPhaseShift::TakePlacement(BossPhaseShiftComponent* shift, HIKARI::GameProjectFloat3& at,
+bool BossPhaseShiftRules::TakePlacement(BossPhaseShift* shift, HIKARI::GameProjectFloat3& at,
                                    HIKARI::GameProjectFloat3& facing) {
     if (shift == nullptr || !shift->state.placePending)
         return false;

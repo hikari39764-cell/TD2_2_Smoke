@@ -10,7 +10,7 @@ namespace Project_TD2_2 {
 
 using namespace BossBodyMath;
 
-void BossIntroCamera::Update(const BossIntroComponent& intro, Player& player) {
+void BossIntroCamera::Update(const BossIntro& intro, Player& player) {
     const BossIntroState& state = intro.state;
     // 演技の後の一息の段：演出の資産が最後に見せていたカメラの姿勢から、ゲームのカメラへ滑らかに渡す（切り替えない）。
     // 演技の間も、同じ頼みを重み 0（演出の姿勢そのまま）で出しておく：プレイヤーのカメラ（PlayerSystem）はボスより先に
@@ -20,14 +20,14 @@ void BossIntroCamera::Update(const BossIntroComponent& intro, Player& player) {
     if ((!show && state.phase != BossIntroPhase::Settle) || !state.filmValid || state.skipped)
         return;
     const float u =
-        show ? 0.0f : static_cast<float>(state.frame) / std::max(1.0f, intro.settings.settleSeconds * 60.0f);
+        show ? 0.0f : static_cast<float>(state.frame) / std::max(1.0f, intro.introSettleSeconds * 60.0f);
     PlayerCinematicRequest request;
     request.eye = state.filmEye;
     request.target = state.filmTarget;
     request.fovRadians = state.filmFov;
     request.gameWeight = Smootherstep(u);
     // ゲームのカメラはボスへ向けておく（戻り切った時にボスを見ている）。
-    request.focus = Add(state.origin, Vec3{0.0f, intro.settings.cameraFocusHeight, 0.0f});
+    request.focus = Add(state.origin, Vec3{0.0f, intro.introCameraFocusHeight, 0.0f});
     PlayerRules::RequestCinematic(player, request);
 }
 

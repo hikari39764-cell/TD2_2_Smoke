@@ -6,6 +6,7 @@
 #include "HIKARI/Project/WorldView.h"
 #include "BossComponent.h"
 #include "../Common/VfxParameters.h"
+#include "../Common/FieldValues.h"
 
 // ボスの見た目（BossVisuals・体の BossBody*）が共通に使う、エフェクトを出す・送る・止める
 // 小さな関数と、エフェクト資産の入力の名前。出す・送る関数は、受け付けられたかを boss.vfxAccepted へ合わせる。
@@ -37,7 +38,7 @@ inline HIKARI::GameProjectTransform Placed(HIKARI::GameProjectFloat3 position, f
 }
 
 // 出す。資産が空なら出さずに無効な再生を返す（受け付けの印は変えない）。
-inline HIKARI::GameProjectVfxPlaybackHandle Start(HIKARI::WorldView& world, BossComponent& boss,
+inline HIKARI::GameProjectVfxPlaybackHandle Start(HIKARI::WorldView& world, Boss& boss,
                                                   const HIKARI::GameProjectVfxPlayRequest& play) {
     if (play.asset.IsEmpty())
         return {};
@@ -47,7 +48,7 @@ inline HIKARI::GameProjectVfxPlaybackHandle Start(HIKARI::WorldView& world, Boss
 }
 
 // 出して、エフェクト側の速度を与える（{} なら速度では動かさず、位置を毎フレーム送る）。
-inline HIKARI::GameProjectVfxPlaybackHandle StartMoving(HIKARI::WorldView& world, BossComponent& boss,
+inline HIKARI::GameProjectVfxPlaybackHandle StartMoving(HIKARI::WorldView& world, Boss& boss,
                                                         const HIKARI::GameProjectVfxPlayRequest& play,
                                                         HIKARI::GameProjectFloat3 velocity) {
     const auto handle = Start(world, boss, play);
@@ -57,7 +58,7 @@ inline HIKARI::GameProjectVfxPlaybackHandle StartMoving(HIKARI::WorldView& world
 }
 
 // 出ているエフェクトへ、変換と入力を送る。
-inline void Send(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProjectVfxPlaybackHandle handle,
+inline void Send(HIKARI::WorldView& world, Boss& boss, HIKARI::GameProjectVfxPlaybackHandle handle,
                  const HIKARI::GameProjectTransform& transform,
                  const HIKARI::GameProjectVfxParameterOverrides& parameters) {
     HIKARI::GameProjectVfxUpdateRequest update{};
@@ -69,7 +70,7 @@ inline void Send(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProj
 }
 
 // 出ていなければ出し、出ていれば送る（出し続けるエフェクト）。
-inline void StartOrSend(HIKARI::WorldView& world, BossComponent& boss, HIKARI::GameProjectVfxPlaybackHandle& handle,
+inline void StartOrSend(HIKARI::WorldView& world, Boss& boss, HIKARI::GameProjectVfxPlaybackHandle& handle,
                         const HIKARI::GameProjectVfxAssetReference& asset,
                         const HIKARI::GameProjectTransform& transform,
                         const HIKARI::GameProjectVfxParameterOverrides& parameters) {
@@ -91,8 +92,8 @@ inline void StopHandle(HIKARI::WorldView& world, HIKARI::GameProjectVfxPlaybackH
 }
 
 // 斬撃のエフェクトの資産：火を残す一撃は炎の刃、残さない一撃は煙の刃（出た刃を見れば、地面が燃えるかどうかが分かる）。
-inline const HIKARI::GameProjectVfxAssetReference& SlashAsset(const BossComponent& boss, bool fire) {
-    return fire || boss.slashSmokeEffect.IsEmpty() ? boss.slashEffect : boss.slashSmokeEffect;
+inline HIKARI::GameProjectVfxAssetReference SlashAsset(const Boss& boss, bool fire) {
+    return fire || !boss.slashSmokeEffect.IsSet() ? VfxPlayback::Reference(boss.slashEffect) : VfxPlayback::Reference(boss.slashSmokeEffect);
 }
 
 inline HIKARI::GameProjectVfxParameterOverrides SlashParameters(const BossSlashEffect& effect) {
@@ -104,7 +105,7 @@ inline HIKARI::GameProjectVfxParameterOverrides SlashParameters(const BossSlashE
 }
 
 // 斬撃のエフェクトを effect の位置・向き・大きさで出す。位置は毎フレーム送るので、エフェクト側の速度では動かさない。
-inline void StartSlash(HIKARI::WorldView& world, BossComponent& boss, BossSlashEffect& effect,
+inline void StartSlash(HIKARI::WorldView& world, Boss& boss, BossSlashEffect& effect,
                        const HIKARI::GameProjectVfxAssetReference& asset, uint32_t randomSeed) {
     HIKARI::GameProjectVfxPlayRequest play{};
     play.asset = asset;
@@ -115,7 +116,7 @@ inline void StartSlash(HIKARI::WorldView& world, BossComponent& boss, BossSlashE
 }
 
 // 資産の向き：+X が飛ぶ向き、+Y が幅、+Z が厚み。pinch は、幅のほかの向きだけを細くする（引き込まれる刃が細い筋になる）。
-inline void SendSlash(HIKARI::WorldView& world, BossComponent& boss, const BossSlashEffect& effect) {
+inline void SendSlash(HIKARI::WorldView& world, Boss& boss, const BossSlashEffect& effect) {
     HIKARI::GameProjectTransform transform = Placed(effect.position, effect.scale, effect.rotation);
     transform.scale = {effect.scale * effect.pinch, effect.scale, effect.scale * effect.pinch};
     Send(world, boss, effect.handle, transform, SlashParameters(effect));
@@ -123,7 +124,7 @@ inline void SendSlash(HIKARI::WorldView& world, BossComponent& boss, const BossS
 
 // 斬撃の刃を砕けさせる：刃を出すのをやめ、衝撃の入力を slashImpactSeconds 出し、fadeSeconds で消し、勢いを
 // slashHitSpeedScale 倍に落とす（その場で散る）。この後は StepShattered で進める。
-inline void Shatter(const BossComponent& boss, BossSlashEffect& effect, float fadeSeconds) {
+inline void Shatter(const Boss& boss, BossSlashEffect& effect, float fadeSeconds) {
     effect.flying = false;
     effect.impactSeconds = boss.slashImpactSeconds;
     effect.fadeSeconds = fadeSeconds;
@@ -132,7 +133,7 @@ inline void Shatter(const BossComponent& boss, BossSlashEffect& effect, float fa
 }
 
 // 砕けた刃を 1 描画フレーム進める：光を下げ、残りの勢いで流し、消える時が来たら止めて空にする。
-inline void StepShattered(HIKARI::WorldView& world, const BossComponent& boss, BossSlashEffect& effect, float seconds) {
+inline void StepShattered(HIKARI::WorldView& world, const Boss& boss, BossSlashEffect& effect, float seconds) {
     effect.fadeSeconds -= seconds;
     effect.glow = std::max(0.0f, effect.glow - seconds / std::max(0.001f, boss.slashGlowFadeSeconds));
     effect.impactSeconds = std::max(0.0f, effect.impactSeconds - seconds);

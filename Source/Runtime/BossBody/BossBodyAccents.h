@@ -13,17 +13,17 @@ namespace Project_TD2_2 {
 class BossBodyAccents final {
 public:
     // 胴の煙へ掛ける量と熱さ（溜め・刀の火・振り終わりの吹き出し）を進める。胴の煙を出す前に呼ぶ。
-    static void StepSmoke(BossComponent& boss, BossBodyComponent& look, float seconds);
+    static void StepSmoke(Boss& boss, BossBody& look, float seconds);
     // 体に付く効果の置き場所（pose）が決まった後に呼ぶ。body は体の物体の世界の変換。intro は同じ物体の登場の部品（無ければ
     // nullptr）。
-    static void Update(HIKARI::WorldView& world, BossComponent& boss, BossBodyComponent& look,
-                       BossIntroComponent* intro, const HIKARI::GameProjectTransform& body, const BossBodyPose& pose,
+    static void Update(HIKARI::WorldView& world, Boss& boss, BossBody& look,
+                       BossIntro* intro, const HIKARI::GameProjectTransform& body, const BossBodyPose& pose,
                        float seconds);
-    static void Stop(HIKARI::WorldView& world, BossBodyComponent& look);
+    static void Stop(HIKARI::WorldView& world, BossBody& look);
     // いまの技の刀の見え方（c-ecd963）：霞＝剣気を飛ばす技の前隙〜振り、実＝実体の刀だけで当てる技の前隙〜振り、
     // どちらでもない＝待機・後隙・歩き・刀を振らない技。
     enum class BladeKind { None, Haze, Real };
-    static BladeKind Kind(const BossComponent& boss);
+    static BladeKind Kind(const Boss& boss);
 };
 
 } // namespace Project_TD2_2

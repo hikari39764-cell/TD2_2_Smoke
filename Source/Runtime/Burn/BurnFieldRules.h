@@ -9,7 +9,7 @@ namespace Project_TD2_2 {
 class BurnFieldRules final {
 public:
     // 格子が出来ていなければ、持ち主の物体の位置で作る（BurnFieldSystem が最初の固定 tick に呼ぶ）。
-    static void Initialize(HIKARI::ObjectView object, BurnFieldComponent& field);
+    static void Initialize(HIKARI::ObjectView object, BurnField& field);
 };
 
 } // namespace Project_TD2_2

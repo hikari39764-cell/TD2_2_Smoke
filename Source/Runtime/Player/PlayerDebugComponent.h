@@ -4,12 +4,9 @@
 
 namespace Project_TD2_2 {
 
-inline constexpr std::string_view kPlayerDebugType = "TD2_2.PlayerDebug";
-inline constexpr std::string_view kPlayerDebugSystem = "Project_TD2_2.PlayerDebugSystem";
-
 // プレイヤーの検証用（新しいゲーム層の部品）。決まった tick に被弾・精力の消費・動作ロック・反動を起こし、状態を記録する。
 struct PlayerDebug : HIKARI::Component {
-    HIKARI_COMPONENT(PlayerDebug)
+    HIKARI_COMPONENT(PlayerDebug, "プレイヤー検証（通常は無効）")
 
     // 正式シーンに検証用の被弾やログを持ち込まないため、既定では無効にする。
     FIELD(bool, enabled, false, "検証を有効にする", HIKARI::Group("検証専用（正式シーンには付けない）"))

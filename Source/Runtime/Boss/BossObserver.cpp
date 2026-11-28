@@ -42,7 +42,7 @@ char DirectionLetter(BossRollDirection direction) {
 
 // 転がる向きを、プレイヤーからボスへの向きと比べて分ける。前後から外れた向きは、ボスがプレイヤーへ向いているとみなした
 // 時のボスの左右（ボスの右＝ボスの前を右へ 90 度回した向き。右手系で前 f の右は (−f.z, 0, f.x)）。
-BossRollDirection RollDirectionOf(const BossComponent& boss, const Player& player, Vec3 playerCenter) {
+BossRollDirection RollDirectionOf(const Boss& boss, const Player& player, Vec3 playerCenter) {
     const Vec3 toBoss = FlatNormalize(Sub(boss.ground, playerCenter));
     const Vec3 roll = FlatNormalize(PlayerRules::GetActionDirection(player));
     const float along = Dot(roll, toBoss);
@@ -56,7 +56,7 @@ BossRollDirection RollDirectionOf(const BossComponent& boss, const Player& playe
     return Dot(roll, bossRight) >= 0.0f ? BossRollDirection::Right : BossRollDirection::Left;
 }
 
-void LogHabit(const BossComponent& boss) {
+void LogHabit(const Boss& boss) {
     const BossPlayerWatch& watch = boss.watch;
     char recent[kBossRollHabitCapacity + 1]{};
     const size_t count = watch.rollHabitCount;
@@ -76,7 +76,7 @@ void LogHabit(const BossComponent& boss) {
 }
 
 // ローリングの始まり：転がっていなかった所から転がった、または続けてもう一度転がった（経過 F が戻った）。
-void ObserveRoll(BossComponent& boss, const Player& player, Vec3 playerCenter) {
+void ObserveRoll(Boss& boss, const Player& player, Vec3 playerCenter) {
     BossPlayerWatch& watch = boss.watch;
     const bool rolling = PlayerRules::GetState(player) == PlayerState::Roll;
     if (rolling && (!watch.wasRolling || PlayerRules::GetStateFrame(player) < watch.rollFrame)) {
@@ -97,7 +97,7 @@ void ObserveRoll(BossComponent& boss, const Player& player, Vec3 playerCenter) {
 }
 
 // 狙いの線（水平）が、ボスの体の軸からどれだけ外れて通るか (m)。後ろや真上・真下へ向いていれば float の最大。
-float AimMiss(const BossComponent& boss, const BossGearSight& gear) {
+float AimMiss(const Boss& boss, const BossGearSight& gear) {
     const Vec3 toBoss = Sub(boss.ground, gear.aimOrigin);
     const float flat = FlatLength(gear.aimDirection);
     if (flat < 1e-3f)
@@ -109,7 +109,7 @@ float AimMiss(const BossComponent& boss, const BossGearSight& gear) {
 }
 
 // streak は撃った弾（fire）か次に来る弾（windup）が続けて何発目か、interval は前の弾からの F（続けていなければ 0）。
-void LogShot(const BossComponent& boss, const char* sign, int streak, int interval, Vec3 playerCenter) {
+void LogShot(const Boss& boss, const char* sign, int streak, int interval, Vec3 playerCenter) {
     const BossPlayerWatch& watch = boss.watch;
     char message[224]{};
     std::snprintf(message, sizeof(message),
@@ -121,7 +121,7 @@ void LogShot(const BossComponent& boss, const char* sign, int streak, int interv
 }
 
 // 射撃：構えに入った tick と、撃った弾（続けて撃った数・間）。狙いは構えの間と押し続けている間だけ読む。
-void ObserveShot(BossComponent& boss, const BossGearSight& gear, Vec3 playerCenter) {
+void ObserveShot(Boss& boss, const BossGearSight& gear, Vec3 playerCenter) {
     BossPlayerWatch& watch = boss.watch;
     const bool pending = gear.shotWindup || gear.shotChaining;
     if (pending) {
@@ -164,7 +164,7 @@ void PushStance(BossPlayerWatch& watch, float angle, float distance) {
 }
 
 // 立ち位置：ボスの正面（いまの向き）からプレイヤーへの水平の角度と距離。
-void ObserveStance(BossComponent& boss, Vec3 playerCenter) {
+void ObserveStance(Boss& boss, Vec3 playerCenter) {
     const Vec3 offset = Sub(playerCenter, boss.ground);
     const float distance = FlatLength(offset);
     const float angle = AngleBetween(Forward(boss.yaw), FlatNormalize(offset, Forward(boss.yaw))) / kRadiansPerDegree;
@@ -179,7 +179,7 @@ void ObserveStance(BossComponent& boss, Vec3 playerCenter) {
 }
 
 // プレイヤーの残り：ヒョウタンの煙・満杯、精力、HP、残りの回復の数。満杯・回復の数・HP（1 % 刻み）が変わったらログ。
-void ObserveRemaining(BossComponent& boss, const Player& player, const BossGearSight& gear) {
+void ObserveRemaining(Boss& boss, const Player& player, const BossGearSight& gear) {
     BossPlayerWatch& watch = boss.watch;
     watch.gourdPercent = gear.hasGourd ? gear.smokePercent : -1.0f;
     watch.gourdFull = gear.hasGourd && gear.gourdFull;
@@ -216,12 +216,12 @@ float SecondsWhile(const BossPlayerWatch& watch, Holds holds) {
 
 } // namespace
 
-void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const Player* player,
+void BossObserver::Observe(HIKARI::WorldView& world, Boss& boss, const Player* player,
                            HIKARI::GameProjectFloat3 playerCenter, const BossGearSight& gear, float tickSeconds) {
     BossPlayerWatch& watch = boss.watch;
     const float now = boss.clockSeconds;
     watch.tickSeconds = std::max(1e-4f, tickSeconds);
-    watch.burningPercent = BurnField::GetBurningFraction(world) * 100.0f;
+    watch.burningPercent = BurnFieldAccess::GetBurningFraction(world) * 100.0f;
     watch.present = player != nullptr && PlayerRules::GetState(*player) != PlayerState::Dead;
     if (!watch.present) {
         watch.healing = watch.absorbing = watch.inFire = watch.wasRolling = false;
@@ -233,7 +233,7 @@ void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const 
     if (gear.absorbing && !watch.absorbing)
         watch.absorbSince = now;
     watch.absorbing = gear.absorbing;
-    const bool inFire = BurnField::IsBurning(world, playerCenter);
+    const bool inFire = BurnFieldAccess::IsBurning(world, playerCenter);
     if (inFire && !watch.inFire)
         watch.fireSince = now;
     watch.inFire = inFire;
@@ -243,7 +243,7 @@ void BossObserver::Observe(HIKARI::WorldView& world, BossComponent& boss, const 
     ObserveRemaining(boss, *player, gear);
 }
 
-void BossObserver::NotePunished(BossComponent& boss, int recoveryRow, uint64_t hits) {
+void BossObserver::NotePunished(Boss& boss, int recoveryRow, uint64_t hits) {
     if (recoveryRow < 0 || static_cast<size_t>(recoveryRow) >= kBossPunishRows || hits == 0)
         return;
     uint16_t& count = boss.watch.punished[static_cast<size_t>(recoveryRow)];
@@ -276,7 +276,7 @@ float BossObserver::SecondsFar(const BossPlayerWatch& watch, float atLeastMeters
     return SecondsWhile(watch, [&](size_t at) { return static_cast<float>(watch.stanceDistance[at]) >= threshold; });
 }
 
-int BossObserver::NextShotOrdinal(const BossComponent& boss) {
+int BossObserver::NextShotOrdinal(const Boss& boss) {
     const BossPlayerWatch& watch = boss.watch;
     const bool chained = watch.shotStreak > 0 && boss.tick - watch.shotLastTick <=
                                                      static_cast<uint64_t>(std::max(1, boss.watchShotChainFrames));

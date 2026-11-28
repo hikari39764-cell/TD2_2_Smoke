@@ -10,6 +10,7 @@
 #include "BossSelection.h"
 #include "BossSpecialMoves.h"
 #include "BossWaves.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -35,9 +36,9 @@ constexpr int kFloatRetargetSpread = 80;
 // 上段：前隙の最後の 15% で踏み込む。
 constexpr float kOverheadLungeStart = 0.85f;
 
-const BossMove& CurrentMove(const BossComponent& boss) { return boss.table.GetMoves()[static_cast<size_t>(boss.move)]; }
+const BossMove& CurrentMove(const Boss& boss) { return boss.table.GetMoves()[static_cast<size_t>(boss.move)]; }
 
-void Log(const BossComponent& boss, const char* event, const char* extra = "") {
+void Log(const Boss& boss, const char* event, const char* extra = "") {
     const BossMove* move =
         boss.move >= 0 && static_cast<size_t>(boss.move) < boss.table.GetMoves().size() ? &CurrentMove(boss) : nullptr;
     char message[384]{};
@@ -48,7 +49,7 @@ void Log(const BossComponent& boss, const char* event, const char* extra = "") {
 }
 
 // 構え：剣が止まって霞が剣先に集まる → kamaeFrames F 後に振る。
-void Glint(BossComponent& boss) {
+void Glint(Boss& boss) {
     boss.glintFrames = std::max(1, boss.kamaeSmokeFrames);
     Log(boss, "Kamae");
 }
@@ -65,13 +66,13 @@ Vec3 AimDirection(const BossFrame& frame, Vec3 from) {
 }
 
 // 溜めの揺らぎで構えたまま止まっている tick（前隙の windupHoldAt F 目で、まだ止まる F が残っている）。
-bool Holding(const BossComponent& boss) {
+bool Holding(const Boss& boss) {
     return boss.phase == BossActPhase::Pre && boss.windupHold > 0 && boss.stateFrame == boss.windupHoldAt;
 }
 
 // いまの tick から、次の一撃を放つ tick まで何 tick あるか（放つ tick は 0）。もう放たない時は -1。
 // 剣を振る型は振り抜いた tick（SwingStep の Release）、ほかの型は打つ区間に入った tick（ナイフ・輪）に放つ。
-int FramesToRelease(const BossComponent& boss, const BossMove& move) {
+int FramesToRelease(const Boss& boss, const BossMove& move) {
     const bool swingType = BossMoveTable::IsSwingType(move.type);
     int accumulated = 0;
     int base = 0, now = boss.stateFrame;
@@ -99,7 +100,7 @@ int FramesToRelease(const BossComponent& boss, const BossMove& move) {
 
 // 追尾を止める F：次の一撃を放つまでが表の F より短くなったら、向き直るのをやめ、狙いの点も止める。放ったら戻す。
 void UpdateAimFreeze(BossFrame& frame, const BossMove& move) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const int remaining = move.trackStopFrames > 0 ? FramesToRelease(boss, move) : -1;
     const bool freeze = remaining >= 0 && remaining < move.trackStopFrames;
     if (freeze == boss.aimFrozen)
@@ -117,7 +118,7 @@ void UpdateAimFreeze(BossFrame& frame, const BossMove& move) {
 
 // 連撃の左右移動：一撃ごとに左右交互へ動く。構えに入るところが一番速く、振る瞬間に向けて減速する。
 void SideMove(BossFrame& frame, const BossMove& move) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (move.type != BossMoveType::String || !(move.side > 0.0f) || move.segments.empty())
         return;
     const auto swingOf = [&](const BossSegment& segment) {
@@ -168,7 +169,7 @@ void SideMove(BossFrame& frame, const BossMove& move) {
 // slideInStopDistance m の所へ（最長 slideIn m）突進と同じ滑らかな速さで滑る。行き先は滑り出す tick に決め、もう手前より
 // 近ければ動かない（プレイヤーの背後へは回らない）。滑る技は前隙に歩き寄らない。
 void SlideIn(BossFrame& frame, const BossMove& move, Vec3 toPlayer, float distance) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const int t = boss.stateFrame;
     const int slide = std::clamp(boss.slideInFrames, 1, std::max(1, move.pre - 1));
     const int start = move.pre - slide;
@@ -188,7 +189,7 @@ void SlideIn(BossFrame& frame, const BossMove& move, Vec3 toPlayer, float distan
 }
 
 void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPlayer, float distance) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const int t = boss.stateFrame;
     // 溜めの揺らぎで止まっている間も、構えと同じく歩かない。
     const bool inKamae = move.pre - t < std::min(boss.kamaeFrames, move.pre) || Holding(boss);
@@ -289,7 +290,7 @@ void PreMotion(BossFrame& frame, const BossMove& move, float progress, Vec3 toPl
 }
 
 void ActMotion(BossFrame& frame, const BossMove& move, float progress) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (move.type == BossMoveType::String && !BossPose::Progress(boss, move).hit)
         BossMoveExecutor::FaceRate(frame, boss.stringGapTurnRate);
     if (BossMoveTable::IsMoveType(move.type)) {
@@ -314,7 +315,7 @@ void ActMotion(BossFrame& frame, const BossMove& move, float progress) {
 
 // 踏み込み：振っている間にプレイヤーへ近づく（距離は表の「踏み込み m」）。近すぎるときは止まる。
 void StepIn(BossFrame& frame, const BossStrikeData& strike, const BossSegmentProgress& g) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (!(strike.step > 0.0f) || g.tIn > g.swingLength || g.tIn < 1)
         return;
     float d = strike.step * (Smooth(static_cast<float>(g.tIn) / g.swingLength) -
@@ -328,7 +329,7 @@ void StepIn(BossFrame& frame, const BossStrikeData& strike, const BossSegmentPro
 
 // 剣を振り抜いた瞬間：剣先が描いた霞の弧から、ボスが向いている方向へまっすぐ斬撃を飛ばす（斬撃は追尾しない）。
 void Release(BossFrame& frame, BossSwing& swing) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (swing.samples < 2 || swing.released)
         return;
     swing.released = true;
@@ -408,7 +409,7 @@ void Release(BossFrame& frame, BossSwing& swing) {
 
 // 攻撃中：剣を振り抜く間に剣先の霞が斬撃になり、振り抜いた瞬間にそのまま飛ぶ（1 振り＝1 つの斬撃）。
 void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress& g) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (g.segment < 0 || static_cast<size_t>(g.segment) >= boss.swings.size())
         return;
     BossSwing& swing = boss.swings[static_cast<size_t>(g.segment)];
@@ -488,7 +489,7 @@ void SwingStep(BossFrame& frame, const BossMove& move, const BossSegmentProgress
 } // namespace
 
 void BossMoveExecutor::StepBack(BossFrame& frame, float progress) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const Vec3 toPlayer = FlatNormalize(Sub(PlayerGround(frame), boss.ground));
     const float u = std::clamp(progress, 0.0f, 1.0f);
     // 重さ（c-95444e）：始めは動かずに蹴り、空中は速さが始めと終わりで 0 の曲線（1 tick の進みが途切れない）、
@@ -505,8 +506,8 @@ void BossMoveExecutor::StepBack(BossFrame& frame, float progress) {
     boss.height = boss.backstepHeight * std::sin(v * kPi);
 }
 
-void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
-    const Vec3 offset = Sub(point, boss.arenaCenter);
+void BossMoveExecutor::ClampToArena(const Boss& boss, Vec3& point) {
+    const Vec3 offset = Sub(point, ToGP(boss.arenaCenter));
     const float distance = FlatLength(offset);
     if (distance > boss.arenaRadius && distance > 0.0f) {
         point.x = boss.arenaCenter.x + offset.x * boss.arenaRadius / distance;
@@ -514,7 +515,7 @@ void BossMoveExecutor::ClampToArena(const BossComponent& boss, Vec3& point) {
     }
 }
 
-bool BossMoveExecutor::IsWalking(const BossComponent& boss) {
+bool BossMoveExecutor::IsWalking(const Boss& boss) {
     if (boss.state != BossState::Act || boss.phase != BossActPhase::Act || boss.move < 0 ||
         static_cast<size_t>(boss.move) >= boss.table.GetMoves().size())
         return false;
@@ -523,7 +524,7 @@ bool BossMoveExecutor::IsWalking(const BossComponent& boss) {
 }
 
 void BossMoveExecutor::FaceRate(BossFrame& frame, float degreesPerSecond) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     // 追尾を止めている間は向き直らない（どの型の、前隙・攻撃中のどの向き直りも）。
     if (frame.player == nullptr || boss.aimFrozen)
         return;
@@ -535,7 +536,7 @@ void BossMoveExecutor::FaceRate(BossFrame& frame, float degreesPerSecond) {
     boss.yaw = WrapPi(boss.yaw + std::clamp(delta, -limit, limit));
 }
 
-void BossMoveExecutor::StepFloat(BossComponent& boss) {
+void BossMoveExecutor::StepFloat(Boss& boss) {
     if (--boss.floatTimer <= 0) {
         boss.floatTarget = Lerp(boss.floatMin, std::max(boss.floatMin, boss.floatMax), BossRandom(boss));
         boss.floatTimer = kFloatRetargetMin + static_cast<int>(BossRandom(boss) * kFloatRetargetSpread);
@@ -564,7 +565,7 @@ struct AimPlan {
     bool hold = false;
 };
 
-AimPlan PlanAim(const BossComponent& boss) {
+AimPlan PlanAim(const Boss& boss) {
     if (boss.state != BossState::Act || boss.phase == BossActPhase::Post || boss.move < 0 ||
         static_cast<size_t>(boss.move) >= boss.table.GetMoves().size())
         return {};
@@ -598,13 +599,13 @@ AimPlan PlanAim(const BossComponent& boss) {
 // 表の角度 θ（正がボスの右）は、刀が一番当たる「ボスから見た向き」。体の向きを yaw + θ にすると、ボスから見たプレイヤーの
 // 向きがちょうど θ になる（右は −X、yaw は +X へ増えるので、右に落ちる斬りは体を左へ回すことになる）。上限を超える角度は
 // ねじらない。
-float AimTarget(const BossComponent& boss, int strike, float distance) {
+float AimTarget(const Boss& boss, int strike, float distance) {
     const float degrees = BossMoveTable::AimDegrees(BossMoveTable::Strike(CurrentMove(boss), strike), distance);
     return std::abs(degrees) <= boss.aimTwistMax ? degrees * kRadiansPerDegree : 0.0f;
 }
 
 // 狙いのずれの記録（調整と確かめ用。verify.py aimcheck が読む）。
-void LogAim(const BossComponent& boss, const char* event, int strike, float target, float distance) {
+void LogAim(const Boss& boss, const char* event, int strike, float target, float distance) {
     char extra[128]{};
     std::snprintf(extra, sizeof(extra), "strike=%d used=%.1f distance=%.2f", strike,
                   static_cast<double>(target / kRadiansPerDegree), static_cast<double>(distance));
@@ -614,7 +615,7 @@ void LogAim(const BossComponent& boss, const char* event, int strike, float targ
 } // namespace
 
 void BossMoveExecutor::StepAimTwist(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const AimPlan plan = PlanAim(boss);
     const float distance = FlatLength(Sub(PlayerGround(frame), boss.ground));
     const bool sameStrike = plan.strike == boss.aimTwistStrike;
@@ -637,7 +638,7 @@ void BossMoveExecutor::StepAimTwist(BossFrame& frame) {
 }
 
 void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove& move = boss.table.GetMoves()[static_cast<size_t>(moveIndex)];
     if (!BossMoveTable::IsMoveType(move.type))
         boss.velocity = {};
@@ -706,7 +707,7 @@ void BossMoveExecutor::Start(BossFrame& frame, int moveIndex, int chain) {
 }
 
 BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove& move = CurrentMove(boss);
     // 溜めの揺らぎの間は前隙の F を進めない：体・剣の構え・踏み込みの時間がそこで止まり、構えたまま待つ。
     if (Holding(boss))
@@ -813,13 +814,13 @@ BossMoveExecutor::StepResult BossMoveExecutor::Step(BossFrame& frame) {
     return result;
 }
 
-void BossMoveExecutor::EnterPost(BossComponent& boss) {
+void BossMoveExecutor::EnterPost(Boss& boss) {
     boss.phase = BossActPhase::Post;
     boss.stateFrame = 0;
     boss.aimFrozen = false;
 }
 
-void BossMoveExecutor::EnterIdle(BossComponent& boss) {
+void BossMoveExecutor::EnterIdle(Boss& boss) {
     boss.state = BossState::Idle;
     boss.bladeLit = false;
     boss.aimFrozen = false;
@@ -833,7 +834,7 @@ void BossMoveExecutor::EnterIdle(BossComponent& boss) {
 }
 
 void BossMoveExecutor::StepIdle(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     ++boss.idleFrames;
     boss.height = Lerp(boss.height, 0.0f, kIdleHeightBlend);
     FaceRate(frame, boss.idleTurnRate);
@@ -851,7 +852,7 @@ void BossMoveExecutor::StepIdle(BossFrame& frame) {
     ClampToArena(boss, boss.ground);
 }
 
-void BossMoveExecutor::Interrupt(BossComponent& boss) {
+void BossMoveExecutor::Interrupt(Boss& boss) {
     for (auto& swing : boss.swings)
         swing = {};
     boss.segmentDone.clear();
@@ -870,123 +871,6 @@ void BossMoveExecutor::Interrupt(BossComponent& boss) {
     boss.swordSmoke = false;
     boss.glintFrames = 0;
     boss.velocity = {};
-}
-
-void BossMoveExecutor::DescribeSwing(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("斬撃の共通の値", true)) {
-        fields.Float("range", "斬撃の飛距離 (m)", boss.range, 1.0f, 200.0f);
-        fields.Int("swingFrames", "剣を振り抜く長さ (F)", boss.swingFrames, 1, 120);
-        fields.Int("gapSmallFrames", "連撃の構え 小 (F)", boss.gapSmallFrames, 0, 300);
-        fields.Int("gapMediumFrames", "連撃の構え 中 (F)", boss.gapMediumFrames, 0, 300);
-        fields.Int("gapLargeFrames", "連撃の構え 大 (F)", boss.gapLargeFrames, 0, 300);
-        fields.Int("followFrames", "連撃の振り抜き後 (F)", boss.followFrames, 0, 120);
-        fields.Int("feintFrames", "フェイント（遅）の溜め (F)", boss.feintFrames, 0, 300);
-        fields.Int("kamaeFrames", "振る前の構え（剣を止めて溜める）(F)", boss.kamaeFrames, 1, 300);
-        fields.Int("raiseFrames", "振り上げ（構えの前に剣を引く）(F)", boss.raiseFrames, 0, 300);
-        fields.Int("swingInFrames", "振り出し（ゆっくり動き始める）(F)", boss.swingInFrames, 0, 60);
-        fields.Float("swingPeakShare",
-                     "振りの速さがいちばん速くなる所（窓の進み 0〜1。そこから振り終わりへ減速して止まる）",
-                     boss.swingPeakShare, 0.5f, 0.9f);
-        fields.Float("poiseFlinchShare", "体勢：連段の後に怯んで跳ぶ気絶値の割合 (0〜1。満ちたらひざまずく)",
-                     boss.poiseFlinchShare, 0.0f, 1.0f);
-        fields.Float("poiseFlinchCooldownSeconds", "体勢：怯みの後、次の怯みを出さない秒数",
-                     boss.poiseFlinchCooldownSeconds, 0.0f, 60.0f);
-        fields.Text("poiseFlinchMove", "体勢：怯んで跳ぶ技（技の表の名前）", boss.poiseFlinchMove);
-        fields.Bool("breakDuringWindup", "前の作り：前隙に「崩せる被弾数」を当てると打ち切る", boss.breakDuringWindup);
-        fields.Float("recoveryDamageScale", "戻り（後隙）に当てた弾の威力の倍率", boss.recoveryDamageScale, 0.0f, 5.0f);
-        fields.Float("recoveryStunScale", "戻りに当てた弾の気絶値の倍率", boss.recoveryStunScale, 0.0f, 5.0f);
-        fields.Float("recoveryHitPushScale", "戻りに当てた時の、当たりの押しの倍率", boss.recoveryHitPushScale, 0.0f,
-                     5.0f);
-        fields.Int("recoveryHitStopFrames", "戻りに当てた時の、当たりの止め (F)", boss.recoveryHitStopFrames, 0, 30);
-        fields.Float("damageBase", "威力（空欄時）＝基本", boss.damageBase, 0.0f, 1000.0f);
-        fields.Float("damagePerFrame", "…＋隙 F × この係数", boss.damagePerFrame, 0.0f, 10.0f, 0.01f);
-        fields.Float("thickness", "斬撃の厚み (m)", boss.thickness, 0.01f, 5.0f, 0.01f);
-    }
-}
-
-void BossMoveExecutor::DescribeMovement(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("体と浮遊")) {
-        fields.Float("bodyHalfHeight", "体の高さの半分 (m)", boss.bodyHalfHeight, 0.1f, 20.0f);
-        fields.Float("bodyRadius", "体の半径 (m)", boss.bodyRadius, 0.05f, 10.0f);
-        fields.Float3("arenaCenter", "戦場の中心（地面）", boss.arenaCenter);
-        fields.Float("arenaRadius", "動ける半径 (m)", boss.arenaRadius, 1.0f, 500.0f);
-        fields.Float("walkSpeed", "移動の速さ (m/秒)", boss.walkSpeed, 0.0f, 50.0f);
-        fields.Float("floatMin", "浮く高さ 最低 (m)", boss.floatMin, 0.0f, 10.0f);
-        fields.Float("floatMax", "浮く高さ 最高 (m)", boss.floatMax, 0.0f, 10.0f);
-        fields.Float("floatBob", "上下にゆれる幅 (m)", boss.floatBob, 0.0f, 2.0f);
-        fields.Float("idleTurnRate", "待機中に振り向く速さ (度/秒)", boss.idleTurnRate, 0.0f, 3600.0f);
-        fields.Float("preTurnRate", "前隙に振り向く速さ (度/秒)", boss.preTurnRate, 0.0f, 3600.0f);
-        fields.Float("overheadTurnRate", "上段の前隙に振り向く速さ (度/秒)", boss.overheadTurnRate, 0.0f, 3600.0f);
-        fields.Float("stringGapTurnRate", "連撃の構えの間に振り向く速さ (度/秒)", boss.stringGapTurnRate, 0.0f,
-                     3600.0f);
-        fields.Float("aimTwistTurnRate", "狙いのずれ：剣の技の前に体をねじる速さ (度/秒)", boss.aimTwistTurnRate, 0.0f,
-                     3600.0f);
-        fields.Float("aimTwistMax", "狙いのずれ：これより大きくねじる斬りはねじらない (度)", boss.aimTwistMax, 0.0f,
-                     180.0f);
-        fields.Int("aimTwistLeadFrames", "狙いのずれ：当たりの区間の何 F 前からねじり始めるか (F)",
-                   boss.aimTwistLeadFrames, 0, 240);
-    }
-}
-
-void BossMoveExecutor::DescribeMoveTypes(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("動きの型ごとの体の動き")) {
-        fields.Float("dashStopDistance", "瞬間突進：プレイヤーの手前で止まる距離 (m)", boss.dashStopDistance, 0.0f,
-                     30.0f);
-        fields.Int("overheadLeapFrames", "上段溜め：前隙の終わりに前へ跳び込む長さ (F。0 で跳ばない)",
-                   boss.overheadLeapFrames, 0, 120);
-        fields.Float("overheadLeapHeight", "上段溜め：跳び込みの弧の高さ (m)", boss.overheadLeapHeight, 0.0f, 10.0f);
-        fields.Int("comboLandFrames", "空中で終わった技から続いた斬りの技が、前隙の始めに着地するまで (F)",
-                   boss.comboLandFrames, 1, 60);
-        fields.Float("overheadLeapStop", "上段溜め：跳び込んで着地する、プレイヤーからの距離 (m)",
-                     boss.overheadLeapStop, 0.0f, 30.0f);
-        fields.Float("overheadLeapMax", "上段溜め：跳び込みの最長 (m)", boss.overheadLeapMax, 0.0f, 30.0f);
-        fields.Float("overheadLeapBack", "上段溜め：近すぎる時に後ろへ跳び退く最長 (m)", boss.overheadLeapBack, 0.0f,
-                     30.0f);
-        fields.Int("dashSlideFrames", "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)",
-                   boss.dashSlideFrames, 1, 120);
-        fields.Float("slashApproachSpeed", "横斬り・縦斬り：前隙に歩く速さ (m/秒)", boss.slashApproachSpeed, 0.0f,
-                     20.0f);
-        fields.Float("stringApproachSpeed", "連撃：前隙に近づく速さ (m/秒)", boss.stringApproachSpeed, 0.0f, 20.0f);
-        fields.Float("stringApproachStop", "連撃：これより近いと近づかない (m)", boss.stringApproachStop, 0.0f, 30.0f);
-        fields.Int("slideInFrames", "滑って入る：前隙の終わりに滑る長さ (F。表の「滑って入る m」がある斬りの技)",
-                   boss.slideInFrames, 1, 120);
-        fields.Float("slideInStopDistance", "滑って入る：プレイヤーの手前で止まる距離 (m)", boss.slideInStopDistance,
-                     0.0f, 30.0f);
-        fields.Float("overheadLungeDistance", "上段：前隙の終わりの踏み込み (m)", boss.overheadLungeDistance, 0.0f,
-                     20.0f);
-        fields.Float("stepInClearance", "踏み込み：プレイヤーとの間に残す距離 (m)", boss.stepInClearance, 0.0f, 10.0f);
-        fields.Float("walkInStopDistance", "間合いを詰める：横歩きに切り替える距離 (m)", boss.walkInStopDistance, 0.0f,
-                     50.0f);
-        fields.Float("walkInSpeedScale", "間合いを詰める：歩く速さの倍率", boss.walkInSpeedScale, 0.0f, 10.0f);
-        fields.Float("backstepDistance", "後ろへ下がる：距離 (m)", boss.backstepDistance, 0.0f, 30.0f);
-        fields.Float("backstepHeight", "後ろへ下がる：跳ねる高さ (m)", boss.backstepHeight, 0.0f, 10.0f);
-        fields.Float("backstepTakeoffShare", "後ろ跳び：始めに動かずに沈んで蹴る割合（跳ぶ長さに対して）",
-                     boss.backstepTakeoffShare, 0.0f, 0.5f);
-        fields.Float("backstepLandShare", "後ろ跳び：終わりに着地して沈んで戻る割合（跳ぶ長さに対して）",
-                     boss.backstepLandShare, 0.0f, 0.5f);
-        fields.Float("backstepPeakShare", "後ろ跳び：空中で最も速い所（空中の長さに対する割合）",
-                     boss.backstepPeakShare, 0.1f, 0.9f);
-        fields.Float("jumpHeight", "跳躍：跳ぶ高さ (m)", boss.jumpHeight, 0.0f, 20.0f);
-        fields.Float("jumpCrouchShare", "跳躍：前隙のうち跳ぶ前の割合（残りで跳ぶ）", boss.jumpCrouchShare, 0.0f, 0.95f,
-                     0.01f);
-        fields.Int("spinCoilFrames", "回転斬り：体を逆へ捻り込む長さ (F)", boss.spinCoilFrames, 1, 60);
-        fields.Float("spinCoilDegrees", "回転斬り：逆へ捻り込む角度 (度)", boss.spinCoilDegrees, 0.0f, 270.0f);
-        fields.Float("spinTurns", "回転斬り：攻撃中に回る回数（捻りを戻した後。1 で 1 回転）", boss.spinTurns, 0.0f,
-                     3.0f);
-        fields.Float("spinRingShare", "回転斬り：霞の輪を出す、回りの進み (0〜1)", boss.spinRingShare, 0.0f, 1.0f);
-        fields.Float("kickRingStartRadius", "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)",
-                     boss.kickRingStartRadius, 0.0f, 20.0f);
-        fields.Float("kickResidueScale", "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）",
-                     boss.kickResidueScale, 0.0f, 10.0f);
-        fields.Float("kickResidueRadiusShare", "回し蹴り：残り煙を置く円（最大半径の何倍）",
-                     boss.kickResidueRadiusShare, 0.0f, 2.0f);
-        fields.Float("burnCrossLength", "残す火「交差」：X の 1 本の長さ (m。狙った所で 2 本が交わる)",
-                     boss.burnCrossLength, 0.1f, 40.0f);
-        fields.Float("burnLineLag", "残す火「線」：火が飛ぶ刃の後ろへ遅れる距離 (m。0 だと刃の真下から燃える)",
-                     boss.burnLineLag, 0.0f, 10.0f);
-        fields.Float("burnPoolForward", "残す火「池」：上段溜めの池を置く所（ボスの前 m。振り下ろした所）",
-                     boss.burnPoolForward, 0.0f, 20.0f);
-    }
 }
 
 } // namespace Project_TD2_2

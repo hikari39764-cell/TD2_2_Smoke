@@ -17,15 +17,15 @@ public:
     static void Begin(BossFrame& frame, const BossMove& move);
     // 攻撃中の 1 tick（progress は攻撃中の進み 0〜1）と、後隙（着地した高さに戻す）。
     static void Act(BossFrame& frame, float progress);
-    static void Post(BossComponent& boss);
+    static void Post(Boss& boss);
     // いま弾が当たらない（弾をかわす霞歩の跳び始めの kasumiStepGuardFrames F）。
-    static bool Guarding(const BossComponent& boss);
+    static bool Guarding(const Boss& boss);
     // 弾をかわせる（続けてかわせる回数を使い切った後の、かわさない間でない）。
-    static bool CanDodge(const BossComponent& boss);
+    static bool CanDodge(const Boss& boss);
     // かわさない間（息が切れている。胴の煙が薄くなる）。
-    static bool Spent(const BossComponent& boss);
+    static bool Spent(const Boss& boss);
     // 霞歩の行をいま出せるか（かわさない間は様子見の霞歩も出さない設定なら、出せない）。霞歩でない行は true。
-    static bool Allows(const BossComponent& boss, const BossMove& move);
+    static bool Allows(const Boss& boss, const BossMove& move);
     static const char* DirectionKey(BossStepDirection direction);
 };
 

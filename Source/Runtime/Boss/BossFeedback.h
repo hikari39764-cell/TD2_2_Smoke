@@ -10,7 +10,7 @@ namespace Project_TD2_2 {
 // 規則（固定 tick）が立てた要求を、描画フレームで見せるだけ。
 class BossFeedback final {
   public:
-    static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+    static void Update(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
                        const HIKARI::FrameContext& frame);
 };
 

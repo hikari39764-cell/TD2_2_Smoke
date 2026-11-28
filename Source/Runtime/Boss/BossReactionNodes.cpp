@@ -143,7 +143,7 @@ Status TickBurningRoll(INodeContext& context, void*, void* user) noexcept {
     const BossThought* thought = BossBehaviorNodes::ThoughtOf(user);
     if (thought == nullptr)
         return Status::Failure;
-    const BossComponent& boss = thought->boss;
+    const Boss& boss = thought->boss;
     const float percent = boss.watch.burningPercent;
     const float chance = std::min(context.ParamFloat(kRollMax), percent * context.ParamFloat(kRollPerPercent));
     // 燃えていない間は振らない（ログも出さない）。
@@ -212,7 +212,7 @@ struct ReactionState {
     bool pending;
 };
 
-BossReactionMemory* MemoryOf(BossComponent& boss, size_t key) {
+BossReactionMemory* MemoryOf(Boss& boss, size_t key) {
     BossBrainMemory& brain = boss.brain;
     for (size_t i = 0; i < brain.reactionCount; ++i) {
         if (brain.reactions[i].key == key)
@@ -252,7 +252,7 @@ int32_t DelayOf(INodeContext& context) {
 // 遅れを待つ：木を進める tick（待機中、「後隙を切り上げる」なら後隙も）が続いている間だけ数える。続かなかった
 // （気絶などで木を進めない tick があった）なら取りやめる。待ち終えたら、条件がもう崩れていても通す。
 Status TickDelay(INodeContext& context, ReactionState& gate, BossThought& thought, std::string_view label) {
-    const BossComponent& boss = thought.boss;
+    const Boss& boss = thought.boss;
     char message[224]{};
     if (boss.tick != gate.lastTick + 1) {
         gate.pending = false;
@@ -289,7 +289,7 @@ Status TickReaction(INodeContext& context, void* state, void* user) noexcept {
     const std::string_view label = context.ParamText(kReactionLabel);
     if (gate.pending)
         return TickDelay(context, gate, *thought, label);
-    BossComponent& boss = thought->boss;
+    Boss& boss = thought->boss;
     BossReactionMemory* memory = MemoryOf(boss, std::hash<std::string_view>{}(label));
     const float now = boss.clockSeconds;
     if (memory == nullptr || now < memory->readySeconds || now < memory->rerollSeconds)
@@ -351,7 +351,7 @@ Status TickShooting(INodeContext& context, void*, void* user) noexcept {
     const BossPlayerWatch* watch = WatchOf(user);
     if (watch == nullptr || !watch->shotPending)
         return Status::Failure;
-    const BossComponent& boss = BossBehaviorNodes::ThoughtOf(user)->boss;
+    const Boss& boss = BossBehaviorNodes::ThoughtOf(user)->boss;
     const int64_t within = std::max<int64_t>(0, context.ParamInt(kShootWithin));
     return Result(boss.tick - watch->shotIntentTick <= static_cast<uint64_t>(within) &&
                   (!context.ParamBool(kShootAimed) || watch->shotAimed) &&
@@ -630,7 +630,7 @@ void BossReactionNodes::NoteStarted(BossThought& thought) {
         memory->readySeconds = thought.boss.clockSeconds + thought.reactionCooldown;
 }
 
-void BossReactionNodes::NoteHit(BossComponent& boss) {
+void BossReactionNodes::NoteHit(Boss& boss) {
     if (boss.reactionMoveKey == 0)
         return;
     if (BossReactionMemory* memory = MemoryOf(boss, boss.reactionMoveKey))

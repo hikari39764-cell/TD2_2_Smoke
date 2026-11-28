@@ -10,7 +10,6 @@
 #include "../Common/ComponentLookup.h"
 #include "../Common/GameSession.h"
 #include "../Boss/BossRules.h"
-#include "../Common/ObjectVariables.h"
 #include "../Gourd/GourdComponent.h"
 #include "../Gourd/GourdRules.h"
 #include "../Player/Player.h"
@@ -21,9 +20,6 @@
 
 namespace Project_TD2_2 {
 namespace {
-
-// 世界変数の書き手の名前。
-constexpr std::string_view kWriterId = "Project_TD2_2.Flow";
 
 using GameSession::IsPlaying;
 
@@ -44,11 +40,11 @@ struct Actors {
     HIKARI::GameProjectObjectHandle player{};
     HIKARI::GameProjectObjectHandle boss{};
     HIKARI::GameProjectObjectHandle gourd{};
-    // 火弾の長さ（HUD の残り時間の条の分母）。物体変数は残り秒だけなので、長さは部品の項目から読む。
+    // 火弾の長さ（HUD の残り時間の条の分母）。ゲーム全体の値は残り秒だけなので、長さは部品の項目から読む。
     float fireShotDuration = 0.0f;
 };
 
-Actors FindActors(HIKARI::WorldView& world) {
+Actors FindActors(HIKARI::WorldView&) {
     Actors actors;
     ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player&) {
         if (actors.player.value == 0)
@@ -60,11 +56,10 @@ Actors FindActors(HIKARI::WorldView& world) {
         actors.gourd = object.GetHandle();
         actors.fireShotDuration = GourdRules::GetFireShotDuration(gourd);
     });
-    world.ForEachComponent<BossComponent>(HIKARI::MakeComponentTypeId(kBossType),
-                                          [&](HIKARI::ObjectView object, BossComponent&) {
-                                              if (actors.boss.value == 0)
-                                                  actors.boss = object.GetHandle();
-                                          });
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView object, Boss&) {
+        if (actors.boss.value == 0)
+            actors.boss = object.GetHandle();
+    });
     return actors;
 }
 
@@ -78,14 +73,14 @@ bool GetPosition(const HIKARI::WorldView& world, HIKARI::GameProjectObjectHandle
 }
 
 // 勝ち負けは固定 tick の中で、プレイヤーとボスの規則の値（Rules）から読む（c-164cab。部品が描画のフレームごとに出す
-// 物体変数は HUD だけが読む）。
+// ゲーム全体の値は HUD だけが読む）。
 FlowObservation Observe(HIKARI::WorldView& world, const Actors& actors) {
     FlowObservation observation;
     HIKARI::GameProjectFloat3 playerPosition{};
     if (GetPosition(world, actors.player, playerPosition)) {
         observation.playerPresent = true;
         observation.playerHeight = playerPosition.y;
-        ComponentLookup::ForEachOnObject<Player>(world, kPlayerType, world.FindObject(actors.player),
+        ComponentLookup::ForEachOnObject<Player>(world.FindObject(actors.player),
                                                  [&](HIKARI::ObjectView, Player& player) {
                                                      const PlayerState state = PlayerRules::GetState(player);
                                                      observation.playerDead = state == PlayerState::Dead;
@@ -94,8 +89,7 @@ FlowObservation Observe(HIKARI::WorldView& world, const Actors& actors) {
     }
     HIKARI::GameProjectFloat3 bossPosition{};
     if (GetPosition(world, actors.boss, bossPosition)) {
-        ComponentLookup::ForEachOnObject<BossComponent>(
-            world, kBossType, world.FindObject(actors.boss), [&](HIKARI::ObjectView, BossComponent& boss) {
+        ComponentLookup::ForEachOnObject<Boss>(world.FindObject(actors.boss), [&](HIKARI::ObjectView, Boss& boss) {
                 observation.bossPresent = true;
                 observation.bossHealth = BossRules::GetShownHealth(boss);
                 observation.bossMaxHealth = BossRules::GetShownMaxHealth(boss);
@@ -107,25 +101,15 @@ FlowObservation Observe(HIKARI::WorldView& world, const Actors& actors) {
     return observation;
 }
 
-void PublishPhase(HIKARI::WorldView& world, FlowComponent& flow) {
-    HIKARI::GameProjectBindingValue value{};
-    value.type = HIKARI::GameProjectBindingValueType::Int;
-    value.integer = static_cast<int64_t>(flow.phase);
-    if (world.WriteVariable(kFightStateVariable, value, kWriterId) || flow.variableWriteWarned)
-        return;
-    flow.variableWriteWarned = true;
-    Log(HIKARI::GameProjectLogLevel::Warning,
-        "世界変数 Fight.State を書き込めません。ProjectSettings/runtime_bindings.json の宣言（ID と型）を確認してください。");
-}
+// 戦いの段階をゲーム全体の値（Params の Fight.State）へ出す。
+void PublishPhase(Flow& flow) { HIKARI::Params::Set(kFightStateVariable, static_cast<int>(flow.phase)); }
 
 // 戦いが始まるまで、ボスの行動を止める。
-void HoldBoss(HIKARI::WorldView& world, bool hold) {
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType),
-        [&](HIKARI::ObjectView, BossComponent& boss) { BossRules::SetHeld(boss, hold); });
+void HoldBoss(HIKARI::WorldView&, bool hold) {
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView, Boss& boss) { BossRules::SetHeld(boss, hold); });
 }
 
-void LogChange(const FlowComponent& flow, FlowPhase from, const char* reason, const FlowObservation& observation) {
+void LogChange(const Flow& flow, FlowPhase from, const char* reason, const FlowObservation& observation) {
     char message[256]{};
     std::snprintf(message, sizeof(message),
                   "Phase tick=%llu from=%s to=%s reason=%s distance=%.2f playerHeight=%.2f bossHealth=%.1f",
@@ -136,7 +120,7 @@ void LogChange(const FlowComponent& flow, FlowPhase from, const char* reason, co
 }
 
 // いまのシーンを読み直す（シーンの切り替えの正式の手段）。受け付けられるまで毎 tick 頼む。
-void RequestRestart(HIKARI::WorldView& world, FlowComponent& flow) {
+void RequestRestart(HIKARI::WorldView& world, Flow& flow) {
     char guid[64]{};
     uint32_t length = 0;
     const HIKARI::SceneFlowView sceneFlow = world.GetSceneFlow();
@@ -155,9 +139,9 @@ void RequestRestart(HIKARI::WorldView& world, FlowComponent& flow) {
     Log(HIKARI::GameProjectLogLevel::Warning, "シーンの読み直しが受け付けられません。受け付けられるまで頼み直します");
 }
 
-FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors) {
+FlowHudValues ReadHudValues(const HIKARI::WorldView&, const Actors& actors) {
     FlowHudValues values;
-    // プレイヤーとヒョウタンの値は新しいゲーム層の部品がゲーム全体の値（Params）へ書く。ボスは物体変数のまま。
+    // プレイヤー・ヒョウタン・ボスの値は、それぞれの部品がゲーム全体の値（Params）へ書く。
     values.playerHealth = HIKARI::Params::GetFloat(kPlayerHealthVariable, values.playerHealth);
     values.playerMaxHealth = HIKARI::Params::GetFloat(kPlayerMaxHealthVariable, values.playerMaxHealth);
     values.playerStamina = HIKARI::Params::GetFloat(kPlayerStaminaVariable, values.playerStamina);
@@ -169,16 +153,14 @@ FlowHudValues ReadHudValues(const HIKARI::WorldView& world, const Actors& actors
     values.fireShotSeconds = HIKARI::Params::GetFloat(kGourdFireShotVariable, values.fireShotSeconds);
     values.gourdBlocked = HIKARI::Params::GetFloat(kGourdBlockedVariable, values.gourdBlocked);
     values.fireShotDuration = actors.fireShotDuration;
-    ObjectVariables::ReadFloat(world, actors.boss, kBossHealthVariable, values.bossHealth);
-    ObjectVariables::ReadFloat(world, actors.boss, kBossMaxHealthVariable, values.bossMaxHealth);
-    int64_t bossPhase = 1;
-    if (ObjectVariables::ReadInt(world, actors.boss, kBossPhaseVariable, bossPhase))
-        values.bossPhase = static_cast<int>(bossPhase);
-    ObjectVariables::ReadFloat(world, actors.boss, kBossPhaseSecondsVariable, values.bossPhaseSeconds);
+    values.bossHealth = HIKARI::Params::GetFloat(kBossHealthVariable, values.bossHealth);
+    values.bossMaxHealth = HIKARI::Params::GetFloat(kBossMaxHealthVariable, values.bossMaxHealth);
+    values.bossPhase = HIKARI::Params::GetInt(kBossPhaseVariable, values.bossPhase);
+    values.bossPhaseSeconds = HIKARI::Params::GetFloat(kBossPhaseSecondsVariable, values.bossPhaseSeconds);
     return values;
 }
 
-void StepFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowComponent& flow) {
+void StepFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, Flow& flow) {
     const Actors actors = FindActors(world);
     // プレイヤーとボスの両方がいる場面だけで流れを進める。
     if (actors.player.value == 0 || actors.boss.value == 0)
@@ -189,13 +171,13 @@ void StepFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowC
     if (reason != nullptr)
         LogChange(flow, before, reason, observation);
     if (reason != nullptr || flow.tick == 1)
-        PublishPhase(world, flow);
+        PublishPhase(flow);
     HoldBoss(world, flow.phase == FlowPhase::Waiting);
     if (!flow.restartRequested && FlowRules::IsRestartDue(flow, frame.fixedDt))
         RequestRestart(world, flow);
 }
 
-void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowComponent& flow) {
+void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, Flow& flow) {
     const Actors actors = FindActors(world);
     if (actors.player.value == 0 || actors.boss.value == 0)
         return;
@@ -203,11 +185,11 @@ void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowC
     const HIKARI::UiView ui = world.GetUi();
     // 登場の演出の間（ボスが Boss.Cinematic に 1 を書いている間）は、プレイヤーの条を出さない（画面を演出だけにする）。
     float cinematic = 0.0f;
-    ObjectVariables::ReadFloat(world, actors.boss, kBossCinematicVariable, cinematic);
+    cinematic = HIKARI::Params::GetFloat(kBossCinematicVariable, cinematic);
     bool accepted = cinematic >= 0.5f || FlowHud::DrawPlayer(ui, flow, values);
     // ボスの HP の条：戦いの間。ボスが「出さない」と書いている間（登場の演出の見得まで）は出さない。
     float bossBar = 1.0f;
-    ObjectVariables::ReadFloat(world, actors.boss, kBossBarShownVariable, bossBar);
+    bossBar = HIKARI::Params::GetFloat(kBossBarShownVariable, bossBar);
     if (flow.phase != FlowPhase::Waiting && bossBar >= 0.5f)
         accepted = FlowHud::DrawBoss(ui, flow, values) && accepted;
     accepted = FlowHud::DrawFade(ui, flow, FlowRules::GetFade(flow, frame.fixedDt)) && accepted;
@@ -219,36 +201,31 @@ void DrawFlow(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, FlowC
 
 } // namespace
 
-void FlowSystem::OnWorldAttached(HIKARI::WorldView&) { fallback_ = FlowComponent{}; }
+namespace FlowSystem {
 
-void FlowSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+void FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, Flow& fallback) {
     if (!IsPlaying(world, frame) || frame.fixedDt <= 0.0f)
         return;
     bool placed = false;
-    world.ForEachComponent<FlowComponent>(HIKARI::MakeComponentTypeId(kFlowType),
-                                          [&](HIKARI::ObjectView, FlowComponent& flow) {
-                                              placed = true;
-                                              StepFlow(world, frame, flow);
-                                          });
+    ComponentLookup::ForEachGame<Flow>([&](HIKARI::ObjectView, Flow& flow) {
+        placed = true;
+        StepFlow(world, frame, flow);
+    });
     if (!placed)
-        StepFlow(world, frame, fallback_);
+        StepFlow(world, frame, fallback);
 }
 
-void FlowSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+void LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame, Flow& fallback) {
     if (!IsPlaying(world, frame))
         return;
     bool placed = false;
-    world.ForEachComponent<FlowComponent>(HIKARI::MakeComponentTypeId(kFlowType),
-                                          [&](HIKARI::ObjectView, FlowComponent& flow) {
-                                              placed = true;
-                                              DrawFlow(world, frame, flow);
-                                          });
+    ComponentLookup::ForEachGame<Flow>([&](HIKARI::ObjectView, Flow& flow) {
+        placed = true;
+        DrawFlow(world, frame, flow);
+    });
     if (!placed)
-        DrawFlow(world, frame, fallback_);
+        DrawFlow(world, frame, fallback);
 }
 
-void FlowSystem::OnWorldDetached(HIKARI::WorldView& world) {
-    world.ReleaseVariableWriter(kFightStateVariable, kWriterId);
-}
-
+} // namespace FlowSystem
 } // namespace Project_TD2_2

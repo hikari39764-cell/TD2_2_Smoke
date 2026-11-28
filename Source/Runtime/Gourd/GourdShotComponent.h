@@ -8,8 +8,6 @@
 
 namespace Project_TD2_2 {
 
-inline constexpr std::string_view kGourdShotType = "TD2_2.GourdShot";
-inline constexpr std::string_view kGourdShotSystem = "Project_TD2_2.GourdShotSystem";
 inline constexpr size_t kGourdProjectileCapacity = 8;
 inline constexpr size_t kGourdResidueCapacity = 8;
 inline constexpr size_t kGourdBurstCapacity = 8;
@@ -96,7 +94,7 @@ struct GourdFireZone {
 };
 
 struct GourdShot : HIKARI::Component {
-    HIKARI_COMPONENT(GourdShot)
+    HIKARI_COMPONENT(GourdShot, "ヒョウタン砲撃")
 
     FIELD(bool, enabled, true, "有効", HIKARI::Group("砲撃の時間と消費"))
     // 撃ってすぐ動けるように、構えと後隙は短く、構えと後隙の後半は歩ける（c-a0a892。元の値は調整ガイド）。
@@ -106,8 +104,8 @@ struct GourdShot : HIKARI::Component {
     FIELD(int, repeatFrames, 24, "長押し連射の最初の間隔 (F)", HIKARI::Range(1, 7200))
     FIELD(float, rapidAccel, 0.5f, "1 発ごとに連射が速くなる割合 (+倍)", HIKARI::Range(0.0f, 10.0f))
     FIELD(float, rapidMax, 3.0f, "連射の速さの上限 (倍)", HIKARI::Range(1.0f, 20.0f))
-    FIELD(int, rapidMinFrames, 4, "連射の間隔の下限 (F)", HIKARI::Range(1, 7200),
-          HIKARI::Tip("既定は 24・16・12・10・8・8… F。攻撃を離すと次の長押しは最初の間隔に戻ります。"))
+    FIELD(int, rapidMinFrames, 4, "連射の間隔の下限 (F)", HIKARI::Range(1, 7200))
+    NOTE("既定は 24・16・12・10・8・8… F。攻撃を離すと次の長押しは最初の間隔に戻ります。")
     FIELD(int, recoveryFrames, 20, "最後の発射からの後隙 (F)", HIKARI::Range(0, 7200))
     // 最後の発射からこの F 以降は、ローリングで後隙を打ち切れる。それより前に押したローリングは、この F まで待つ。
     FIELD(int, rollCancelFrames, 6, "後隙をローリングで打ち切れる最初の F（発射から）", HIKARI::Range(0, 7200))
@@ -116,9 +114,9 @@ struct GourdShot : HIKARI::Component {
     // 歩きを 5.2 → 3.8 m/秒に下げた時に、撃ちながらの速さを保つよう 0.6 → 0.75 にした（c-ff3e98）。
     FIELD(float, shotMoveScale, 0.75f, "構えと後隙の後半の歩行倍率", HIKARI::Range(0.0f, 1.0f))
     // 最後の発射からこの F 以降は、攻撃を離して吸い込みを押すと後隙を取り消して吸い込みの構えへ移れる。
-    FIELD(int, absorbCancelFrames, 6, "後隙を吸い込みで取り消せる最初の F", HIKARI::Range(0, 7200),
-          HIKARI::Tip("構えの間と、打ち切れる F より前の後隙に押したローリングは消えずに、打ち切れる F に出ます。"
-                      "押し続けている間は、後隙が明けても次の発射まで連射が続きます（ローリングでは打ち切れます）。"))
+    FIELD(int, absorbCancelFrames, 6, "後隙を吸い込みで取り消せる最初の F", HIKARI::Range(0, 7200))
+    NOTE("構えの間と、打ち切れる F より前の後隙に押したローリングは消えずに、打ち切れる F に出ます。"
+         "押し続けている間は、後隙が明けても次の発射まで連射が続きます（ローリングでは打ち切れます）。")
     FIELD(int, inputBufferFrames, 12, "先行入力 (F)", HIKARI::Range(1, 60))
     // 精力満タンで連射 4 発（c-ff3e98。元は 20 で 5 発、ちょうど気絶値が埋まっていた）。
     FIELD(float, staminaCost, 25.0f, "一発のスタミナ消費（0 は制限なし）", HIKARI::Range(0.0f, 100000.0f))
@@ -137,9 +135,9 @@ struct GourdShot : HIKARI::Component {
     FIELD(float, aimAssistDegrees, 35.0f, "ロックなしの照準補助：カメラ正面から左右の角度 (度、0 は無効)",
           HIKARI::Range(0.0f, 90.0f))
     FIELD(
-        float, aimAssistRange, 25.0f, "ロックなしの照準補助：届く距離 (m)", HIKARI::Range(0.0f, 200.0f),
-        HIKARI::Tip(
-            "ロックオン中は対象へ撃ちます。ロックしていない時は、照準補助の範囲にロックできる相手がいればいちばん正面に近い相手へ、いなければカメラの正面へ撃ちます。"))
+        float, aimAssistRange, 25.0f, "ロックなしの照準補助：届く距離 (m)", HIKARI::Range(0.0f, 200.0f))
+    NOTE("ロックオン中は対象へ撃ちます。ロックしていない時は、照準補助の範囲にロックできる相手がいれば"
+         "いちばん正面に近い相手へ、いなければカメラの正面へ撃ちます。")
     FIELD(float, gourdRecoilDistance, 0.48f, "ヒョウタン反動距離 (m)", HIKARI::Range(0.0f, 10.0f))
     FIELD(int, gourdRecoilFrames, 8, "ヒョウタン反動時間 (F)", HIKARI::Range(1, 600))
     FIELD(float, gourdWindupPull, 0.14f, "構え中にヒョウタンを引く距離 (m、0 は無効)", HIKARI::Range(0.0f, 2.0f))
@@ -156,8 +154,8 @@ struct GourdShot : HIKARI::Component {
     FIELD(float, finalRadiusScale, 3.0f, "射程端の大きさ倍率", HIKARI::Range(1.0f, 10.0f))
     FIELD(float, finalDensityRatio, 0.15f, "射程端の煙の濃さ倍率", HIKARI::Range(0.0f, 1.0f))
     FIELD(int, pelletsPerShot, 1, "一発に含む弾の数", HIKARI::Range(1, 8))
-    FIELD(float, spreadDegrees, 0.0f, "水平の散布角 (度)", HIKARI::Range(0.0f, 180.0f),
-          HIKARI::Tip("既定は単発弾・散布 0。配列は同時 8 弾まで。空き不足なら消費せず発射を待ちます。"))
+    FIELD(float, spreadDegrees, 0.0f, "水平の散布角 (度)", HIKARI::Range(0.0f, 180.0f))
+    NOTE("既定は単発弾・散布 0。配列は同時 8 弾まで。空き不足なら消費せず発射を待ちます。")
     FIELD(HIKARI::VfxAsset, shellEffect, (HIKARI::VfxAsset{"80ac20536e6b4989b654e6ba7b223c24"}),
           "飛んでいる火の弾（燃える流体の域）", HIKARI::Group("炎の弾・砲口・命中のエフェクト"))
     FIELD(float, shellScale, 1.0f, "火の弾の源の大きさ倍率（0 は無効）", HIKARI::Range(0.0f, 8.0f))
@@ -170,13 +168,13 @@ struct GourdShot : HIKARI::Component {
           "命中の爆発エフェクト")
     FIELD(float, impactScale, 1.0f, "命中の爆発の源の大きさ倍率（0 は無効）", HIKARI::Range(0.0f, 8.0f))
     FIELD(float, impactFarScale, 0.6f, "射程端で命中した時の爆発の倍率", HIKARI::Range(0.0f, 1.0f))
-    FIELD(float, impactStandoff, 0.6f, "爆発を出す位置を命中点から撃った側へ戻す距離 (m)", HIKARI::Range(0.0f, 3.0f),
-          HIKARI::Tip("流体の域は同時に 6 個までしか描けません。連射中は、"
-                      "砲口の炎 1・命中の爆発 2・弾 2 を超える分を古いものから止めます（場の霧が消えないようにす"
-                      "るため）。弾と砲口の資産は +X が前、爆発は世界の向き。倍率は源（噴き出し口）だけに効き、"
-                      "流体の域の大きさは資産の値です。炎の色・明るさ・消える速さ・画面の波紋は各資産で調整します。"
-                      "爆発を敵の体に重ねて出すと隠れて小さく暗く見えるので、少し手前で出します。霧散（射程切れ）"
-                      "では爆発を出しません。"))
+    FIELD(float, impactStandoff, 0.6f, "爆発を出す位置を命中点から撃った側へ戻す距離 (m)", HIKARI::Range(0.0f, 3.0f))
+    NOTE("流体の域は同時に 6 個までしか描けません。連射中は、砲口の炎 1・命中の爆発 2・弾 2 を超える分を"
+         "古いものから止めます（場の霧が消えないようにするため）。")
+    NOTE("弾と砲口の資産は +X が前、爆発は世界の向き。倍率は源（噴き出し口）だけに効き、流体の域の"
+         "大きさは資産の値です。炎の色・明るさ・消える速さ・画面の波紋は各資産で調整します。")
+    NOTE("爆発を敵の体に重ねて出すと隠れて小さく暗く見えるので、少し手前で出します。霧散（射程切れ）"
+         "では爆発を出しません。")
     // 火弾（GourdProjectile.fire）の見た目（c-5d738d）。ふだんの弾と同じ枠・同じ入力の、別の資産で出す
     // （流体域の数は増やさない）。資産を空にすると、その部分はふだんの弾の資産と倍率で出る。
     FIELD(HIKARI::VfxAsset, fireShellEffect, (HIKARI::VfxAsset{"7e5d6bba578986bc1203bc0bac526420"}),
@@ -197,13 +195,12 @@ struct GourdShot : HIKARI::Component {
     // 火弾の命中の手応え：カメラの押しと視野角の広がりに掛ける倍率（揺れ幅には掛けない。連射で震え続けない）と、
     // 止めの F 数（相手の Damageable.hitStopFrames より長い時だけ効く）。
     FIELD(float, fireHitCameraScale, 1.5f, "火弾の命中：カメラの押しと視野角の広がりの倍率", HIKARI::Range(0.0f, 10.0f))
-    FIELD(int, fireHitStopFrames, 3, "火弾の命中の止め (F。相手の止めより長い時だけ効く)", HIKARI::Range(0, 60),
-          HIKARI::Tip("火弾（火を吸った後の弾）は、ふだんの弾と同じ枠で、"
-                      "火弾用の資産に替えて出します（流体の域の数は増えません）。"
-                      "色・明るさ・太さ・消える速さは各資産で調整します。始まりの合図は、"
-                      "火弾の状態が始まった時に 1 回だけ出ます（吸い続けて残りを延ばした時は出ません）。"
-                      "火弾の発射のカメラ・色ずれ・振動の倍率は「発射の手応え」にあります。命中の倍率は、"
-                      "相手のDamageable の命中のカメラの値に掛けます（揺れ幅には掛けません）。"))
+    FIELD(int, fireHitStopFrames, 3, "火弾の命中の止め (F。相手の止めより長い時だけ効く)", HIKARI::Range(0, 60))
+    NOTE("火弾（火を吸った後の弾）は、ふだんの弾と同じ枠で、火弾用の資産に替えて出します（流体の域の数は"
+         "増えません）。色・明るさ・太さ・消える速さは各資産で調整します。始まりの合図は、火弾の状態が"
+         "始まった時に 1 回だけ出ます（吸い続けて残りを延ばした時は出ません）。")
+    NOTE("火弾の発射のカメラ・色ずれ・振動の倍率は「発射の手応え」にあります。命中の倍率は、相手の"
+         "Damageable の命中のカメラの値に掛けます（揺れ幅には掛けません）。")
     FIELD(HIKARI::VfxAsset, trailEffect, {}, "弾道の流体注入エフェクト", HIKARI::Group("煙の演出"))
     FIELD(float, muzzleRadius, 0.65f, "砲口の押し広げ半径 (m)", HIKARI::Range(0.01f, 10.0f))
     FIELD(float, muzzleStrength, 7.0f, "砲口の押し広げ速度 (m/s)", HIKARI::Range(0.0f, 100.0f))
@@ -217,19 +214,19 @@ struct GourdShot : HIKARI::Component {
           HIKARI::Range(0.0f, 200.0f))
     FIELD(float, shellWakeRadius, 0.8f, "弾が霧を割る力の半径 (m)", HIKARI::Range(0.05f, 10.0f))
     FIELD(
-        float, shellWakeSpread, 0.5f, "弾道の左右へ力を置く幅 (m)", HIKARI::Range(0.0f, 5.0f),
-        HIKARI::Tip(
-            "霧を押す力は、重なっている流体の域すべてに効きます。爆発の炎の域を吹き飛ばさないように、爆ぜた点の真下の地面で押します（高い所ほど弱い）。"))
+        float, shellWakeSpread, 0.5f, "弾道の左右へ力を置く幅 (m)", HIKARI::Range(0.0f, 5.0f))
+    NOTE("霧を押す力は、重なっている流体の域すべてに効きます。爆発の炎の域を吹き飛ばさないように、"
+         "爆ぜた点の真下の地面で押します（高い所ほど弱い）。")
     FIELD(float, residueRadius, 0.75f, "残り煙の注入半径 (m)", HIKARI::Range(0.01f, 100.0f))
     FIELD(float, residueSmokeRate, 0.0f, "残り煙の注入率 (/s)", HIKARI::Range(0.0f, 10000.0f))
     FIELD(int, residueFrames, 24, "残り煙を補い続ける時間 (F)", HIKARI::Range(0, 7200))
     FIELD(HIKARI::Color, smokeColor, (HIKARI::Color{0.86f, 0.88f, 0.92f, 1.0f}), "尾煙・残り煙の色")
     FIELD(float, trailSmokeScale, 0.0f, "尾煙の注入量倍率", HIKARI::Range(0.0f, 10.0f))
-    FIELD(float, fallbackTrailRate, 6.0f, "注入エフェクト未設定時の尾煙率 (/s)", HIKARI::Range(0.0f, 10000.0f),
-          HIKARI::Tip("尾煙は input.amount を濃さ倍率に使います。VFX 注入源は全砲撃合計 8 個、"
-                      "Fluid 提出は合計 24 個／描画フレームまで。砲口の煙・残り煙・尾煙は既定で 0（切）"
-                      "です。場の霧へ入れる煙は炎の域にも入り、炎を暗い煙で包んでしまうので、"
-                      "煙は炎の域が出す煤に任せています。"))
+    FIELD(float, fallbackTrailRate, 6.0f, "注入エフェクト未設定時の尾煙率 (/s)", HIKARI::Range(0.0f, 10000.0f))
+    NOTE("尾煙は input.amount を濃さ倍率に使います。VFX 注入源は全砲撃合計 8 個、Fluid 提出は合計 24 "
+         "個／描画フレームまで。")
+    NOTE("砲口の煙・残り煙・尾煙は既定で 0（切）です。場の霧へ入れる煙は炎の域にも入り、炎を暗い煙で"
+         "包んでしまうので、煙は炎の域が出す煤に任せています。")
     // 1 発の戻りは 1 発の消費（SmokeArena は 15）より少なくする：多いと、場の霧が無くても足元へ撃って吸い直すだけで
     // 煙が増える（2026-11-17 に 20 → 8）。通り道へは戻さず、当たった所だけに湧かせる（0.3 → 0）。
     FIELD(float, fogReturnSmoke, 8.0f, "1 発が場の霧へ戻す煙の量（0 は戻さない）", HIKARI::Range(0.0f, 1000.0f),
@@ -248,14 +245,17 @@ struct GourdShot : HIKARI::Component {
     FIELD(float, fogReturnClearance, 3.4f, "炎の域からこの距離 (m) 以内には落とさず、炎が消えるまで待つ",
           HIKARI::Range(0.0f, 20.0f))
     FIELD(int, impactFireFrames, 48, "命中の爆発の域が残る時間 (F、資産の長さに合わせる)", HIKARI::Range(0, 600))
-    FIELD(int, muzzleFireFrames, 18, "砲口の炎の域が残る時間 (F、資産の長さに合わせる)", HIKARI::Range(0, 600),
-          HIKARI::Tip("吸って撃った煙は、弾の通り道と終点（命中・射程切れ）の地面へ冷たい煙として戻り、また吸えます。"
-                      "戻す量は一発の煙消費とは別の値です（消費を 0 にして試し撃ちしても戻ります）。"
-                      "戻す量は一発の消費より少なくしておきます（多いと、"
-                      "場の霧が無くても足元へ撃って吸い直すだけで煙が増えます）。"
-                      "場の霧へ入れる煙は重なっている炎の域にも入るので、炎が消えるまで待ってから落とします。"
-                      "同じ場所へ撃ち続けると、撃ち終えた後にまとめて湧きます。"
-                      "地面に届かない高さで終わった弾の煙は戻りません。"))
+    FIELD(int, muzzleFireFrames, 18, "砲口の炎の域が残る時間 (F、資産の長さに合わせる)", HIKARI::Range(0, 600))
+    NOTE("吸って撃った煙は、弾の通り道と終点（命中・射程切れ）の地面へ"
+         "冷たい煙として戻り、また吸えます。"
+         "戻す量は一発の煙消費とは別の値です（消費を 0 "
+         "にして試し撃ちしても戻ります）。"
+         "戻す量は一発の消費より少なくしておきます（多いと、場の霧が無くても足元へ撃って吸い直すだけで"
+         "煙が増えます）。")
+    NOTE("場の霧へ入れる煙は重なっている炎の域にも入るので、炎が消える"
+         "まで待ってから落とします。"
+         "同じ場所へ撃ち続けると、撃ち終えた後にまとめて湧きます。地面"
+         "に届かない高さで終わった弾の煙は戻りません。")
     FIELD(int, traceEveryFrames, 0, "弾道ログ間隔（0 はログ無効）", HIKARI::Range(0, 7200), HIKARI::Group("検証"))
 
     GourdFeedback feedback{};

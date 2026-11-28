@@ -14,6 +14,7 @@
 #include "../Boss/BossMath.h"
 #include "../Boss/BossPose.h"
 #include "../Boss/BossRules.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 
@@ -52,7 +53,7 @@ constexpr std::string_view kRootNode = "Boss_Rig";
 constexpr std::string_view kSkeletonRoot = "Hips";
 
 // 技の規則の時計：技を始めてからの経過 F（前隙・攻撃中・後隙を通して）。
-float MoveElapsed(const BossComponent& boss, const BossMove& move) {
+float MoveElapsed(const Boss& boss, const BossMove& move) {
     const float t = static_cast<float>(boss.stateFrame);
     switch (boss.phase) {
     case BossActPhase::Pre: return t;
@@ -68,7 +69,7 @@ void Show(HIKARI::ObjectView object, BossAnimBodyState& state) {
     state.shown = 1;
 }
 
-const BossClipSwordTrack* TrackOf(const BossComponent& boss, const std::string& clip) {
+const BossClipSwordTrack* TrackOf(const Boss& boss, const std::string& clip) {
     for (const BossClipSwordTrack& track : boss.clipSwords.tracks) {
         if (track.clip == clip)
             return &track;
@@ -109,7 +110,7 @@ struct Bones {
     bool tassetsRead = false;
 };
 
-bool ReadBones(const HIKARI::AnimationView& animation, uint64_t handle, const BossAnimBodySettings& settings,
+bool ReadBones(const HIKARI::AnimationView& animation, uint64_t handle, const Boss& settings,
                const HIKARI::GameProjectTransform& placed, Bones& out) {
     const auto read = [&](std::string_view name, HIKARI::GameProjectTransform& bone) {
         HIKARI::GameProjectTransform local{};
@@ -121,10 +122,10 @@ bool ReadBones(const HIKARI::AnimationView& animation, uint64_t handle, const Bo
         bone.scale = placed.scale;
         return true;
     };
-    if (!(read("Spine2", out.chest) && read("Head", out.head) && read(settings.swordNode, out.sword) &&
+    if (!(read("Spine2", out.chest) && read("Head", out.head) && read(settings.animBodySwordNode, out.sword) &&
           read("RightArm", out.rightArm) && read("RightForeArm", out.rightFore) && read("RightHand", out.rightHand) &&
           read("LeftArm", out.leftArm) && read("LeftForeArm", out.leftFore) &&
-          read(settings.leftHandNode, out.leftHand)))
+          read(settings.animBodyLeftHandNode, out.leftHand)))
         return false;
     out.tassetsRead = true;
     for (size_t k = 0; k < kTassetNodes.size(); ++k)
@@ -159,25 +160,25 @@ void PoseFromBones(const Bones& b, BossBodyPose& pose) {
 
 // 待機のクリップの始め（時刻 0）の刀の骨を、まだ読んでいなければ 1 度だけ読む（c-164cab。模型の空間）。固定 tick の
 // 中で読むので、規則の剣の構えが描画のフレームに頼らない。
-void PrepareIdleSword(HIKARI::WorldView& world, BossComponent& boss) {
-    const BossAnimBodySettings& settings = boss.animBody;
+void PrepareIdleSword(HIKARI::WorldView& world, Boss& boss) {
+    const Boss& settings = boss;
     BossClipSwords& state = boss.clipSwords;
-    if (state.idleReady || state.idleFailed || settings.idleClip.empty())
+    if (state.idleReady || state.idleFailed || settings.animBodyIdleClip.empty())
         return;
-    const HIKARI::ObjectView object = world.FindSceneObject(settings.object);
+    const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(settings.animBodyObject));
     const HIKARI::AnimationView animation = world.GetAnimation();
     if (!object.IsValid() || !animation.IsValid())
         return;
-    const std::array<std::string_view, 1> names{settings.swordNode};
+    const std::array<std::string_view, 1> names{settings.animBodySwordNode};
     HIKARI::GameProjectTransform out{};
-    if (!animation.SampleSocketTransformsAtTime(object.GetHandle().value, settings.idleClip, 0.0f, 0u, names.data(),
+    if (!animation.SampleSocketTransformsAtTime(object.GetHandle().value, settings.animBodyIdleClip, 0.0f, 0u, names.data(),
                                                 static_cast<uint32_t>(names.size()),
                                                 HIKARI::GameProjectAnimationSocketSpace::Local, &out)) {
         state.idleFailed = true;
         char message[256]{};
         std::snprintf(message, sizeof(message),
                       "[AnimBody] 待機のクリップ「%s」の刀の骨（%s）を読めません。技の外の規則の剣は休めの構えにします",
-                      settings.idleClip.c_str(), settings.swordNode.c_str());
+                      settings.animBodyIdleClip.c_str(), settings.animBodySwordNode.c_str());
         BossLog::Warn(message);
         return;
     }
@@ -185,7 +186,7 @@ void PrepareIdleSword(HIKARI::WorldView& world, BossComponent& boss) {
     state.idleRotation = out.rotation;
     state.idleReady = true;
     char message[200]{};
-    std::snprintf(message, sizeof(message), "[AnimBody] IdleSword %s grip=(%.2f,%.2f,%.2f)", settings.idleClip.c_str(),
+    std::snprintf(message, sizeof(message), "[AnimBody] IdleSword %s grip=(%.2f,%.2f,%.2f)", settings.animBodyIdleClip.c_str(),
                   static_cast<double>(out.position.x), static_cast<double>(out.position.y),
                   static_cast<double>(out.position.z));
     BossLog::Write(message);
@@ -201,44 +202,14 @@ void Hide(HIKARI::ObjectView object, BossAnimBodyState& state) {
 
 } // namespace
 
-void BossAnimBodySettings::Describe(HIKARI::PropertyFields& fields) {
-    if (!fields.Section("骨格の体（技をモーションで見せる体。登場の役者と同じ骨格）", false))
-        return;
-    fields.Note(
-        "この物体（模型と動画の部品を持つ）をボスの足元と向きに置いて流します。待機のクリップはどの状態でも流し、"
-        "技のクリップは技の表の「アニメーション」の列、長さはクリップの長さの表と区間の表で決まります。流せるクリップが"
-        "無い間は隠します。「クリップの刀で当てる」を入れると、"
-        "刀の当たり・斬撃の面・刀の煙・刀光がクリップの刀の骨に付いて行きます（当たりの窓は区間の表どおり）。");
-    fields.SceneObject("animBodyObject", "骨格の体の物体（模型と動画の部品を持つ。無ければ使わない）", object);
-    fields.Float("animBodyScale", "骨格の体の大きさの倍率", scale, 0.1f, 10.0f);
-    fields.Text("animBodyIdleClip", "技を出していない間に繰り返すクリップ（空なら技のクリップの間だけ出す）", idleClip);
-    fields.Float("animBodyBlendSeconds", "クリップを替える時に混ぜる長さ (秒)", blendSeconds, 0.0f, 2.0f);
-    fields.Bool("animBodyClipSword", "クリップの刀で当てる（当たり・斬撃・刀の煙・刀光をクリップの刀の骨に合わせる）",
-                clipSword);
-    fields.Text("animBodySwordNode", "刀の骨の名前（模型の節点）", swordNode);
-    fields.Text("animBodyLeftHandNode", "左手の骨の名前（模型の節点。左手の技の弾を出す所）", leftHandNode);
-    fields.Float("animBodyTwoHandNear", "両手の霧の刀：左手が柄からこの距離 (m) 以下で両手で握った", twoHandNear, 0.0f,
-                 10.0f);
-    fields.Float("animBodyTwoHandFar", "…この距離 (m) 以上で片手（間はなめらかに）", twoHandFar, 0.0f, 10.0f);
-    fields.Float("animBodyTwoHandReach", "…両手で握った刀の当たりを剣先の先へ伸ばす長さ (m)", twoHandReach, 0.0f,
-                 20.0f);
-    fields.Float("animBodyTwoHandMist", "…刀身に沿って場の霧へ入れる霧（毎秒。剣の煙と同じ単位。0 は出さない）",
-                 twoHandMist, 0.0f, 500.0f);
-    fields.Float("animBodyTwoHandMistRadius", "…霧を入れる半径 (m)", twoHandMistRadius, 0.1f, 10.0f);
-    fields.Float("animBodyLeftHandMist", "左手にまとう霧（毎秒。剣の煙と同じ単位。0 は出さない）", leftHandMist, 0.0f,
-                 500.0f);
-    fields.Float("animBodyLeftHandMistRadius", "…霧を入れる半径 (m)", leftHandMistRadius, 0.1f, 10.0f);
-    fields.Float("animBodyLeftHandMistSwirl", "…霧が左手の周りを回る速さ (m/秒)", leftHandMistSwirl, 0.0f, 50.0f);
-}
-
-bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, BossBodyComponent& look,
+bool BossAnimBody::Update(HIKARI::WorldView& world, const Boss& boss, BossBody& look,
                           const HIKARI::GameProjectTransform& body, float alpha, float seconds) {
-    const BossAnimBodySettings& settings = boss.animBody;
+    const Boss& settings = boss;
     BossAnimBodyState& state = look.anim;
     state.active = false;
-    if (settings.object == 0u)
+    if (!settings.animBodyObject.IsAlive())
         return false;
-    const HIKARI::ObjectView object = world.FindSceneObject(settings.object);
+    const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(settings.animBodyObject));
     const HIKARI::AnimationView animation = world.GetAnimation();
     if (!object.IsValid() || !animation.IsValid()) {
         if (!state.warned) {
@@ -264,9 +235,9 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
                   : (move != nullptr && !move->clip.empty() && move->clip != state.failedClip ? &move->clip : nullptr);
     // 待機のクリップ（刀を肩に担ぐ姿）はどの状態でも下の層に流す（c-db1a15。気絶・撃破・変わり目の演出・クリップの
     // 無い技の間も、待機の姿で効果だけを出す）。
-    const bool idle = !settings.idleClip.empty() && settings.idleClip != state.failedClip;
+    const bool idle = !settings.animBodyIdleClip.empty() && settings.animBodyIdleClip != state.failedClip;
     if (moveClip == nullptr && !state.layerClip.empty()) {
-        (void)animation.ClearMaskedPoseLayer(handle, settings.blendSeconds);
+        (void)animation.ClearMaskedPoseLayer(handle, settings.animBodyBlendSeconds);
         state.layerClip.clear();
         state.layerOffSeconds = 0.0f;
     }
@@ -294,10 +265,10 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
         return false;
     };
     // 下の層：待機のクリップを繰り返す（無ければ骨格の初期の姿のまま、技のクリップの層が全身を覆う）。
-    if (idle && state.playing != settings.idleClip) {
-        if (!animation.CrossFade(handle, settings.idleClip, settings.blendSeconds, 1u, 1u))
-            return fail(settings.idleClip);
-        state.playing = settings.idleClip;
+    if (idle && state.playing != settings.animBodyIdleClip) {
+        if (!animation.CrossFade(handle, settings.animBodyIdleClip, settings.animBodyBlendSeconds, 1u, 1u))
+            return fail(settings.animBodyIdleClip);
+        state.playing = settings.animBodyIdleClip;
     }
     // 上の層：技のクリップを、技の規則の時計の時刻の姿で重ねる。長さはクリップの長さ（表から決めた時）か技の長さ。
     if (moveClip != nullptr) {
@@ -320,8 +291,8 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
             // 技から技へ続く時・外している途中で次の技が始まった時は 1 のまま（1 つの層しか無いので、混ぜる元が無い）。
             if (state.layerClip != *moveClip)
                 state.layerFromIdle =
-                    idle && state.layerClip.empty() && state.layerOffSeconds >= std::max(0.0f, settings.blendSeconds);
-            const float blendFrames = std::max(1.0f, settings.blendSeconds * 60.0f);
+                    idle && state.layerClip.empty() && state.layerOffSeconds >= std::max(0.0f, settings.animBodyBlendSeconds);
+            const float blendFrames = std::max(1.0f, settings.animBodyBlendSeconds * 60.0f);
             weight = state.layerFromIdle ? BossMath::Smooth(elapsed / blendFrames) : 1.0f;
         } else {
             // 演出はカットで入るので、混ぜずに初めから全身をクリップの姿にする。
@@ -353,20 +324,20 @@ bool BossAnimBody::Update(HIKARI::WorldView& world, const BossComponent& boss, B
     HIKARI::GameProjectTransform placed{};
     placed.position = {body.position.x, body.position.y - boss.bodyHalfHeight * body.scale.y, body.position.z};
     placed.rotation = YawRotation(BossPose::BodyYaw(boss));
-    placed.scale = {settings.scale, settings.scale, settings.scale};
+    placed.scale = {settings.animBodyScale, settings.animBodyScale, settings.animBodyScale};
     (void)object.SetWorldTransform(placed);
     state.placed = placed;
     state.active = true;
     return true;
 }
 
-void BossAnimBody::Stop(HIKARI::WorldView& world, const BossComponent& boss, BossBodyComponent& look) {
+void BossAnimBody::Stop(HIKARI::WorldView& world, const Boss& boss, BossBody& look) {
     BossAnimBodyState& state = look.anim;
     state.active = false;
     state.playing.clear();
-    if (boss.animBody.object == 0u)
+    if (!boss.animBodyObject.IsAlive())
         return;
-    if (const HIKARI::ObjectView object = world.FindSceneObject(boss.animBody.object); object.IsValid()) {
+    if (const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(boss.animBodyObject)); object.IsValid()) {
         if (!state.layerClip.empty() && world.GetAnimation().IsValid())
             (void)world.GetAnimation().ClearMaskedPoseLayer(object.GetHandle().value, 0.0f);
         state.layerClip.clear();
@@ -374,12 +345,12 @@ void BossAnimBody::Stop(HIKARI::WorldView& world, const BossComponent& boss, Bos
     }
 }
 
-bool BossAnimBody::Showing(const BossBodyComponent* look) { return look != nullptr && look->anim.active; }
+bool BossAnimBody::Showing(const BossBody* look) { return look != nullptr && look->anim.active; }
 
-void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
-    const BossAnimBodySettings& settings = boss.animBody;
+void BossAnimBody::PrepareSword(HIKARI::WorldView& world, Boss& boss) {
+    const Boss& settings = boss;
     BossClipSwords& state = boss.clipSwords;
-    if (!settings.clipSword || settings.object == 0u)
+    if (!settings.animBodyClipSword || !settings.animBodyObject.IsAlive())
         return;
     PrepareIdleSword(world, boss);
     // 読んでいないクリップ（表を読み直した時に増えたものも）。
@@ -397,12 +368,12 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
     }
     if (wanted.empty())
         return;
-    const HIKARI::ObjectView object = world.FindSceneObject(settings.object);
+    const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(settings.animBodyObject));
     const HIKARI::AnimationView animation = world.GetAnimation();
     if (!object.IsValid() || !animation.IsValid())
         return;
     const uint64_t handle = object.GetHandle().value;
-    const std::array<std::string_view, 2> names{settings.swordNode, settings.leftHandNode};
+    const std::array<std::string_view, 2> names{settings.animBodySwordNode, settings.animBodyLeftHandNode};
     for (const BossMove* move : wanted) {
         BossClipSwordTrack track;
         track.clip = move->clip;
@@ -428,7 +399,7 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
             state.failed.push_back(move->clip);
             std::snprintf(message, sizeof(message),
                           "[AnimBody] クリップ「%s」の刀の骨（%s・%s）を読めません。この技は今までの構えの刀で当てます",
-                          move->clip.c_str(), settings.swordNode.c_str(), settings.leftHandNode.c_str());
+                          move->clip.c_str(), settings.animBodySwordNode.c_str(), settings.animBodyLeftHandNode.c_str());
             BossLog::Warn(message);
             continue;
         }
@@ -446,8 +417,8 @@ void BossAnimBody::PrepareSword(HIKARI::WorldView& world, BossComponent& boss) {
     }
 }
 
-bool BossAnimBody::ClipMove(const BossComponent& boss, const BossMove& move) {
-    return boss.animBody.clipSword && boss.animBody.object != 0u && !move.clip.empty() && move.clipFrames > 0 &&
+bool BossAnimBody::ClipMove(const Boss& boss, const BossMove& move) {
+    return boss.animBodyClipSword && boss.animBodyObject.IsAlive() && !move.clip.empty() && move.clipFrames > 0 &&
            TrackOf(boss, move.clip) != nullptr;
 }
 
@@ -475,12 +446,12 @@ uint32_t BossAnimBody::SwordFingerprint(const BossClipSwordTrack& track) {
     return hash;
 }
 
-uint32_t BossAnimBody::SwordFingerprint(const BossComponent& boss, const std::string& clip) {
+uint32_t BossAnimBody::SwordFingerprint(const Boss& boss, const std::string& clip) {
     const BossClipSwordTrack* track = TrackOf(boss, clip);
     return track != nullptr ? track->fingerprint : 0u;
 }
 
-void BossAnimBody::CheckAimFingerprints(BossComponent& boss) {
+void BossAnimBody::CheckAimFingerprints(Boss& boss) {
     BossClipSwords& state = boss.clipSwords;
     if (state.aimChecked || state.tracks.empty())
         return;
@@ -503,20 +474,20 @@ void BossAnimBody::CheckAimFingerprints(BossComponent& boss) {
     }
 }
 
-bool BossAnimBody::ClipSwordPose(const BossComponent& boss, BossSwordPose& out) {
+bool BossAnimBody::ClipSwordPose(const Boss& boss, BossSwordPose& out) {
     const BossMove* move = CurrentMove(boss);
     if (move == nullptr || !ClipMove(boss, *move))
         return false;
     const BossClipSwordTrack& track = *TrackOf(boss, move->clip);
     const float frame = MoveElapsed(boss, *move);
-    const float scale = boss.animBody.scale;
+    const float scale = boss.animBodyScale;
     const ClipSword now = SampleTrack(track, frame);
     const ClipSword next = SampleTrack(track, frame + 1.0f);
     out = BossSwordPose{};
     out.grip = BossMath::Mul(now.position, scale);
     out.direction = BladeDirection(now.rotation);
     // 両手で握った刀は霧をまとい、当たりが剣先の先へ伸びる（c-40f6c1）。
-    out.reach = boss.animBody.twoHandReach * TwoHand(boss);
+    out.reach = boss.animBodyTwoHandReach * TwoHand(boss);
     // 斬る向き：剣先の動き（次の F まで）の、刀に直交する成分（刀光が刃から先に進む向き）。動いていなければ決めない。
     const Vec3 tipNow = BossMath::Add(now.position, BossMath::Mul(out.direction, boss.swordLength));
     const Vec3 tipNext = BossMath::Add(next.position, BossMath::Mul(BladeDirection(next.rotation), boss.swordLength));
@@ -526,40 +497,40 @@ bool BossAnimBody::ClipSwordPose(const BossComponent& boss, BossSwordPose& out) 
     return true;
 }
 
-float BossAnimBody::TwoHand(const BossComponent& boss) {
+float BossAnimBody::TwoHand(const Boss& boss) {
     const BossMove* move = CurrentMove(boss);
     if (move == nullptr || !ClipMove(boss, *move))
         return 0.0f;
-    const BossAnimBodySettings& s = boss.animBody;
+    const Boss& s = boss;
     const ClipSword now = SampleTrack(*TrackOf(boss, move->clip), MoveElapsed(boss, *move));
     const float gap = BossMath::Length(BossMath::Sub(now.leftHand, now.position));
-    const float u = (s.twoHandFar - gap) / std::max(1e-3f, s.twoHandFar - s.twoHandNear);
+    const float u = (s.animBodyTwoHandFar - gap) / std::max(1e-3f, s.animBodyTwoHandFar - s.animBodyTwoHandNear);
     return BossMath::Smooth(u);
 }
 
-bool BossAnimBody::IdleSwordPose(const BossComponent& boss, BossSwordPose& out) {
+bool BossAnimBody::IdleSwordPose(const Boss& boss, BossSwordPose& out) {
     const BossClipSwords& state = boss.clipSwords;
     const BossMove* move = CurrentMove(boss);
     if (!state.idleReady || (move != nullptr && ClipMove(boss, *move)))
         return false;
     out = BossSwordPose{};
-    out.grip = BossMath::Mul(state.idlePosition, boss.animBody.scale);
+    out.grip = BossMath::Mul(state.idlePosition, boss.animBodyScale);
     out.direction = BladeDirection(state.idleRotation);
     return true;
 }
 
-bool BossAnimBody::LeftHandPoint(const BossComponent& boss, HIKARI::GameProjectFloat3& out) {
+bool BossAnimBody::LeftHandPoint(const Boss& boss, HIKARI::GameProjectFloat3& out) {
     const BossMove* move = CurrentMove(boss);
     if (move == nullptr || !ClipMove(boss, *move))
         return false;
     const ClipSword now = SampleTrack(*TrackOf(boss, move->clip), MoveElapsed(boss, *move));
     const Vec3 root{boss.ground.x, boss.ground.y + BossPose::RootHeight(boss), boss.ground.z};
     out = BossMath::Add(root,
-                        BossMath::RotateY(BossMath::Mul(now.leftHand, boss.animBody.scale), BossPose::BodyYaw(boss)));
+                        BossMath::RotateY(BossMath::Mul(now.leftHand, boss.animBodyScale), BossPose::BodyYaw(boss)));
     return true;
 }
 
-void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss, BossBodyComponent& look, float alpha,
+void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const Boss& boss, BossBody& look, float alpha,
                              float seconds, BossBodyPose& pose) {
     BossAnimBodyState& state = look.anim;
     const BossMove* move = CurrentMove(boss);
@@ -573,10 +544,10 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss
     }
     // 体に付く効果（刀光・刀の霞・手の光・まとう霧・胴の火と煙・目・変わり目の刀身の火）は、見えている骨格の骨の所に
     // 付ける（待機の姿の間も。c-40f6c1・c-bc5908）。
-    const HIKARI::ObjectView object = world.FindSceneObject(boss.animBody.object);
+    const HIKARI::ObjectView object = world.FindObject(HIKARI::Extend::HandleOf(boss.animBodyObject));
     Bones bones;
     if (object.IsValid() && world.GetAnimation().IsValid() &&
-        ReadBones(world.GetAnimation(), object.GetHandle().value, boss.animBody, state.placed, bones)) {
+        ReadBones(world.GetAnimation(), object.GetHandle().value, boss, state.placed, bones)) {
         PoseFromBones(bones, pose);
         // 腰（演出の間、胴の煙の域をここへ寄せる。クリップの中で体が下がる・戻るのに付いて行く）。
         HIKARI::GameProjectTransform hips{};
@@ -598,7 +569,7 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss
             state.bonesLogged = true;
             HIKARI::GameProjectTransform seen{};
             const bool read =
-                world.GetAnimation().GetSocketTransform(object.GetHandle().value, boss.animBody.swordNode,
+                world.GetAnimation().GetSocketTransform(object.GetHandle().value, boss.animBodySwordNode,
                                                         HIKARI::GameProjectAnimationSocketSpace::World, seen);
             char message[200]{};
             std::snprintf(message, sizeof(message),
@@ -610,7 +581,7 @@ void BossAnimBody::ApplyPose(HIKARI::WorldView& world, const BossComponent& boss
             BossLog::Write(message);
         }
     }
-    const float reach = BossBodyMath::VisibleSwordLength(boss, look.settings);
+    const float reach = BossBodyMath::VisibleSwordLength(boss, look);
     // クリップの刀で当たる技（層が重なり切った後）：刀は規則の時計の時刻のクリップの刀（当たり・斬撃と同じ）。
     if (move == nullptr || !ClipMove(boss, *move) || state.layerWeight < 0.999f) {
         if (!state.swordSeen)

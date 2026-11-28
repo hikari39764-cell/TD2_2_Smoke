@@ -18,7 +18,6 @@ public:
     // 半分ほど（poiseFlinchShare）なら怯んで後ろへ跳ぶ技を始める。どちらかを始めたら true。
     static bool ResolvePoise(BossFrame& frame);
     // 検査器の「フェーズと気絶」の項目（HP の条・気絶・崩し）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

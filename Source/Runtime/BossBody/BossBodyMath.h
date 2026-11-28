@@ -30,7 +30,7 @@ inline Vec3 Perpendicular(Vec3 v, Vec3 axis) {
 }
 
 // いま出している技（技の最中でなければ nullptr）。
-inline const BossMove* CurrentMove(const BossComponent& boss) {
+inline const BossMove* CurrentMove(const Boss& boss) {
     return BossRules::GetMove(boss, BossRules::GetCurrentMove(boss));
 }
 
@@ -38,25 +38,25 @@ inline const BossMove* CurrentMove(const BossComponent& boss) {
 // （c-857ae3）。変わり目の演出（c-8dd296）をする時は、その閃光（爆の、刀が地面を離れた tick。飛ばした時はその tick）で
 // 切り替わる。演出を切った時は、規則がフェーズ 2 に入った tick から。刀の火は規則の IsBladeLit が決めるので別（演出の
 // 間の刀身は BossPhaseShiftVisuals が決める）。
-inline bool PhaseTwoLook(const BossComponent& boss) { return boss.lastPhaseNumber >= 2 && !boss.phaseTwoLookPending; }
+inline bool PhaseTwoLook(const Boss& boss) { return boss.lastPhaseNumber >= 2 && !boss.phaseTwoLookPending; }
 
 // 見える刀の、剣の付け根から剣先までの長さ。当たりの線（剣の長さ＋剣先の霞）より先へは伸ばさない。
-inline float VisibleSwordLength(const BossComponent& boss, const BossBodySettings& body) {
-    const float authored = body.swordVisibleLength > 0.0f ? body.swordVisibleLength : boss.swordLength;
+inline float VisibleSwordLength(const Boss& boss, const BossBody& body) {
+    const float authored = body.bodySwordVisibleLength > 0.0f ? body.bodySwordVisibleLength : boss.swordLength;
     return std::min(authored, boss.swordLength + boss.swordHazeLength);
 }
 
 // 見える刀の、握りの中央から剣先までの長さ。
-inline float VisibleBladeReach(const BossComponent& boss, const BossBodySettings& body) {
-    return std::max(0.01f, VisibleSwordLength(boss, body) - body.swordGripAlong);
+inline float VisibleBladeReach(const Boss& boss, const BossBody& body) {
+    return std::max(0.01f, VisibleSwordLength(boss, body) - body.bodySwordGripAlong);
 }
 
 // 刀の模型の拡大（見える刀の長さに合わせる）と、手の模型の拡大。
-inline float SwordScale(const BossComponent& boss, const BossBodySettings& body) {
-    return VisibleBladeReach(boss, body) / std::max(0.01f, body.swordModelLength);
+inline float SwordScale(const Boss& boss, const BossBody& body) {
+    return VisibleBladeReach(boss, body) / std::max(0.01f, body.bodySwordModelLength);
 }
-inline float HandScale(const BossComponent& boss, const BossBodySettings& body) {
-    return SwordScale(boss, body) * body.handScale;
+inline float HandScale(const Boss& boss, const BossBody& body) {
+    return SwordScale(boss, body) * body.bodyHandScale;
 }
 
 } // namespace Project_TD2_2::BossBodyMath

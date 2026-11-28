@@ -23,7 +23,7 @@ using namespace BossMath;
 HIKARI::Vec3 ToGame(Vec3 value) { return {value.x, value.y, value.z}; }
 
 // 気絶：技を打ち切って沈み込み、動けなくなる（飛んでいる斬撃はそのまま）。気絶値がたまった時と、大技が崩れた時。
-void EnterStun(BossComponent& boss) {
+void EnterStun(Boss& boss) {
     ++boss.stunCount;
     boss.stun = 0.0f;
     BossMoveExecutor::Interrupt(boss);
@@ -37,7 +37,7 @@ void EnterStun(BossComponent& boss) {
     BossLog::Write(message);
 }
 
-void AddStun(BossComponent& boss, float amount) {
+void AddStun(Boss& boss, float amount) {
     if (amount <= 0.0f || boss.state == BossState::Stunned || boss.state == BossState::Dead ||
         (boss.stunLimit > 0 && boss.stunCount >= boss.stunLimit))
         return;
@@ -64,7 +64,7 @@ void AddStun(BossComponent& boss, float amount) {
 
 // 崩せる大技：前隙（溜めを含む）の間に表の「崩せる被弾数」だけ当てられたら、技を打ち切って気絶させる。
 // 当たりは Damageable が受け付けた命中（無敵で弾かれたものは数えない）。崩れた気絶も気絶の回数に数える。
-void CheckBreak(BossComponent& boss, uint64_t freshHits) {
+void CheckBreak(Boss& boss, uint64_t freshHits) {
     if (!boss.breakDuringWindup || freshHits == 0 || boss.state != BossState::Act || boss.phase != BossActPhase::Pre)
         return;
     const BossMove* move = BossRules::GetMove(boss, boss.move);
@@ -84,7 +84,7 @@ void CheckBreak(BossComponent& boss, uint64_t freshHits) {
 } // namespace
 
 uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageable& health) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     BossHealthBars::Prepare(boss, frame.shift, health);
     if (boss.testDamageAtFrame >= 0 && boss.testDamageDone < boss.testDamageRepeatCount &&
         static_cast<int64_t>(boss.tick) >=
@@ -110,7 +110,7 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
     // 始める（打ち切る前の体の高さを記録に書く）。
     const float rootBefore = BossPose::RootHeight(boss);
     if (BossHealthBars::CheckEmptied(boss, frame.shift, health, delta)) {
-        BossPhaseShift::Begin(boss, frame.shift, frame.playerCenter, frame.player != nullptr, rootBefore);
+        BossPhaseShiftRules::Begin(boss, frame.shift, frame.playerCenter, frame.player != nullptr, rootBefore);
     } else {
         CheckBreak(boss, hits);
         // 戻り（後隙）の間に当てた弾は、気絶値が多く入る（c-808641）。
@@ -149,7 +149,7 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
     // 弾をかわす霞歩の跳び始め（kasumiStepGuardFrames）は当たらない。登場の間（構えに収まるまで）と、フェーズの
     // 変わり目の間も当たらない。
     const bool shielded =
-        BossKasumiStep::Guarding(boss) || BossIntro::Shielded(frame.intro) || BossRules::IsPhaseShifting(boss);
+        BossKasumiStep::Guarding(boss) || BossIntroRules::Shielded(frame.intro) || BossRules::IsPhaseShifting(boss);
     if (shielded != boss.shieldApplied) {
         health.invulnerable = shielded;
         boss.shieldApplied = shielded;
@@ -161,7 +161,7 @@ uint64_t BossHealth::Sync(BossFrame& frame, HIKARI::ObjectView object, Damageabl
 }
 
 bool BossHealth::ResolvePoise(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (boss.state == BossState::Stunned || boss.state == BossState::Dead)
         return false;
     const float threshold = BossRules::GetStunThreshold(boss);
@@ -186,57 +186,6 @@ bool BossHealth::ResolvePoise(BossFrame& frame) {
     BossRules::CancelRequest(boss);
     BossMoveExecutor::Start(frame, row, 0);
     return true;
-}
-
-void BossHealth::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("フェーズと気絶", true)) {
-        fields.Float("phaseOneHealth", "HP の条 1 本目（フェーズ 1。0 で、Damageable の最大 HP を下の割合で分ける）",
-                     boss.phaseOneHealth, 0.0f, 100000.0f);
-        fields.Float("phaseTwoHealth",
-                     "HP の条 2 本目（フェーズ 2。1 本目が空になると満ちる。0 で、Damageable の最大 HP の残り）",
-                     boss.phaseTwoHealth, 0.0f, 100000.0f);
-        fields.Float("phaseOneShare", "条の値が 0 の時、ボス全体の HP のうち 1 本目にする割合", boss.phaseOneShare,
-                     0.05f, 0.95f);
-        fields.Int("phaseShiftFrames", "変わり目の長さ (F。変わり目の演出を切った時だけ。演出をする時は拍の長さの合計)",
-                   boss.phaseShiftFrames, 1, 3600);
-        fields.Note(
-            "HP はフェーズごとの条です。1 本目を空にすると、いまの技を打ち切って変わり目に入り（気絶値は 0 に"
-            "戻る）、同じ条が 2 本目として満ちて戻ります（余ったダメージは持ち越さない）。2 本目を空にすると撃破。"
-            "同じ物体の「被弾と HP」の最大 HP は、この 2 つの値で上書きします。火を残す技・火を使う技は"
-            "フェーズ 2 から（技の表の「残す火」の @フェーズ2 と「発生条件」）。");
-        fields.Float("stunMax", "気絶値（これだけたまると気絶）", boss.stunMax, 1.0f, 100000.0f);
-        fields.Float("stunMaxGrowth", "気絶するたびに気絶値を増やす割合（0.25 で 1 回ごとに +25%、0 で増えない）",
-                     boss.stunMaxGrowth, 0.0f, 10.0f, 0.01f);
-        fields.Int("stunLimit", "気絶する回数の上限（0＝上限なし）", boss.stunLimit, 0, 99);
-        fields.Int("stunFrames", "気絶している長さ (F)", boss.stunFrames, 1, 3600);
-        fields.Int("breakHitStopFrames", "崩し・気絶の止め (F、0 は無効)", boss.breakHitStopFrames, 0, 30);
-        fields.Float("breakHitStopScale", "崩し・気絶の止め中の時間倍率", boss.breakHitStopScale, 0.0f, 1.0f);
-        fields.Float("breakCameraAmplitude", "崩し・気絶のカメラ揺れ幅 (m、0 は無効)", boss.breakCameraAmplitude, 0.0f,
-                     1.0f);
-        fields.Int("breakCameraFrames", "崩し・気絶のカメラ揺れ時間 (F)", boss.breakCameraFrames, 0, 120);
-        fields.Float("breakCameraFrequency", "崩し・気絶のカメラ揺れ周波数 (Hz)", boss.breakCameraFrequency, 0.0f,
-                     60.0f);
-        fields.Float("breakRumbleLow", "崩し・気絶の振動：重いモーター (0〜1)", boss.breakRumbleLow, 0.0f, 1.0f);
-        fields.Float("breakRumbleHigh", "崩し・気絶の振動：軽いモーター (0〜1)", boss.breakRumbleHigh, 0.0f, 1.0f);
-        fields.Int("breakRumbleFrames", "崩し・気絶の振動時間 (F、0 は無効)", boss.breakRumbleFrames, 0, 120);
-        fields.Float("breakBlurShutter", "崩し・気絶の動きのぼかしの一瞬：シャッター角 (度、0 は無効)",
-                     boss.breakBlurShutter, 0.0f, 360.0f);
-        fields.Float("breakBlurPixels", "…ぼかしの長さの上限 (1080p の画素)", boss.breakBlurPixels, 0.0f, 64.0f);
-        fields.Int("breakBlurFrames", "…ぼかしが戻るまで (F)", boss.breakBlurFrames, 0, 120);
-        fields.Int("breakFlashFrames", "崩し・気絶の本体の光り (F、0 は無効)", boss.breakFlashFrames, 0, 120);
-        fields.Float("breakBlastScale",
-                     "崩し・気絶の瞬間に体から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で無効）",
-                     boss.breakBlastScale, 0.0f, 6.0f);
-        fields.Note("光り方（色・強さ・材質）は Damageable の被弾の発光と同じです。いまのボスの体（色を読める材質の無い"
-                    "カプセル）では光りは見えません。崩した合図は「体から弾ける塊」で見せます。");
-        fields.Float("stunDamageScale", "気絶中に受けるダメージ (倍)", boss.stunDamageScale, 0.0f, 10.0f);
-        fields.Float("stunDecayDelaySeconds", "気絶値が減り始めるまで (秒)", boss.stunDecayDelaySeconds, 0.0f, 120.0f);
-        fields.Float("stunDecayPerSecond", "気絶値が 1 秒に減る量", boss.stunDecayPerSecond, 0.0f, 10000.0f);
-        fields.Float("stunPerShot", "気絶値：煙弾 1 発", boss.stunPerShot, 0.0f, 10000.0f);
-        fields.Float("stunReferenceDamage", "…この威力の命中を 1 発とみなす（砲撃の基礎威力）",
-                     boss.stunReferenceDamage, 0.01f, 100000.0f);
-        fields.Note("気絶値は受けた威力に比例してたまります（遠くで弱まった弾は少なく）。気絶中はたまりません。");
-    }
 }
 
 } // namespace Project_TD2_2

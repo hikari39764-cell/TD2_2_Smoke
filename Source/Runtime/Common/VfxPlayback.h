@@ -16,6 +16,11 @@ inline HIKARI::GameProjectVfxAssetReference Reference(const HIKARI::VfxAsset& as
     return reference;
 }
 
+// 下の層の参照は、そのまま返す（項目の型が違う所と同じ呼び方で使えるように）。
+inline const HIKARI::GameProjectVfxAssetReference& Reference(const HIKARI::GameProjectVfxAssetReference& asset) {
+    return asset;
+}
+
 // 一度きりのエフェクト（当たった所の光・吸い取った合図など。入力は無い）を、世界の向きのまま一様な大きさで出す。
 // 受け付けられたら true。資産が空かどうかは呼ぶ側が見る（空なら出さないのが呼ぶ側の決まり）。
 inline bool PlayOneShot(HIKARI::WorldView& world, const HIKARI::GameProjectVfxAssetReference& asset,

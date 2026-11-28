@@ -9,13 +9,13 @@
 
 namespace Project_TD2_2 {
 
-class BossIntroComponent;
-class BossPhaseShiftComponent;
+struct BossIntro;
+struct BossPhaseShift;
 
 // 1 固定 tick ぶんの、ボスの処理に要るもの。参照はこの tick の中だけで使う。
 struct BossFrame {
     HIKARI::WorldView& world;
-    BossComponent& boss;
+    Boss& boss;
     // 同じ tick に見つかったプレイヤー（いなければ nullptr）。
     Player* player = nullptr;
     HIKARI::GameProjectFloat3 playerCenter{};
@@ -31,9 +31,9 @@ struct BossFrame {
     HIKARI::GameProjectFloat3 mouth{};
     bool hasMouth = false;
     // 同じ物体の登場の部品（無ければ nullptr：登場をしない。c-eb3b08）。
-    BossIntroComponent* intro = nullptr;
+    BossIntro* intro = nullptr;
     // 同じ物体のフェーズの変わり目の演出の部品（無ければ nullptr：演出をしない。c-3a0f87）。
-    BossPhaseShiftComponent* shift = nullptr;
+    BossPhaseShift* shift = nullptr;
 };
 
 // プレイヤーの真下の、ボスの地面の高さの点（ボスから見たプレイヤーの水平の向き・距離を測る）。
@@ -52,7 +52,7 @@ inline void Warn(const char* message) {
 } // namespace BossLog
 
 // 見た目の乱数（浮く高さ・移動の長さ・左右）。技の選び方の乱数とは別。
-inline float BossRandom(BossComponent& boss) {
+inline float BossRandom(Boss& boss) {
     boss.random = boss.random * 1103515245u + 12345u;
     return static_cast<float>((boss.random >> 8) & 0xFFFFFFu) / 16777216.0f;
 }

@@ -36,7 +36,7 @@ constexpr float kPullTurnShare = 0.5f;
 // 爆発の跡の煙の半径の下限 (m)。注入の量の換算（FluidEmit::EmitVolume）は 0 より大きい半径が要る。
 constexpr float kMinimumFogRadius = 0.05f;
 
-BossWave* FreeWave(BossComponent& boss) {
+BossWave* FreeWave(Boss& boss) {
     for (auto& wave : boss.waves) {
         if (!wave.active)
             return &wave;
@@ -47,7 +47,7 @@ BossWave* FreeWave(BossComponent& boss) {
     return &*oldest;
 }
 
-void LogWave(const BossComponent& boss, const BossWave& wave, const char* event) {
+void LogWave(const Boss& boss, const BossWave& wave, const char* event) {
     const BossMove* move = BossRules::GetMove(boss, wave.move);
     char message[512]{};
     std::snprintf(
@@ -67,7 +67,7 @@ void LogWave(const BossComponent& boss, const BossWave& wave, const char* event)
 // 斬撃・霧の弾を放った瞬間の手応え（カメラの打ち込み。c-e0a9c3 の続き）の強さを覚える：放った所がプレイヤーから
 // releaseCameraNear (m) より遠いと弱まり、releaseCameraRange (m) で 0。描画フレームの BossFeedback が使う。
 void NoteRelease(const BossFrame& frame, const BossWave& wave, float scale) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (frame.player == nullptr)
         return;
     const float distance = Length(Sub(frame.playerCenter, wave.position));
@@ -82,7 +82,7 @@ void NoteRelease(const BossFrame& frame, const BossWave& wave, float scale) {
 bool InCatch(const BossFrame& frame, Vec3 a, Vec3 b) {
     if (!frame.absorbing || frame.player == nullptr)
         return false;
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     const Vec3 ab = Sub(b, a);
     const float t = std::clamp(Dot(Sub(frame.playerCenter, a), ab) / std::max(1e-6f, Dot(ab, ab)), 0.0f, 1.0f);
     const Vec3 offset = Sub(Add(a, Mul(ab, t)), frame.playerCenter);
@@ -116,7 +116,7 @@ void Refuse(const BossFrame& frame, BossWave& wave) {
 // 吸い込みの扇に入った斬撃・ナイフを捕まえる。この tick から当たらず、火も残り煙も置かない。
 // 入りきった時に足す煙を、捕まえられる空きから先に引く（同じ tick に続けて入った分は、残りの空きで決まる）。
 void Capture(BossFrame& frame, BossWave& wave) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (frame.catchRoom != nullptr)
         *frame.catchRoom -= wave.absorbSmoke;
     // 同時に引き込んでいる分だけ遅らせて、順に入って見えるようにする。
@@ -151,7 +151,7 @@ void Capture(BossFrame& frame, BossWave& wave) {
 
 // 捕まえた斬撃・ナイフを、口へ 1 tick ぶん引き込む。入りきったら真。
 bool StepPull(const BossFrame& frame, BossWave& wave) {
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     wave.previousPosition = wave.position;
     ++wave.pullFrame;
     const float t =
@@ -191,7 +191,7 @@ bool StepPull(const BossFrame& frame, BossWave& wave) {
 
 // 霞の輪：広がりながら、輪の線がプレイヤーの体を通った時に当てる（高さは見ない。試作と同じ）。
 void StepRing(BossFrame& frame, BossWave& wave) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     for (int s = 0; s < kHitSubsteps; ++s) {
         wave.radius = std::min(wave.maxRadius, wave.radius + wave.speed * frame.dt / static_cast<float>(kHitSubsteps));
         wave.travelled = wave.radius;
@@ -230,7 +230,7 @@ void StepRing(BossFrame& frame, BossWave& wave) {
 bool BossWaves::Touches(const BossFrame& frame, Vec3 a, Vec3 b, float thickness) {
     if (frame.player == nullptr)
         return false;
-    const BossComponent& boss = frame.boss;
+    const Boss& boss = frame.boss;
     const Vec3 low = Add(frame.playerCenter, {0.0f, boss.playerHitLow, 0.0f});
     const Vec3 high = Add(frame.playerCenter, {0.0f, boss.playerHitHigh, 0.0f});
     return SegmentDistance(a, b, low, high) < thickness * 0.5f + boss.playerHitRadius;
@@ -240,7 +240,7 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
                           const char* source, bool fire, bool* dodged) {
     if (frame.player == nullptr || !PlayerRules::IsAlive(*frame.player))
         return false;
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove* row = BossRules::GetMove(boss, move);
     char message[320]{};
     if (PlayerRules::IsInvulnerable(*frame.player)) {
@@ -288,7 +288,7 @@ bool BossWaves::HitPlayer(BossFrame& frame, int damage, Vec3 direction, bool blo
     return accepted;
 }
 
-void BossWaves::SpendWave(BossComponent& boss, uint64_t waveId) {
+void BossWaves::SpendWave(Boss& boss, uint64_t waveId) {
     if (waveId == 0)
         return;
     for (auto& wave : boss.waves) {
@@ -298,7 +298,7 @@ void BossWaves::SpendWave(BossComponent& boss, uint64_t waveId) {
 }
 
 uint64_t BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove* move = BossRules::GetMove(boss, launch.move);
     if (move == nullptr)
         return 0;
@@ -333,7 +333,7 @@ uint64_t BossWaves::SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch) 
 }
 
 void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove* move = BossRules::GetMove(boss, moveIndex);
     if (move == nullptr)
         return;
@@ -366,7 +366,7 @@ void BossWaves::SpawnKnives(BossFrame& frame, int moveIndex, Vec3 from, Vec3 aim
 }
 
 void BossWaves::SpawnRing(BossFrame& frame, int moveIndex) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const BossMove* move = BossRules::GetMove(boss, moveIndex);
     if (move == nullptr)
         return;
@@ -399,7 +399,7 @@ void BossWaves::SpawnRing(BossFrame& frame, int moveIndex) {
 }
 
 void BossWaves::Step(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const float growPerFrame = 1.0f / static_cast<float>(std::max(1, boss.waveGrowFrames));
     for (auto& wave : boss.waves) {
         wave.smokeRate = 0.0f;
@@ -463,7 +463,7 @@ void BossWaves::Step(BossFrame& frame) {
             const float lag = ending ? 0.0f : std::max(0.0f, boss.burnLineLag);
             if (wave.travelled > lag) {
                 const Vec3 to = Sub(wave.position, Mul(wave.direction, lag));
-                BurnField::PaintSegment(frame.world, wave.burnFrom, to, wave.burnWidth, wave.burnSeconds);
+                BurnFieldAccess::PaintSegment(frame.world, wave.burnFrom, to, wave.burnWidth, wave.burnSeconds);
                 wave.burnFrom = to;
             }
         }
@@ -500,7 +500,7 @@ void BossWaves::Step(BossFrame& frame) {
     }
 }
 
-void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames,
+void BossWaves::AddDeposit(Boss& boss, Vec3 position, float smoke, float radius, int frames, int waitFrames,
                            Vec3 orbitCenter, float orbitStep) {
     if (smoke <= 0.0f)
         return;
@@ -538,7 +538,7 @@ void BossWaves::AddDeposit(BossComponent& boss, Vec3 position, float smoke, floa
     target->orbitStep = orbitStep;
 }
 
-void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
+void BossWaves::DeliverCatch(Boss& boss, const BossWave& wave) {
     boss.caught.smoke += wave.absorbSmoke;
     ++boss.caught.count;
     if (wave.fire)
@@ -547,14 +547,14 @@ void BossWaves::DeliverCatch(BossComponent& boss, const BossWave& wave) {
         ++boss.caught.knifeCount;
 }
 
-float BossWaves::GetPullingSmoke(const BossComponent& boss) {
+float BossWaves::GetPullingSmoke(const Boss& boss) {
     float smoke = 0.0f;
     for (const auto& wave : boss.waves)
         smoke += wave.active && wave.captured ? wave.absorbSmoke : 0.0f;
     return smoke;
 }
 
-void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
+void BossWaves::AddBlast(Boss& boss, const BossBlast& blast) {
     boss.blasts[boss.blastCursor++ % boss.blasts.size()] = blast;
     // 爆発の跡：真下の地面の近くへ、吸える煙を残す。
     if (!blast.leavesFog)
@@ -580,7 +580,7 @@ void BossWaves::AddBlast(BossComponent& boss, const BossBlast& blast) {
     BossLog::Write(message);
 }
 
-void BossWaves::StepDeposits(BossComponent& boss) {
+void BossWaves::StepDeposits(Boss& boss) {
     for (auto& deposit : boss.deposits) {
         deposit.rate = 0.0f;
         if (!deposit.active)
@@ -603,82 +603,13 @@ void BossWaves::StepDeposits(BossComponent& boss) {
     }
 }
 
-void BossWaves::Clear(BossComponent& boss) {
+void BossWaves::Clear(Boss& boss) {
     for (auto& wave : boss.waves)
         wave = {};
     for (auto& deposit : boss.deposits)
         deposit = {};
     for (auto& blast : boss.blasts)
         blast = {};
-}
-
-void BossWaves::DescribeAbsorb(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("吸い込み")) {
-        fields.Float("absorbCatchRange", "吸い込み：斬撃・ナイフを吸える距離 (m)", boss.absorbCatchRange, 0.0f, 50.0f);
-        fields.Float("absorbCatchAngle", "吸い込み：吸える角度（片側、度）", boss.absorbCatchAngle, 0.0f, 180.0f);
-        fields.Float("absorbCatchNear", "吸い込み：向きを問わず吸える近さ (m)", boss.absorbCatchNear, 0.0f, 10.0f);
-        fields.Int("absorbPullFrames", "引き込み：捕まえた斬撃が口へ入りきるまで (F)", boss.absorbPullFrames, 1, 240);
-        fields.Int("knifePullFrames", "引き込み：捕まえたナイフが口へ入りきるまで (F)", boss.knifePullFrames, 1, 240);
-        fields.Float("absorbPullEasePower", "引き込み：初めゆっくり・終わり速くの強さ（1 は一定の速さ）",
-                     boss.absorbPullEasePower, 0.1f, 8.0f);
-        fields.Float("absorbPullSwirlDegrees", "引き込み：巻き込む弧（出だしを口への線から横へ振る角度、度）",
-                     boss.absorbPullSwirlDegrees, 0.0f, 85.0f);
-        fields.Float("absorbPullEndScale", "引き込み：入りきる時の大きさ（元の大きさに対する割合）",
-                     boss.absorbPullEndScale, 0.01f, 1.0f);
-        fields.Int("absorbPullStaggerFrames", "引き込み：同時に捕まえた分を、順に入れる間隔 (F)",
-                   boss.absorbPullStaggerFrames, 0, 60);
-        fields.Float("absorbPullTurn", "引き込み：三日月の端を口へ向ける割合（0 は向きを変えない）",
-                     boss.absorbPullTurn, 0.0f, 1.0f);
-        fields.Float("absorbPullFly", "引き込み：刃の霧の量（飛んでいる時を 1 として。0 は霧を出さない）",
-                     boss.absorbPullFly, 0.0f, 4.0f);
-        fields.Float("absorbPullPinch", "引き込み：入りきる時の刃の細さ（厚み・前後の倍率。1 はそのまま）",
-                     boss.absorbPullPinch, 0.05f, 1.0f);
-        fields.Float("absorbPullFadeSeconds", "引き込み：入りきった後、残った霧と光が消えるまで (秒)",
-                     boss.absorbPullFadeSeconds, 0.0f, 2.0f);
-        fields.Float("absorbPullSqueeze", "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)",
-                     boss.absorbPullSqueeze, 0.0f, 5000.0f);
-        fields.Float("absorbPullSqueezeRadius", "…その力の半径 (m)", boss.absorbPullSqueezeRadius, 0.1f, 20.0f);
-        fields.Float("absorbBiteGlow", "噛む：捕まった瞬間に、刃の光の層を膨らませる量（0 は膨らませない）",
-                     boss.absorbBiteGlow, 0.0f, 4.0f);
-        fields.Float("absorbBiteGlowSeconds", "…膨らみが引くまで (秒)", boss.absorbBiteGlowSeconds, 0.01f, 2.0f);
-        fields.Vfx("absorbTrailEffect", "引き込み：刃が通った所に残す光の尾のエフェクト（空なら出さない）",
-                   boss.absorbTrailEffect);
-        fields.Float3("absorbTrailMistColor", "…霞の刃・ナイフの尾の色と明るさ", boss.absorbTrailMistColor);
-        fields.Float3("absorbTrailFireColor", "…火の刃の尾の色と明るさ", boss.absorbTrailFireColor);
-    }
-}
-
-void BossWaves::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("剣と斬撃の出方")) {
-        fields.Float3("swordShoulder", "剣を持つ肩の位置（体の足元から、局所 m）", boss.swordShoulder);
-        fields.Float("swordLength", "剣の長さ (m)", boss.swordLength, 0.1f, 20.0f);
-        fields.Float("swordHazeLength", "剣先の霞の長さ (m)", boss.swordHazeLength, 0.0f, 10.0f);
-        fields.Float("waveForward", "斬撃を放つ位置：体の前 (m)", boss.waveForward, 0.0f, 10.0f);
-        fields.Float("waveMinHeight", "斬撃を放つ高さ 最低 (m)", boss.waveMinHeight, 0.0f, 10.0f);
-        fields.Float("waveMaxHeight", "斬撃を放つ高さ 最高 (m、跳んだ高さを足す)", boss.waveMaxHeight, 0.0f, 10.0f);
-        fields.Bool("waveFromBlade", "斬撃を、振った刀の通った所・面・時に合わせて放つ", boss.waveFromBlade);
-        fields.Float("waveCutShare", "…刀が正面を斬る部分の始まり（振りの長さに対する割合）", boss.waveCutShare, 0.0f,
-                     0.95f);
-        fields.Float("waveBladeShare", "…斬撃の中心を置く刃の位置（0 は付け根、1 は剣先）", boss.waveBladeShare, 0.0f,
-                     1.0f);
-        fields.Float("wavePlaneMatch", "…三日月の向きを、刀が斬った面へ合わせる割合（0 は前の向き）",
-                     boss.wavePlaneMatch, 0.0f, 1.0f);
-        fields.Note(
-            "合わせて放つ時：振りの後ろの部分で、剣先がボスの前へ一番出た所を過ぎた瞬間に放ちます（振り抜くより"
-            "数 F 早い）。放つ所は、その時の刃の上の点（体の前 waveForward より手前には出さず、高さは最低〜最高に"
-            "切り詰める）。三日月の向きは、刀の線が掃いた面に合わせます（斜めに斬れば斜めの三日月）。"
-            "切ると、振り抜いた瞬間に体の正面から、剣先の最初と最後を結ぶ向きで放ちます。");
-        fields.Int("waveGrowFrames", "放った斬撃が判定サイズまで伸びる長さ (F)", boss.waveGrowFrames, 1, 120);
-        fields.Float("knifeHeight", "ナイフを投げる高さ (m)", boss.knifeHeight, 0.0f, 10.0f);
-        fields.Float("knifeForward", "ナイフを投げる位置：体の前 (m)", boss.knifeForward, 0.0f, 10.0f);
-        fields.Float("knifeSpreadDegrees", "ナイフの扇の間隔 (度)", boss.knifeSpreadDegrees, 0.0f, 90.0f);
-        fields.Float("knifeWidth", "ナイフの当たりの幅 (m)", boss.knifeWidth, 0.01f, 5.0f);
-        fields.Float("knifeThickness", "ナイフの当たりの厚み (m)", boss.knifeThickness, 0.01f, 5.0f);
-        fields.Float("playerHitLow", "プレイヤーの当たり：下端（原点から m）", boss.playerHitLow, -5.0f, 5.0f);
-        fields.Float("playerHitHigh", "プレイヤーの当たり：上端（原点から m）", boss.playerHitHigh, -5.0f, 5.0f);
-        fields.Float("playerHitRadius", "プレイヤーの当たり：半径 (m)", boss.playerHitRadius, 0.0f, 5.0f);
-        fields.Float("playerAimHeight", "狙う高さ（プレイヤーの原点から m）", boss.playerAimHeight, -5.0f, 5.0f);
-    }
 }
 
 } // namespace Project_TD2_2

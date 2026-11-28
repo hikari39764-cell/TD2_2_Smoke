@@ -35,10 +35,10 @@ struct BossGearSight {
 class BossObserver final {
 public:
     // player が nullptr ならプレイヤーはいない（何も成り立たない）。tickSeconds は 1 固定 tick の秒。
-    static void Observe(HIKARI::WorldView& world, BossComponent& boss, const Player* player,
+    static void Observe(HIKARI::WorldView& world, Boss& boss, const Player* player,
                         HIKARI::GameProjectFloat3 playerCenter, const BossGearSight& gear, float tickSeconds);
     // ボスが hits 回当てられた。recoveryRow はその時に後隙だった技の行（後隙でなければ -1）。後隙なら咎められた回数に足す。
-    static void NotePunished(BossComponent& boss, int recoveryRow, uint64_t hits);
+    static void NotePunished(Boss& boss, int recoveryRow, uint64_t hits);
 
     // 以下は読むだけ（行動ツリーの節・技の向きを決める所が使う）。
     // 最近 rolls 回のローリングの向きを数える（counts は BossRollDirection の順）。数えた回数（覚えている数まで）を返す。
@@ -48,7 +48,7 @@ public:
     // プレイヤーがボスから atLeastMeters m 以上の所に、いままで続けて何秒いるか。
     static float SecondsFar(const BossPlayerWatch& watch, float atLeastMeters);
     // 次に来る弾が、続けて撃つ何発目か（前の弾から watchShotChainFrames F を過ぎていれば 1）。
-    static int NextShotOrdinal(const BossComponent& boss);
+    static int NextShotOrdinal(const Boss& boss);
 };
 
 } // namespace Project_TD2_2

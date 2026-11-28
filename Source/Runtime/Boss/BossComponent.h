@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "HIKARI/Project/GameComponent.h"
+#include "HIKARI/Game.h"
 #include "HIKARI/Project/VfxTypes.h"
 #include "BossCinematicFxSettings.h"
 #include "BossGourdRead.h"
@@ -18,9 +18,7 @@
 
 namespace Project_TD2_2 {
 
-inline constexpr std::string_view kBossType = "Project_TD2_2.Boss";
-inline constexpr std::string_view kBossSystem = "Project_TD2_2.BossSystem";
-// 物体変数の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
+// ゲーム全体の値（Params）の ID。ProjectSettings/runtime_bindings.json の宣言と同じ名前・型（Float）にする。
 inline constexpr std::string_view kBossHealthVariable = "Boss.Health";
 inline constexpr std::string_view kBossMaxHealthVariable = "Boss.MaxHealth";
 // HP の条を出すか（1＝出す、0＝出さない。登場の演出の間は見得まで 0）。
@@ -300,425 +298,547 @@ struct BossBrainMemory {
 // ボス「霞武士」の本体。HP は同じ物体の Damageable が持ち、ここは技の実行・気絶・浮遊・斬撃を持つ。
 // 技の表は Data/ の CSV。どの技を出すかは、同じ物体の行動ツリー（Behavior Tree、Update＝GameCode）が
 // BossRules::RequestMove で頼む。
-class BossComponent final : public HIKARI::IGameComponent {
-public:
-    void DescribeProperties(HIKARI::PropertyFields& fields) override;
-    // HUD などが読めるよう、HP と最大 HP を自分の物体の物体変数へ毎フレーム書く。
-    void Update(HIKARI::GameComponentContext& context, float deltaTime) override;
-
+struct Boss : HIKARI::Component {
+    // 編集中も動かす：演出ワークスペースがボスの登場・変わり目の資産を流している間、役者・骨格の体をその時刻の姿にする
+    // （GameLoop.cpp の EditorSupport が、編集中のボスを回って見せる。Update は Play の間だけ値を出す）。
+    HIKARI_COMPONENT_EDITOR(Boss, "ボス 霞武士")
     // 表
-    std::string movesPath = "Boss/kasumi_bushi_moves_kujata.csv";
-    std::string typesPath = "Boss/kasumi_bushi_move_types.csv";
+    FIELD(std::string, movesPath, "Boss/kasumi_bushi_moves_kujata.csv", "技の表（Data/ からの場所）", HIKARI::Group("技の表"))
     // モーションの技の区切り（c-7b1a08）：クリップの長さの表（Tools/BossAnim/export_clip_lengths.ps1 が書き出す）と、
     // 区間の表（技ごとの当たりの窓。クリップの何 F 目か）。空・無い時は、アニメーションの列があっても表の長さのまま。
-    std::string clipsPath = "Boss/boss_anim_clips.csv";
-    std::string segmentsPath;
+    FIELD(std::string, clipsPath, "Boss/boss_anim_clips.csv", "クリップの長さの表（Data/ からの場所。Tools/BossAnim/export_clip_lengths.ps1 が書き出す）")
+    FIELD(std::string, segmentsPath, {}, "区間の表（Data/ からの場所。モーションの技の当たりの窓。空なら使わない）")
     // 狙いのずれの表（c-884095。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）。
-    std::string aimOffsetsPath = "Boss/boss_aim_offsets.csv";
-    // ヒョウタンの読み（c-14392d。横の剣気を転がる癖の側へ寄せる）。
-    BossGourdReadSettings gourdRead;
+    FIELD(std::string, aimOffsetsPath, "Boss/boss_aim_offsets.csv", "狙いのずれの表（Data/ からの場所。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）")
+    FIELD(std::string, typesPath, "Boss/kasumi_bushi_move_types.csv", "動きの型の既定値の表（Data/ からの場所）")
+    NOTE("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
+                    "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。")
     // 斬撃の共通の値（試作の共通パラメータ）
-    float range = 26.0f;
-    int swingFrames = 10;
-    int gapSmallFrames = 10;
-    int gapMediumFrames = 20;
-    int gapLargeFrames = 44;
-    int followFrames = 6;
-    int feintFrames = 24;
+    FIELD(float, range, 26.0f, "斬撃の飛距離 (m)", HIKARI::Range(1.0f, 200.0f), HIKARI::Group("斬撃の共通の値"))
+    FIELD(int, swingFrames, 10, "剣を振り抜く長さ (F)", HIKARI::Range(1, 120))
+    FIELD(int, gapSmallFrames, 10, "連撃の構え 小 (F)", HIKARI::Range(0, 300))
+    FIELD(int, gapMediumFrames, 20, "連撃の構え 中 (F)", HIKARI::Range(0, 300))
+    FIELD(int, gapLargeFrames, 44, "連撃の構え 大 (F)", HIKARI::Range(0, 300))
+    FIELD(int, followFrames, 6, "連撃の振り抜き後 (F)", HIKARI::Range(0, 120))
+    FIELD(int, feintFrames, 24, "フェイント（遅）の溜め (F)", HIKARI::Range(0, 300))
     // 構えで止まる F・振り上げる F（両手で頭上・肩の上まで上げるので、12 F では速すぎた。c-573c92 で 20/12 → 16/16。
     // 前隙の長さは変わらない）。
-    int kamaeFrames = 16;
-    int raiseFrames = 16;
-    int swingInFrames = 6;
+    FIELD(int, kamaeFrames, 16, "振る前の構え（剣を止めて溜める）(F)", HIKARI::Range(1, 300))
+    FIELD(int, raiseFrames, 16, "振り上げ（構えの前に剣を引く）(F)", HIKARI::Range(0, 300))
+    FIELD(int, swingInFrames, 6, "振り出し（ゆっくり動き始める）(F)", HIKARI::Range(0, 60))
     // 振りの速さがいちばん速くなる所（当たりの窓の進み 0〜1）。ゆっくり動き始めて加速し、ここで最も速く、振り終わりへ
     // 減速して止まる（窓の途中で速さが落ちる・最速のまま止まることがない）。大きいほど溜めて遅く当たる。
-    float swingPeakShare = 0.66f;
-    float damageBase = 6.0f;
-    float damagePerFrame = 0.15f;
-    float thickness = 0.5f;
+    FIELD(float, swingPeakShare, 0.66f, "振りの速さがいちばん速くなる所（窓の進み 0〜1。そこから振り終わりへ減速して止まる）", HIKARI::Range(0.5f, 0.9f))
+    // 体勢（c-808641）：気絶値は技・連段の途中もたまるが打ち切らず、連段が終わった時（待機へ戻る時・新しく技を始める時）に
+    // 決める。満ちていればひざまずく（いまの気絶）、poiseFlinchShare 以上なら小さく怯んで後ろへ跳ぶ（技の表の行
+    // poiseFlinchMove。コンボ先で着地の後の剣気）。怯みの後 poiseFlinchCooldownSeconds 秒は次の怯みを出さない。
+    // breakDuringWindup が入なら、前の作り（前隙に「崩せる被弾数」を当てると打ち切る）も使う。
+    FIELD(float, poiseFlinchShare, 0.5f, "体勢：連段の後に怯んで跳ぶ気絶値の割合 (0〜1。満ちたらひざまずく)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, poiseFlinchCooldownSeconds, 8.0f, "体勢：怯みの後、次の怯みを出さない秒数", HIKARI::Range(0.0f, 60.0f))
+    FIELD(std::string, poiseFlinchMove, "怯み跳び", "体勢：怯んで跳ぶ技（技の表の名前）")
+    FIELD(bool, breakDuringWindup, false, "前の作り：前隙に「崩せる被弾数」を当てると打ち切る")
+    // 戻り（後隙）の間に当てた弾の倍率：威力・気絶値、当たりの手応え（押しの倍率・止めの F）。
+    FIELD(float, recoveryDamageScale, 1.3f, "戻り（後隙）に当てた弾の威力の倍率", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, recoveryStunScale, 1.5f, "戻りに当てた弾の気絶値の倍率", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, recoveryHitPushScale, 1.6f, "戻りに当てた時の、当たりの押しの倍率", HIKARI::Range(0.0f, 5.0f))
+    FIELD(int, recoveryHitStopFrames, 4, "戻りに当てた時の、当たりの止め (F)", HIKARI::Range(0, 30))
+    FIELD(float, damageBase, 6.0f, "威力（空欄時）＝基本", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, damagePerFrame, 0.15f, "…＋隙 F × この係数", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, thickness, 0.5f, "斬撃の厚み (m)", HIKARI::Range(0.01f, 5.0f))
     // フェーズと気絶
     // HP の条はフェーズごとに 1 本（c-3e0ffa）。1 本目が空になるとフェーズ 2 の変わり目に入り、2 本目が満ちる。
     // 余ったダメージは 2 本目へ持ち越さない。2 本目が空で撃破。同じ物体の Damageable の最大 HP はこの値で上書きする。
     // 0 の時は、シーンで決めた Damageable の最大 HP（ボス全体の HP）を phaseOneShare : 1 - phaseOneShare に分ける
     // （シーンで HP を調整していれば、その合計のまま 2 本になる）。
-    float phaseOneHealth = 0.0f;
-    float phaseTwoHealth = 0.0f;
-    float phaseOneShare = 0.4f;
+    FIELD(float, phaseOneHealth, 0.0f, "HP の条 1 本目（フェーズ 1。0 で、Damageable の最大 HP を下の割合で分ける）", HIKARI::Range(0.0f, 100000.0f), HIKARI::Group("フェーズと気絶"))
+    FIELD(float, phaseTwoHealth, 0.0f, "HP の条 2 本目（フェーズ 2。1 本目が空になると満ちる。0 で、Damageable の最大 HP の残り）", HIKARI::Range(0.0f, 100000.0f))
+    FIELD(float, phaseOneShare, 0.4f, "条の値が 0 の時、ボス全体の HP のうち 1 本目にする割合", HIKARI::Range(0.05f, 0.95f))
     // 変わり目の長さ（1 本目が空になった tick から。無敵・AI は動かない）。変わり目の演出（同じ物体の
-    // BossPhaseShiftComponent。c-8dd296・c-3a0f87）をする時は、その拍の長さの合計を使い、この値は演出が無い・切った時だけ使う。
-    int phaseShiftFrames = 90;
+    // BossPhaseShift。c-8dd296・c-3a0f87）をする時は、その拍の長さの合計を使い、この値は演出が無い・切った時だけ使う。
+    FIELD(int, phaseShiftFrames, 90, "変わり目の長さ (F。変わり目の演出を切った時だけ。演出をする時は拍の長さの合計)", HIKARI::Range(1, 3600))
+    NOTE("HP はフェーズごとの条です。1 本目を空にすると、いまの技を打ち切って変わり目に入り（気絶値は 0 に"
+            "戻る）、同じ条が 2 本目として満ちて戻ります（余ったダメージは持ち越さない）。2 本目を空にすると撃破。"
+            "同じ物体の「被弾と HP」の最大 HP は、この 2 つの値で上書きします。火を残す技・火を使う技は"
+            "フェーズ 2 から（技の表の「残す火」の @フェーズ2 と「発生条件」）。")
     // 類魂の崩れにくさ（c-ff3e98）。気絶値 110 → 220：精力満タンの連射（4 発）だけでは気絶しない。
     // 気絶するたびに、次に要る気絶値を stunMax × stunMaxGrowth ずつ増やす（2 回目 275、3 回目 330）。
-    float stunMax = 220.0f;
-    float stunMaxGrowth = 0.25f;
-    int stunLimit = 0;
-    int stunFrames = 180;
+    FIELD(float, stunMax, 220.0f, "気絶値（これだけたまると気絶）", HIKARI::Range(1.0f, 100000.0f))
+    FIELD(float, stunMaxGrowth, 0.25f, "気絶するたびに気絶値を増やす割合（0.25 で 1 回ごとに +25%、0 で増えない）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(int, stunLimit, 0, "気絶する回数の上限（0＝上限なし）", HIKARI::Range(0, 99))
+    FIELD(int, stunFrames, 180, "気絶している長さ (F)", HIKARI::Range(1, 3600))
     // 溜めを崩した時・気絶した時の手応え（c-d330c0）。止め・カメラの揺れ・手柄の振動・本体の光り。
     // 本体の光りは Damageable の光りを頼むだけで、いまの体（色を読める材質の無いカプセル）では見えない。
     // 崩した合図は breakBlastScale の塊で見せる（体を模型にした時のために項目は残す）。
-    int breakHitStopFrames = 6;
-    float breakHitStopScale = 0.05f;
-    float breakCameraAmplitude = 0.08f;
-    int breakCameraFrames = 10;
-    float breakCameraFrequency = 24.0f;
-    float breakRumbleLow = 0.9f;
-    float breakRumbleHigh = 0.7f;
-    int breakRumbleFrames = 12;
+    FIELD(int, breakHitStopFrames, 6, "崩し・気絶の止め (F、0 は無効)", HIKARI::Range(0, 30))
+    FIELD(float, breakHitStopScale, 0.05f, "崩し・気絶の止め中の時間倍率", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, breakCameraAmplitude, 0.08f, "崩し・気絶のカメラ揺れ幅 (m、0 は無効)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, breakCameraFrames, 10, "崩し・気絶のカメラ揺れ時間 (F)", HIKARI::Range(0, 120))
+    FIELD(float, breakCameraFrequency, 24.0f, "崩し・気絶のカメラ揺れ周波数 (Hz)", HIKARI::Range(0.0f, 60.0f))
+    FIELD(float, breakRumbleLow, 0.9f, "崩し・気絶の振動：重いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, breakRumbleHigh, 0.7f, "崩し・気絶の振動：軽いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, breakRumbleFrames, 12, "崩し・気絶の振動時間 (F、0 は無効)", HIKARI::Range(0, 120))
     // 崩した・気絶した瞬間の動きのぼかしの一瞬（シャッター角 度・長さの上限 1080p の画素・戻るまで F。c-e0a9c3 の続き）。
-    float breakBlurShutter = 280.0f;
-    float breakBlurPixels = 32.0f;
-    int breakBlurFrames = 12;
-    int breakFlashFrames = 12;
+    FIELD(float, breakBlurShutter, 280.0f, "崩し・気絶の動きのぼかしの一瞬：シャッター角 (度、0 は無効)", HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, breakBlurPixels, 32.0f, "…ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(int, breakBlurFrames, 12, "…ぼかしが戻るまで (F)", HIKARI::Range(0, 120))
+    FIELD(int, breakFlashFrames, 12, "崩し・気絶の本体の光り (F、0 は無効)", HIKARI::Range(0, 120))
     // 崩した・気絶した瞬間に体の中心から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で出さない）。
     // フェーズ 1 は霞の塊と青白い光、フェーズ 2 は火球と炎の光。
-    float breakBlastScale = 1.8f;
-    float stunDamageScale = 1.5f;
-    // 体勢（c-808641）：気絶値は技・連段の途中もたまるが打ち切らず、連段が終わった時（待機へ戻る時・新しく技を始める時）に
-    // 決める。満ちていればひざまずく（いまの気絶）、poiseFlinchShare 以上なら小さく怯んで後ろへ跳ぶ（技の表の行
-    // poiseFlinchMove。コンボ先で着地の後の剣気）。怯みの後 poiseFlinchCooldownSeconds 秒は次の怯みを出さない。
-    // breakDuringWindup が入なら、前の作り（前隙に「崩せる被弾数」を当てると打ち切る）も使う。
-    float poiseFlinchShare = 0.5f;
-    float poiseFlinchCooldownSeconds = 8.0f;
-    std::string poiseFlinchMove = "怯み跳び";
-    bool breakDuringWindup = false;
-    // 戻り（後隙）の間に当てた弾の倍率：威力・気絶値、当たりの手応え（押しの倍率・止めの F）。
-    float recoveryDamageScale = 1.3f;
-    float recoveryStunScale = 1.5f;
-    float recoveryHitPushScale = 1.6f;
-    int recoveryHitStopFrames = 4;
+    FIELD(float, breakBlastScale, 1.8f, "崩し・気絶の瞬間に体から弾ける塊の大きさ（当たった所の爆発に対する倍。0 で無効）", HIKARI::Range(0.0f, 6.0f))
+    NOTE("光り方（色・強さ・材質）は Damageable の被弾の発光と同じです。いまのボスの体（色を読める材質の無い"
+                    "カプセル）では光りは見えません。崩した合図は「体から弾ける塊」で見せます。")
+    FIELD(float, stunDamageScale, 1.5f, "気絶中に受けるダメージ (倍)", HIKARI::Range(0.0f, 10.0f))
     // 手を止めると気絶値が早く散る（c-ff3e98。元は 6 秒後から 10/秒）。
-    float stunDecayDelaySeconds = 4.0f;
-    float stunDecayPerSecond = 20.0f;
-    float stunPerShot = 22.0f;
-    float stunReferenceDamage = 40.0f;
+    FIELD(float, stunDecayDelaySeconds, 4.0f, "気絶値が減り始めるまで (秒)", HIKARI::Range(0.0f, 120.0f))
+    FIELD(float, stunDecayPerSecond, 20.0f, "気絶値が 1 秒に減る量", HIKARI::Range(0.0f, 10000.0f))
+    FIELD(float, stunPerShot, 22.0f, "気絶値：煙弾 1 発", HIKARI::Range(0.0f, 10000.0f))
+    FIELD(float, stunReferenceDamage, 40.0f, "…この威力の命中を 1 発とみなす（砲撃の基礎威力）", HIKARI::Range(0.01f, 100000.0f))
+    NOTE("気絶値は受けた威力に比例してたまります（遠くで弱まった弾は少なく）。気絶中はたまりません。")
     // 技の選び方（行動ツリーの節が使う共通の値。試作の共通パラメータ）
-    float selectFarDistance = 20.0f;
-    float selectMinWeight = 0.05f;
-    float selectPower = 2.0f;
-    float selectRepeatScale = 0.5f;
-    float moveHitBoost = 1.0f;
-    int moveHitMax = 5;
-    float interruptPower = 3.0f;
-    int comboMaxChain = 3;
-    int recoveryGuardFrames = 30;
-    float comboChancePercent = 65.0f;
+    FIELD(float, selectFarDistance, 20.0f, "距離重み 1.0 になる距離 (m)", HIKARI::Range(0.1f, 200.0f), HIKARI::Group("技の選び方（行動ツリーの節が使う値）"))
+    FIELD(float, selectMinWeight, 0.05f, "重みの下限（得意な距離から一番遠い技にも残す分）", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, selectPower, 2.0f, "得意な距離へのかたより（重みの指数。大きいほど距離に合う技ばかり出る）", HIKARI::Range(0.0f, 8.0f))
+    FIELD(float, selectRepeatScale, 0.5f, "直前に始動した技の重み (倍)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, moveHitBoost, 1.0f, "待機・移動中の被弾 1 回ごとの突進系の重み (+倍)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(int, moveHitMax, 5, "…数える被弾の上限 (回)", HIKARI::Range(0, 40))
+    FIELD(float, interruptPower, 3.0f, "割り込みの技の、得意な距離へのかたより（重みの指数）", HIKARI::Range(0.0f, 8.0f))
+    FIELD(int, comboMaxChain, 3, "コンボの最大連続 (技の数)", HIKARI::Range(1, 10))
+    FIELD(int, recoveryGuardFrames, 30, "後隙のうち、割り込み・反応で切り上げない最初の F", HIKARI::Range(0, 600))
+    FIELD(float, comboChancePercent, 65.0f, "コンボ確率（表の「コンボ確率%」が空欄のとき）(%)", HIKARI::Range(0.0f, 100.0f))
     // ローリングの向きを分ける角度：ボスへ向かう・離れる向きからこの角度以内なら前後、それより外れたら横。
-    float rollAxisDegrees = 45.0f;
+    FIELD(float, rollAxisDegrees, 45.0f, "ローリングの向き：ボスへ向かう・離れる向きからこの角度以内なら前後、外れたら横 (度)", HIKARI::Range(0.0f, 90.0f))
     // プレイヤーを見る（c-59bd08）：前の弾からこの F 以内に撃った弾を「続けて撃った」と数える。狙いの線が体の軸から
     // 体の半径＋watchShotAimMargin m 以内を通れば「ボスへ向いている」。立ち位置のログ（SeeStance）の間隔 F（0 で出さない）。
-    int watchShotChainFrames = 40;
-    float watchShotAimMargin = 0.5f;
-    int watchLogFrames = 30;
+    FIELD(int, watchShotChainFrames, 40, "射撃：前の弾からこの F 以内に撃てば「続けて撃った」と数える", HIKARI::Range(1, 600))
+    FIELD(float, watchShotAimMargin, 0.5f, "射撃：狙いの線が体の半径＋この距離以内を通ればボスへ向いている (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(int, watchLogFrames, 30, "立ち位置のログ（SeeStance）の間隔 (F。0 で出さない)", HIKARI::Range(0, 600))
     // 咎められた技の変化（c-59bd08）：入なら、技の表の「変化確率%」を、その技の後隙に当てられた回数（punishSwitchMaxHits
     // 回まで）× punishSwitchPerHit 倍だけ増やす（例：0.5 で 2 回当てられると 2 倍）。既定は切（表のまま）。
-    bool punishSwitchEnabled = false;
-    float punishSwitchPerHit = 0.5f;
-    int punishSwitchMaxHits = 4;
+    FIELD(bool, punishSwitchEnabled, false, "咎められた技ほど変化しやすくする（技の表の「変化確率%」を増やす）")
+    FIELD(float, punishSwitchPerHit, 0.5f, "…後隙に当てられた 1 回ごとに変化確率を何倍増やすか (+倍)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(int, punishSwitchMaxHits, 4, "…数える回数の上限 (回)", HIKARI::Range(0, 100))
+    NOTE("どの技を出すかは、同じ物体の Behavior Tree（木は KasumiBushi_Kujata、Update は GameCode）が決めます。"
+            "技の間の待ち・連続攻撃とみなす命中数と時間は、木の節（待ち／連続攻撃された）で調整します。"
+            "プレイヤーへの反応（回復・吸い込み・ローリング・密着を咎める）は、木の枝「プレイヤーへの反応」の"
+            "節（条件と反応の間隔）で調整します。"
+            "距離重み・発生条件・コンボ先・コンボ確率は技の表の列です。")
     // 体。身長 6.75 m・半径 1.35 m（5.0 m・1.0 m の 1.35 倍：c-a30eaf で 1.5 倍にした後、c-e97b18 でその 0.9 倍に）。
     // 以下の「体に付く値」は、同じ倍率で揃えてある：
     // 体の位置・高さに付く値と、体の中心どうしの距離（近づく・止まる距離）は、倍率を掛ける。
     // 体の大きさを変える時に一緒に変える所の一覧は、調整ガイド g-fe0396 の【大きさ】。
-    float bodyHalfHeight = 3.375f;
-    float bodyRadius = 1.35f;
-    HIKARI::GameProjectFloat3 arenaCenter{0.0f, 3400.0f, 0.0f};
+    FIELD(float, bodyHalfHeight, 3.375f, "体の高さの半分 (m)", HIKARI::Range(0.1f, 20.0f), HIKARI::Group("体と浮遊"))
+    FIELD(float, bodyRadius, 1.35f, "体の半径 (m)", HIKARI::Range(0.05f, 10.0f))
+    FIELD(HIKARI::Vec3, arenaCenter, (HIKARI::Vec3{0.0f, 3400.0f, 0.0f}), "戦場の中心（地面）")
     // （闘技場を広げた：地形の平らな所が中心から約 40 m。21 → 40 m。c-69fc1e）
-    float arenaRadius = 40.0f;
-    float walkSpeed = 2.2f;
-    float floatMin = 0.2f;
-    float floatMax = 1.4f;
-    float floatBob = 0.12f;
-    float idleTurnRate = 240.0f;
-    float preTurnRate = 360.0f;
-    float overheadTurnRate = 220.0f;
-    float stringGapTurnRate = 200.0f;
+    FIELD(float, arenaRadius, 40.0f, "動ける半径 (m)", HIKARI::Range(1.0f, 500.0f))
+    FIELD(float, walkSpeed, 2.2f, "移動の速さ (m/秒)", HIKARI::Range(0.0f, 50.0f))
+    FIELD(float, floatMin, 0.2f, "浮く高さ 最低 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, floatMax, 1.4f, "浮く高さ 最高 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, floatBob, 0.12f, "上下にゆれる幅 (m)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, idleTurnRate, 240.0f, "待機中に振り向く速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
+    FIELD(float, preTurnRate, 360.0f, "前隙に振り向く速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
+    FIELD(float, overheadTurnRate, 220.0f, "上段の前隙に振り向く速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
+    FIELD(float, stringGapTurnRate, 200.0f, "連撃の構えの間に振り向く速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
     // 狙いのずれ（c-884095）：剣の技の当たりの区間が始まる aimTwistLeadFrames F 前から、表の角度へ体を
     // aimTwistTurnRate 度/秒でねじる。
     // 角度が aimTwistMax 度を超える斬りはねじらない（横や背中を向いて振ることになるので）。80 度は避けながら攻撃2
     // （刀がボスの左 72〜77 度に落ちる）を回せるように上げた値（c-e44b91）。
-    float aimTwistTurnRate = 360.0f;
-    float aimTwistMax = 80.0f;
-    int aimTwistLeadFrames = 20;
+    FIELD(float, aimTwistTurnRate, 360.0f, "狙いのずれ：剣の技の前に体をねじる速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
+    FIELD(float, aimTwistMax, 80.0f, "狙いのずれ：これより大きくねじる斬りはねじらない (度)", HIKARI::Range(0.0f, 180.0f))
+    FIELD(int, aimTwistLeadFrames, 20, "狙いのずれ：当たりの区間の何 F 前からねじり始めるか (F)", HIKARI::Range(0, 240))
     // 撃破された後、体を消すまでの待ち (F) と、消えるまでの長さ (F)。消える間に体が縮んで見えなくなる。
-    int deadVanishDelayFrames = 60;
-    int deadVanishFrames = 30;
+    FIELD(int, deadVanishDelayFrames, 60, "撃破されてから体が縮み始めるまで (F)", HIKARI::Range(0, 3600), HIKARI::Group("撃破の後"))
+    FIELD(int, deadVanishFrames, 30, "体が縮んで消えるまでの長さ (F。0 で待ちの後すぐ消える)", HIKARI::Range(0, 3600))
+    NOTE("体の姿勢（傾き・屈み）は骨格の体の動画が見せます。地面や画面に予告は出しません（ソウルライク）。")
     // 動きの型ごとの体の動き
     // 中心どうしの距離。体を大きくした時、c-146b66・c-f91bd1 は体の表面の隙間を保つよう半径の増分を足したが、
     // c-a30eaf（1.5 倍）・c-e97b18（その 0.9 倍）では距離ごと倍率を掛けた：振りの型の握りも同じ倍率で前へ出るので、
     // 半径の差を足すだけだと
     // プレイヤーが刀の根元に入り、横なぎの刀が頭上を通って当たらなかった（握りからプレイヤーまでの間を保つ）。
-    float dashStopDistance = 4.266f;
-    int dashSlideFrames = 20;
-    float slashApproachSpeed = 1.2f;
-    float stringApproachSpeed = 1.6f;
-    float stringApproachStop = 3.942f;
+    FIELD(float, dashStopDistance, 4.266f, "瞬間突進：プレイヤーの手前で止まる距離 (m)", HIKARI::Range(0.0f, 30.0f), HIKARI::Group("動きの型ごとの体の動き"))
+    FIELD(int, overheadLeapFrames, 18, "上段溜め：前隙の終わりに前へ跳び込む長さ (F。0 で跳ばない)", HIKARI::Range(0, 120))
+    FIELD(float, overheadLeapHeight, 1.2f, "上段溜め：跳び込みの弧の高さ (m)", HIKARI::Range(0.0f, 10.0f))
+    // 空中で終わった技（跳躍）から続いた斬りの技は、前隙の始めの comboLandFrames F で落ちて着地する（c-b1824c）。
+    FIELD(int, comboLandFrames, 6, "空中で終わった技から続いた斬りの技が、前隙の始めに着地するまで (F)", HIKARI::Range(1, 60))
+    FIELD(float, overheadLeapStop, 4.8f, "上段溜め：跳び込んで着地する、プレイヤーからの距離 (m)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, overheadLeapMax, 6.0f, "上段溜め：跳び込みの最長 (m)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, overheadLeapBack, 2.0f, "上段溜め：近すぎる時に後ろへ跳び退く最長 (m)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(int, dashSlideFrames, 20, "突進横なぎ：前隙の終わりに、低く滑って詰める長さ (F。短いほど速い)", HIKARI::Range(1, 120))
+    FIELD(float, slashApproachSpeed, 1.2f, "横斬り・縦斬り：前隙に歩く速さ (m/秒)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, stringApproachSpeed, 1.6f, "連撃：前隙に近づく速さ (m/秒)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, stringApproachStop, 3.942f, "連撃：これより近いと近づかない (m)", HIKARI::Range(0.0f, 30.0f))
     // 滑って入る（c-7b1a07）：表の「滑って入る m」がある斬りの技は、前隙の終わりのこの F で、プレイヤーからこの距離 (m)
     // の所へ低く滑って詰める（突進と同じ滑らかな速さ。もう近ければ動かない）。
-    int slideInFrames = 16;
-    float slideInStopDistance = 4.0f;
-    float overheadLungeDistance = 2.43f;
-    int overheadLeapFrames = 18;
-    // 空中で終わった技（跳躍）から続いた斬りの技は、前隙の始めの comboLandFrames F で落ちて着地する（c-b1824c）。
-    int comboLandFrames = 6;
-    float overheadLeapHeight = 1.2f;
-    float overheadLeapStop = 4.8f;
-    float overheadLeapMax = 6.0f;
-    float overheadLeapBack = 2.0f;
-    float stepInClearance = 1.62f;
-    float walkInStopDistance = 6.507f;
-    float walkInSpeedScale = 1.25f;
-    float backstepDistance = 4.725f;
-    float backstepHeight = 0.84375f;
+    FIELD(int, slideInFrames, 16, "滑って入る：前隙の終わりに滑る長さ (F。表の「滑って入る m」がある斬りの技)", HIKARI::Range(1, 120))
+    FIELD(float, slideInStopDistance, 4.0f, "滑って入る：プレイヤーの手前で止まる距離 (m)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, overheadLungeDistance, 2.43f, "上段：前隙の終わりの踏み込み (m)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, stepInClearance, 1.62f, "踏み込み：プレイヤーとの間に残す距離 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, walkInStopDistance, 6.507f, "間合いを詰める：横歩きに切り替える距離 (m)", HIKARI::Range(0.0f, 50.0f))
+    FIELD(float, walkInSpeedScale, 1.25f, "間合いを詰める：歩く速さの倍率", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, backstepDistance, 4.725f, "後ろへ下がる：距離 (m)", HIKARI::Range(0.0f, 30.0f))
+    FIELD(float, backstepHeight, 0.84375f, "後ろへ下がる：跳ねる高さ (m)", HIKARI::Range(0.0f, 10.0f))
     // 後ろ跳びの重さ（c-95444e。後ろへ下がる技の跳び）：跳ぶ長さの始めの backstepTakeoffShare は動かずに蹴り、
     // 終わりの backstepLandShare は着地して止まる。間の空中は、速さが始めと終わりで 0 の曲線で、backstepPeakShare
     // （空中の長さに対する割合）で最も速い。
-    float backstepTakeoffShare = 0.17f;
-    float backstepLandShare = 0.2f;
-    float backstepPeakShare = 0.35f;
+    FIELD(float, backstepTakeoffShare, 0.17f, "後ろ跳び：始めに動かずに沈んで蹴る割合（跳ぶ長さに対して）", HIKARI::Range(0.0f, 0.5f))
+    FIELD(float, backstepLandShare, 0.2f, "後ろ跳び：終わりに着地して沈んで戻る割合（跳ぶ長さに対して）", HIKARI::Range(0.0f, 0.5f))
+    FIELD(float, backstepPeakShare, 0.35f, "後ろ跳び：空中で最も速い所（空中の長さに対する割合）", HIKARI::Range(0.1f, 0.9f))
     // 跳躍→X字2段（試作：前隙の 28% で屈み、残りで 3.6 m まで跳ぶ。後隙の最初の 1/3 で降りる）
-    float jumpHeight = 3.6f;
-    float jumpCrouchShare = 0.28f;
+    FIELD(float, jumpHeight, 3.6f, "跳躍：跳ぶ高さ (m)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, jumpCrouchShare, 0.28f, "跳躍：前隙のうち跳ぶ前の割合（残りで跳ぶ）", HIKARI::Range(0.0f, 0.95f))
+    FIELD(int, spinCoilFrames, 14, "回転斬り：体を逆へ捻り込む長さ (F)", HIKARI::Range(1, 60))
+    FIELD(float, spinCoilDegrees, 120.0f, "回転斬り：逆へ捻り込む角度 (度)", HIKARI::Range(0.0f, 270.0f))
+    FIELD(float, spinTurns, 1.0f, "回転斬り：攻撃中に回る回数（捻りを戻した後。1 で 1 回転）", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, spinRingShare, 0.45f, "回転斬り：霞の輪を出す、回りの進み (0〜1)", HIKARI::Range(0.0f, 1.0f))
     // 回転→霞の輪（試作：半径 0.8 m から判定サイズまで、斬撃速度で広がる。消えた所の 0.7 倍の円に残り煙 6 か所）
-    float kickRingStartRadius = 1.512f;
-    float kickResidueScale = 0.6f;
-    float kickResidueRadiusShare = 0.7f;
+    FIELD(float, kickRingStartRadius, 1.512f, "回し蹴り：霞の輪の始まりの半径 (m。最大は表の判定サイズ)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, kickResidueScale, 0.6f, "回し蹴り：輪が消えた所の残り煙（斬撃の 2 m ぶんの何倍、6 か所）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, kickResidueRadiusShare, 0.7f, "回し蹴り：残り煙を置く円（最大半径の何倍）", HIKARI::Range(0.0f, 2.0f))
     // 地面に残す火の形（形そのものは技の表の「残す火」。交差の線の長さと、上段溜めの池を置く前の距離）
-    float burnCrossLength = 7.0f;
-    float burnPoolForward = 2.5f;
-    float burnLineLag = 1.2f;
+    FIELD(float, burnCrossLength, 7.0f, "残す火「交差」：X の 1 本の長さ (m。狙った所で 2 本が交わる)", HIKARI::Range(0.1f, 40.0f))
+    FIELD(float, burnLineLag, 1.2f, "残す火「線」：火が飛ぶ刃の後ろへ遅れる距離 (m。0 だと刃の真下から燃える)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, burnPoolForward, 2.5f, "残す火「池」：上段溜めの池を置く所（ボスの前 m。振り下ろした所）", HIKARI::Range(0.0f, 20.0f))
     // 吸い込みで斬撃・ナイフを吸う範囲（試作 inhaleRange 5 m・inhaleAngle 片側 60°。1.5 m 以内は向きを問わない）
-    float absorbCatchRange = 5.0f;
-    float absorbCatchAngle = 60.0f;
-    float absorbCatchNear = 1.5f;
+    FIELD(float, absorbCatchRange, 5.0f, "吸い込み：斬撃・ナイフを吸える距離 (m)", HIKARI::Range(0.0f, 50.0f), HIKARI::Group("吸い込み"))
+    FIELD(float, absorbCatchAngle, 60.0f, "吸い込み：吸える角度（片側、度）", HIKARI::Range(0.0f, 180.0f))
+    FIELD(float, absorbCatchNear, 1.5f, "吸い込み：向きを問わず吸える近さ (m)", HIKARI::Range(0.0f, 10.0f))
     // 捕まえた斬撃・ナイフを、ヒョウタンの口へ引き込む（c-3341a7）。入りきるまでの tick、初めゆっくり・終わり速くの強さ、
     // 巻き込む弧（出だしの向きを口への線から横へ振る角度）、入りきる時の大きさ、同時に捕まえた分を順に入れる間隔。
-    int absorbPullFrames = 18;
-    int knifePullFrames = 10;
-    float absorbPullEasePower = 2.0f;
-    float absorbPullSwirlDegrees = 30.0f;
-    float absorbPullEndScale = 0.12f;
-    int absorbPullStaggerFrames = 3;
+    FIELD(int, absorbPullFrames, 18, "引き込み：捕まえた斬撃が口へ入りきるまで (F)", HIKARI::Range(1, 240))
+    FIELD(int, knifePullFrames, 10, "引き込み：捕まえたナイフが口へ入りきるまで (F)", HIKARI::Range(1, 240))
+    FIELD(float, absorbPullEasePower, 2.0f, "引き込み：初めゆっくり・終わり速くの強さ（1 は一定の速さ）", HIKARI::Range(0.1f, 8.0f))
+    FIELD(float, absorbPullSwirlDegrees, 30.0f, "引き込み：巻き込む弧（出だしを口への線から横へ振る角度、度）", HIKARI::Range(0.0f, 85.0f))
+    FIELD(float, absorbPullEndScale, 0.12f, "引き込み：入りきる時の大きさ（元の大きさに対する割合）", HIKARI::Range(0.01f, 1.0f))
+    FIELD(int, absorbPullStaggerFrames, 3, "引き込み：同時に捕まえた分を、順に入れる間隔 (F)", HIKARI::Range(0, 60))
     // 斬撃の三日月の端を口へ向ける割合（0＝向きを変えない、1＝端を口へ向けきる）。
-    float absorbPullTurn = 0.0f;
+    FIELD(float, absorbPullTurn, 0.0f, "引き込み：三日月の端を口へ向ける割合（0 は向きを変えない）", HIKARI::Range(0.0f, 1.0f))
     // 引き込みの見た目：刃の霧の源の量（飛んでいる時を 1 として）、幅のほかの向き（厚み・前後）を細くする倍率、
     // 入りきった後に残った霧と光が消えるまで（秒）。
-    float absorbPullFly = 0.6f;
-    float absorbPullPinch = 0.45f;
-    float absorbPullFadeSeconds = 0.3f;
+    FIELD(float, absorbPullFly, 0.6f, "引き込み：刃の霧の量（飛んでいる時を 1 として。0 は霧を出さない）", HIKARI::Range(0.0f, 4.0f))
+    FIELD(float, absorbPullPinch, 0.45f, "引き込み：入りきる時の刃の細さ（厚み・前後の倍率。1 はそのまま）", HIKARI::Range(0.05f, 1.0f))
+    FIELD(float, absorbPullFadeSeconds, 0.3f, "引き込み：入りきった後、残った霧と光が消えるまで (秒)", HIKARI::Range(0.0f, 2.0f))
     // 域に残った三日月の両翼の霧を、刃の中心（口）へ押し寄せる力の強さ (m/s²) と半径 (m)。引き込みが進むほど強くなる。
-    float absorbPullSqueeze = 700.0f;
-    float absorbPullSqueezeRadius = 3.5f;
+    FIELD(float, absorbPullSqueeze, 700.0f, "引き込み：残った両翼の霧を口へ押し寄せる強さ (m/s²。0 は押さない)", HIKARI::Range(0.0f, 5000.0f))
+    FIELD(float, absorbPullSqueezeRadius, 3.5f, "…その力の半径 (m)", HIKARI::Range(0.1f, 20.0f))
     // 噛む（c-e0a9c3）：吸い込みに捕まった瞬間、刃の光の層を膨らませる量（光の層の大きさに足す）と、引くまで（秒）。
-    float absorbBiteGlow = 0.9f;
-    float absorbBiteGlowSeconds = 0.14f;
+    FIELD(float, absorbBiteGlow, 0.9f, "噛む：捕まった瞬間に、刃の光の層を膨らませる量（0 は膨らませない）", HIKARI::Range(0.0f, 4.0f))
+    FIELD(float, absorbBiteGlowSeconds, 0.14f, "…膨らみが引くまで (秒)", HIKARI::Range(0.01f, 2.0f))
     // 引き込みの尾：捕まった刃が口へ入るまで、通った所に残す光の粒のエフェクト（空なら出さない）と、霞の刃・火の刃の色。
-    HIKARI::GameProjectVfxAssetReference absorbTrailEffect{"957767dbeb0c51292669eeaf55bab604",
-                                                           "Assets/Vfx/GourdCatchTrail.hvfx"};
-    HIKARI::GameProjectFloat3 absorbTrailMistColor{1.10f, 1.55f, 2.10f};
-    HIKARI::GameProjectFloat3 absorbTrailFireColor{2.40f, 1.05f, 0.30f};
-    // 体の見た目（体に付く効果の大きさと置き場所・胴の煙と火）は、同じ物体の体の見た目の部品（BossBodyComponent。
-    // c-bd1a7a）。
-    // 演出の効果の部品の既定（登場とフェーズの変わり目の演出が共通で使う。登場そのものは、同じ物体の
-    // BossIntroComponent。c-eb3b08）。
-    BossCinematicFxSettings cinematicFx;
-    // 骨格の体（技をモーションで見せる体。登場の役者と同じ骨格。c-7b1a06）の物体・クリップ・骨の名前。規則が技の
-    // クリップの刀を読むのに使う（流して見せるのは体の見た目の部品）。
-    BossAnimBodySettings animBody;
+    FIELD(HIKARI::VfxAsset, absorbTrailEffect, (HIKARI::VfxAsset{"957767dbeb0c51292669eeaf55bab604"}), "引き込み：刃が通った所に残す光の尾のエフェクト（空なら出さない）")
+    FIELD(HIKARI::Vec3, absorbTrailMistColor, (HIKARI::Vec3{1.10f, 1.55f, 2.10f}), "…霞の刃・ナイフの尾の色と明るさ")
+    FIELD(HIKARI::Vec3, absorbTrailFireColor, (HIKARI::Vec3{2.40f, 1.05f, 0.30f}), "…火の刃の尾の色と明るさ")
+    // スロー（Slow）の間の時間の倍率。
+    FIELD(float, introDrawSlowScale, 0.35f, "効果：スローの間の時間の倍率（変わり目の閃光も使う）", HIKARI::Range(0.05f, 1.0f), HIKARI::Group("演出の効果（登場・フェーズの変わり目の演出が共通で使う閃光・白黒の閃き・揺れ・停止）"))
+    // 目の閃き（EyeFlare）の強さ。
+    FIELD(float, introEyesFlare, 2.0f, "効果：目の閃きの強さ（0 で出さない）", HIKARI::Range(0.0f, 8.0f))
+    // 閃光のエフェクト（MistBurst）とその大きさ（0 で出さない）。
+    FIELD(HIKARI::VfxAsset, introSlashFlashEffect, (HIKARI::VfxAsset{"c7a41d6be2f0483a9d15b0e36f7a2c18"}), "効果：刀身の上で弾ける閃光のエフェクト（空なら出さない）")
+    FIELD(float, introSlashFlashScale, 2.0f, "効果：閃光の大きさ（0 で出さない）", HIKARI::Range(0.0f, 10.0f))
+    // 白黒の閃き（MonoFlash。全画面の効果。Assets/Post/BossImpactMono）：プロファイル（空なら出さない）、反転した白黒の
+    // 長さ・反転しない白黒の長さ・色へ戻る長さ（実時間の秒。時間の停止の間も進む）、強さ（0〜1）。白と黒の境・硬さ・
+    // 明るさは、効果の資産の項目で変える。
+    FIELD(HIKARI::PostProfile, introSlashMonoProfile, (HIKARI::PostProfile{"9e45ffde0ff4c6ee90345798c55b262f"}), "効果：白黒の閃きの効果のプロファイル（BossImpactMono。空なら出さない）")
+    FIELD(float, introSlashMonoInvertSeconds, 0.035f, "白黒の閃き：反転した白黒を出す長さ（実時間の秒）", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, introSlashMonoHoldSeconds, 0.05f, "白黒の閃き：反転しない白黒を出す長さ（実時間の秒）", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, introSlashMonoFadeSeconds, 0.12f, "白黒の閃き：色へ戻る長さ（実時間の秒）", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, introSlashMonoStrength, 1.0f, "白黒の閃き：強さ（0 で出さない）", HIKARI::Range(0.0f, 1.0f))
+    // 手応え（Shake）：強さ 1 の時のカメラの揺れ（揺れ幅 m・長さ F・速さ）、強さ 1 で画角を一瞬広げる量（度）、振動
+    // （コントローラー）の強さと長さ (F)。時間を止める間（HitStop）の時間の速さ。
+    FIELD(float, introAccentShake, 0.14f, "手応え：強い拍のカメラの揺れ幅 (m。0 で揺らさない)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, introAccentShakeFrames, 16, "手応え：揺れの長さ (F)", HIKARI::Range(0, 120))
+    FIELD(float, introAccentShakeFrequency, 20.0f, "手応え：揺れの速さ", HIKARI::Range(1.0f, 60.0f))
+    FIELD(float, introAccentFovDegrees, 2.5f, "手応え：強い拍で画角を一瞬広げる量（度。0 で動かさない）", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, introHitStopScale, 0.1f, "手応え：時間を止めている間の時間の速さ", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, introAccentRumble, 0.6f, "手応え：振動の強さ（0 で出さない）", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, introAccentRumbleFrames, 12, "手応え：振動の長さ (F)", HIKARI::Range(0, 120))
+    // 続けて出す画面の揺れ（KeepRumble。前触れ・刀を握る間）の速さ（1 秒の回数）。
+    FIELD(float, introRumbleFrequency, 6.0f, "続けて出す画面の揺れ（前触れ・刀を握る間）の速さ（1 秒の回数）", HIKARI::Range(0.5f, 30.0f))
+    // 刀身の光（BladeEdge。登場と変わり目の演出の間だけ。戦いの間の刀の光は BossBlade のまま）：刃口の細い線の明るさ
+    // （画面基準。握る間に高まり、抜けた後は弱く残る）。
+    FIELD(float, introBladeEdgeGlow, 6.0f, "刀身の光：刃口の細い線の明るさ（画面基準。登場・変わり目の演出）", HIKARI::Range(0.0f, 64.0f))
+    // 骨格の体の物体（模型と動画の部品を持つ）。0 なら使わない。
+    FIELD(HIKARI::Entity, animBodyObject, {}, "骨格の体の物体（模型と動画の部品を持つ。無ければ使わない）", HIKARI::Group("骨格の体（技をモーションで見せる体。登場の役者と同じ骨格）"))
+    NOTE("この物体（模型と動画の部品を持つ）をボスの足元と向きに置いて流します。待機のクリップはどの状態でも流し、"
+        "技のクリップは技の表の「アニメーション」の列、長さはクリップの長さの表と区間の表で決まります。流せるクリップが"
+        "無い間は隠します。「クリップの刀で当てる」を入れると、"
+        "刀の当たり・斬撃の面・刀の煙・刀光がクリップの刀の骨に付いて行きます（当たりの窓は区間の表どおり）。")
+    // 骨格の体の大きさの倍率（物体の変換の scale に掛ける。1 で模型のまま）。
+    FIELD(float, animBodyScale, 1.0f, "骨格の体の大きさの倍率", HIKARI::Range(0.1f, 10.0f))
+    // 技を出していない間（待機・歩き）に繰り返し流すクリップ。空なら、技のクリップを流す間だけ骨格の体を出す。
+    FIELD(std::string, animBodyIdleClip, {}, "技を出していない間に繰り返すクリップ（空なら技のクリップの間だけ出す）")
+    // クリップを替える時に前の姿から混ぜる長さ (秒)。
+    FIELD(float, animBodyBlendSeconds, 0.15f, "クリップを替える時に混ぜる長さ (秒)", HIKARI::Range(0.0f, 2.0f))
+    // 技のクリップの刀（c-7b1a09）：クリップのある技は、刀の当たり・刀の線（斬撃・刀の煙・刀光）を、クリップの刀の骨の
+    // 所にする（当たりの窓は区間の表どおり）。切ると今までの構えの刀の線のまま。
+    FIELD(bool, animBodyClipSword, true, "クリップの刀で当てる（当たり・斬撃・刀の煙・刀光をクリップの刀の骨に合わせる）")
+    // 刀の骨・左手の骨の名前（模型の節点の名前。左手の技の弾はこの骨の所から出る）。
+    FIELD(std::string, animBodySwordNode, "Sword", "刀の骨の名前（模型の節点）")
+    FIELD(std::string, animBodyLeftHandNode, "LeftHand", "左手の骨の名前（模型の節点。左手の技の弾を出す所）")
+    // 両手の霧の刀（c-40f6c1）：左手が刀の柄（刀の骨の原点）からこの距離 (m、模型の大きさ) まで近づくと両手で握った
+    // とみなす（twoHandNear 以下で 1、twoHandFar 以上で 0、間はなめらかに）。握っている間は当たりの線を剣先の先へ
+    // twoHandReach m 伸ばし、刀身に沿って場の霧へ霧を毎秒 twoHandMist（剣の煙と同じ単位。0 は出さない）、半径
+    // twoHandMistRadius m で入れる。
+    FIELD(float, animBodyTwoHandNear, 0.9f, "両手の霧の刀：左手が柄からこの距離 (m) 以下で両手で握った", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, animBodyTwoHandFar, 1.4f, "…この距離 (m) 以上で片手（間はなめらかに）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, animBodyTwoHandReach, 2.5f, "…両手で握った刀の当たりを剣先の先へ伸ばす長さ (m)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, animBodyTwoHandMist, 0.0f, "…刀身に沿って場の霧へ入れる霧（毎秒。剣の煙と同じ単位。0 は出さない）", HIKARI::Range(0.0f, 500.0f))
+    FIELD(float, animBodyTwoHandMistRadius, 1.2f, "…霧を入れる半径 (m)", HIKARI::Range(0.1f, 10.0f))
+    // 左手にまとう霧（c-40f6c1）：骨格の体が出ている間、見えている左手の所から場の霧へ霧を毎秒 leftHandMist（剣の煙と
+    // 同じ単位。0 は出さない）、半径 leftHandMistRadius m で入れる。霧は左手の周りを leftHandMistSwirl m/秒 で回る向きに
+    // 吹き出す（手に巻き付いて見える）。
+    FIELD(float, animBodyLeftHandMist, 0.0f, "左手にまとう霧（毎秒。剣の煙と同じ単位。0 は出さない）", HIKARI::Range(0.0f, 500.0f))
+    FIELD(float, animBodyLeftHandMistRadius, 0.9f, "…霧を入れる半径 (m)", HIKARI::Range(0.1f, 10.0f))
+    FIELD(float, animBodyLeftHandMistSwirl, 3.0f, "…霧が左手の周りを回る速さ (m/秒)", HIKARI::Range(0.0f, 50.0f))
+    // 跳ぶ距離 (m) と、跳ぶ弧の高さ (m)。
+    FIELD(float, kasumiStepDistance, 4.5f, "跳ぶ距離 (m。技の表の「跳ぶ距離 m」が空欄の行)", HIKARI::Range(0.5f, 20.0f), HIKARI::Group("霞歩（横っ飛び）とかわし"))
+    FIELD(float, kasumiStepHeight, 0.6f, "跳ぶ弧の高さ (m。表の「跳ぶ高さ m」が空欄の行)", HIKARI::Range(0.0f, 5.0f))
+    // 斜め前・斜め後ろの角度（真横から前・後ろへ、度）。
+    FIELD(float, kasumiStepDiagonalDegrees, 45.0f, "斜め前・斜め後ろの角度（真横から前・後ろへ、度）", HIKARI::Range(5.0f, 85.0f))
+    // 真横（左右・弾の線から離れる側）へ跳ぶ時に、プレイヤーを中心に回る向きへ曲げる割合（1 で跳ぶ前と同じ距離に降りる。
+    // 0 でまっすぐ横へ：跳ぶたびにプレイヤーから遠ざかる）。
+    FIELD(float, kasumiStepOrbit, 1.0f, "真横へ跳ぶ時、プレイヤーを中心に回る向きへ曲げる割合（1 で同じ距離に降りる。0 でまっすぐ横＝遠ざかる）", HIKARI::Range(0.0f, 1.0f))
+    // 跳び出しの鋭さ（1 で一定の速さ。大きいほど速く跳び出して、着地の手前でゆっくりになる）。
+    FIELD(float, kasumiStepEasePower, 1.6f, "跳び出しの鋭さ（1 で一定の速さ。大きいほど速く跳び出す）", HIKARI::Range(1.0f, 4.0f))
+    // 跳ぶ間にプレイヤーへ向き直る速さ (度/秒)。
+    FIELD(float, kasumiStepTurnRate, 360.0f, "跳ぶ間にプレイヤーへ向き直る速さ (度/秒)", HIKARI::Range(0.0f, 3600.0f))
+    // 行き先の決め方：戦場の縁（Boss.arenaRadius）からこれだけ内側までに降りる (m)。プレイヤーの中心からこれより近くへは
+    // 降りない (m)。行き先とその周りのこの半径 (m)・道の真ん中が燃えていたら、その向きへは跳ばない。
+    FIELD(float, kasumiStepEdgeMargin, 1.0f, "戦場の縁からこれだけ内側に降りる (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, kasumiStepPlayerGap, 3.0f, "プレイヤーの中心からこれより近くへは降りない (m)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, kasumiStepFireClearance, 1.35f, "行き先のこの半径が燃えていたら跳ばない (m)", HIKARI::Range(0.0f, 10.0f))
+    // 弾をかわす霞歩の、跳び始めから当たらない F（0 は体が動いた分だけでよける）。
+    FIELD(int, kasumiStepGuardFrames, 0, "弾をかわす霞歩：跳び始めから当たらない (F。0 は体が動いた分だけでよける)", HIKARI::Range(0, 30))
+    // 着地で足元の霧を押す大きさ（当たった所の爆発の押しに対する倍。0 で押さない）。
+    FIELD(float, kasumiStepLandPush, 0.8f, "着地で足元の霧を押す大きさ（爆発の押しに対する倍。0 で押さない）", HIKARI::Range(0.0f, 4.0f))
+    // 続けてかわせる回数・続けたとみなす間 (秒。前のかわしからこれより空けば数え直す)・使い切った後にかわさない秒。
+    FIELD(int, kasumiStepDodgeMax, 2, "続けてかわせる回数", HIKARI::Range(1, 10))
+    FIELD(float, kasumiStepDodgeChainSeconds, 8.0f, "続けたとみなす間 (秒。前のかわしからこれより空けば数え直す)", HIKARI::Range(0.0f, 60.0f))
+    FIELD(float, kasumiStepDodgeLockSeconds, 5.0f, "使い切った後、かわさない間 (秒)", HIKARI::Range(0.0f, 60.0f))
+    // かわさない間は、様子見の霞歩も出さない（息が切れている）。
+    FIELD(bool, kasumiStepRestWhileSpent, true, "かわさない間は様子見の霞歩も出さない")
+    // かわさない間の胴の煙の量（ふだんに対する倍。薄く静かになって、見て分かる）。
+    FIELD(float, kasumiStepSpentSmoke, 0.35f, "かわさない間の胴の煙の量（ふだんに対する倍）", HIKARI::Range(0.0f, 1.0f))
+    NOTE("霞歩の向き・跳ぶ F・着地の止まり（後隙）・様子見の後に何をするか（コンボ先と重み）は技の表の行"
+                "（型 kasumiStep）。射撃をかわすか（確率・間隔・反応の遅れ）と、かわした後の反撃は行動ツリーの枝"
+                "「射撃をかわす」。地面や画面に印は出さず、かわさない間は胴の煙が薄くなるだけです。")
+    // 全体の入・切。
+    FIELD(bool, gourdReadEnabled, true, "ヒョウタンの読みを使う（全体の入・切）", HIKARI::Group("ヒョウタンの読み（転がる癖）"))
+    NOTE("同じ側へ転がる癖があれば、横の剣気をその側へ寄せる。ログ [Boss] GourdLean。")
+    // 横の剣気の寄せ：最近 leanRolls 回のローリングのうち（leanMinRolls 回以上数えてから）、ボスから見て左か右が
+    // leanAtLeastPercent % 以上なら、横の剣気の向きをその側へ leanMeters m（プレイヤーの所で。leanMaxDegrees 度まで）寄せる。
+    FIELD(bool, gourdLeanEnabled, true, "同じ側へ転がる癖があれば、横の剣気をその側へ寄せる")
+    FIELD(int, gourdLeanRolls, 6, "転がる癖：最近の何回を見るか", HIKARI::Range(1, 16))
+    FIELD(int, gourdLeanMinRolls, 3, "転がる癖：少なくとも何回数えてから", HIKARI::Range(1, 16))
+    FIELD(float, gourdLeanAtLeastPercent, 60.0f, "転がる癖：左か右がこの割合以上 (%)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, gourdLeanMeters, 2.0f, "寄せる幅（プレイヤーの所で、m）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, gourdLeanMaxDegrees, 15.0f, "寄せる角度の上限 (度)", HIKARI::Range(0.0f, 45.0f))
     // 剣の線（付け根と長さ）。斬撃の煙・剣先のエフェクト・刀光が同じ線を使う。付け根は、骨格の体の刀をまだ読めて
     // いない間の休めの構え（BossPose::Rest）だけが使う（ほかはクリップの刀か見えている刀の骨）。
     // 体の倍率どおり（5 m の体の 1.35 倍）。
-    HIKARI::GameProjectFloat3 swordShoulder{-1.44315f, 4.00275f, 0.313875f};
+    FIELD(HIKARI::Vec3, swordShoulder, (HIKARI::Vec3{-1.44315f, 4.00275f, 0.313875f}), "剣を持つ肩の位置（体の足元から、局所 m）", HIKARI::Group("剣と斬撃の出方"))
     // 剣の長さと剣先の霞（当たりの線は握りから swordLength＋swordHazeLength）。見える刀（BossBody.bodySwordVisibleLength）に
     // 合わせる：両手の斬りで当たりを見える刀に合わせた時（c-8c8d95）に、刀を 3.4 m へ大きくし、霞を剣先の少し先までにした。
     // 刀をもう一回り大きくした時（c-be27a9、見える刀 3.8 m）と、体を大きくした時（c-a30eaf・c-e97b18、見える刀 5.13 m）に、
     // 当たりの線も同じだけ伸ばした。
-    float swordLength = 4.59f;
-    float swordHazeLength = 0.6075f;
-    // 霞歩（横っ飛び）とかわし。
-    BossKasumiStepSettings kasumiStep;
-    float waveForward = 1.324f;
-    float waveMinHeight = 0.941f;
-    float waveMaxHeight = 2.788f;
+    FIELD(float, swordLength, 4.59f, "剣の長さ (m)", HIKARI::Range(0.1f, 20.0f))
+    FIELD(float, swordHazeLength, 0.6075f, "剣先の霞の長さ (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, waveForward, 1.324f, "斬撃を放つ位置：体の前 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, waveMinHeight, 0.941f, "斬撃を放つ高さ 最低 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, waveMaxHeight, 2.788f, "斬撃を放つ高さ 最高 (m、跳んだ高さを足す)", HIKARI::Range(0.0f, 10.0f))
     // 斬撃を、振った刀に合わせて放つ（c-1ed669）：刀が正面を斬った部分（振りのこの割合から先）で、剣先が前へ一番出た所を
     // 過ぎた tick に、その時の刃の waveBladeShare の所（0＝付け根、1＝剣先）から、刀の線が掃いた面の向きで放つ。
     // 偽なら、振り抜いた tick に体の正面から放つ（前の作り）。
-    bool waveFromBlade = true;
-    float waveCutShare = 0.5f;
-    float waveBladeShare = 0.5f;
+    FIELD(bool, waveFromBlade, true, "斬撃を、振った刀の通った所・面・時に合わせて放つ")
+    FIELD(float, waveCutShare, 0.5f, "…刀が正面を斬る部分の始まり（振りの長さに対する割合）", HIKARI::Range(0.0f, 0.95f))
+    FIELD(float, waveBladeShare, 0.5f, "…斬撃の中心を置く刃の位置（0 は付け根、1 は剣先）", HIKARI::Range(0.0f, 1.0f))
     // 三日月の向きを、刀が斬った面へ合わせる割合（1＝面に合わせる。0＝剣先の最初と最後を結ぶ線＝前の作りの向き）。
-    float wavePlaneMatch = 1.0f;
-    int waveGrowFrames = 8;
-    float knifeHeight = 4.70475f;
-    float knifeForward = 1.56735f;
-    float knifeSpreadDegrees = 14.0f;
-    float knifeWidth = 0.3f;
-    float knifeThickness = 0.2f;
+    FIELD(float, wavePlaneMatch, 1.0f, "…三日月の向きを、刀が斬った面へ合わせる割合（0 は前の向き）", HIKARI::Range(0.0f, 1.0f))
+    NOTE("合わせて放つ時：振りの後ろの部分で、剣先がボスの前へ一番出た所を過ぎた瞬間に放ちます（振り抜くより"
+            "数 F 早い）。放つ所は、その時の刃の上の点（体の前 waveForward より手前には出さず、高さは最低〜最高に"
+            "切り詰める）。三日月の向きは、刀の線が掃いた面に合わせます（斜めに斬れば斜めの三日月）。"
+            "切ると、振り抜いた瞬間に体の正面から、剣先の最初と最後を結ぶ向きで放ちます。")
+    FIELD(int, waveGrowFrames, 8, "放った斬撃が判定サイズまで伸びる長さ (F)", HIKARI::Range(1, 120))
+    FIELD(float, knifeHeight, 4.70475f, "ナイフを投げる高さ (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, knifeForward, 1.56735f, "ナイフを投げる位置：体の前 (m)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, knifeSpreadDegrees, 14.0f, "ナイフの扇の間隔 (度)", HIKARI::Range(0.0f, 90.0f))
+    FIELD(float, knifeWidth, 0.3f, "ナイフの当たりの幅 (m)", HIKARI::Range(0.01f, 5.0f))
+    FIELD(float, knifeThickness, 0.2f, "ナイフの当たりの厚み (m)", HIKARI::Range(0.01f, 5.0f))
     // プレイヤーの当たり（プレイヤーの原点からの高さ）
-    float playerHitLow = -0.5f;
-    float playerHitHigh = 0.55f;
-    float playerHitRadius = 0.34f;
-    float playerAimHeight = 0.15f;
+    FIELD(float, playerHitLow, -0.5f, "プレイヤーの当たり：下端（原点から m）", HIKARI::Range(-5.0f, 5.0f))
+    FIELD(float, playerHitHigh, 0.55f, "プレイヤーの当たり：上端（原点から m）", HIKARI::Range(-5.0f, 5.0f))
+    FIELD(float, playerHitRadius, 0.34f, "プレイヤーの当たり：半径 (m)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, playerAimHeight, 0.15f, "狙う高さ（プレイヤーの原点から m）", HIKARI::Range(-5.0f, 5.0f))
     // 残る煙（試作の residue／bossResidue）と吸い込みの煙（試作の waveSmoke／knifeSmoke）
-    float residuePerTwoMeters = 10.0f;
-    float knifeEndResidueScale = 0.5f;
+    FIELD(float, residuePerTwoMeters, 10.0f, "斬撃が 2 m 進むごとに残す煙", HIKARI::Range(0.0f, 1000.0f), HIKARI::Group("残る煙（場の霧へ入れる）"))
+    FIELD(float, knifeEndResidueScale, 0.5f, "ナイフが消えた所に残す煙（斬撃の何倍）", HIKARI::Range(0.0f, 10.0f))
     // ナイフ・霧の弾が飛んだ跡に残す煙（2 m 進むごと。c-e0a9c3 の続き）と、その 1 点の半径 (m)。弾の高さではなく、
     // 弾の真下の地面近くへ入れる（弾の高さへ残すと、ボスとプレイヤーの間に霧の腕が残って視界を塞ぐ）。
     // knifeTrailJitter は、入れる所を左右へ振る幅 (m)。量も進むにつれて強弱させる（まっすぐで一様な白い帯にしない）。
-    float knifeTrailResidue = 2.0f;
-    float knifeTrailRadius = 1.6f;
-    float knifeTrailJitter = 0.9f;
-    float bossResidue = 3.0f;
-    float bossResidueStep = 1.2f;
-    float waveAbsorbSmoke = 25.0f;
-    float knifeAbsorbSmoke = 6.0f;
-    float swingSmoke = 6.0f;
-    float kamaeSmoke = 2.0f;
-    int kamaeSmokeFrames = 15;
-    float waveSmokeRadius = 1.2f;
-    float waveSmokeSink = 1.5f;
-    float waveSmokeDrag = 0.1f;
-    float waveResidueLag = 5.0f;
-    float waveResidueHeight = 0.7f;
-    float swordSmokeRadius = 0.7155f;
-    float depositRadius = 1.5f;
-    float depositHeight = 0.6f;
-    int depositFrames = 24;
+    FIELD(float, knifeTrailResidue, 2.0f, "ナイフ・霧の弾が 2 m 進むごとに、真下の地面近くへ残す煙（1 発ぶん）", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, knifeTrailRadius, 1.6f, "…その 1 点の半径 (m。0 は残さない)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, knifeTrailJitter, 0.9f, "…入れる所を左右へ振る幅 (m。0 はまっすぐな帯)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, bossResidue, 3.0f, "ボスが動いた跡に残す煙（1 回ぶん）", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, bossResidueStep, 1.2f, "…この距離動くごと (m)", HIKARI::Range(0.1f, 100.0f))
+    FIELD(float, swingSmoke, 6.0f, "剣の一振りが描く煙（仮）", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, kamaeSmoke, 2.0f, "構えで剣先に集まる煙（仮）", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(int, kamaeSmokeFrames, 15, "構えの煙を出す長さ (F)", HIKARI::Range(1, 120))
+    NOTE("斬撃の残り煙は、刃が通り過ぎた後ろの地面近くへ入れます（吸える霧）。斬撃そのものの見た目はエフェクトです。")
+    FIELD(float, waveSmokeRadius, 1.2f, "斬撃の残り煙の 1 点の半径 (m)", HIKARI::Range(0.05f, 10.0f))
+    FIELD(float, waveResidueLag, 5.0f, "残り煙を入れる位置（刃の何 m 後ろか。斬撃のエフェクトの域より後ろにする）", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, waveResidueHeight, 0.7f, "残り煙を入れる高さの上限（地面から m）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, waveSmokeDrag, 0.1f, "残り煙を押す速さ（斬撃の速さに対する割合）", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, waveSmokeSink, 1.5f, "残り煙が下へ落ちる速さ (m/秒)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, swordSmokeRadius, 0.7155f, "剣が煙を入れる半径 (m)", HIKARI::Range(0.05f, 10.0f))
+    FIELD(float, depositRadius, 1.5f, "斬撃が消えた所の煙の半径 (m)", HIKARI::Range(0.05f, 10.0f))
+    FIELD(float, depositHeight, 0.6f, "残す煙の高さ（地面から m）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(int, depositFrames, 24, "消えた所の煙を出し切る長さ (F)", HIKARI::Range(1, 600))
     // 爆発の跡に残す吸える煙（爆発の大きさ 1 の時の量と半径。量は大きさに、半径は大きさの平方根に比例する。
     // 爆発の炎と光が消えるまで待ってから、少しずつ出す）。
-    float blastFogSmoke = 12.0f;
-    float blastFogRadius = 1.2f;
-    int blastFogDelayFrames = 30;
-    int blastFogFrames = 40;
-    float bodySmokeRadius = 1.3f;
+    FIELD(float, blastFogSmoke, 12.0f, "爆発の跡に残す煙（爆発の大きさ 1 あたり。0 は残さない）", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, blastFogRadius, 1.2f, "…その半径 (m。爆発の大きさ 1 の時)", HIKARI::Range(0.05f, 10.0f))
+    FIELD(int, blastFogDelayFrames, 30, "…爆発から出し始めるまで (F。爆発の炎と光が消えてから出す)", HIKARI::Range(0, 600))
+    FIELD(int, blastFogFrames, 40, "…出し切る長さ (F)", HIKARI::Range(1, 600))
+    FIELD(float, bodySmokeRadius, 1.3f, "ボスの通った跡の煙の半径 (m)", HIKARI::Range(0.05f, 10.0f))
     // 場の火が体をよける大きさ（火の域にだけ効く障害物。半径 0 でよけない）。
-    float fireObstacleRadius = 1.38375f;
-    float fireObstacleHeight = 6.75f;
+    FIELD(float, fireObstacleRadius, 1.38375f, "場の火が体をよける半径 (m。0 でよけない)", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, fireObstacleHeight, 6.75f, "場の火が体をよける高さ (m)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, waveAbsorbSmoke, 25.0f, "吸い込み：斬撃 1 つを吸った時にヒョウタンへ入る煙", HIKARI::Range(0.0f, 1000.0f))
+    FIELD(float, knifeAbsorbSmoke, 6.0f, "吸い込み：ナイフ 1 本を吸った時にヒョウタンへ入る煙", HIKARI::Range(0.0f, 1000.0f))
+    NOTE("煙の単位はヒョウタンの煙と同じ。場の霧の量への換算はヒョウタンの「霧の量の換算」を使います。"
+                    "残った煙は場の霧に混ざるので、ヒョウタンの吸い込みでそのまま吸えます。")
+    // 手応え：斬撃・霧の弾を放った瞬間（c-e0a9c3 の続き）。カメラを小さく打ち込む：視野角を一瞬狭め（負で狭まる）、小さく
+    // 揺らし、パッドを短く振るわせる。放った所がプレイヤーから releaseCameraNear (m) より遠いと弱まり、
+    // releaseCameraRange (m) で 0 になる。霧の弾（ナイフ）は releaseKnifeScale 倍。時間は止めない。
+    FIELD(float, releaseCameraAmplitude, 0.016f, "カメラの揺れ幅 (m、0 は揺らさない)", HIKARI::Range(0.0f, 0.5f), HIKARI::Group("手応え：斬撃・霧の弾を放った瞬間のカメラ"))
+    FIELD(float, releaseCameraFov, -1.4f, "視野角の打ち込み (度。負で狭まり、0 は無効)", HIKARI::Range(-10.0f, 10.0f))
+    FIELD(int, releaseCameraFrames, 9, "カメラが戻るまで (F、0 は無効)", HIKARI::Range(0, 120))
+    FIELD(float, releaseCameraFrequency, 26.0f, "揺れの周波数 (Hz)", HIKARI::Range(0.0f, 60.0f))
+    FIELD(float, releaseCameraNear, 6.0f, "この距離 (m) より近くで放った時は、そのままの強さ", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, releaseCameraRange, 30.0f, "この距離 (m) で 0 になるように弱める", HIKARI::Range(0.1f, 200.0f))
+    FIELD(float, releaseKnifeScale, 0.5f, "霧の弾（ナイフ）の時の強さ（倍）", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, releaseRumble, 0.4f, "パッドの振動 (0〜1、0 は無効)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, releaseRumbleFrames, 5, "振動の長さ (F、0 は無効)", HIKARI::Range(0, 120))
     // 見た目：飛ぶ斬撃（自前の流体域を持つ三日月の霧。局所 +X が飛ぶ向き、刃は局所 XY 面）
-    HIKARI::GameProjectVfxAssetReference slashEffect{"6e539e255514847188410bf7c2d81a0c",
-                                                     "Assets/Vfx/BossSlashWave.hvfx"};
+    FIELD(HIKARI::VfxAsset, slashEffect, (HIKARI::VfxAsset{"6e539e255514847188410bf7c2d81a0c"}), "飛ぶ斬撃のエフェクト（三日月の霧。自前の流体域を持つ）", HIKARI::Group("見た目（霞の色とエフェクト）"))
+    FIELD(float, slashEffectWidth, 11.0f, "斬撃のエフェクトが作られている幅 (m。判定サイズ ÷ これ が大きさの倍率)", HIKARI::Range(0.5f, 50.0f))
+    FIELD(float, slashFadeSeconds, 0.25f, "斬撃が消えた後、霧が消えるまで飛ばし続ける時間 (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, slashImpactSeconds, 0.2f, "当たった瞬間に刃が砕けて散る時間 (秒)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(float, slashHitSpeedScale, 0.15f, "当たった後の霧が進む速さ（元の速さに対する割合。小さいほどその場で散る）", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, slashGlowFadeSeconds, 0.1f, "刃が消える・当たる時に、光る刃口や炎の層が縮んで消えるまでの時間 (秒)", HIKARI::Range(0.0f, 1.0f))
+    NOTE("斬撃の霧の濃さ・色・光り方・尾の長さは、エフェクト BossSlashWave の Blade Domain と各層で調整します。"
+            "同時に見せる斬撃は 2 つまで（流体域の枠）で、その間は砲撃の炎の枠が同じ数だけ減ります。")
     // 霞の刃（火を残さない斬撃）が当たった所に重ねるエフェクト（青白い光と火花。空なら blastEffect）。
-    HIKARI::GameProjectVfxAssetReference mistBlastEffect{"c7a41d6be2f0483a9d15b0e36f7a2c18",
-                                                         "Assets/Vfx/BossMistBurst.hvfx"};
+    FIELD(HIKARI::VfxAsset, mistBlastEffect, (HIKARI::VfxAsset{"c7a41d6be2f0483a9d15b0e36f7a2c18"}), "霞の刃が当たった所のエフェクト（青白い光と火花。空なら炎の刃と同じ）")
+    FIELD(float, wavePartPush, 8.0f, "飛ぶ斬撃が、真下の場の霧を左右へ割る速さ (m/s。0 で割らない)", HIKARI::Range(0.0f, 40.0f))
+    FIELD(float, wavePartRadius, 1.5f, "…割る押しの半径 (m)", HIKARI::Range(0.1f, 6.0f))
     // 火を残さない斬撃の見た目（煙の刃）。空なら、どの斬撃も slashEffect（炎の刃）で出す。
-    HIKARI::GameProjectVfxAssetReference slashSmokeEffect{"a86e3e830ef54289e4dd42a4ef0a6100",
-                                                          "Assets/Vfx/BossSlashSmoke.hvfx"};
-    float slashEffectWidth = 11.0f;
-    float slashFadeSeconds = 0.25f;
-    float slashImpactSeconds = 0.2f;
-    float slashHitSpeedScale = 0.15f;
-    float slashGlowFadeSeconds = 0.1f;
-    // 見た目：当たった所の爆発（光・火花・爆炎のエフェクトと、足元の霧を外へ押す力）
-    HIKARI::GameProjectVfxAssetReference blastEffect{"bd16110e0b1bf90ce62d5502eb61c0d3",
-                                                     "Assets/Vfx/BossSlashBurst.hvfx"};
-    // 火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。炎そのものは、場の火の域の流体で出す）。
-    HIKARI::GameProjectVfxAssetReference fireHitEffect{"b0e523d7675b2f4320b92d7f1b0cda12",
-                                                       "Assets/Vfx/PlayerFireHit.hvfx"};
-    // 当たった斬撃の炎を消すまでの時間。爆発の光に隠して、ほぼすぐ消す（残すと、薄い域の炎が板のように広がって画面を塞ぐ）。
-    float slashHitFadeSeconds = 0.07f;
-    float wavePartPush = 8.0f;
-    float wavePartRadius = 1.5f;
-    float blastPush = 9.0f;
-    float blastPushRadius = 3.0f;
-    float knifeBlastScale = 0.4f;
-    // 見た目（流体注入のエフェクト。場の霧の域へ色の付いた霞を入れる）
-    HIKARI::GameProjectVfxAssetReference swordEffect{"353886750fe7c2c7f8939f18e5df6b31",
-                                                     "Assets/Vfx/BossSwordHaze.hvfx"};
-    HIKARI::GameProjectFloat3 hazeColor{0.62f, 0.82f, 1.0f};
-    float swordEffectAmount = 0.3f;
-    float kamaeEffectAmount = 0.15f;
-    // 剣先の火の粉の光の大きさ（倍）。構えの合図。煙と違って場に残らない。
-    float swordEmberScale = 1.0f;
+    FIELD(HIKARI::VfxAsset, slashSmokeEffect, (HIKARI::VfxAsset{"a86e3e830ef54289e4dd42a4ef0a6100"}), "火を残さない斬撃のエフェクト（煙の刃。空なら炎の刃で出す）")
     // 見た目：火を残す技の間、剣が燃える（出す前の構えから、火を残す技だと見分けられる）
-    float bladeLitEmber = 2.5f;
-    HIKARI::GameProjectFloat3 bladeLitColor{1.0f, 0.45f, 0.14f};
-    float igniteFlashRadius = 0.7f;
-    float hitBlastRadius = 1.1f;
-    float kamaeEmberScale = 0.6f;
-    float knifeEffectAmount = 0.8f;
+    FIELD(float, bladeLitEmber, 2.5f, "火を残す技の間の、剣先の熾火の強さ (倍)", HIKARI::Range(0.0f, 20.0f))
+    FIELD(HIKARI::Vec3, bladeLitColor, (HIKARI::Vec3{1.0f, 0.45f, 0.14f}), "…剣先の霞の色")
+    FIELD(float, igniteFlashRadius, 0.7f, "剣に火が付く瞬間の火球の半径 (m。0 は出さない)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, hitBlastRadius, 1.1f, "当たった所の火球・煙の塊の半径 (m)", HIKARI::Range(0.1f, 10.0f))
+    NOTE("火を残す技（技の表の「残す火」）は、出す前から剣が燃え、斬撃は炎の刃になります。"
+                    "残さない技は、剣は霞のまま、斬撃は暗い煙の刃です。"
+                    "剣の炎・当たった所の火球・煙の塊は、場の火の域（ArenaFireField）の流体です。")
+    // 見た目：当たった所の爆発（光・火花・爆炎のエフェクトと、足元の霧を外へ押す力）
+    FIELD(HIKARI::VfxAsset, blastEffect, (HIKARI::VfxAsset{"bd16110e0b1bf90ce62d5502eb61c0d3"}), "当たった所の爆発のエフェクト（光・火花・爆炎）")
+    // 火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。炎そのものは、場の火の域の流体で出す）。
+    FIELD(HIKARI::VfxAsset, fireHitEffect, (HIKARI::VfxAsset{"b0e523d7675b2f4320b92d7f1b0cda12"}), "火の刃がプレイヤーに当たった所の火花（攻撃の向きへ飛ぶ。体を突き抜ける炎は BurnField の jet の項目）")
+    // 当たった斬撃の炎を消すまでの時間。爆発の光に隠して、ほぼすぐ消す（残すと、薄い域の炎が板のように広がって画面を塞ぐ）。
+    FIELD(float, slashHitFadeSeconds, 0.07f, "当たった斬撃の炎を消すまでの時間 (秒。爆発の光に隠してすぐ消す)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, blastPush, 9.0f, "爆発が足元の霧を外へ押す速さ (m/秒、0 は無効)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, blastPushRadius, 3.0f, "爆発が霧を押す半径 (m)", HIKARI::Range(0.1f, 50.0f))
+    FIELD(float, knifeBlastScale, 0.4f, "ナイフが当たった時の爆発の大きさ（斬撃に対する倍率）", HIKARI::Range(0.0f, 2.0f))
+    NOTE("爆発は、斬撃・ナイフ・剣がプレイヤーに当たった所に出ます。霧は地面に沿って外へ押すだけで、煙は足しません"
+            "（場の霧はほとんど消えないので、足すとプレイヤーの周りに溜まって画面を塞ぎます）。"
+            "光・火花・爆炎の形は BossSlashBurst で調整します。")
+    // 見た目（流体注入のエフェクト。場の霧の域へ色の付いた霞を入れる）
+    FIELD(HIKARI::VfxAsset, swordEffect, (HIKARI::VfxAsset{"353886750fe7c2c7f8939f18e5df6b31"}), "剣先の霞・ナイフの尾のエフェクト（流体注入）")
+    FIELD(HIKARI::Vec3, hazeColor, (HIKARI::Vec3{0.62f, 0.82f, 1.0f}), "剣先の霞・ナイフの尾の色（霞の刃と同じ青白。火を残す技の間は bladeLitColor）")
+    FIELD(float, swordEffectAmount, 0.3f, "振っている剣の霞の濃さ（倍）", HIKARI::Range(0.0f, 20.0f))
+    FIELD(float, kamaeEffectAmount, 0.15f, "構えで剣先に集まる霞の濃さ（倍）", HIKARI::Range(0.0f, 20.0f))
+    // 剣先の火の粉の光の大きさ（倍）。構えの合図。煙と違って場に残らない。
+    FIELD(float, swordEmberScale, 1.0f, "振っている剣先の火の粉の光の大きさ（倍、0 は出さない）", HIKARI::Range(0.0f, 10.0f))
+    FIELD(float, kamaeEmberScale, 0.6f, "構えで剣先に灯る火の粉の光の大きさ（倍）", HIKARI::Range(0.0f, 10.0f))
+    NOTE("剣先の霞（煙）は場の霧に入って残ります。濃くすると技のたびにボスの頭上へ溜まり、長く戦うと視界を塞ぎます。"
+            "構えを目立たせたい時は、煙ではなく火の粉の光を大きくします。")
+    FIELD(float, knifeEffectAmount, 0.8f, "ナイフの尾の霞の濃さ（倍）", HIKARI::Range(0.0f, 20.0f))
     // 見た目：投げナイフそのもの（刃と光点。局所 +X が飛ぶ向き。流体域は使わない）
-    HIKARI::GameProjectVfxAssetReference knifeEffect{"26fa37413fbcc48cc52d0605225433bb", "Assets/Vfx/BossKnife.hvfx"};
+    FIELD(HIKARI::VfxAsset, knifeEffect, (HIKARI::VfxAsset{"26fa37413fbcc48cc52d0605225433bb"}), "投げナイフのエフェクト（刃と光点）")
     // 見た目：左手の技の霧の弾（c-4be37e）。入れると、投げナイフの刃と尾を出さず、下の本体のエフェクトを飛ばす。
-    bool knifeMistBullet = false;
+    FIELD(bool, knifeMistBullet, false, "投げナイフを霧の弾にする（刃と尾を出さず、下の本体のエフェクトを飛ばす）")
     // 見た目：霧の弾の本体（c-e0a9c3）。knifeMistBullet の時に、1 発に 1 つ飛ばす：弾に付いて動く、後ろへ長い細かい
     // 流体域を持ち、弾の頭の源から出た煙がその場に残って尾になる。頭の光・軌跡の光の帯・熱の揺らぎも持つ（局所 +X が
     // 飛ぶ向き。入力 input.fly・input.glow）。mistShotScale は大きさの倍率、mistShotFadeSeconds は弾が消えた後に尾の煙が
     // 残る秒、mistShotGlowFadeSeconds は頭の光が消えるまでの秒。
-    HIKARI::GameProjectVfxAssetReference mistShotEffect{"575bd3cb4f236a63437967fe0946b5a3",
-                                                        "Assets/Vfx/BossMistShot.hvfx"};
-    float mistShotScale = 1.0f;
-    float mistShotFadeSeconds = 0.45f;
-    float mistShotGlowFadeSeconds = 0.1f;
+    FIELD(HIKARI::VfxAsset, mistShotEffect, (HIKARI::VfxAsset{"575bd3cb4f236a63437967fe0946b5a3"}), "霧の弾の本体のエフェクト（弾に付いて動く細かい流体域：尾の煙・頭の光・軌跡の帯・熱の揺らぎ）")
+    FIELD(float, mistShotScale, 1.0f, "…弾の大きさ（倍）", HIKARI::Range(0.1f, 10.0f))
+    FIELD(float, mistShotFadeSeconds, 0.45f, "…弾が消えた後に、尾の煙が残る時間 (秒)", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, mistShotGlowFadeSeconds, 0.1f, "…弾が消えた後に、芯の光が消えるまで (秒)", HIKARI::Range(0.01f, 5.0f))
     // 見た目：振りで場の霧を揺らす（c-4be37e）。当たりの窓の間、刀の外側と内側の所で、刃が進む向きへ場の霧を押す力
     // (m/s²。0 は押さない) と、その力が届く半径 (m)。
-    float swingPushForce = 0.0f;
-    float swingPushRadius = 2.0f;
+    FIELD(float, swingPushForce, 0.0f, "振りで場の霧を揺らす力（m/s²。当たりの窓の間、刃が進む向きへ押す。0 は押さない）", HIKARI::Range(0.0f, 400.0f))
+    FIELD(float, swingPushRadius, 2.0f, "…力が届く半径 (m)", HIKARI::Range(0.1f, 10.0f))
     // 見た目：回し蹴りの霞の輪（広がる炎の輪。自前の流体域を 1 つ使う。足元の霧を外へ押す）
-    HIKARI::GameProjectVfxAssetReference ringEffect{"cbffd59dc133951894e126d8243b0fd2", "Assets/Vfx/BossKickRing.hvfx"};
+    FIELD(HIKARI::VfxAsset, ringEffect, (HIKARI::VfxAsset{"cbffd59dc133951894e126d8243b0fd2"}), "回し蹴りの霞の輪のエフェクト（広がる炎の輪。自前の流体域を持つ）")
     // …火を残す技の輪（フェーズ 2）のエフェクト。空なら ringEffect（c-3c908c）。入力の契約は ringEffect と同じ。
-    HIKARI::GameProjectVfxAssetReference ringFireEffect{};
-    float ringEffectRadius = 9.0f;
-    float ringFadeSeconds = 0.35f;
-    float ringHeight = 0.6f;
-    float ringBurstScale = 0.6f;
-    int spinCoilFrames = 14;
-    float spinCoilDegrees = 120.0f;
-    float spinTurns = 1.0f;
-    float spinRingShare = 0.45f;
-    float ringPush = 6.0f;
-    float ringPushRadius = 1.2f;
+    FIELD(HIKARI::VfxAsset, ringFireEffect, {}, "…火を残す技（フェーズ 2）の輪のエフェクト（空なら上と同じ）")
+    FIELD(float, ringEffectRadius, 9.0f, "…エフェクトが作られている半径 (m。輪の半径 ÷ これ が大きさの倍率)", HIKARI::Range(0.5f, 50.0f))
+    FIELD(float, ringFadeSeconds, 0.35f, "…輪が消えた後、炎が消えるまで残す時間 (秒)", HIKARI::Range(0.0f, 3.0f))
+    FIELD(float, ringHeight, 0.6f, "…輪の高さ（地面から m）", HIKARI::Range(0.0f, 10.0f))
+    NOTE("炎の輪は流体域を 1 つ使います。回し蹴りの間は、砲撃の炎の枠がその分だけ減ります。"
+                    "炎・煙の濃さや色は、エフェクト BossKickRing の Fire Domain と各層で調整します。")
+    FIELD(float, ringBurstScale, 0.6f, "回し蹴りの足元の爆ぜの大きさ（当たった所の爆発の倍率）", HIKARI::Range(0.0f, 5.0f))
+    FIELD(float, ringPush, 6.0f, "霞の輪が足元の霧を外へ押す速さ (m/秒、0 は押さない)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, ringPushRadius, 1.2f, "…押す 1 点の半径 (m)", HIKARI::Range(0.1f, 20.0f))
     // 見た目：範囲爆発の叩きつけの爆発（c-3c908c。自前の流体域を 1 つ使う一度きりのエフェクト）。剣が燃えている技
     // （フェーズ 2）は burstEffect、ほかは burstMistEffect（空なら burstEffect）。どちらも空なら、今までの小さな爆ぜ。
-    HIKARI::GameProjectVfxAssetReference burstEffect{};
-    HIKARI::GameProjectVfxAssetReference burstMistEffect{};
-    float burstScale = 1.0f;
+    FIELD(HIKARI::VfxAsset, burstEffect, {}, "範囲爆発：叩きつけの爆発のエフェクト（火。剣が燃えている技で出す。自前の流体域を持つ）")
+    FIELD(HIKARI::VfxAsset, burstMistEffect, {}, "…霞の爆発（剣が燃えていない技で出す。空なら火と同じ）")
+    FIELD(float, burstScale, 1.0f, "…爆発の大きさ（倍）", HIKARI::Range(0.1f, 5.0f))
     // …火の剣気が狙った所で爆ぜる時（「交差」）の爆発の大きさ（叩きつけの爆発に対する倍率。0 は今までの小さな爆発）。
-    float crossBurstScale = 0.6f;
+    FIELD(float, crossBurstScale, 0.6f, "…火の剣気が狙った所で爆ぜる時の爆発の大きさ（叩きつけの爆発に対する倍率。0 は今までの小さな爆発）", HIKARI::Range(0.0f, 2.0f))
     // …爆発が足元の霧を外へ押す速さ (m/秒) と、届く半径 (m)。
-    float burstPush = 14.0f;
-    float burstPushRadius = 6.0f;
+    FIELD(float, burstPush, 14.0f, "…爆発が足元の霧を外へ押す速さ (m/秒、0 は押さない)", HIKARI::Range(0.0f, 100.0f))
+    FIELD(float, burstPushRadius, 6.0f, "…押しが届く半径 (m)", HIKARI::Range(0.1f, 50.0f))
     // …爆発の瞬間のカメラの揺れ（幅 m・長さ F・周波数 Hz。幅か長さが 0 なら揺らさない）と、パッドの振動（重い・軽い
     // モーター 0〜1、長さ F）。
-    float burstCameraAmplitude = 0.12f;
-    int burstCameraFrames = 18;
-    float burstCameraFrequency = 20.0f;
-    float burstRumbleLow = 0.8f;
-    float burstRumbleHigh = 0.5f;
-    int burstRumbleFrames = 14;
+    FIELD(float, burstCameraAmplitude, 0.12f, "…爆発の瞬間のカメラの揺れ幅 (m、0 は揺らさない)", HIKARI::Range(0.0f, 2.0f))
+    FIELD(int, burstCameraFrames, 18, "…揺れの長さ (F)", HIKARI::Range(0, 120))
+    FIELD(float, burstCameraFrequency, 20.0f, "…揺れの周波数 (Hz)", HIKARI::Range(0.0f, 60.0f))
+    FIELD(float, burstRumbleLow, 0.8f, "…パッドの振動：重いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(float, burstRumbleHigh, 0.5f, "…パッドの振動：軽いモーター (0〜1)", HIKARI::Range(0.0f, 1.0f))
+    FIELD(int, burstRumbleFrames, 14, "…振動の長さ (F、0 は無効)", HIKARI::Range(0, 120))
     // …爆発の瞬間の動きのぼかしの一瞬（シャッター角 度・長さの上限 1080p の画素・戻るまで F。c-e0a9c3 の続き）。
-    float burstBlurShutter = 330.0f;
-    float burstBlurPixels = 44.0f;
-    int burstBlurFrames = 16;
-    // 手応え：斬撃・霧の弾を放った瞬間（c-e0a9c3 の続き）。カメラを小さく打ち込む：視野角を一瞬狭め（負で狭まる）、小さく
-    // 揺らし、パッドを短く振るわせる。放った所がプレイヤーから releaseCameraNear (m) より遠いと弱まり、
-    // releaseCameraRange (m) で 0 になる。霧の弾（ナイフ）は releaseKnifeScale 倍。時間は止めない。
-    float releaseCameraAmplitude = 0.016f;
-    float releaseCameraFov = -1.4f;
-    int releaseCameraFrames = 9;
-    float releaseCameraFrequency = 26.0f;
-    float releaseCameraNear = 6.0f;
-    float releaseCameraRange = 30.0f;
-    float releaseKnifeScale = 0.5f;
-    float releaseRumble = 0.4f;
-    int releaseRumbleFrames = 5;
+    FIELD(float, burstBlurShutter, 330.0f, "…爆発の瞬間の動きのぼかし：シャッター角 (度、0 は無効)", HIKARI::Range(0.0f, 360.0f))
+    FIELD(float, burstBlurPixels, 44.0f, "…ぼかしの長さの上限 (1080p の画素)", HIKARI::Range(0.0f, 64.0f))
+    FIELD(int, burstBlurFrames, 16, "…ぼかしが戻るまで (F)", HIKARI::Range(0, 120))
+    NOTE("叩きつけの爆発は、見えている左手の真下の地面から出ます。2 つとも空のシーンでは、今までの小さな爆ぜです。"
+            "炎・煙・光・火花の形は、エフェクト BossBurstFire／BossBurstMist の層で調整します。")
+    NOTE("飛ぶ斬撃が通った跡の残り煙は、エフェクトではなく場の霧の域へ直接入れます（Emit。域は増やしません）。")
     // 確かめ用（正式シーンでは使わない）
-    std::string testMove;
-    bool testSequence = false;
-    bool testLoop = false;
-    int testStartFrames = 60;
-    int testGapFrames = 40;
-    bool testHoldStill = false;
-    bool testChain = false;
-    int testDamageAtFrame = -1;
-    float testDamageAmount = 40.0f;
-    int testDamageRepeatFrames = 0;
-    int testDamageRepeatCount = 1;
-    int traceEveryFrames = 0;
-    int randomSeed = 7;
+    FIELD(std::string, testMove, {}, "試す技（行の名前。空は使わない）", HIKARI::Group("確かめ用（正式シーンでは使わない）"))
+    FIELD(bool, testSequence, false, "表の技を順番に全部出す")
+    FIELD(bool, testLoop, false, "最後まで出したら最初から")
+    FIELD(int, testStartFrames, 60, "最初の技までの待ち (F)", HIKARI::Range(0, 7200))
+    FIELD(int, testGapFrames, 40, "技と技の間の待ち (F)", HIKARI::Range(0, 7200))
+    FIELD(bool, testHoldStill, false, "待機中に横歩きしない")
+    FIELD(bool, testChain, false, "試す技のコンボ先（表の最初の行）へ続ける（コンボの最大の数まで）")
+    FIELD(int, testDamageAtFrame, -1, "ボスに確かめのダメージを入れる F（-1 は使わない）", HIKARI::Range(-1, 72000))
+    FIELD(float, testDamageAmount, 40.0f, "確かめのダメージの量", HIKARI::Range(0.0f, 100000.0f))
+    FIELD(int, testDamageRepeatFrames, 0, "確かめのダメージの間隔 (F、0 は 1 回)", HIKARI::Range(0, 7200))
+    FIELD(int, testDamageRepeatCount, 1, "確かめのダメージの回数", HIKARI::Range(1, 7200))
+    FIELD(int, traceEveryFrames, 0, "状態をログに出す間隔 (F、0 は出さない)", HIKARI::Range(0, 7200))
+    FIELD(int, randomSeed, 7, "乱数の種（移動の長さ・浮く高さ）", HIKARI::Range(0, 1000000))
     // 間合いの計測（c-c010ef。BossReachProbe）：剣の技が当たる距離 × 角度を記録に出す。
-    bool reachProbe = false;
-    float reachProbeDistanceMin = 1.0f;
-    float reachProbeDistanceMax = 10.0f;
-    float reachProbeDistanceStep = 0.25f;
-    int reachProbeAngleStep = 10;
+    FIELD(bool, reachProbe, false, "剣の技が当たる間合い（距離 × 角度）を測って記録に出す（始めに 1 度）")
+    FIELD(float, reachProbeDistanceMin, 1.0f, "間合いの計測：近い端 (m)", HIKARI::Range(0.0f, 50.0f))
+    FIELD(float, reachProbeDistanceMax, 10.0f, "間合いの計測：遠い端 (m)", HIKARI::Range(0.0f, 50.0f))
+    FIELD(float, reachProbeDistanceStep, 0.25f, "間合いの計測：距離の刻み (m)", HIKARI::Range(0.05f, 5.0f))
+    FIELD(int, reachProbeAngleStep, 10, "間合いの計測：角度の刻み (度)", HIKARI::Range(1, 90))
+    // HUD などが読めるよう、HP と最大 HP などをゲーム全体の値（Params）へ毎フレーム書く。
+    void Update(float deltaTime) override;
 
     // 実行時の状態は保存しない。
     bool initialized = false;
@@ -726,7 +846,7 @@ public:
     bool reachProbeDone = false;
     // 戦いの流れ（Flow）が、戦いが始まるまでボスの行動を止めている間 true。技を頼まず、歩かない。
     bool held = false;
-    // 物体変数へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
+    // ゲーム全体の値（Params）へ出す HP と最大 HP（Damageable の値を、ボスの固定 tick ごとに写す）。書き込みが断られた警告は 1 回だけ出す。
     float shownHealth = 0.0f;
     float shownMaxHealth = 0.0f;
     // HP の条を出すか（Boss.BarShown へ書く）。

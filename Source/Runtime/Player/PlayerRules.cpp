@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "HIKARI/Project/ProjectLog.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {

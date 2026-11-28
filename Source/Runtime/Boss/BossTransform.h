@@ -13,10 +13,9 @@ class BossTransform final {
 public:
     // 規則の tick の終わりに、体の物体の変換を書く（体の姿勢は骨格の体の動画が見せる）。intro は同じ物体の登場の部品
     // （無ければ nullptr）。
-    static void Apply(HIKARI::ObjectView object, BossComponent& boss, const BossIntroComponent* intro,
-                      const BossPhaseShiftComponent* shift);
+    static void Apply(HIKARI::ObjectView object, Boss& boss, const BossIntro* intro,
+                      const BossPhaseShift* shift);
     // 検査器の「撃破の後」の項目（体が縮んで消えるまで）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

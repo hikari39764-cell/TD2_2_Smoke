@@ -13,7 +13,7 @@ struct AmbientSite {
 };
 
 // 煙の筋が巡る所（鎧・刀の根元・兜・右の手甲・左の手甲。部品は、まだ体に付いていないものだけ）。数を返す。先頭は鎧。
-int AmbientPlaces(const BossIntroComponent& intro, std::array<AmbientSite, kAmbientSites>& sites) {
+int AmbientPlaces(const BossIntro& intro, std::array<AmbientSite, kAmbientSites>& sites) {
     const BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     if (!a.socketsValid)
@@ -46,10 +46,10 @@ int AmbientPlaces(const BossIntroComponent& intro, std::array<AmbientSite, kAmbi
 // 閉じず、彗星のような筋が部品を巡る形になる（点を増やしたり遅くしたりすると、尾がつながって、その場に溜まった丸い塊に
 // 見える。薄く広げると、形の無い濁りになる）。部品そのものは輪の中にあって、煙に隠れない。前触れ（拍 Omen）が進むと、筋は
 // 自分の部品を離れて鎧へ寄り、鎧の周りを巡る渦になる。地を走る煙が鎧に着く前に引いていく（拍 Smoke.Ambient の終わり）。
-void Ambient(const Feed& feed, const BossIntroComponent& intro) {
-    const BossIntroSettings& s = intro.settings;
+void Ambient(const Feed& feed, const BossIntro& intro) {
+    const BossIntro& s = intro;
     const BossIntroState& state = intro.state;
-    if (s.ambientAmount <= 0.0f)
+    if (s.introAmbientAmount <= 0.0f)
         return;
     float level = Smooth(state.ambientClock / kAmbientIn);
     float omen = 0.0f;
@@ -74,12 +74,12 @@ void Ambient(const Feed& feed, const BossIntroComponent& intro) {
         const float seat = static_cast<float>(site.slot);
         // 巡る中心と半径：ふだんは自分の部品の周り（半径はゆっくり伸び縮みする）。前触れが進むと、部品を離れて鎧の周りへ
         // 寄って行く（鎧の周りでは、席ごとに半径を変えて、筋を重ねない）。
-        const float home = std::max(kAmbientRingMin, site.reach * s.ambientRing);
+        const float home = std::max(kAmbientRingMin, site.reach * s.introAmbientRing);
         const Vec3 centre = Lerp(site.at, armour, omen);
         const float radius = Lerp(home * (1.0f + kAmbientBreathe * std::sin(time * 0.37f + 1.7f * seat)),
                                   kOmenRing + kOmenRingStep * seat, omen);
         // 角度は「時刻 × (速さ ÷ ふだんの半径)」で決める：半径や中心が変わっても、点は跳ばない。
-        const float rate = site.turn * s.ambientTurn / home;
+        const float rate = site.turn * s.introAmbientTurn / home;
         for (int w = 0; w < site.streams; ++w) {
             const uint64_t id = kAmbientId + static_cast<uint64_t>(site.slot * kAmbientWisps + w);
             const Vec3 out = Around(2.1f * seat + time * rate +
@@ -89,23 +89,23 @@ void Ambient(const Feed& feed, const BossIntroComponent& intro) {
             wisp.radius = 0.36f;
             wisp.velocity = Add(Mul(Tangent(out), site.turn * kAmbientCarry), Up(0.15f));
             wisp.gust = 0.3f;
-            wisp.heat = Lerp(s.ambientHeat, kOmenHeat, omen);
-            feed.Smoke(id, wisp, s.ambientAmount * site.share * level / static_cast<float>(site.streams));
+            wisp.heat = Lerp(s.introAmbientHeat, kOmenHeat, omen);
+            feed.Smoke(id, wisp, s.introAmbientAmount * site.share * level / static_cast<float>(site.streams));
         }
         // 輪を回す力：所の周りをゆっくり巡りながら、筋と同じ向きへ押す（尾が輪に沿って流れ続ける）。前触れでは強まり、
         // 鎧の周りの渦を回す。
         const Vec3 arm = Around(1.3f * seat + time * rate * kAmbientStirShare);
         feed.Blow(kAmbientId + 16 + static_cast<uint64_t>(site.slot), Add(centre, Add(Mul(arm, radius * 0.6f), Up(0.5f))),
-                  radius + 0.8f, Mul(Tangent(arm), site.turn), Lerp(s.ambientStir, s.omenPull, omen) * level,
+                  radius + 0.8f, Mul(Tangent(arm), site.turn), Lerp(s.introAmbientStir, s.introOmenPull, omen) * level,
                   FluidChannels::kIntroSmoke);
         // 尾を薄める：この域の煙は長く残る設定（抜刀の柱を立ち残らせるため）なので、放っておくと、巡る筋の尾が 1 周して
         // つながり、溜まって丸い塊になる。巡る輪の一帯で薄め続けて、尾を 1 周より短く保つ（前触れで筋が鎧へ集まる時は、
         // 重なる分だけ弱める）。
         feed.Absorb(kAmbientId + 30 + static_cast<uint64_t>(site.slot), Add(centre, Up(0.5f)),
                     radius * kAmbientFadeReach + 1.0f,
-                    s.ambientFade * level * Lerp(1.0f, 1.0f / static_cast<float>(count), omen));
-        if (s.ambientFogPush > 0.0f)
+                    s.introAmbientFade * level * Lerp(1.0f, 1.0f / static_cast<float>(count), omen));
+        if (s.introAmbientFogPush > 0.0f)
             feed.Burst(kAmbientId + 24 + static_cast<uint64_t>(site.slot), site.at, kAmbientFogRadius,
-                       s.ambientFogPush * level, FluidChannels::kFog);
+                       s.introAmbientFogPush * level, FluidChannels::kFog);
     }
 }

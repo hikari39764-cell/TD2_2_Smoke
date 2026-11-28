@@ -9,7 +9,7 @@ namespace Project_TD2_2 {
 class BossLockTarget final {
 public:
     // 固定 tick の最後（ボスの規則の後）に、プレイヤーがいる時だけ呼ぶ。
-    static void Step(HIKARI::ObjectView bossObject, const BossComponent& boss, Player& player);
+    static void Step(HIKARI::ObjectView bossObject, const Boss& boss, Player& player);
 };
 
 } // namespace Project_TD2_2

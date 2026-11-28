@@ -21,7 +21,7 @@ public:
     // 技を実行の節が技を頼めなかった：直前の反応の間隔が通った分を取り消す。
     static void NoteFailed(BossThought& thought);
     // プレイヤーに当たった時に呼ぶ：いまの技が反応の枝の技なら、その反応の「当てた時刻」を覚える。
-    static void NoteHit(BossComponent& boss);
+    static void NoteHit(Boss& boss);
 };
 
 } // namespace Project_TD2_2

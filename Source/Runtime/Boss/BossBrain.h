@@ -8,7 +8,7 @@ namespace Project_TD2_2 {
 // 技の選び方の入口。実行器（体・剣・斬撃）とは分け、選び方だけを差し替えられるようにする。
 // 行動ツリーの brain（BossTreeBrain）はこれを実装し、節が BossRules::RequestMove で技を頼む。
 struct BossBrainContext {
-    BossComponent& boss;
+    Boss& boss;
     // ボスの物体（行動ツリーの部品を持つ物体）。
     HIKARI::GameProjectObjectHandle object{};
     // プレイヤーまでの水平距離（m）。プレイヤーがいなければ負。
@@ -37,13 +37,12 @@ public:
 class BossTestBrain final : public IBossBrain {
 public:
     // 確かめ用の項目（試す技・順番に全部）が入っているボスは、行動ツリーではなくこちらが動かす。
-    static bool Wants(const BossComponent& boss);
+    static bool Wants(const Boss& boss);
     void OnIdle(BossBrainContext& context) override;
     void OnActFinished(BossBrainContext& context) override;
     void OnRecovery(BossBrainContext& context) override;
     void OnWalking(BossBrainContext& context) override;
     // 検査器の「確かめ用」の項目（試す技・確かめのダメージ・記録）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

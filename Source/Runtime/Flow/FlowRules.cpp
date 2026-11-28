@@ -6,12 +6,12 @@
 namespace Project_TD2_2 {
 namespace {
 
-bool HasFallen(const FlowComponent& flow, const FlowObservation& observation) {
+bool HasFallen(const Flow& flow, const FlowObservation& observation) {
     return flow.startHeightKnown && !observation.playerRiding &&
            observation.playerHeight < flow.startHeight - flow.fallDepth;
 }
 
-bool IsPlayerLost(const FlowComponent& flow, const FlowObservation& observation) {
+bool IsPlayerLost(const Flow& flow, const FlowObservation& observation) {
     return observation.playerPresent && (observation.playerDead || HasFallen(flow, observation));
 }
 
@@ -20,21 +20,21 @@ bool IsBossDown(const FlowObservation& observation) {
 }
 
 // 近づいた、または最初の一撃を当てた。
-bool IsEngaged(const FlowComponent& flow, const FlowObservation& observation) {
+bool IsEngaged(const Flow& flow, const FlowObservation& observation) {
     if (!observation.bossPresent || observation.bossMaxHealth <= 0.0f)
         return false;
     const bool isNear = observation.distanceToBoss >= 0.0f && observation.distanceToBoss <= flow.engageDistance;
     return isNear || observation.bossHealth < observation.bossMaxHealth;
 }
 
-void Enter(FlowComponent& flow, FlowPhase phase) {
+void Enter(Flow& flow, FlowPhase phase) {
     flow.phase = phase;
     flow.phaseTicks = 0;
 }
 
 } // namespace
 
-const char* FlowRules::Step(FlowComponent& flow, const FlowObservation& observation) {
+const char* FlowRules::Step(Flow& flow, const FlowObservation& observation) {
     ++flow.tick;
     ++flow.phaseTicks;
     // 落下の基準は、プレイヤーが初めて見えた時の高さ。
@@ -75,7 +75,7 @@ int FlowRules::SecondsToTicks(float seconds, float fixedDt) {
     return static_cast<int>(std::ceil(seconds / fixedDt));
 }
 
-bool FlowRules::IsRestartDue(const FlowComponent& flow, float fixedDt) {
+bool FlowRules::IsRestartDue(const Flow& flow, float fixedDt) {
     if (flow.phase == FlowPhase::Lost)
         return flow.phaseTicks >= static_cast<uint64_t>(SecondsToTicks(flow.loseRestartSeconds, fixedDt));
     if (flow.phase == FlowPhase::Won)
@@ -83,7 +83,7 @@ bool FlowRules::IsRestartDue(const FlowComponent& flow, float fixedDt) {
     return false;
 }
 
-float FlowRules::GetFade(const FlowComponent& flow, float fixedDt) {
+float FlowRules::GetFade(const Flow& flow, float fixedDt) {
     const float seconds = flow.phase == FlowPhase::Lost  ? flow.loseFadeSeconds
                           : flow.phase == FlowPhase::Won ? flow.winFadeSeconds
                                                          : -1.0f;

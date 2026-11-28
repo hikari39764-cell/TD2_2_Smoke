@@ -11,7 +11,7 @@ struct Player;
 namespace BossPhaseShiftCamera {
 
 // 渡しの段の間、このフレームの渡しの姿勢をプレイヤーへ渡す（描画のフレームごと）。
-void Update(const BossPhaseShiftComponent& shift, Player& player);
+void Update(const BossPhaseShift& shift, Player& player);
 
 } // namespace BossPhaseShiftCamera
 } // namespace Project_TD2_2
