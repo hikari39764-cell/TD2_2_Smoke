@@ -24,7 +24,7 @@ void BossTreeBrain::OnWalking(BossBrainContext& context) { Think(context, BossBr
 void BossTreeBrain::Think(BossBrainContext& context, BossBrainMoment moment) {
     if (nodes_ == nullptr)
         return;
-    BossComponent& boss = context.boss;
+    Boss& boss = context.boss;
     BossThought thought{
         boss, moment, {context.phaseNumber, context.healthPercent, context.playerDistance}, context.recoveryDone};
     // 木の中の時間（Wait・Cooldown など）は、前に進めてからの時間で進める（前隙・攻撃中は木を進めないため）。

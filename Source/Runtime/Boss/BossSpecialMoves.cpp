@@ -8,6 +8,7 @@
 #include "BossMath.h"
 #include "BossMoveExecutor.h"
 #include "BossWaves.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -20,7 +21,7 @@ constexpr int kSpinSweepSteps = 6;
 constexpr float kJumpLandSpeed = 3.0f;
 
 // クリップの範囲爆発（c-3c908c）：当たりの窓の始めから、輪を放つ（振りの進みが spinRingShare を過ぎる）までの F。
-int RingReleaseOffset(const BossComponent& boss, int length) {
+int RingReleaseOffset(const Boss& boss, int length) {
     const int span = std::max(1, length);
     for (int t = 0; t <= span; ++t) {
         if (BossPose::SwingShare(boss, t, span) >= boss.spinRingShare)
@@ -31,7 +32,7 @@ int RingReleaseOffset(const BossComponent& boss, int length) {
 
 // 次の輪を放つまでの残りの F（無ければ -1）。クリップの技だけ（当たりの窓が区間の表で決まっている）。前隙の間は、前隙の
 // 残りと最初の窓まで。攻撃中は、まだ輪を出していない次の窓まで。溜めの揺らぎで止まっている間は進まない。
-int FramesToRing(const BossComponent& boss, const BossMove& move) {
+int FramesToRing(const Boss& boss, const BossMove& move) {
     if (!BossAnimBody::ClipMove(boss, move))
         return -1;
     const bool pre = boss.phase == BossActPhase::Pre;
@@ -53,7 +54,7 @@ int FramesToRing(const BossComponent& boss, const BossMove& move) {
 // 回転斬り（c-427df4）：捻り込んだ所から振りの速さの曲線で一気に回り（刀は横なぎの型で払う）、回りの進みが
 // spinRingShare を過ぎた所で霞の輪を出す。刀そのものの当たり（1 回だけ）も見る。
 void SpinAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress& g) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     const float coil = boss.spinCoilDegrees * kRadiansPerDegree;
     const float share = g.hit ? BossPose::SwingShare(boss, g.tIn, g.swingLength) : 1.0f;
     // クリップの技（c-7b1a09）：回転も沈みもクリップが演じるので、規則の体は回さない（骨格の体は回らず、技の終わりに
@@ -68,7 +69,7 @@ void SpinAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress& 
         BossWaves::SpawnRing(frame, boss.move);
         // 叩きつけの爆発（c-3c908c）：エフェクトがあるシーンでは、叩きつけの爆発を出して足元の霧を押す。無ければ
         // 今までの小さな爆ぜ。
-        const bool burst = !boss.burstEffect.IsEmpty() || !boss.burstMistEffect.IsEmpty();
+        const bool burst = !!boss.burstEffect.IsSet() || !!boss.burstMistEffect.IsSet();
         boss.burstFeedbackPending = burst;
         boss.burstFeedbackScale = 1.0f;
         BossWaves::AddBlast(boss, {.pushPending = burst,
@@ -106,7 +107,7 @@ void SpinAct(BossFrame& frame, const BossMove& move, const BossSegmentProgress& 
 } // namespace
 
 void BossSpecialMoves::Pre(BossFrame& frame, const BossMove& move, float progress) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     switch (move.type) {
     case BossMoveType::Jump: {
         const float share = std::clamp(boss.jumpCrouchShare, 0.0f, 0.95f);
@@ -138,7 +139,7 @@ void BossSpecialMoves::Act(BossFrame& frame, const BossMove& move, const BossSeg
     }
 }
 
-void BossSpecialMoves::Post(BossComponent& boss, const BossMove& move, float progress) {
+void BossSpecialMoves::Post(Boss& boss, const BossMove& move, float progress) {
     boss.spin = 0.0f;
     boss.ringCountdown = -1;
     switch (move.type) {

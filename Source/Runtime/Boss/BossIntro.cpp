@@ -39,13 +39,13 @@ const char* PhaseName(BossIntroPhase phase) {
     return "Unknown";
 }
 
-void Enter(const BossComponent& boss, BossIntroComponent& intro, BossIntroPhase phase) {
+void Enter(const Boss& boss, BossIntro& intro, BossIntroPhase phase) {
     intro.state.phase = phase;
     intro.state.frame = 0;
     intro.state.started = true;
     char message[128]{};
     std::snprintf(message, sizeof(message), "Intro tick=%llu phase=%s frames=%d",
-                  static_cast<unsigned long long>(boss.tick), PhaseName(phase), BossIntro::PhaseFrames(intro, phase));
+                  static_cast<unsigned long long>(boss.tick), PhaseName(phase), BossIntroRules::PhaseFrames(intro, phase));
     BossLog::Write(message);
 }
 
@@ -56,7 +56,7 @@ void StopSequence(HIKARI::WorldView& world, BossIntroState& state) {
 }
 
 // 飛ばす：組み上がった待機の構えへ一度に進む（途中の状態で止まらない）。演出の資産も止める。
-void Skip(HIKARI::WorldView& world, const BossComponent& boss, BossIntroComponent& intro) {
+void Skip(HIKARI::WorldView& world, const Boss& boss, BossIntro& intro) {
     BossIntroState& state = intro.state;
     char message[128]{};
     std::snprintf(message, sizeof(message), "Intro skip tick=%llu from=%s", static_cast<unsigned long long>(boss.tick),
@@ -68,23 +68,23 @@ void Skip(HIKARI::WorldView& world, const BossComponent& boss, BossIntroComponen
 }
 
 // 演技を始める：演出の資産を流し（時計はその資産の時刻）、事件段を読む。断られたら、登場をやめて構えて立つ。
-void StartShow(HIKARI::WorldView& world, const BossComponent& boss, BossIntroComponent& intro) {
-    const BossIntroSettings& s = intro.settings;
+void StartShow(HIKARI::WorldView& world, const Boss& boss, BossIntro& intro) {
+    const BossIntro& s = intro;
     BossIntroState& state = intro.state;
     state.sequence = {};
     HIKARI::GameProjectSequencePlayOptions options{};
-    options.playbackRate = std::clamp(s.playbackRate, 0.01f, 8.0f);
+    options.playbackRate = std::clamp(s.introPlaybackRate, 0.01f, 8.0f);
     options.priority = kSequencePriority;
     // 流れ終わっても、最後のカメラの姿勢のまま待たせる（こちらが一息の段へ入る tick に止める）。待たせないと、流れ
     // 終わったフレームから一息の段へ入る tick までの間、カメラがゲームのカメラへ一度切り替わってしまう。
     options.holdAtEnd = 1u;
-    if (!s.sequence.empty())
-        state.sequence = world.GetSequence().Play(s.sequence, options);
+    if (!!s.introSequence.IsSet())
+        state.sequence = world.GetSequence().Play(std::string_view(s.introSequence.guid), options);
     HIKARI::GameProjectSequencePlaybackSnapshot snapshot{};
     if (!state.sequence.IsValid() || !world.GetSequence().GetSnapshot(state.sequence, snapshot)) {
         char message[160]{};
         std::snprintf(message, sizeof(message), "[BossIntro] 演出の資産を流せません（%s）。登場をしません",
-                      s.sequence.empty() ? "空" : s.sequence.c_str());
+                      !s.introSequence.IsSet() ? "空" : s.introSequence.guid);
         BossLog::Warn(message);
         Enter(boss, intro, BossIntroPhase::Done);
         return;
@@ -92,7 +92,7 @@ void StartShow(HIKARI::WorldView& world, const BossComponent& boss, BossIntroCom
     state.showTicks = std::max(1, static_cast<int>(std::ceil((snapshot.durationSeconds + kShowMarginSeconds) *
                                                              kTicksPerSecond / options.playbackRate)));
     Enter(boss, intro, BossIntroPhase::Show);
-    BossIntro::ReadCues(world, state.sequence, state);
+    BossIntroRules::ReadCues(world, state.sequence, state);
     char message[128]{};
     std::snprintf(message, sizeof(message), "IntroSequence handle=%llu cues=%d seconds=%.2f",
                   static_cast<unsigned long long>(state.sequence.value), state.cueCount,
@@ -102,21 +102,21 @@ void StartShow(HIKARI::WorldView& world, const BossComponent& boss, BossIntroCom
 
 } // namespace
 
-bool BossIntro::BarShown(const BossIntroComponent* intro) {
+bool BossIntroRules::BarShown(const BossIntro* intro) {
     // HP の条は、演技が済んでから（戦いの体に替わった時から）出す。
     return !Cinematic(intro) || intro->state.phase == BossIntroPhase::Settle;
 }
 
-int BossIntro::PhaseFrames(const BossIntroComponent& intro, BossIntroPhase phase) {
+int BossIntroRules::PhaseFrames(const BossIntro& intro, BossIntroPhase phase) {
     switch (phase) {
     case BossIntroPhase::Show: return std::max(1, intro.state.showTicks);
     case BossIntroPhase::Settle:
-        return std::max(0, static_cast<int>(std::lround(intro.settings.settleSeconds * kTicksPerSecond)));
+        return std::max(0, static_cast<int>(std::lround(intro.introSettleSeconds * kTicksPerSecond)));
     default: return 0;
     }
 }
 
-HIKARI::GameProjectTransform BossIntro::StageTransform(const BossComponent& boss, const BossIntroComponent& intro) {
+HIKARI::GameProjectTransform BossIntroRules::StageTransform(const Boss& boss, const BossIntro& intro) {
     const BossIntroState& state = intro.state;
     HIKARI::GameProjectTransform transform{};
     transform.position = Add(state.origin, Vec3{0.0f, boss.bodyHalfHeight, 0.0f});
@@ -125,7 +125,7 @@ HIKARI::GameProjectTransform BossIntro::StageTransform(const BossComponent& boss
     return transform;
 }
 
-HIKARI::GameProjectTransform BossIntro::GroundTransform(const BossIntroComponent& intro) {
+HIKARI::GameProjectTransform BossIntroRules::GroundTransform(const BossIntro& intro) {
     HIKARI::GameProjectTransform transform{};
     transform.position = intro.state.origin;
     transform.rotation = YawRotation(intro.state.yaw);
@@ -133,7 +133,7 @@ HIKARI::GameProjectTransform BossIntro::GroundTransform(const BossIntroComponent
     return transform;
 }
 
-void BossIntro::Begin(const BossComponent& boss, BossIntroComponent& intro, bool seen) {
+void BossIntroRules::Begin(const Boss& boss, BossIntro& intro, bool seen) {
     BossIntroState& state = intro.state;
     state = {};
     state.origin = boss.ground;
@@ -141,14 +141,14 @@ void BossIntro::Begin(const BossComponent& boss, BossIntroComponent& intro, bool
     state.cues.assign(HIKARI::kGameProjectSequenceMaximumEventClips, {});
     // 確かめ用に技を直に出す時（testMove・testSequence）は、登場をしない。
     const bool testing = !boss.testMove.empty() || boss.testSequence;
-    const bool skip = seen && intro.settings.oncePerPlay;
-    state.phase = intro.settings.enabled && !testing && !skip ? BossIntroPhase::Scattered : BossIntroPhase::Done;
+    const bool skip = seen && intro.introOncePerPlay;
+    state.phase = intro.introEnabled && !testing && !skip ? BossIntroPhase::Scattered : BossIntroPhase::Done;
     state.seenPhase = state.phase;
 }
 
-void BossIntro::Cancel(BossIntroComponent& intro) { intro.state.phase = intro.state.seenPhase = BossIntroPhase::Done; }
+void BossIntroRules::Cancel(BossIntro& intro) { intro.state.phase = intro.state.seenPhase = BossIntroPhase::Done; }
 
-void BossIntro::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSequencePlaybackHandle handle,
+void BossIntroRules::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSequencePlaybackHandle handle,
                          BossIntroState& state) {
     std::array<HIKARI::GameProjectSequenceEventClip, HIKARI::kGameProjectSequenceMaximumEventClips> clips{};
     const uint32_t total = world.GetSequence().GetEventClips(handle, clips.data(), static_cast<uint32_t>(clips.size()));
@@ -161,7 +161,7 @@ void BossIntro::ReadCues(HIKARI::WorldView& world, HIKARI::GameProjectSequencePl
     state.cueRolesRead = false;
 }
 
-void BossIntro::Face(BossComponent& boss, BossIntroComponent& intro, HIKARI::GameProjectFloat3 playerPosition) {
+void BossIntroRules::Face(Boss& boss, BossIntro& intro, HIKARI::GameProjectFloat3 playerPosition) {
     BossIntroState& state = intro.state;
     if (state.phase != BossIntroPhase::Scattered || state.faced)
         return;
@@ -173,7 +173,7 @@ void BossIntro::Face(BossComponent& boss, BossIntroComponent& intro, HIKARI::Gam
     boss.yaw = state.yaw;
 }
 
-void BossIntro::Step(HIKARI::WorldView& world, const BossComponent& boss, BossIntroComponent& intro) {
+void BossIntroRules::Step(HIKARI::WorldView& world, const Boss& boss, BossIntro& intro) {
     BossIntroState& state = intro.state;
     if (state.phase == BossIntroPhase::Done)
         return;
@@ -185,8 +185,8 @@ void BossIntro::Step(HIKARI::WorldView& world, const BossComponent& boss, BossIn
     }
     switch (state.phase) {
     case BossIntroPhase::Scattered:
-        if (intro.settings.testStartFrames >= 0) {
-            if (boss.tick >= static_cast<uint64_t>(intro.settings.testStartFrames))
+        if (intro.introTestStartFrames >= 0) {
+            if (boss.tick >= static_cast<uint64_t>(intro.introTestStartFrames))
                 StartShow(world, boss, intro);
             return;
         }

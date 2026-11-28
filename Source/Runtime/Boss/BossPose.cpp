@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "BossMath.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -28,9 +29,9 @@ Vec3 DirectionOf(Angles a) {
 }
 
 // 角度で書いた構え：肩の付け根から、その向きへ剣を出す。
-BossSwordPose FromAngles(const BossComponent& boss, Angles a) {
+BossSwordPose FromAngles(const Boss& boss, Angles a) {
     BossSwordPose pose;
-    pose.grip = boss.swordShoulder;
+    pose.grip = ToGP(boss.swordShoulder);
     pose.direction = DirectionOf(a);
     return pose;
 }
@@ -43,12 +44,12 @@ float PeakCurve(float u, float peak) {
 }
 
 // 振りの進み：ゆっくり動き始めて加速し、swingPeakShare で最も速く、振り終わりへ減速して止まる。
-float SwingProgress(const BossComponent& boss, int tIn, int length) {
+float SwingProgress(const Boss& boss, int tIn, int length) {
     return PeakCurve(static_cast<float>(tIn) / static_cast<float>(std::max(1, length)),
                      std::clamp(boss.swingPeakShare, 0.5f, 0.9f));
 }
 
-int SegmentLength(const BossComponent& boss, const BossMove& move, size_t index) {
+int SegmentLength(const Boss& boss, const BossMove& move, size_t index) {
     if (BossMoveTable::IsMoveType(move.type) && index == 0)
         return std::max(1, boss.actFrames);
     return move.segments[index].length;
@@ -56,7 +57,7 @@ int SegmentLength(const BossComponent& boss, const BossMove& move, size_t index)
 
 } // namespace
 
-BossSegmentProgress BossPose::Progress(const BossComponent& boss, const BossMove& move) {
+BossSegmentProgress BossPose::Progress(const Boss& boss, const BossMove& move) {
     BossSegmentProgress result;
     int accumulated = 0, hitIndex = 0;
     for (size_t k = 0; k < move.segments.size(); ++k) {
@@ -85,9 +86,9 @@ BossSegmentProgress BossPose::Progress(const BossComponent& boss, const BossMove
     return result;
 }
 
-BossSwordPose BossPose::Rest(const BossComponent& boss) { return FromAngles(boss, kRest); }
+BossSwordPose BossPose::Rest(const Boss& boss) { return FromAngles(boss, kRest); }
 
-BossSwordPose BossPose::Target(const BossComponent& boss) {
+BossSwordPose BossPose::Target(const Boss& boss) {
     // 規則の剣の構え（c-b4e76a・c-164cab）：クリップの刀で当たる技はクリップの刀（当たり・斬撃の面・刀の煙）、ほかの
     // 間は待機のクリップの始めの刀。どちらも固定 tick の中で読んだクリップから決める（描画のフレームの骨は読まない）。
     // 待機のクリップを読めていない間だけ休めの構え。技の型ごとの程序化の姿勢は持たない。
@@ -98,14 +99,14 @@ BossSwordPose BossPose::Target(const BossComponent& boss) {
     return Rest(boss);
 }
 
-float BossPose::RootHeight(const BossComponent& boss) { return boss.height + boss.floatHeight; }
+float BossPose::RootHeight(const Boss& boss) { return boss.height + boss.floatHeight; }
 
-BossSwordLine BossPose::SwordLine(const BossComponent& boss, const BossSwordPose& pose) {
+BossSwordLine BossPose::SwordLine(const Boss& boss, const BossSwordPose& pose) {
     const Vec3 root{boss.ground.x, boss.ground.y + RootHeight(boss), boss.ground.z};
     return {Add(root, RotateY(pose.grip, boss.yaw)), RotateY(Normalize(pose.direction, {0.0f, -1.0f, 0.0f}), boss.yaw)};
 }
 
-BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSwordPose& pose) {
+BossSwordPoints BossPose::SwordPoints(const Boss& boss, const BossSwordPose& pose) {
     BossSwordLine line = SwordLine(boss, pose);
     // SwordLine は yaw だけで回すので、体の向きとの差（体の回転・狙いのずれのねじり）を足元のまわりに回す。
     const float turn = BodyYaw(boss) - boss.yaw;
@@ -121,9 +122,9 @@ BossSwordPoints BossPose::SwordPoints(const BossComponent& boss, const BossSword
     return points;
 }
 
-float BossPose::BodyYaw(const BossComponent& boss) { return boss.yaw + boss.spin + boss.aimTwist; }
+float BossPose::BodyYaw(const Boss& boss) { return boss.yaw + boss.spin + boss.aimTwist; }
 
-float BossPose::SwingShare(const BossComponent& boss, int tIn, int length) {
+float BossPose::SwingShare(const Boss& boss, int tIn, int length) {
     return std::clamp(SwingProgress(boss, std::clamp(tIn, 0, std::max(1, length)), length), 0.0f, 1.0f);
 }
 

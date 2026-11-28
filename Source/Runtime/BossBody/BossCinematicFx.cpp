@@ -8,6 +8,7 @@
 #include "BossBodyMath.h"
 #include "../Boss/BossVfx.h"
 #include "../Player/Feedback.h"
+#include "../Common/FieldValues.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -32,26 +33,26 @@ constexpr int kAccentPriority = Project_TD2_2::Feedback::kBreakPriority - 10;
 constexpr float kStarSize = 0.5f;
 
 // 白黒の閃きの、いまの強さと反転（出していなければ 0）。反転した白黒 → 白黒 → 色へ戻る（実時間で進む）。
-void StepMono(BossComponent& boss, float unscaledSeconds, float& strength, float& invert) {
-    const BossCinematicFxSettings& s = boss.cinematicFx;
+void StepMono(Boss& boss, float unscaledSeconds, float& strength, float& invert) {
+    const Boss& s = boss;
     BossCinematicFxState& state = boss.cinematicFxState;
     strength = invert = 0.0f;
     if (state.monoPending) {
         state.monoPending = false;
         state.monoSeconds = 0.0f;
-        state.monoActiveStrength = state.monoStrength > 0.0f ? state.monoStrength : s.slashMonoStrength;
+        state.monoActiveStrength = state.monoStrength > 0.0f ? state.monoStrength : s.introSlashMonoStrength;
         state.monoActiveLength = state.monoLength;
         state.monoStrength = state.monoLength = 0.0f;
     }
     if (state.monoSeconds < 0.0f)
         return;
     // 長さを頼まれた時は、反転・白黒・戻りを項目の割合のまま伸び縮みさせる。
-    const float full = std::max(0.0f, s.slashMonoInvertSeconds) + std::max(0.0f, s.slashMonoHoldSeconds) +
-                       std::max(0.0f, s.slashMonoFadeSeconds);
+    const float full = std::max(0.0f, s.introSlashMonoInvertSeconds) + std::max(0.0f, s.introSlashMonoHoldSeconds) +
+                       std::max(0.0f, s.introSlashMonoFadeSeconds);
     const float stretch = state.monoActiveLength > 0.0f && full > kTiny ? state.monoActiveLength / full : 1.0f;
-    const float invertEnd = std::max(0.0f, s.slashMonoInvertSeconds) * stretch;
-    const float hold = invertEnd + std::max(0.0f, s.slashMonoHoldSeconds) * stretch;
-    const float end = hold + std::max(0.0f, s.slashMonoFadeSeconds) * stretch;
+    const float invertEnd = std::max(0.0f, s.introSlashMonoInvertSeconds) * stretch;
+    const float hold = invertEnd + std::max(0.0f, s.introSlashMonoHoldSeconds) * stretch;
+    const float end = hold + std::max(0.0f, s.introSlashMonoFadeSeconds) * stretch;
     const float t = state.monoSeconds;
     if (t >= end || state.monoActiveStrength <= 0.0f) {
         state.monoSeconds = -1.0f;
@@ -83,8 +84,8 @@ void ScreenUv(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 point, float& 
 // 全画面の効果（BossImpactMono：白黒の閃き・衝撃の輪・張りつめ・暗さ・剣先の星）。出す間は毎フレーム送る。Action Post は
 // 優先度の高い 1 つしか掛からないので、まとめて同じ効果の項目として送る。衝撃の輪と星は、登場の効果
 // （BossIntroEffects::Feedback）がこのフレームの強さを書いておく。
-void SubmitImpactPost(HIKARI::WorldView& world, BossComponent& boss, uint64_t owner, float unscaledSeconds) {
-    const BossCinematicFxSettings& s = boss.cinematicFx;
+void SubmitImpactPost(HIKARI::WorldView& world, Boss& boss, uint64_t owner, float unscaledSeconds) {
+    const Boss& s = boss;
     BossCinematicFxState& state = boss.cinematicFxState;
     float mono = 0.0f;
     float invert = 0.0f;
@@ -106,7 +107,7 @@ void SubmitImpactPost(HIKARI::WorldView& world, BossComponent& boss, uint64_t ow
     state.dimPending = 0.0f;
     const float tension = state.tensionNow > kPostFloor ? state.tensionNow : 0.0f;
     const float dim = state.dimNow > kPostFloor ? state.dimNow : 0.0f;
-    if ((mono <= 0.0f && shock <= 0.0f && tension <= 0.0f && dim <= 0.0f && star <= 0.0f) || s.slashMonoProfile.empty())
+    if ((mono <= 0.0f && shock <= 0.0f && tension <= 0.0f && dim <= 0.0f && star <= 0.0f) || !s.introSlashMonoProfile.IsSet())
         return;
     HIKARI::GameProjectActionPostFrameRequest request{};
     request.sourceId = kMonoSource ^ owner;
@@ -130,12 +131,12 @@ void SubmitImpactPost(HIKARI::WorldView& world, BossComponent& boss, uint64_t ow
         request.values[5] = {star, starU, starV, kStarSize};
         request.channelMasks[5] = 15u;
     }
-    world.GetPresentationVfx().SubmitActionPostProfile(s.slashMonoProfile, request);
+    world.GetPresentationVfx().SubmitActionPostProfile(std::string_view(s.introSlashMonoProfile.guid), request);
 }
 
 } // namespace
 
-void BossCinematicFx::BeginFrame(BossComponent& boss) {
+void BossCinematicFx::BeginFrame(Boss& boss) {
     BossCinematicFxState& state = boss.cinematicFxState;
     // 毎フレームの頼みは、ここで 0 に戻す（このあと登場の拍と変わり目の演出が、同じフレームの分を足す）。
     state.aura = 0.0f;
@@ -144,41 +145,41 @@ void BossCinematicFx::BeginFrame(BossComponent& boss) {
     state.eyeGlow = 0.0f;
 }
 
-void BossCinematicFx::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
+void BossCinematicFx::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
                                float unscaledSeconds) {
-    const BossCinematicFxSettings& s = boss.cinematicFx;
+    const Boss& s = boss;
     BossCinematicFxState& state = boss.cinematicFxState;
     const uint64_t owner = object.GetHandle().value;
     if (state.accentPending > 0.0f) {
         Project_TD2_2::Feedback::CameraShakeParams shake{};
         shake.sourceId = kAccentCameraSource ^ owner;
         shake.priority = kAccentPriority;
-        shake.frames = s.accentShakeFrames;
-        shake.amplitude = s.accentShake * state.accentPending;
-        shake.frequency = s.accentShakeFrequency;
+        shake.frames = s.introAccentShakeFrames;
+        shake.amplitude = s.introAccentShake * state.accentPending;
+        shake.frequency = s.introAccentShakeFrequency;
         // 強い拍だけ、画角を一瞬広げる。
-        shake.fovDegrees = state.accentPending >= 1.0f ? s.accentFovDegrees : 0.0f;
+        shake.fovDegrees = state.accentPending >= 1.0f ? s.introAccentFovDegrees : 0.0f;
         Project_TD2_2::Feedback::StartCameraShake(state.shake, shake);
-        if (state.accentPending >= 1.0f && s.accentRumble > 0.0f)
-            Project_TD2_2::Feedback::Rumble(world, s.accentRumble, s.accentRumble * 0.6f, s.accentRumbleFrames);
+        if (state.accentPending >= 1.0f && s.introAccentRumble > 0.0f)
+            Project_TD2_2::Feedback::Rumble(world, s.introAccentRumble, s.introAccentRumble * 0.6f, s.introAccentRumbleFrames);
         state.accentPending = 0.0f;
     }
     if (state.hitStopPending > 0) {
         Project_TD2_2::Feedback::RequestHitStop(world, kAccentHitStopSource ^ owner, kAccentPriority,
-                                                state.hitStopPending, s.hitStopScale);
+                                                state.hitStopPending, s.introHitStopScale);
         state.hitStopPending = 0;
     }
     if (state.slowPending > 0) {
         Project_TD2_2::Feedback::RequestHitStop(world, kAccentSlowSource ^ owner, kAccentPriority, state.slowPending,
-                                                s.drawSlowScale);
+                                                s.introDrawSlowScale);
         state.slowPending = 0;
     }
     if (state.flashPending) {
         state.flashPending = false;
-        const float scale = state.flashScale > 0.0f ? state.flashScale : s.slashFlashScale;
-        if (scale > 0.0f && !s.slashFlashEffect.IsEmpty()) {
+        const float scale = state.flashScale > 0.0f ? state.flashScale : s.introSlashFlashScale;
+        if (scale > 0.0f && !!s.introSlashFlashEffect.IsSet()) {
             HIKARI::GameProjectVfxPlayRequest play{};
-            play.asset = s.slashFlashEffect;
+            play.asset = VfxPlayback::Reference(s.introSlashFlashEffect);
             play.transform = BossVfx::Placed(state.flashAt, scale);
             play.loopMode = HIKARI::GameProjectVfxLoopMode::OneShot;
             BossVfx::Start(world, boss, play);
@@ -188,8 +189,8 @@ void BossCinematicFx::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obje
     // 続けて出す揺れ（前触れ・刀を握る間）：位相を実時間で進め、速さの違う波を重ねる（円を描くだけの機械的な揺れに
     // しない）。
     if (state.rumblePending > 0.0f) {
-        state.rumblePhase += kRumbleTurn * s.rumbleFrequency * std::max(0.0f, unscaledSeconds);
-        const float amplitude = s.accentShake * state.rumblePending;
+        state.rumblePhase += kRumbleTurn * s.introRumbleFrequency * std::max(0.0f, unscaledSeconds);
+        const float amplitude = s.introAccentShake * state.rumblePending;
         const float p = state.rumblePhase;
         (void)Project_TD2_2::Feedback::SubmitCameraOffset(
             world, kRumbleCameraSource ^ owner, kAccentPriority - 1,
@@ -200,57 +201,57 @@ void BossCinematicFx::Feedback(HIKARI::WorldView& world, HIKARI::ObjectView obje
     Project_TD2_2::Feedback::SubmitCameraShake(world, state.shake, {}, unscaledSeconds);
 }
 
-void BossCinematicFx::MonoFlash(BossComponent& boss, float strength, float seconds) {
+void BossCinematicFx::MonoFlash(Boss& boss, float strength, float seconds) {
     BossCinematicFxState& state = boss.cinematicFxState;
     state.monoPending = true;
     state.monoStrength = std::clamp(strength, 0.0f, 1.0f);
     state.monoLength = std::max(0.0f, seconds);
 }
 
-void BossCinematicFx::Shake(BossComponent& boss, float strength) {
+void BossCinematicFx::Shake(Boss& boss, float strength) {
     boss.cinematicFxState.accentPending = std::max(boss.cinematicFxState.accentPending, strength);
 }
 
-void BossCinematicFx::KeepRumble(BossComponent& boss, float strength) {
+void BossCinematicFx::KeepRumble(Boss& boss, float strength) {
     boss.cinematicFxState.rumblePending = std::max(boss.cinematicFxState.rumblePending, strength);
 }
 
-void BossCinematicFx::HitStop(BossComponent& boss, int frames) {
+void BossCinematicFx::HitStop(Boss& boss, int frames) {
     boss.cinematicFxState.hitStopPending = std::max(boss.cinematicFxState.hitStopPending, frames);
 }
 
-void BossCinematicFx::Slow(BossComponent& boss, int frames) {
+void BossCinematicFx::Slow(Boss& boss, int frames) {
     boss.cinematicFxState.slowPending = std::max(boss.cinematicFxState.slowPending, frames);
 }
 
-void BossCinematicFx::MistBurst(BossComponent& boss, HIKARI::GameProjectFloat3 at, float scale) {
+void BossCinematicFx::MistBurst(Boss& boss, HIKARI::GameProjectFloat3 at, float scale) {
     BossCinematicFxState& state = boss.cinematicFxState;
     state.flashPending = true;
     state.flashAt = at;
     state.flashScale = scale;
 }
 
-void BossCinematicFx::Aura(BossComponent& boss, float strength) {
+void BossCinematicFx::Aura(Boss& boss, float strength) {
     boss.cinematicFxState.aura = std::max(boss.cinematicFxState.aura, strength);
 }
 
-void BossCinematicFx::Shock(BossComponent& boss, int slot, HIKARI::GameProjectFloat3 at, float size,
+void BossCinematicFx::Shock(Boss& boss, int slot, HIKARI::GameProjectFloat3 at, float size,
                             float delaySeconds) {
     BossCinematicFxState& state = boss.cinematicFxState;
     state.shocks[static_cast<size_t>(std::clamp(slot, 0, static_cast<int>(state.shocks.size()) - 1))] = {at, size,
                                                                                                          delaySeconds};
 }
 
-void BossCinematicFx::Glint(BossComponent& boss, float brightness) { boss.cinematicFxState.glint = brightness; }
+void BossCinematicFx::Glint(Boss& boss, float brightness) { boss.cinematicFxState.glint = brightness; }
 
-void BossCinematicFx::BladeEdge(BossComponent& boss, float strength) {
+void BossCinematicFx::BladeEdge(Boss& boss, float strength) {
     boss.cinematicFxState.bladeEdge = std::max(boss.cinematicFxState.bladeEdge, strength);
 }
 
-void BossCinematicFx::EyeFlare(BossComponent& boss, float strength) {
+void BossCinematicFx::EyeFlare(Boss& boss, float strength) {
     // 目の閃きは体の見た目の部品が出す（c-bd1a7a）：ここは頼みだけを書く。
     float& flare = boss.cinematicFxState.eyeFlareRequest;
-    flare = std::max(flare, strength > 0.0f ? strength : boss.cinematicFx.eyesFlare);
+    flare = std::max(flare, strength > 0.0f ? strength : boss.introEyesFlare);
 }
 
 } // namespace Project_TD2_2

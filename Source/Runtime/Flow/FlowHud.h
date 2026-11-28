@@ -6,7 +6,7 @@
 
 namespace Project_TD2_2 {
 
-// HUD に出す値。物体変数から集めたものを渡す。
+// HUD に出す値。ゲーム全体の値（Params）から集めたものを渡す。
 struct FlowHudValues {
     float playerHealth = 0.0f;
     float playerMaxHealth = 0.0f;
@@ -33,11 +33,11 @@ struct FlowHudValues {
 class FlowHud final {
 public:
     // プレイヤーの 4 つの条（HP・スタミナ・回復の残り・煙）と、火弾の間だけ煙の下の残り時間の条。出せなかった矩形があれば false。
-    static bool DrawPlayer(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values);
+    static bool DrawPlayer(const HIKARI::UiView& ui, const Flow& flow, const FlowHudValues& values);
     // ボスの HP の条（画面の上の中央）。フェーズ 1 は灰白、フェーズ 2 は火の橙で、2 本目は左から満ちて戻る。
-    static bool DrawBoss(const HIKARI::UiView& ui, const FlowComponent& flow, const FlowHudValues& values);
+    static bool DrawBoss(const HIKARI::UiView& ui, const Flow& flow, const FlowHudValues& values);
     // 画面全体の色（負け・勝ちの段階の fade が 0 を超えている間）。
-    static bool DrawFade(const HIKARI::UiView& ui, const FlowComponent& flow, float fade);
+    static bool DrawFade(const HIKARI::UiView& ui, const Flow& flow, float fade);
 };
 
 } // namespace Project_TD2_2

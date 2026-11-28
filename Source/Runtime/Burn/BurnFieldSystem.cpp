@@ -34,8 +34,7 @@ struct PlayerOnField {
 
 // 体（足元から contactRadius）が火に触れ続けて damageDelay 秒たつと、プレイヤーを炎上させ、火の中にいる間は
 // その tick の炎上の減り方を damagePerSecond にする（減らすのは PlayerSystem の炎上）。プレイヤーは 1 人（ボスと同じ探し方）。
-PlayerOnField StepFire(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/,
-                       BurnFieldComponent& field, float dt, uint64_t tick) {
+PlayerOnField StepFire(BurnField& field, float dt, uint64_t tick) {
     PlayerOnField seen;
     ComponentLookup::ForEachGame<Player>(
         [&](HIKARI::ObjectView object, Player& player) {
@@ -70,8 +69,7 @@ PlayerOnField StepFire(HIKARI::WorldView& /*world: 新しい層の部品を引�
 // 元として数える。満杯で吸えない間は火を消さない（火弾にもならない）。空きが少しでもあれば 1 tick の量を消し、
 // 入りきらない煙は捨てる。ヒョウタンの「満杯でも吸える」（Gourd.absorbWhenFull）を入にすると、満杯でも消せる。
 // 吸っている tick には、プレイヤーの体の火も消える（触れている時間も 0 に戻し、足元の火を吸い切るまで燃え移り直さない）。
-void StepAbsorb(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/, BurnFieldComponent& field,
-                const PlayerOnField& player, float dt, uint64_t tick) {
+void StepAbsorb(BurnField& field, const PlayerOnField& player, float dt, uint64_t tick) {
     bool handled = false;
     ComponentLookup::ForEachGame<Gourd>(
         [&](HIKARI::ObjectView, Gourd& gourd) {
@@ -105,7 +103,7 @@ void StepAbsorb(HIKARI::WorldView& /*world: 新しい層の部品を引くので
         field.absorbBudget = 0.0f;
 }
 
-void Trace(const BurnFieldComponent& field) {
+void Trace(const BurnField& field) {
     if (!TraceInterval::Due(field.traceEveryFrames, field.tick))
         return;
     char message[576]{};
@@ -122,7 +120,7 @@ void Trace(const BurnFieldComponent& field) {
 }
 
 // 描画フレームの、プレイヤーの体の炎の様子（プレイヤーは 1 人）。
-BurnBody SeeBody(HIKARI::WorldView& /*world: 新しい層の部品を引くので使わない（④で消す）*/) {
+BurnBody SeeBody() {
     BurnBody body;
     ComponentLookup::ForEachGame<Player>([&](HIKARI::ObjectView object, Player& player) {
         HIKARI::GameProjectTransform transform{};
@@ -140,41 +138,37 @@ BurnBody SeeBody(HIKARI::WorldView& /*world: 新しい層の部品を引くの�
 
 } // namespace
 
-void BurnFieldSystem::FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
+namespace BurnFieldSystem {
+
+void FixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     if (!GameSession::IsPlayingFixed(world, frame))
         return;
     bool done = false;
-    world.ForEachComponent<BurnFieldComponent>(HIKARI::MakeComponentTypeId(kBurnFieldType),
-                                               [&](HIKARI::ObjectView object, BurnFieldComponent& field) {
-                                                   if (done || !field.enabled)
-                                                       return;
-                                                   BurnFieldRules::Initialize(object, field);
-                                                   if (!field.map.IsReady())
-                                                       return;
-                                                   done = true;
-                                                   ++field.tick;
-                                                   field.map.Step(frame.fixedDt);
-                                                   const PlayerOnField player =
-                                                       StepFire(world, field, frame.fixedDt, frame.fixedTickIndex);
-                                                   StepAbsorb(world, field, player, frame.fixedDt,
-                                                              frame.fixedTickIndex);
-                                                   Trace(field);
-                                               });
+    ComponentLookup::ForEachGame<BurnField>([&](HIKARI::ObjectView object, BurnField& field) {
+        if (done || !field.enabled)
+            return;
+        BurnFieldRules::Initialize(object, field);
+        if (!field.map.IsReady())
+            return;
+        done = true;
+        ++field.tick;
+        field.map.Step(frame.fixedDt);
+        const PlayerOnField player = StepFire(field, frame.fixedDt, frame.fixedTickIndex);
+        StepAbsorb(field, player, frame.fixedDt, frame.fixedTickIndex);
+        Trace(field);
+    });
 }
 
-void BurnFieldSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (world.GetGameSession() == nullptr)
-        return;
+void PreRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
     bool done = false;
-    world.ForEachComponent<BurnFieldComponent>(HIKARI::MakeComponentTypeId(kBurnFieldType),
-                                               [&](HIKARI::ObjectView object, BurnFieldComponent& field) {
-                                                   // 規則と同じく、最初の有効な 1 つだけを見せる。
-                                                   if (done || !field.enabled || !field.map.IsReady())
-                                                       return;
-                                                   done = true;
-                                                   BurnFieldVisuals::Render(world, object, field, SeeBody(world),
-                                                                            frame.gameDt);
-                                               });
+    ComponentLookup::ForEachGame<BurnField>([&](HIKARI::ObjectView object, BurnField& field) {
+        // 規則と同じく、最初の有効な 1 つだけを見せる。
+        if (done || !field.enabled || !field.map.IsReady())
+            return;
+        done = true;
+        BurnFieldVisuals::Render(world, object, field, SeeBody(), frame.gameDt);
+    });
 }
 
+} // namespace BurnFieldSystem
 } // namespace Project_TD2_2

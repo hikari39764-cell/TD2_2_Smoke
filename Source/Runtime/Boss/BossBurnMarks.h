@@ -18,9 +18,9 @@ public:
     // 一撃 strike が、フェーズ phase で何かの火を残すか。
     static bool StrikeLeaves(const BossMove& move, int strike, int phase);
     // 技を始めた：どれかの一撃がいまのフェーズで火を残すなら、技の間ずっと剣が燃えている（boss.bladeLit）。
-    static void LightBlade(BossComponent& boss, const BossMove& move);
+    static void LightBlade(Boss& boss, const BossMove& move);
     // 斬撃・ナイフ・回し蹴りの輪を出した：火の刃か（wave.fire）と、線・輪の塗る幅と秒数を入れる。
-    static void ArmWave(const BossComponent& boss, const BossMove& move, BossWave& wave);
+    static void ArmWave(const Boss& boss, const BossMove& move, BossWave& wave);
     // 一撃を放った（剣を振り抜いた・ナイフを投げた・輪を出した）：交差と池を塗る。
     static void Released(BossFrame& frame, const BossMove& move, int strike);
     // 瞬間突進の瞬間移動を終えた：突進の始まりから終わりまでの床に跡を塗る。

@@ -9,10 +9,8 @@
 // 遊んでいる最中かの判定と、入力の読み方（各 System で同じ書き方をしていたものをまとめた）。
 namespace Project_TD2_2::GameSession {
 
-// Play 中で、一時停止していない。
-inline bool IsPlaying(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    return world.GetGameSession() != nullptr && !frame.paused;
-}
+// Play 中で、一時停止していない。新しい層の System は Play の間だけ呼ばれるので、一時停止かどうかだけを見る。
+inline bool IsPlaying(HIKARI::WorldView& /*world*/, const HIKARI::FrameContext& frame) { return !frame.paused; }
 
 // 固定 tick の中で進めてよいか（遊んでいる最中で、固定 tick の長さがある）。
 inline bool IsPlayingFixed(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {

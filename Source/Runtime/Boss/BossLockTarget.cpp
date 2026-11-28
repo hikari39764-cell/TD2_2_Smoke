@@ -6,7 +6,7 @@
 
 namespace Project_TD2_2 {
 
-void BossLockTarget::Step(HIKARI::ObjectView bossObject, const BossComponent& boss, Player& player) {
+void BossLockTarget::Step(HIKARI::ObjectView bossObject, const Boss& boss, Player& player) {
     const HIKARI::GameProjectObjectHandle self = bossObject.GetHandle();
     // ロック対象を変える入力（Q）：ボス以外をロックしていた時だけ、ボスへ戻す。
     const HIKARI::GameProjectObjectHandle current = PlayerRules::GetLockTarget(player);

@@ -5,19 +5,19 @@
 #include "HIKARI/Runtime/ComponentTypeId.h"
 #include "BurnFieldRules.h"
 #include "../Common/VectorMath.h"
+#include "../Common/ComponentLookup.h"
 
 namespace Project_TD2_2 {
 namespace {
 
 using VectorMath::kPi;
 
-// 最初の有効な BurnField に visit(BurnFieldComponent&) を 1 回だけ呼ぶ。格子がまだなら先に作る
+// 最初の有効な BurnField に visit(BurnField&) を 1 回だけ呼ぶ。格子がまだなら先に作る
 // （ボスは燃える地面のシステムより先に動くので、最初の tick に塗る時もここで作られる）。
 template <class Visitor>
-bool WithField(HIKARI::WorldView& world, Visitor&& visit) {
+bool WithField(HIKARI::WorldView&, Visitor&& visit) {
     bool done = false;
-    world.ForEachComponent<BurnFieldComponent>(HIKARI::MakeComponentTypeId(kBurnFieldType),
-                                               [&](HIKARI::ObjectView object, BurnFieldComponent& field) {
+    ComponentLookup::ForEachGame<BurnField>([&](HIKARI::ObjectView object, BurnField& field) {
                                                    if (done || !field.enabled)
                                                        return;
                                                    BurnFieldRules::Initialize(object, field);
@@ -31,46 +31,46 @@ bool WithField(HIKARI::WorldView& world, Visitor&& visit) {
 
 } // namespace
 
-void BurnField::PaintSegment(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
+void BurnFieldAccess::PaintSegment(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
                              float width, float seconds) {
-    WithField(world, [&](BurnFieldComponent& field) { field.map.PaintSegment(a, b, width, seconds); });
+    WithField(world, [&](BurnField& field) { field.map.PaintSegment(a, b, width, seconds); });
 }
 
-void BurnField::PaintRing(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float width,
+void BurnFieldAccess::PaintRing(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float width,
                           float seconds) {
-    WithField(world, [&](BurnFieldComponent& field) { field.map.PaintRing(center, radius, width, seconds); });
+    WithField(world, [&](BurnField& field) { field.map.PaintRing(center, radius, width, seconds); });
 }
 
-void BurnField::PaintDisc(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float seconds) {
-    WithField(world, [&](BurnFieldComponent& field) { field.map.PaintDisc(center, radius, seconds); });
+void BurnFieldAccess::PaintDisc(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 center, float radius, float seconds) {
+    WithField(world, [&](BurnField& field) { field.map.PaintDisc(center, radius, seconds); });
 }
 
-bool BurnField::IsBurning(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 point) {
+bool BurnFieldAccess::IsBurning(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 point) {
     bool burning = false;
-    WithField(world, [&](BurnFieldComponent& field) { burning = field.map.IsBurning(point); });
+    WithField(world, [&](BurnField& field) { burning = field.map.IsBurning(point); });
     return burning;
 }
 
-float BurnField::GetBurningFraction(HIKARI::WorldView& world) {
+float BurnFieldAccess::GetBurningFraction(HIKARI::WorldView& world) {
     float fraction = 0.0f;
-    WithField(world, [&](BurnFieldComponent& field) {
+    WithField(world, [&](BurnField& field) {
         const float arena = kPi * field.arenaRadius * field.arenaRadius;
         fraction = arena > 0.0f ? field.map.BurningArea() / arena : 0.0f;
     });
     return fraction;
 }
 
-void BurnField::AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
+void BurnFieldAccess::AddBlast(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position, float radius,
                          BurnBlastKind kind) {
-    WithField(world, [&](BurnFieldComponent& field) {
+    WithField(world, [&](BurnField& field) {
         if (field.blastCount < field.blasts.size() && radius > 0.0f)
             field.blasts[field.blastCount++] = {position, radius, kind};
     });
 }
 
-void BurnField::AddJet(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position,
+void BurnFieldAccess::AddJet(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 position,
                        HIKARI::GameProjectFloat3 direction, float scale) {
-    WithField(world, [&](BurnFieldComponent& field) {
+    WithField(world, [&](BurnField& field) {
         const float length = std::hypot(direction.x, direction.z);
         if (!(length > 0.0f) || !(field.jetSeconds > 0.0f) || !(scale > 0.0f))
             return;

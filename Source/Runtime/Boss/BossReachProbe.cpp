@@ -24,7 +24,7 @@ constexpr float kTallReach = 1000.0f;
 
 // 測っている間だけ書き換えるボスの状態（測り終えたら元に戻す）。
 struct SavedState {
-    explicit SavedState(BossComponent& boss)
+    explicit SavedState(Boss& boss)
         : boss_(boss), move_(boss.move), stateFrame_(boss.stateFrame), state_(boss.state), phase_(boss.phase),
           ground_(boss.ground), yaw_(boss.yaw), height_(boss.height), floatHeight_(boss.floatHeight),
           spin_(boss.spin), aimTwist_(boss.aimTwist) {}
@@ -44,7 +44,7 @@ struct SavedState {
     SavedState& operator=(const SavedState&) = delete;
 
 private:
-    BossComponent& boss_;
+    Boss& boss_;
     int move_;
     int stateFrame_;
     BossState state_;
@@ -88,7 +88,7 @@ std::string Intervals(const std::vector<int>& angles, int step) {
 }
 
 // 1 つの斬り（当たりの窓）の刀を、ボスを原点・正面固定に置いて読む。
-std::vector<SwordSample> SampleStrike(BossComponent& boss, const BossMove& move, int moveIndex, int start, int length,
+std::vector<SwordSample> SampleStrike(Boss& boss, const BossMove& move, int moveIndex, int start, int length,
                                       int hitIndex) {
     boss.move = moveIndex;
     boss.state = BossState::Act;
@@ -110,7 +110,7 @@ std::vector<SwordSample> SampleStrike(BossComponent& boss, const BossMove& move,
     return samples;
 }
 
-void ProbeStrike(const BossComponent& boss, const BossMove& move, int hitIndex, int start, int length,
+void ProbeStrike(const Boss& boss, const BossMove& move, int hitIndex, int start, int length,
                  const std::vector<SwordSample>& samples, float centerHeight) {
     const float radius = boss.thickness * 0.5f + boss.playerHitRadius;
     const float step = std::max(0.05f, boss.reachProbeDistanceStep);
@@ -160,7 +160,7 @@ void ProbeStrike(const BossComponent& boss, const BossMove& move, int hitIndex, 
 } // namespace
 
 void BossReachProbe::Step(BossFrame& frame) {
-    BossComponent& boss = frame.boss;
+    Boss& boss = frame.boss;
     if (!boss.reachProbe || boss.reachProbeDone || frame.player == nullptr || boss.state != BossState::Idle)
         return;
     const std::vector<BossMove>& moves = boss.table.GetMoves();

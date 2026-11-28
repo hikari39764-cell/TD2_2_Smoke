@@ -16,6 +16,7 @@
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -62,12 +63,12 @@ Vec3 Horizontal(Vec3 from, Vec3 facing, Vec3 camera, bool absorbPose, bool hasLo
 }
 
 template <class Callback>
-bool WithPlayer(HIKARI::WorldView& world, const Gourd& gourd, Callback&& callback) {
+bool WithPlayer(const Gourd& gourd, Callback&& callback) {
     const auto playerObject = HIKARI::Extend::ObjectOf(gourd.player);
     if (!playerObject.IsValid())
         return false;
     bool found = false;
-    ForEachOnObject<Player>(world, kPlayerType, playerObject, [&](HIKARI::ObjectView object, Player& player) {
+    ForEachOnObject<Player>(playerObject, [&](HIKARI::ObjectView object, Player& player) {
         found = true;
         callback(object, player);
     });
@@ -86,8 +87,8 @@ void FinishAbsorb(Gourd& gourd) {
 
 // 固定 tick ごとに一度だけ進める。構え → 吸う → 後隙。どの段階も動作ロックは掛けず、歩きを遅くするだけにする
 // （ロックするとローリングで打ち切れない）。ローリング・被弾などで通常の姿勢でなくなったら、後隙なしで打ち切る。
-void StepAbsorb(HIKARI::WorldView& world, Gourd& gourd) {
-    gourd.playerValid = WithPlayer(world, gourd, [&](HIKARI::ObjectView, Player& player) {
+void StepAbsorb(Gourd& gourd) {
+    gourd.playerValid = WithPlayer(gourd, [&](HIKARI::ObjectView, Player& player) {
         // ローリングの移動が終わった後なら、吸い込み（押し続け・先行入力）でローリングの残りを打ち切って構えへ移る。
         if (gourd.enabled && gourd.absorbPhase == GourdAbsorbPhase::Idle && GourdRules::WantsAbsorb(gourd))
             PlayerRules::TryEndRollForAction(player);
@@ -176,7 +177,7 @@ void StepRecoil(Gourd& gourd, float dt) {
 }
 
 void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, float dt, float alpha) {
-    WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
+    WithPlayer(gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
         HIKARI::GameProjectTransform playerTransform{};
         if (!playerObject.GetWorldTransform(playerTransform))
             return;
@@ -253,7 +254,7 @@ void Follow(HIKARI::WorldView& world, HIKARI::ObjectView object, Gourd& gourd, f
 // 規則のヒョウタンの置き場所（c-164cab）：固定 tick の終わりに、プレイヤーのその tick の位置・向き、吸い込みの段階、
 // ロック対象と、Update で覚えたカメラの正面から決める。ばね・補間は使わない（描画のヒョウタンは Follow が別に持つ）。
 void StepRulePose(HIKARI::WorldView& world, Gourd& gourd) {
-    WithPlayer(world, gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
+    WithPlayer(gourd, [&](HIKARI::ObjectView playerObject, Player& player) {
         HIKARI::GameProjectTransform playerTransform{};
         if (!playerObject.GetWorldTransform(playerTransform))
             return;
@@ -347,7 +348,7 @@ void GourdSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
         GourdRules::Initialize(gourd);
         // 前の描画のフレームで読み戻した霧の増えを、ここで煙に入れる。
         GourdRules::ApplyPendingSmoke(gourd);
-        StepAbsorb(world, gourd);
+        StepAbsorb(gourd);
         StepBlocked(gourd, frame.fixedDt);
         if (gourd.enabled && frame.fixedDt > 0.0f)
             StepRecoil(gourd, frame.fixedDt);

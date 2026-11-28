@@ -420,12 +420,6 @@
       "executionOrder": 100,
       "settings": {},
       "systemId": "ModelRenderSystem"
-    },
-    {
-      "enabled": true,
-      "executionOrder": 100,
-      "settings": {},
-      "systemId": "Project_TD2_2.Game"
     }
   ],
   "version": 10

@@ -8,7 +8,7 @@ namespace Project_TD2_2 {
 // ほかの機能（ボスの技）が燃える地面に触る入口。場面の最初の有効な BurnField を探して使うので、WorldView を取る
 // （部品だけを相手にする規則は BurnFieldRules）。シーンに無ければ何もしない（燃えない・燃えていない・0 を返す）。
 // 点と線分は世界座標で、高さは見ない。
-class BurnField final {
+class BurnFieldAccess final {
 public:
     static void PaintSegment(HIKARI::WorldView& world, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
                              float width, float seconds);

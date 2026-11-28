@@ -3,6 +3,7 @@
 #include "HIKARI/Project/ActionViews.h"
 #include "../Common/ComponentLookup.h"
 #include "Player.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 

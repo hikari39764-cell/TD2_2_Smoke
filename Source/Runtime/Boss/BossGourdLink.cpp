@@ -59,9 +59,7 @@ BossGourdSight BossGourdLink::Sense(HIKARI::WorldView& world) {
     });
     sight.gear.absorbing = sight.inhaling;
     SeeShot(world, sight.gear);
-    world.ForEachComponent<BossComponent>(
-        HIKARI::MakeComponentTypeId(kBossType),
-        [&](HIKARI::ObjectView, BossComponent& boss) { sight.catchRoom -= BossWaves::GetPullingSmoke(boss); });
+    ComponentLookup::ForEachGame<Boss>([&](HIKARI::ObjectView, Boss& boss) { sight.catchRoom -= BossWaves::GetPullingSmoke(boss); });
     return sight;
 }
 

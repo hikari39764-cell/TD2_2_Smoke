@@ -22,7 +22,7 @@ public:
     std::string text;
 };
 
-BossTiming TimingOf(const BossComponent& boss) {
+BossTiming TimingOf(const Boss& boss) {
     BossTiming timing;
     timing.swingFrames = boss.swingFrames;
     timing.gapSmallFrames = boss.gapSmallFrames;
@@ -38,7 +38,7 @@ BossTiming TimingOf(const BossComponent& boss) {
     return timing;
 }
 
-void LogMoves(const BossComponent& boss) {
+void LogMoves(const Boss& boss) {
     const auto& moves = boss.table.GetMoves();
     for (size_t i = 0; i < moves.size(); ++i) {
         const BossMove& move = moves[i];
@@ -82,7 +82,7 @@ void LogMoves(const BossComponent& boss) {
 }
 
 // 上限（aimTwistMax）を超える角度がある斬りは、ねじらない（BossMoveExecutor::StepAimTwist）。どの斬りかを知らせる。
-void WarnAimOverLimit(const BossComponent& boss, const BossMoveTable& table, std::vector<std::string>& warnings) {
+void WarnAimOverLimit(const Boss& boss, const BossMoveTable& table, std::vector<std::string>& warnings) {
     for (const BossMove& move : table.GetMoves()) {
         for (size_t k = 0; k < move.strikes.size(); ++k) {
             float widest = 0.0f;
@@ -100,7 +100,7 @@ void WarnAimOverLimit(const BossComponent& boss, const BossMoveTable& table, std
 
 } // namespace
 
-void BossTableLoader::Load(HIKARI::WorldView& world, BossComponent& boss) {
+void BossTableLoader::Load(HIKARI::WorldView& world, Boss& boss) {
     TextSink types, moves, clips, segments, aim;
     world.GetProjectData().ReadText(boss.typesPath, types);
     world.GetProjectData().ReadText(boss.movesPath, moves);
@@ -157,23 +157,6 @@ void BossTableLoader::Load(HIKARI::WorldView& world, BossComponent& boss) {
                   static_cast<unsigned long long>(boss.tick), boss.table.GetMoves().size(), warnings.size());
     BossLog::Write(message);
     LogMoves(boss);
-}
-
-void BossTableLoader::Describe(HIKARI::PropertyFields& fields, BossComponent& boss) {
-    if (fields.Section("技の表", true)) {
-        fields.Text("movesPath", "技の表（Data/ からの場所）", boss.movesPath);
-        fields.Text("clipsPath",
-                    "クリップの長さの表（Data/ からの場所。Tools/BossAnim/export_clip_lengths.ps1 が書き出す）",
-                    boss.clipsPath);
-        fields.Text("segmentsPath", "区間の表（Data/ からの場所。モーションの技の当たりの窓。空なら使わない）",
-                    boss.segmentsPath);
-        fields.Text("aimOffsetsPath",
-                    "狙いのずれの表（Data/ からの場所。Tools/Verify/verify.py aim が書き出す。空なら体をねじらない）",
-                    boss.aimOffsetsPath);
-        fields.Text("typesPath", "動きの型の既定値の表（Data/ からの場所）", boss.typesPath);
-        fields.Note("表は技を出すたびに読み直すので、Play 中に CSV を保存すると次に出す技から変わります。"
-                    "HP は「フェーズと気絶」の 2 本の条です（同じ物体の「被弾と HP」の最大 HP は使いません）。");
-    }
 }
 
 } // namespace Project_TD2_2

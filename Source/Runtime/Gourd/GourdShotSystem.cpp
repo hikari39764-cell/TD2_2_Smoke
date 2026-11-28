@@ -18,6 +18,7 @@
 #include "../Common/TraceInterval.h"
 #include "../Common/VectorMath.h"
 #include "../Player/PlayerRules.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {
@@ -34,13 +35,13 @@ using VectorMath::kPi;
 using GameSession::IsPlaying;
 
 template <class Callback>
-bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callback&& callback) {
+bool WithShooter(HIKARI::ObjectView shotObject, Callback&& callback) {
     bool found = false;
-    ForEachOnObject<Gourd>(world, kGourdType, shotObject, [&](HIKARI::ObjectView, Gourd& gourd) {
+    ForEachOnObject<Gourd>(shotObject, [&](HIKARI::ObjectView, Gourd& gourd) {
         const auto playerObject = HIKARI::Extend::ObjectOf(gourd.player);
         if (!playerObject.IsValid())
             return;
-        ForEachOnObject<Player>(world, kPlayerType, playerObject, [&](HIKARI::ObjectView object, Player& player) {
+        ForEachOnObject<Player>(playerObject, [&](HIKARI::ObjectView object, Player& player) {
             found = true;
             callback(gourd, object, player);
         });
@@ -48,9 +49,9 @@ bool WithShooter(HIKARI::WorldView& world, HIKARI::ObjectView shotObject, Callba
     return found;
 }
 
-float SmokePerVolume(HIKARI::WorldView& world, HIKARI::ObjectView shotObject) {
+float SmokePerVolume(HIKARI::ObjectView shotObject) {
     float value = 0.0f;
-    ForEachOnObject<Gourd>(world, kGourdType, shotObject,
+    ForEachOnObject<Gourd>(shotObject,
                            [&](HIKARI::ObjectView, Gourd& gourd) { value = GourdRules::GetSmokePerVolume(gourd); });
     return value;
 }
@@ -377,8 +378,13 @@ void AddResidue(HIKARI::WorldView& world, GourdShot& shot, Vec3 position, uint64
     residue.position = position;
 }
 
-bool ApplyHit(const GourdShot& shot, const GourdProjectile& projectile, uint64_t target, float& health) {
-    Damageable* damageable = Damageable::Of(target);
+bool ApplyHit(HIKARI::WorldView& world, const GourdShot& shot, const GourdProjectile& projectile, uint64_t target,
+              float& health) {
+    // 当たった物体の値（物理の問い合わせの objectHandle）に、世界の印を付けて手綱にする。
+    HIKARI::GameProjectObjectHandle handle{};
+    handle.world = world.GetHandle();
+    handle.value = target;
+    Damageable* damageable = HIKARI::Extend::EntityOf(handle).Get<Damageable>();
     if (damageable == nullptr)
         return false;
     const auto& d = projectile.direction;
@@ -437,7 +443,7 @@ void StepProjectile(HIKARI::WorldView& world, HIKARI::ObjectView owner, GourdSho
     projectile.densityScale = GourdShotRules::GetDensityAtDistance(shot, projectile.distance);
     if (didHit) {
         float health = 0.0f;
-        const bool accepted = ApplyHit(shot, projectile, hit.objectHandle, health);
+        const bool accepted = ApplyHit(world, shot, projectile, hit.objectHandle, health);
         LogProjectile(shot, projectile, "ProjectileHit", hit.objectHandle, accepted, health);
         projectile.active = false;
         projectile.finishTrailPending = true;
@@ -487,7 +493,7 @@ void GourdShotSystem::PreFixedUpdate(HIKARI::WorldView& world, const HIKARI::Fra
     ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
         shot.processedTick = frame.fixedTickIndex;
         const bool found =
-            WithShooter(world, object, [&](Gourd& gourd, HIKARI::ObjectView playerObject, Player& player) {
+            WithShooter(object, [&](Gourd& gourd, HIKARI::ObjectView playerObject, Player& player) {
                 StepPhase(world, shot, gourd, playerObject, player);
             });
         if (!found)
@@ -524,7 +530,7 @@ void GourdShotSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::FrameCo
     uint32_t trails = 0;
     ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
         if (GourdShotRules::IsFiring(shot)) {
-            WithShooter(world, object, [&](Gourd& gourd, HIKARI::ObjectView, Player& player) {
+            WithShooter(object, [&](Gourd& gourd, HIKARI::ObjectView, Player& player) {
                 GourdRules::SetAimOverride(gourd, Aim(world, shot, gourd, player));
             });
         }
@@ -538,7 +544,7 @@ void GourdShotSystem::PreRender(HIKARI::WorldView& world, const HIKARI::FrameCon
     uint32_t submitted = 0;
     ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
         GourdShotVisuals::Render(world, object, shot, submitted);
-        GourdShotFogReturn::Render(world, object, shot, submitted, SmokePerVolume(world, object));
+        GourdShotFogReturn::Render(world, object, shot, submitted, SmokePerVolume(object));
     });
 }
 

@@ -11,7 +11,7 @@ struct Player;
 namespace BossIntroCamera {
 
 // 一息の段の間、このフレームの渡しの姿勢をプレイヤーへ渡す（描画のフレームごと）。
-void Update(const BossIntroComponent& intro, Player& player);
+void Update(const BossIntro& intro, Player& player);
 
 } // namespace BossIntroCamera
 } // namespace Project_TD2_2

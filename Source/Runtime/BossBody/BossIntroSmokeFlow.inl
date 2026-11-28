@@ -1,9 +1,10 @@
+#include "../Common/FieldValues.h"
 // 登場の煙（c-e0c500）のうち、刀の根元の煙（Seep・SlitSmoke）と、流れをつくる 3 つ：握る間に根元へ集まる霧（Gather）、見得の黒い霧（Backdrop）、抜けた瞬間に
 // 根元から走る煙の筋（DrawStreamers）、見得の終わりに霧を晴らす流れ（Disperse）。BossIntroSmoke.cpp の無名の名前空間の中へ、そのまま取り込む（1 ファイル 800 行
 // 以内に収めるために分けた。Feed・Wisp・CueLocal・Since と形の決まりは、取り込む側が先に用意する）。
 
 // 剣先の寄りの段がある演出の、地の割れ目の向き：刀の幅の向き（刃口の向き）を地面へ寝かせる。
-Vec3 SlitAlong(const BossIntroComponent& intro) {
+Vec3 SlitAlong(const BossIntro& intro) {
     BossBodyPose pose{};
     const Vec3 across = Tangent(Forward(intro.state.yaw));
     return BossIntroActor::Pose(intro, pose) ? FlatNormalize(Rotate(pose.sword.rotation, {0.0f, -1.0f, 0.0f}), across)
@@ -12,7 +13,7 @@ Vec3 SlitAlong(const BossIntroComponent& intro) {
 
 // 地の割れ目（刀が刺さった所）から出る煙。mass＝1 秒に入れる煙の総量。点は地面の下に沈めてあり、域へ入るのは地面の
 // すぐ上の細い線だけ（球の形は見えない）。寄りの間の滲み出しも、抜けた瞬間に溢れる煙も、同じ点から出す。
-void SlitSmoke(const Feed& feed, const BossIntroComponent& intro, float mass) {
+void SlitSmoke(const Feed& feed, const BossIntro& intro, float mass) {
     const BossIntroState& state = intro.state;
     const Vec3 entry = BossIntroActor::SwordEntry(intro);
     const Vec3 slit = SlitAlong(intro);
@@ -36,7 +37,7 @@ void SlitSmoke(const Feed& feed, const BossIntroComponent& intro, float mass) {
 }
 
 // 割れ目の上の空気を温める（煙はほとんど足さない）。滲み出した煙が、巻きながら自分で立ちのぼる。
-void SlitWarm(const Feed& feed, const BossIntroComponent& intro) {
+void SlitWarm(const Feed& feed, const BossIntro& intro) {
     const Vec3 entry = BossIntroActor::SwordEntry(intro);
     const Vec3 slit = SlitAlong(intro);
     for (uint64_t k = 0; k < 2u; ++k)
@@ -47,12 +48,12 @@ void SlitWarm(const Feed& feed, const BossIntroComponent& intro) {
 
 // 刀の根元の細かい煙の域（BossIntroTipSmoke）を、握り始めから抜けた直後まで、刀が地面に入る所へ置く（剣先の寄りの
 // カットの間だけ見える。項目が空・段が無い演出では置かない）。Render から毎フレーム。
-void TipDomain(HIKARI::WorldView& world, BossComponent& boss, BossIntroComponent& intro) {
-    const BossIntroSettings& s = intro.settings;
+void TipDomain(HIKARI::WorldView& world, Boss& boss, BossIntro& intro) {
+    const BossIntro& s = intro;
     BossIntroState& state = intro.state;
     float duration = 0.0f;
     const float drawn = Since(state, Kind::SwordOut);
-    const bool wanted = state.phase == BossIntroPhase::Show && !state.skipped && !s.tipSmokeEffect.IsEmpty() &&
+    const bool wanted = state.phase == BossIntroPhase::Show && !state.skipped && !!s.introTipSmokeEffect.IsSet() &&
                         Has(state, Kind::SwordTip) && drawn < kTipFineLinger &&
                         (drawn >= 0.0f || CueLocal(state, Kind::SwordGrab, duration) >= 0.0f ||
                          CueLocal(state, Kind::SwordTip, duration) >= 0.0f);
@@ -81,21 +82,21 @@ void TipDomain(HIKARI::WorldView& world, BossComponent& boss, BossIntroComponent
                       static_cast<double>(state.origin.y));
         BossLog::Write(message);
     }
-    BossVfx::StartOrSend(world, boss, state.tipSmokeHandle, s.tipSmokeEffect,
+    BossVfx::StartOrSend(world, boss, state.tipSmokeHandle, VfxPlayback::Reference(s.introTipSmokeEffect),
                          BossVfx::Placed(state.tipGround, 1.0f, YawRotation(state.yaw)), {});
 }
 
 // 手を握る拍（Hand.Fist）：右手を握り込むたびに、指の間（付け根の間 3 か所と、親指の股）から、黒い煙が細く押し出され、
 // 握っている間は細く漏れ続ける。握り込む勢いは、役者の指の骨から読む（手首から中指の先までが縮む速さ）：動画の握る所に、
 // 自分で合う。煙は、手の所に置く細かい域（BossIntroFistSmoke）へ入れる。Render から毎フレーム。
-void FistSmoke(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, BossIntroComponent& intro,
+void FistSmoke(HIKARI::WorldView& world, const Feed& feed, Boss& boss, BossIntro& intro,
                float seconds) {
-    const BossIntroSettings& s = intro.settings;
+    const BossIntro& s = intro;
     BossIntroState& state = intro.state;
     const BossIntroActorState& a = state.actor;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::HandFist, duration);
-    if (state.phase != BossIntroPhase::Show || state.skipped || s.fistSmokeEffect.IsEmpty() || local < 0.0f ||
+    if (state.phase != BossIntroPhase::Show || state.skipped || !s.introFistSmokeEffect.IsSet() || local < 0.0f ||
         !a.socketsValid || !a.fingersValid) {
         if (state.fistSmokeHandle.IsValid())
             BossVfx::StopHandle(world, state.fistSmokeHandle);
@@ -115,7 +116,7 @@ void FistSmoke(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, 
         state.fistOpen = curl;
         state.fistCurl = curl;
     }
-    BossVfx::StartOrSend(world, boss, state.fistSmokeHandle, s.fistSmokeEffect,
+    BossVfx::StartOrSend(world, boss, state.fistSmokeHandle, VfxPlayback::Reference(s.introFistSmokeEffect),
                          BossVfx::Placed(state.fistAt, 1.0f, YawRotation(state.yaw)), {});
     // 握り込む勢い：ならした長さが縮む速さから。速く立ち上がり、ゆっくり引く（押し出された煙が、尾を引いて細る）。
     const float dt = std::max(0.0f, seconds);
@@ -128,7 +129,7 @@ void FistSmoke(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, 
     const float held = Smooth((state.fistOpen - state.fistCurl) / kFistHeldDepth);
     const float fade = Smooth((local - (duration - kFistFadeSeconds)) / kFistFadeSeconds);
     const float rate =
-        kFistSmokeRate * s.fistSmokeAmount * (state.fistSqueeze + kFistSmokeTrickle * held) * (1.0f - fade);
+        kFistSmokeRate * s.introFistSmokeAmount * (state.fistSqueeze + kFistSmokeTrickle * held) * (1.0f - fade);
     const Vec3 centre = Lerp(wrist, knuckles, 0.6f);
     for (int k = 0; k < 4; ++k) {
         const uint64_t id = kFistSmokeId + static_cast<uint64_t>(k);
@@ -151,11 +152,11 @@ void FistSmoke(HIKARI::WorldView& world, const Feed& feed, BossComponent& boss, 
 // 細かい域へ滲み出す煙：割れ目の線の上を滑る小さな点から入れる（x＝段の進み 0〜1）。出始めが速く、ゆるやかに濃くなり、
 // 刀が抜けて行く終わりの所で、もう一段濃くなる。点ごとに量をゆっくり変える（割れ目のあちこちから、不揃いに滲む）。
 // 温かいので、巻きながら自分で立ちのぼり、冷めると漂う。
-void SeepFine(const Feed& feed, const BossIntroComponent& intro, float x) {
+void SeepFine(const Feed& feed, const BossIntro& intro, float x) {
     const BossIntroState& state = intro.state;
     const Vec3 entry = state.tipGround;
     const Vec3 slit = SlitAlong(intro);
-    const float rate = kTipFineRate * intro.settings.tipSmokeAmount * (EaseOut(x) + kTipFineSurge * x * x * x * x);
+    const float rate = kTipFineRate * intro.introTipSmokeAmount * (EaseOut(x) + kTipFineSurge * x * x * x * x);
     for (int k = 0; k < kTipFinePoints; ++k) {
         const uint64_t id = kTipFineId + static_cast<uint64_t>(k);
         const bool main = k < kTipFineMain;
@@ -173,7 +174,7 @@ void SeepFine(const Feed& feed, const BossIntroComponent& intro, float x) {
 
 // 剣先の寄りの段がある演出の風：刀のある側の外へ（back＝混ぜる「後ろ」の割合）、根元の低い所の力と、舞台じゅうの広い
 // 力で吹く（low・wide＝加速 m/秒²）。向きはゆっくり左右へ振れる。煙はその場に立ち続けず、風下へ流れて、ほぐれて広がる。
-void TipWind(const Feed& feed, const BossIntroComponent& intro, float low, float wide, float back,
+void TipWind(const Feed& feed, const BossIntro& intro, float low, float wide, float back,
              uint32_t channels = FluidChannels::kIntroSmoke) {
     const BossIntroState& state = intro.state;
     const Vec3 entry = BossIntroActor::SwordEntry(intro);
@@ -200,15 +201,15 @@ void TipWind(const Feed& feed, const BossIntroComponent& intro, float low, float
 // 剣先の寄りの段がある演出の抜刀（Draw から）：滲み出していた割れ目から煙が一気に溢れ、風に運ばれて散り、見得の黒い霧
 // （Backdrop）へ続く。柱は立てない（噴き上げる力と煙突は使わない：その場に柱で残って、広がって見えない）。
 // root＝根元、outside＝刀のある側の外、forward＝舞台の前、local＝抜けてからの秒。
-void DrawSpill(const Feed& feed, const BossIntroComponent& intro, Vec3 root, Vec3 outside, Vec3 forward,
+void DrawSpill(const Feed& feed, const BossIntro& intro, Vec3 root, Vec3 outside, Vec3 forward,
                float local) {
-    const BossIntroSettings& s = intro.settings;
-    const float burst = s.drawBurstSeconds * kTipBurstShare;
+    const BossIntro& s = intro;
+    const float burst = s.introDrawBurstSeconds * kTipBurstShare;
     // 風の向き（振れの真ん中）：刀のある側の外へ、後ろ寄りに。
     const Vec3 mean = FlatNormalize(Add(outside, Mul(forward, -kTipWindGustBack)), outside);
     // 抜けた瞬間が最大で、細って行く。割れ目の上は、初めのうち温め続ける（溢れた煙が、盛り上がってから流れる）。
     if (local < burst)
-        SlitSmoke(feed, intro, s.drawBurstAmount * kTipSpillGain * (1.0f - Smooth(local / burst)));
+        SlitSmoke(feed, intro, s.introDrawBurstAmount * kTipSpillGain * (1.0f - Smooth(local / burst)));
     if (local < kTipSpillWarm)
         SlitWarm(feed, intro);
     // 風：寄りの間のそよ風から、抜けた瞬間に突風へ強まり、引いて弱い風が残る。
@@ -243,7 +244,7 @@ void DrawSpill(const Feed& feed, const BossIntroComponent& intro, Vec3 root, Vec
 }
 
 // 刀を握っている間、刀の根元へ地面の煙がゆっくり寄り、刀身に沿って自分から立ち上がる（噴かない。握るほど濃くなる）。
-void Seep(const Feed& feed, const BossIntroComponent& intro) {
+void Seep(const Feed& feed, const BossIntro& intro) {
     const BossIntroState& state = intro.state;
     float duration = 0.0f;
     // 剣先の寄りの段（Sword.Tip）がある演出では、その段に合わせて、地の割れ目から滲み出させる（寄りに切り替わる前は
@@ -269,7 +270,7 @@ void Seep(const Feed& feed, const BossIntroComponent& intro) {
         if (tipLocal >= 0.0f) {
             // 出始めが速く、ゆるやかに濃くなる。刀が抜けて行く終わりの所で、もう一段濃くなる。
             SlitSmoke(feed, intro,
-                      intro.settings.seepAmount * (kTipSlitGain * EaseOut(x) + kTipSlitSurge * x * x * x * x));
+                      intro.introSeepAmount * (kTipSlitGain * EaseOut(x) + kTipSlitSurge * x * x * x * x));
             TipWind(feed, intro, kTipWindSeep * EaseOut(x), 0.0f, kTipWindSeepBack);
         }
         return;
@@ -279,7 +280,7 @@ void Seep(const Feed& feed, const BossIntroComponent& intro) {
         return;
     const Vec3 entry = BossIntroActor::SwordEntry(intro);
     const float u = local / duration;
-    const float mass = intro.settings.seepAmount * u / static_cast<float>(kSeepGround + kSeepBlade);
+    const float mass = intro.introSeepAmount * u / static_cast<float>(kSeepGround + kSeepBlade);
     for (int k = 0; k < kSeepGround; ++k) {
         const uint64_t id = kSeepId + static_cast<uint64_t>(k);
         const Vec3 out = Around(state.showSeconds * 1.7f + 2.0f * kPi * (static_cast<float>(k) + feed.Roll(id, 4u)) /
@@ -308,7 +309,7 @@ void Seep(const Feed& feed, const BossIntroComponent& intro) {
 
 // 握っている間（Sword.Grab）：外の地面から、黒い霧がゆっくり渦を巻いて根元へ寄り、そこから自分で立ち上がって行く。
 // 点は外から内へ螺旋に走るので、地面に帯を引く。周りの空気も弱く根元へ寄せる。握るほど濃くなる。
-void Gather(const Feed& feed, const BossIntroComponent& intro) {
+void Gather(const Feed& feed, const BossIntro& intro) {
     const BossIntroState& state = intro.state;
     float duration = 0.0f;
     // 剣先の寄りの段がある演出では、その段の間だけ、空気を根元へ寄せて持ち上げる（割れ目から滲み出した煙が、刀身へ
@@ -332,7 +333,7 @@ void Gather(const Feed& feed, const BossIntroComponent& intro) {
         wisp.gust = 0.8f;
         wisp.heat = kSeepHeat;
         feed.Smoke(kGatherId + static_cast<uint64_t>(k), wisp,
-                   intro.settings.gatherAmount * u / static_cast<float>(kGatherWisps));
+                   intro.introGatherAmount * u / static_cast<float>(kGatherWisps));
     }
     for (int k = 0; k < kGatherPulls; ++k) {
         const Vec3 out =
@@ -349,13 +350,13 @@ void Gather(const Feed& feed, const BossIntroComponent& intro) {
 // 見得の黒い霧（抜刀の後から演技の終わりまで）：主役の両脇から後ろへ回り込みながら立ち上がる壁（点は弧に沿って走り、
 // 力がゆっくりした渦と上昇をつくる）と、両脇の地面を前へ這い出す霧（こちらへ迫って来る）。主役の前へは入れない
 // （体の周りの薄い煙は、別に消し続けている）。
-void Backdrop(const Feed& feed, const BossIntroComponent& intro) {
+void Backdrop(const Feed& feed, const BossIntro& intro) {
     const BossIntroState& state = intro.state;
     const float since = Since(state, Kind::SwordOut);
     // 霧が晴れ始めたら、もう足さない。
     if (Since(state, Kind::SmokeDisperse) >= 0.0f)
         return;
-    if (since < kBackdropAt || intro.settings.backdropAmount <= 0.0f)
+    if (since < kBackdropAt || intro.introBackdropAmount <= 0.0f)
         return;
     const float ramp = Smooth((since - kBackdropAt) / kBackdropRise);
     // 剣先の寄りの段がある演出：抜刀の段が終わった後も、弱い風を残す（霧が一つ所に立ち続けず、流れて行く。段の間は
@@ -378,7 +379,7 @@ void Backdrop(const Feed& feed, const BossIntroComponent& intro) {
             feed.Warm(kBackdropId + 15 + k, Add(feet, Add(around[k], Up(kTipWallWarmHeight))), kTipWallWarmRadius,
                       kTipWallWarmHeat * sunk);
     }
-    const float wall = intro.settings.backdropAmount * 0.7f * ramp / static_cast<float>(kBackdropWisps);
+    const float wall = intro.introBackdropAmount * 0.7f * ramp / static_cast<float>(kBackdropWisps);
     for (int k = 0; k < kBackdropWisps; ++k) {
         const uint64_t id = kBackdropId + static_cast<uint64_t>(k);
         const float side = k % 2 == 0 ? 1.0f : -1.0f;
@@ -415,7 +416,7 @@ void Backdrop(const Feed& feed, const BossIntroComponent& intro) {
         wisp.radius = 0.38f;
         wisp.velocity = Mul(forward, 3.0f);
         wisp.gust = 1.0f;
-        feed.Smoke(id, wisp, intro.settings.backdropAmount * 0.15f * ramp * Lerp(1.0f, kTipWallSunkGain, sunk));
+        feed.Smoke(id, wisp, intro.introBackdropAmount * 0.15f * ramp * Lerp(1.0f, kTipWallSunkGain, sunk));
         // 脇の霧を後ろへ巻き上げる流れと、地面の霧を前へ押し出す流れ。
         feed.Blow(kBackdropId + 10 + static_cast<uint64_t>(k), Add(feet, Add(Mul(left, side * 3.0f), Up(2.6f))), 3.2f,
                   Normalize(Add(Add(Mul(forward, -1.0f), Mul(left, side * 0.4f * sway)), Up(0.35f + 0.3f * sway))),
@@ -432,7 +433,7 @@ void Backdrop(const Feed& feed, const BossIntroComponent& intro) {
 // 抜けた瞬間に根元から放射に走る煙の筋：点そのものを、根元から上と外へ速く飛ばす（60 m/秒より下）。エンジンが点の
 // 動いた跡へ掃いて煙を入れるので、弧を描く帯になる（止まった点から入れた煙は、巻く前の丸い粒に見える。スローの寄りで
 // 目立つ）。飛び出しの初めは域が光り始める温度より熱く、青白く光ってから黒い煙になる。outside＝刀のある側の外。
-void DrawStreamers(const Feed& feed, const BossIntroSettings& s, Vec3 root, Vec3 outside, Vec3 forward, float local) {
+void DrawStreamers(const Feed& feed, const BossIntro& s, Vec3 root, Vec3 outside, Vec3 forward, float local) {
     for (int k = 0; k < kBurstStreamers; ++k) {
         const float age = local - kBurstStreamerGap * static_cast<float>(k);
         if (age < 0.0f || age >= kBurstStreamerLife)
@@ -453,25 +454,25 @@ void DrawStreamers(const Feed& feed, const BossIntroSettings& s, Vec3 root, Vec3
         wisp.velocity = Mul(aim, kBurstStreamerSpeed * 0.2f);
         wisp.gust = 2.0f;
         wisp.heat = kBurstCoreHeat * (1.0f - u) * (1.0f - u) + 1.5f;
-        feed.Smoke(id, wisp, s.drawBurstAmount * kBurstStreamerShare * (1.0f - 0.6f * u));
+        feed.Smoke(id, wisp, s.introDrawBurstAmount * kBurstStreamerShare * (1.0f - 0.6f * u));
     }
 }
 
 // 主役から外へ、黒い霧を流す力（周りの 6 か所から、外へ少し上へ）。strength は 0〜1。
-void DisperseFlow(const Feed& feed, const BossIntroComponent& intro, float strength) {
+void DisperseFlow(const Feed& feed, const BossIntro& intro, float strength) {
     if (strength <= 0.0f)
         return;
     const Vec3 feet = BossIntroSmoke::FeetWorld(intro);
     for (int k = 0; k < kDisperseBlows; ++k) {
         const Vec3 out = Around(2.0f * kPi * (static_cast<float>(k) + 0.5f) / static_cast<float>(kDisperseBlows));
         feed.Blow(kDisperseId + static_cast<uint64_t>(k), Add(feet, Add(Mul(out, 2.6f), Up(2.2f))), 4.2f,
-                  Normalize(Add(out, Up(0.25f))), intro.settings.disperseBlow * strength, FluidChannels::kIntroSmoke);
+                  Normalize(Add(out, Up(0.25f))), intro.introDisperseBlow * strength, FluidChannels::kIntroSmoke);
     }
 }
 
 // 見得の終わり（拍 Smoke.Disperse）：黒い霧が主役から外へ流れて、薄れて行く。音も衝撃も付けない。流れはゆっくり立ち
 // 上げ（いきなり吹き飛ばさない）、押し出した先で薄める。演技の後は、BossIntroSmoke::Render が同じ流れのまま消し切る。
-void Disperse(const Feed& feed, BossIntroComponent& intro) {
+void Disperse(const Feed& feed, BossIntro& intro) {
     BossIntroState& state = intro.state;
     float duration = 0.0f;
     const float local = CueLocal(state, Kind::SmokeDisperse, duration);
@@ -482,7 +483,7 @@ void Disperse(const Feed& feed, BossIntroComponent& intro) {
     if (state.dispersePush) {
         state.dispersePush = false;
         feed.Burst(kDisperseId + 6, Add(feet, Up(2.5f)), kDisperseRadius, kDisperseBurst, FluidChannels::kIntroSmoke);
-        feed.Burst(kDisperseId + 7, feet, kDisperseRadius * 1.5f, intro.settings.disperseFogPush, FluidChannels::kFog);
+        feed.Burst(kDisperseId + 7, feet, kDisperseRadius * 1.5f, intro.introDisperseFogPush, FluidChannels::kFog);
     }
     DisperseFlow(feed, intro, Smooth(u * 2.5f));
     // 押し出した先（周り）で薄める。後半は真ん中も。

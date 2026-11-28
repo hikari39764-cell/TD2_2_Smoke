@@ -4,7 +4,7 @@
 
 namespace Project_TD2_2 {
 
-// 1 tick の間に見えたもの。値は物体変数と物体の位置から集める（部品の中身は読まない）。
+// 1 tick の間に見えたもの。値はゲーム全体の値（Params）と物体の位置から集める（部品の中身は読まない）。
 struct FlowObservation {
     bool playerPresent = false;
     bool playerDead = false;
@@ -23,11 +23,11 @@ struct FlowObservation {
 class FlowRules final {
 public:
     // 1 固定 tick 進める。段階が変わった時だけ、その理由（ログ用の短い名前）を返す。変わらなければ nullptr。
-    static const char* Step(FlowComponent& flow, const FlowObservation& observation);
+    static const char* Step(Flow& flow, const FlowObservation& observation);
     // 負け・勝ちの段階で、やり直す時間になったか。
-    static bool IsRestartDue(const FlowComponent& flow, float fixedDt);
+    static bool IsRestartDue(const Flow& flow, float fixedDt);
     // 負け・勝ちの段階の画面の色の濃さ（0〜1。段階に入ってからの時間で決まる）。それ以外の段階は 0。
-    static float GetFade(const FlowComponent& flow, float fixedDt);
+    static float GetFade(const Flow& flow, float fixedDt);
     static int SecondsToTicks(float seconds, float fixedDt);
 };
 

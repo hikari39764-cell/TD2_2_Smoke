@@ -151,7 +151,7 @@ float WeightOf(PickMode mode, const BossThought& thought, int row) {
 }
 
 // 節に書いた名前の行。表に無い名前は、名前ごとに一度だけ知らせる。
-int RowOf(BossComponent& boss, std::string_view name) {
+int RowOf(Boss& boss, std::string_view name) {
     const int row = BossRules::FindMove(boss, name);
     if (row >= 0 || !boss.tableLoaded)
         return row;
@@ -172,7 +172,7 @@ int RowOf(BossComponent& boss, std::string_view name) {
 
 // 表では始動技なのに、いま選んだ技選びに節が無い行を知らせる（表を読むたびに一度）。
 void WarnUncovered(BossThought& thought) {
-    BossComponent& boss = thought.boss;
+    Boss& boss = thought.boss;
     if (boss.brain.coverageChecked)
         return;
     boss.brain.coverageChecked = true;
@@ -199,7 +199,7 @@ struct MoveState {
 
 // 頼めた時は true。頼めなかった時は、すぐ前の「反応の間隔」が通った分を取り消す（ほかの枝の技を反応として数えない）。
 bool RequestRow(BossThought& thought, PickMode mode, int row, bool& continues, float& weight) {
-    BossComponent& boss = thought.boss;
+    Boss& boss = thought.boss;
     bool requested = false;
     // 攻撃中が終わった tick は、走っている節がコンボを決める。新しく始まる節は技を出せない。
     if (row >= 0 && thought.moment != BossBrainMoment::ActFinished) {
@@ -214,7 +214,7 @@ bool RequestRow(BossThought& thought, PickMode mode, int row, bool& continues, f
 }
 
 Status RequestFirst(INodeContext& context, MoveState& run, BossThought& thought) {
-    BossComponent& boss = thought.boss;
+    Boss& boss = thought.boss;
     const std::string_view name = context.ParamText(kMoveName);
     const PickMode mode = ModeOf(context.ParamText(kMovePick));
     bool continues = false;
@@ -254,7 +254,7 @@ Status TickMove(INodeContext& context, void* state, void* user) noexcept {
     BossThought* thought = ThoughtOf(user);
     if (thought == nullptr)
         return Status::Failure;
-    BossComponent& boss = thought->boss;
+    Boss& boss = thought->boss;
     auto& run = *static_cast<MoveState*>(state);
     if (!run.requested)
         return RequestFirst(context, run, *thought);

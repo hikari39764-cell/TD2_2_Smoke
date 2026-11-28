@@ -72,7 +72,7 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
     modifier.localTargetOffset = modifier.localPositionOffset;
     modifier.verticalFovOffsetRadians = feedback.cameraFovDegrees * feedback.cameraScale * kRadiansPerDegree * strength;
     HIKARI::Entity camera{};
-    ForEachOnObject<Gourd>(world, kGourdType, object, [&](HIKARI::ObjectView, Gourd& gourd) { camera = gourd.camera; });
+    ForEachOnObject<Gourd>(object, [&](HIKARI::ObjectView, Gourd& gourd) { camera = gourd.camera; });
     modifier.cameraObjectHandle = FeedbackCamera::Resolve(world, camera);
     if (modifier.cameraObjectHandle == 0)
         return false;
@@ -81,10 +81,10 @@ bool SubmitCamera(HIKARI::WorldView& world, HIKARI::ObjectView object, const Gou
 
 // 火弾の状態が始まった瞬間に、ヒョウタンの口から短く炎を噴く合図を 1 回だけ出す（残りを延ばしただけの時は出さない）。
 // 合図は砲撃の一度きりのエフェクトの枠（砲口の枠）で出すので、流体域の数は増えない。
-void StepFireStart(HIKARI::WorldView& world, HIKARI::ObjectView object, GourdShot& shot) {
+void StepFireStart(HIKARI::ObjectView object, GourdShot& shot) {
     bool fire = false;
     HIKARI::GameProjectFloat3 mouth{}, aim{0.0f, 0.0f, 1.0f};
-    ForEachOnObject<Gourd>(world, kGourdType, object, [&](HIKARI::ObjectView, Gourd& gourd) {
+    ForEachOnObject<Gourd>(object, [&](HIKARI::ObjectView, Gourd& gourd) {
         fire = GourdRules::IsFireShot(gourd);
         // 合図は見えている口から（描画のヒョウタン）。
         mouth = gourd.drawMouthPosition;
@@ -295,37 +295,13 @@ void GourdFeedbackSystem::LateUpdate(HIKARI::WorldView& world, const HIKARI::Fra
     if (!GameSession::IsPlaying(world, frame))
         return;
     ComponentLookup::ForEachGame<GourdShot>([&](HIKARI::ObjectView object, GourdShot& shot) {
-        StepFireStart(world, object, shot);
+        StepFireStart(object, shot);
         StepFeedback(world, object, shot, frame);
     });
     ComponentLookup::ForEachGame<Gourd>([&](HIKARI::ObjectView object, Gourd& gourd) {
         StepBite(world, object, gourd, frame);
         StepCatch(world, object, gourd, frame);
     });
-}
-
-void GourdFeedbackSystem::PostRender(HIKARI::WorldView& world, const HIKARI::FrameContext& frame) {
-    if (!GameSession::IsPlaying(world, frame))
-        return;
-    ComponentLookup::ForEachGame<GourdShot>(
-        [&](HIKARI::ObjectView, GourdShot& shot) {
-            if (shot.traceEveryFrames <= 0 || !shot.feedback.active)
-                return;
-            HIKARI::GameProjectCameraPose control{}, rendered{};
-            const bool controlOk = world.GetCamera().GetControlPose(control);
-            const bool renderedOk = world.GetCamera().GetRenderedPose(rendered);
-            char message[384]{};
-            std::snprintf(message, sizeof(message),
-                          "Pose tick=%llu controlOk=%d renderedOk=%d control=(%.6f,%.6f,%.6f) "
-                          "rendered=(%.6f,%.6f,%.6f) timeScale=%.6f",
-                          static_cast<unsigned long long>(shot.processedTick), static_cast<int>(controlOk),
-                          static_cast<int>(renderedOk), static_cast<double>(control.eye.x),
-                          static_cast<double>(control.eye.y), static_cast<double>(control.eye.z),
-                          static_cast<double>(rendered.eye.x), static_cast<double>(rendered.eye.y),
-                          static_cast<double>(rendered.eye.z),
-                          static_cast<double>(world.GetTimeDilation().GetEffectiveScale()));
-            HIKARI::WriteProjectLog(HIKARI::GameProjectLogLevel::Info, "GourdFeedback", message);
-        });
 }
 
 } // namespace Project_TD2_2

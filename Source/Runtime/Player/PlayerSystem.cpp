@@ -13,6 +13,7 @@
 #include "HIKARI/Project/ProjectLog.h"
 #include "PlayerCamera.h"
 #include "PlayerRules.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {

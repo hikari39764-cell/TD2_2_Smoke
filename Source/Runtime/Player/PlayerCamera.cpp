@@ -12,6 +12,7 @@
 #include "Player.h"
 #include "PlayerRules.h"
 #include "../Common/VectorMath.h"
+#include "HIKARI/Extend/World.h"
 
 namespace Project_TD2_2 {
 namespace {

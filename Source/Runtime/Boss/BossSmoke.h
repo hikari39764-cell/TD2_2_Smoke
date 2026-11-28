@@ -13,10 +13,9 @@ class BossSmoke final {
 public:
     // 描画フレーム（PreRender）。固定 tick で決めた 1 秒あたりの量を、そのまま注入の強さにする。
     // look は同じ物体の体の見た目の部品（見えている左手の所。無ければ nullptr＝左手の霧を出さない）。
-    static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, BossComponent& boss,
-                       const BossBodyComponent* look, float smokePerVolume);
+    static void Render(HIKARI::WorldView& world, HIKARI::ObjectView object, Boss& boss,
+                       const BossBody* look, float smokePerVolume);
     // 検査器の「残る煙」の項目（場の霧へ入れる煙）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

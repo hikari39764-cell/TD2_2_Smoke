@@ -23,7 +23,7 @@ public:
     // 放った斬撃の id を返す（放てなければ 0）。
     static uint64_t SpawnSlash(BossFrame& frame, const BossSlashLaunch& launch);
     // 剣そのものが当たった：同じ一撃の、もう放ってある斬撃は当たらなくする。
-    static void SpendWave(BossComponent& boss, uint64_t waveId);
+    static void SpendWave(Boss& boss, uint64_t waveId);
     static void SpawnKnives(BossFrame& frame, int moveIndex, HIKARI::GameProjectFloat3 from,
                             HIKARI::GameProjectFloat3 aim);
     // 回し蹴りの霞の輪：ボスの足元から、表の判定サイズ（最大半径）まで斬撃速度で広がる。
@@ -32,9 +32,9 @@ public:
     static void Step(BossFrame& frame);
     // 吸い取った斬撃・ナイフ 1 つを、ヒョウタンへの渡し分（boss.caught）へ足す：煙・数・火の刃なら火弾の知らせ。
     // 口へ入りきった tick に呼ぶ（c-3341a7）。
-    static void DeliverCatch(BossComponent& boss, const BossWave& wave);
+    static void DeliverCatch(Boss& boss, const BossWave& wave);
     // 口へ引き込み中の斬撃・ナイフが、入りきった時にヒョウタンへ入れる煙の合計（捕まえられる空きから先に引く）。
-    static float GetPullingSmoke(const BossComponent& boss);
+    static float GetPullingSmoke(const Boss& boss);
     // 刃や斬撃がプレイヤーの体の軸に触れたか（触れたら true）。
     static bool Touches(const BossFrame& frame, HIKARI::GameProjectFloat3 a, HIKARI::GameProjectFloat3 b,
                         float thickness);
@@ -45,18 +45,16 @@ public:
                           int strike, const char* source, bool fire, bool* dodged = nullptr);
     // 場の霧へ少しずつ入れる煙を置く（煙の単位）。waitFrames tick 待ってから、frames tick かけて出し切る。
     // orbitStep が 0 でなければ、出している間、orbitCenter の周りを 1 tick に orbitStep (rad) ずつ回る（弧の形に入る）。
-    static void AddDeposit(BossComponent& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius,
+    static void AddDeposit(Boss& boss, HIKARI::GameProjectFloat3 position, float smoke, float radius,
                            int frames, int waitFrames = 0, HIKARI::GameProjectFloat3 orbitCenter = {},
                            float orbitStep = 0.0f);
     // 爆発の枠へ 1 つ入れる。枠は輪で使い回し、埋まっていれば一番古いものを上書きする。
     // 爆発の跡に残す煙（blast.leavesFog）は、ここで置く（枠が上書きされても煙は残る）。
-    static void AddBlast(BossComponent& boss, const BossBlast& blast);
-    static void StepDeposits(BossComponent& boss);
-    static void Clear(BossComponent& boss);
+    static void AddBlast(Boss& boss, const BossBlast& blast);
+    static void StepDeposits(Boss& boss);
+    static void Clear(Boss& boss);
     // 検査器の「吸い込み」の項目（斬撃・ナイフを吸える範囲と引き込み）。
-    static void DescribeAbsorb(HIKARI::PropertyFields& fields, BossComponent& boss);
     // 検査器の「剣と斬撃の出方」の項目（剣・斬撃・ナイフ・プレイヤーの当たり）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2

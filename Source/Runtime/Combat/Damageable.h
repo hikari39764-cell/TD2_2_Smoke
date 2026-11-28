@@ -11,7 +11,7 @@ namespace Project_TD2_2 {
 // 手応えは次の Update で出す：まだ古い System（ボス・ヒョウタン砲撃）から当てられ、その回呼の中ではサービスを
 // 呼べないため（当てる側が移れば Apply の中で直接出せる）。
 struct Damageable : HIKARI::Component {
-    HIKARI_COMPONENT(Damageable)
+    HIKARI_COMPONENT(Damageable, "被弾と HP")
     FIELD(float, maxHealth, 1000.0f, "最大 HP", HIKARI::Range(1, 1000000), HIKARI::Group("被弾と HP"))
     FIELD(bool, invulnerable, false, "無敵（ダメージを受けない）")
     // 命中の止め。連射（8F ごと）でも止めが積み上がらないよう、止めている間の次の命中では延ばさない（c-d330c0）。
@@ -44,10 +44,8 @@ struct Damageable : HIKARI::Component {
     uint64_t hitCount = 0;
     double baseDamageTotal = 0.0;
 
-    ~Damageable() override;
     void OnStart() override;
     void Update(float dt) override;
-    void OnDestroy() override;
 
     // 当てる。無敵・死亡・非正の量は拒否し、受け付けた時だけ HP と記録を変える。direction は攻撃が押す世界の向き。
     bool Apply(float amount, HIKARI::Vec3 direction);
@@ -62,9 +60,6 @@ struct Damageable : HIKARI::Component {
     bool IsAlive() const { return Health() > 0.0f; }
     float Health() const;
     float LastDamage() const { return lastDamage_; }
-
-    // 移行の途中だけの橋（ボスが移ったら消す）：古い System から、物体（ObjectView の値）に付いた Damageable を引く。
-    static Damageable* Of(uint64_t objectHandle);
 
 private:
     void EnsureStarted();

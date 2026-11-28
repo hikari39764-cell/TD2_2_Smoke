@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "BossBodySettings.h"
+#include "BossBodyComponent.h"
 #include "../Boss/BossComponent.h"
 
 namespace Project_TD2_2 {
@@ -48,7 +48,7 @@ class BossBodyRig final {
 public:
     // 骨から置き場所を受け取る前の一式：どの部品も体の物体の所と向きに置き、大きさ・灼け・目の光をボスの状態から決める。
     // settings は体の見た目の設定（大きさ・草摺の枚数）。
-    static BossBodyPose Base(const BossComponent& boss, const BossBodySettings& settings,
+    static BossBodyPose Base(const Boss& boss, const BossBody& settings,
                              const HIKARI::GameProjectTransform& body);
 };
 

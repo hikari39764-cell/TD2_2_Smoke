@@ -10,9 +10,8 @@ namespace Project_TD2_2 {
 class BossTableLoader final {
 public:
     // 表を読む。中身が前と同じなら何もしない（技を出すたびに呼ぶので、Play 中に保存した CSV が次の技から効く）。
-    static void Load(HIKARI::WorldView& world, BossComponent& boss);
+    static void Load(HIKARI::WorldView& world, Boss& boss);
     // 検査器の「技の表」の項目（表の場所）。
-    static void Describe(HIKARI::PropertyFields& fields, BossComponent& boss);
 };
 
 } // namespace Project_TD2_2
